@@ -17,16 +17,10 @@ import (
 	"github.com/avenga/couper/oauth2"
 )
 
-const (
-	clientCredentials = "client_credentials"
-	jwtBearer         = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-	password          = "password"
-)
-
 var supportedGrantTypes = map[string]struct{}{
-	clientCredentials: struct{}{},
-	jwtBearer:         struct{}{},
-	password:          struct{}{},
+	config.ClientCredentials: struct{}{},
+	config.JwtBearer:         struct{}{},
+	config.Password:          struct{}{},
 }
 
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
@@ -47,7 +41,7 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 
-	if conf.GrantType == password {
+	if conf.GrantType == config.Password {
 		if conf.Username == "" {
 			return nil, fmt.Errorf("username must not be empty with grant_type=password")
 		}
@@ -68,13 +62,22 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		return nil, err
 	}
 
-	if conf.GrantType == jwtBearer {
+	if conf.GrantType == config.JwtBearer {
 		if assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType {
 			return nil, fmt.Errorf("missing assertion with grant_type=%s", conf.GrantType)
 		}
 	} else {
 		if !(assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType) {
 			return nil, fmt.Errorf("assertion must not be set with grant_type=%s", conf.GrantType)
+		}
+	}
+
+	if conf.ClientAuthenticationRequired() {
+		if conf.ClientID == "" {
+			return nil, fmt.Errorf("client_id must not be empty")
+		}
+		if conf.ClientSecret == "" {
+			return nil, fmt.Errorf("client_secret must not be empty")
 		}
 	}
 
@@ -102,7 +105,7 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	formParams := url.Values{}
 
-	if oa.config.GrantType == jwtBearer {
+	if oa.config.GrantType == config.JwtBearer {
 		if assertionValue.IsNull() {
 			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
 		} else if assertionValue.Type() != cty.String {

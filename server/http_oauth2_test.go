@@ -228,7 +228,7 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 		{
 			"16_couper.hcl",
 			`assertion=GET&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer`,
-			"Basic bXlfY2xpZW50Om15X2NsaWVudF9zZWNyZXQ=",
+			"",
 		},
 	} {
 		var tokenSeenCh chan struct{}
@@ -292,6 +292,70 @@ func TestOAuth2_Config_Errors(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
+			"grant_type client_credentials without client_id",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+    }
+  }
+}
+`,
+			"configuration error: be: client_id must not be empty",
+		},
+		{
+			"grant_type client_credentials without client_secret",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty",
+		},
+		{
+			"grant_type password without client_id",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_secret  = "my_client_secret"
+      grant_type     = "password"
+      username       = "my_user"
+      password       = "my_password"
+    }
+  }
+}
+`,
+			"configuration error: be: client_id must not be empty",
+		},
+		{
+			"grant_type password without client_secret",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "password"
+      username       = "my_user"
+      password       = "my_password"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty",
+		},
+		{
 			"username with grant_type client_credentials",
 			`server {}
 definitions {
@@ -332,8 +396,6 @@ definitions {
   backend "be" {
     oauth2 {
       token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
       grant_type     = "urn:ietf:params:oauth:grant-type:jwt-bearer"
       username       = "my_user"
     }
@@ -349,8 +411,6 @@ definitions {
   backend "be" {
     oauth2 {
       token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
       grant_type     = "urn:ietf:params:oauth:grant-type:jwt-bearer"
       password       = "my_password"
     }
@@ -435,8 +495,6 @@ definitions {
   backend "be" {
     oauth2 {
       token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
       grant_type     = "urn:ietf:params:oauth:grant-type:jwt-bearer"
     }
   }
