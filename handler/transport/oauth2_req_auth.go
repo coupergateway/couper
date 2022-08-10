@@ -17,6 +17,12 @@ import (
 	"github.com/avenga/couper/oauth2"
 )
 
+const (
+	clientCredentials = "client_credentials"
+	jwtBearer         = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	password          = "password"
+)
+
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
@@ -31,11 +37,11 @@ type OAuth2ReqAuth struct {
 func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
-	if conf.GrantType != "client_credentials" && conf.GrantType != "password" && conf.GrantType != "urn:ietf:params:oauth:grant-type:jwt-bearer" {
+	if conf.GrantType != clientCredentials && conf.GrantType != password && conf.GrantType != jwtBearer {
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 
-	if conf.GrantType == "password" {
+	if conf.GrantType == password {
 		if conf.Username == "" {
 			return nil, fmt.Errorf("username must not be empty with grant_type=password")
 		}
@@ -56,7 +62,7 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		return nil, err
 	}
 
-	if conf.GrantType == "urn:ietf:params:oauth:grant-type:jwt-bearer" {
+	if conf.GrantType == jwtBearer {
 		if assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType {
 			return nil, fmt.Errorf("missing assertion with grant_type=%s", conf.GrantType)
 		}
@@ -90,7 +96,7 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	formParams := url.Values{}
 
-	if oa.config.GrantType == "urn:ietf:params:oauth:grant-type:jwt-bearer" {
+	if oa.config.GrantType == jwtBearer {
 		if assertionValue.IsNull() {
 			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
 		} else if assertionValue.Type() != cty.String {
