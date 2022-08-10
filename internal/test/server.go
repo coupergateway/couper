@@ -15,10 +15,12 @@ func WaitForClosedPort(port int) {
 
 	for {
 		conn, dialErr := net.Dial("tcp4", ":"+strconv.Itoa(port))
+		if conn != nil {
+			_ = conn.Close()
+		}
 		if dialErr != nil {
 			break
 		}
-		_ = conn.Close()
 
 		round++
 		if round == waitForBackoff {
@@ -33,8 +35,10 @@ func WaitForOpenPort(port int) {
 	round := time.Duration(0)
 	for {
 		conn, dialErr := net.Dial("tcp4", ":"+strconv.Itoa(port))
-		if dialErr == nil {
+		if conn != nil {
 			_ = conn.Close()
+		}
+		if dialErr == nil {
 			return
 		}
 

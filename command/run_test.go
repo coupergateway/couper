@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -96,11 +97,10 @@ func TestNewRun(t *testing.T) {
 			TelemetryTracesEndpoint:  defaultSettings.TelemetryTracesEndpoint,
 		}},
 	}
+	ctx, shutdown := context.WithCancel(context.Background())
+	defer shutdown()
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			ctx, shutdown := context.WithCancel(context.Background())
-			defer shutdown()
-
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
 				subT.Error("create run cmd failed")
@@ -158,8 +158,6 @@ func TestNewRun(t *testing.T) {
 			} else if len(uid) > xidLen {
 				subT.Errorf("expected common id format, got: %s", uid)
 			}
-
-			shutdown()
 		})
 	}
 }
@@ -185,11 +183,13 @@ func TestAcceptForwarded(t *testing.T) {
 		{"accept by option", "01_defaults.hcl", Args{"-accept-forwarded-url", "proto,host,port"}, nil, true, true, true},
 		{"accept by env", "01_defaults.hcl", nil, []string{"COUPER_ACCEPT_FORWARDED_URL=proto,host,port"}, true, true, true},
 	}
+
+	ctx, shutdown := context.WithCancel(context.Background())
+	defer shutdown()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			ctx, shutdown := context.WithCancel(context.Background())
-			defer shutdown()
-
+			ttt := tt
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
 				t.Error("create run cmd failed")
@@ -202,7 +202,7 @@ func TestAcceptForwarded(t *testing.T) {
 			}
 
 			// settings must be locked, so assign port now
-			port := couperFile.Settings.DefaultPort
+			// port := ":0"
 
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
@@ -211,15 +211,17 @@ func TestAcceptForwarded(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
-			// ensure the previous test aren't listening
-			test.WaitForClosedPort(port)
+			// fmt.Println(">>>>> START 1", time.Now())
+			// // ensure the previous test aren't listening
+			// test.WaitForClosedPort(port)
 			go func() {
-				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
+				execErr := runCmd.Execute(ttt.args, couperFile, log.WithContext(ctx))
 				if execErr != nil {
 					subT.Error(execErr)
 				}
 			}()
-			test.WaitForOpenPort(port)
+			// test.WaitForOpenPort(port)
+			// fmt.Println(">>>>> END 1", time.Now())
 
 			runCmd.settingsMu.Lock()
 
@@ -235,6 +237,8 @@ func TestAcceptForwarded(t *testing.T) {
 			runCmd.settingsMu.Unlock()
 		})
 	}
+
+	fmt.Println(">>>>> DONE", time.Now())
 }
 
 func TestArgs_CAFile(t *testing.T) {
@@ -316,6 +320,7 @@ definitions {
 
 	port := couperFile.Settings.DefaultPort
 
+	fmt.Println(">>>>> START 2", time.Now())
 	// ensure the previous tests aren't listening
 	test.WaitForClosedPort(port)
 	go func() {

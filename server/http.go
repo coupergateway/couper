@@ -175,9 +175,11 @@ func (s *HTTPServer) listenForCtx() {
 		ctx = c
 	}
 
-	if err := s.srv.Shutdown(ctx); err != nil {
-		s.log.WithFields(logFields).Error(err)
-	}
+	s.Close()
+
+	// if err := s.srv.Shutdown(ctx); err != nil {
+	// 	s.log.WithFields(logFields).Error(err)
+	// }
 }
 
 func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
