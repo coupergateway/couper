@@ -17,6 +17,7 @@ import (
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/ratelimit"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 )
@@ -75,10 +76,10 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	if len(beConf.RateLimits) > 0 {
 		if strings.HasPrefix(beConf.Name, "anonymous_") {
-			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'rate_limit' block(s)", beConf.Name)
+			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'beta_rate_limit' block(s)", beConf.Name)
 		}
 
-		rateLimits, err := transport.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
+		rateLimits, err := ratelimit.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
 		if err != nil {
 			return nil, err
 		}
