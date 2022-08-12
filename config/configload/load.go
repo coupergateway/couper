@@ -25,21 +25,23 @@ import (
 )
 
 const (
-	api          = "api"
-	backend      = "backend"
-	defaults     = "defaults"
-	definitions  = "definitions"
-	endpoint     = "endpoint"
-	environment  = "environment"
-	errorHandler = "error_handler"
-	files        = "files"
-	nameLabel    = "name"
-	oauth2       = "oauth2"
-	proxy        = "proxy"
-	request      = "request"
-	server       = "server"
-	settings     = "settings"
-	spa          = "spa"
+	api             = "api"
+	backend         = "backend"
+	defaults        = "defaults"
+	definitions     = "definitions"
+	endpoint        = "endpoint"
+	environment     = "environment"
+	environmentVars = "environment_variables"
+	errorHandler    = "error_handler"
+	files           = "files"
+	nameLabel       = "name"
+	oauth2          = "oauth2"
+	proxy           = "proxy"
+	request         = "request"
+	server          = "server"
+	settings        = "settings"
+	spa             = "spa"
+	tokenRequest    = "beta_token_request"
 	// defaultNameLabel maps the hcl label attr 'name'.
 	defaultNameLabel = "default"
 )
@@ -69,7 +71,7 @@ func init() {
 	}
 }
 
-func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
+func updateContext(body hcl.Body, srcBytes [][]byte, environment string) hcl.Diagnostics {
 	defaultsBlock := &config.DefaultsBlock{}
 	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
 		return diags
@@ -77,7 +79,7 @@ func updateContext(body hcl.Body, srcBytes [][]byte) hcl.Diagnostics {
 
 	// We need the "envContext" to be able to resolve absolute paths in the config.
 	defaultsConfig = defaultsBlock.Defaults
-	evalContext = eval.NewContext(srcBytes, defaultsConfig)
+	evalContext = eval.NewContext(srcBytes, defaultsConfig, environment)
 	envContext = evalContext.HCLContext()
 
 	return nil
@@ -141,9 +143,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		return nil, fmt.Errorf("missing configuration files")
 	}
 
-	if err := preprocessEnvironmentBlocks(parsedBodies, env); err != nil {
-		return nil, err
-	}
+	errorBeforeRetry := preprocessEnvironmentBlocks(parsedBodies, env)
 
 	if env == "" {
 		settingsBlock := mergeSettings(parsedBodies)
@@ -156,6 +156,10 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		}
 	}
 
+	if errorBeforeRetry != nil {
+		return nil, errorBeforeRetry
+	}
+
 	defaultsBlock, err := mergeDefaults(parsedBodies)
 	if err != nil {
 		return nil, err
@@ -165,7 +169,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		Blocks: hclsyntax.Blocks{defaultsBlock},
 	}
 
-	if diags := updateContext(defs, srcBytes); diags.HasErrors() {
+	if diags := updateContext(defs, srcBytes, env); diags.HasErrors() {
 		return nil, diags
 	}
 
@@ -196,7 +200,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		Blocks: configBlocks,
 	}
 
-	conf, err := LoadConfig(configBody, srcBytes)
+	conf, err := LoadConfig(configBody, srcBytes, env)
 	if err != nil {
 		return nil, err
 	}
@@ -216,17 +220,17 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	return LoadConfig(hclBody, [][]byte{src})
+	return LoadConfig(hclBody, [][]byte{src}, "")
 }
 
-func LoadConfig(body hcl.Body, src [][]byte) (*config.Couper, error) {
+func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper, error) {
 	var err error
 
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
-	helper, err := newHelper(body, src)
+	helper, err := newHelper(body, src, environment)
 	if err != nil {
 		return nil, err
 	}

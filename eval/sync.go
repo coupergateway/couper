@@ -23,8 +23,8 @@ func NewSyncedVariables() *SyncedVariables {
 
 type syncPair struct {
 	name          string
+	backendName   string
 	bereq, beresp cty.Value
-	tokenRequest  bool
 }
 
 // Set finalized cty req/resp pair.
@@ -33,13 +33,16 @@ func (sv *SyncedVariables) Set(beresp *http.Response) {
 	name, bereqV, berespV := newBerespValues(ctx, true, beresp)
 
 	if tr, ok := ctx.Value(request.TokenRequest).(string); ok && tr != "" {
-		name = TokenRequestPrefix + name
+		name = TokenRequestPrefix + tr
 	}
 
+	backendName, _ := ctx.Value(request.BackendName).(string)
+
 	sv.items.Store(name, &syncPair{
-		name:   name,
-		bereq:  bereqV,
-		beresp: berespV,
+		backendName: backendName,
+		bereq:       bereqV,
+		beresp:      berespV,
+		name:        name,
 	})
 }
 
@@ -48,6 +51,7 @@ func (sv *SyncedVariables) Sync(variables map[string]cty.Value) {
 	if brs, ok := variables[BackendRequests]; ok {
 		bereqs = brs.AsValueMap()
 	}
+
 	if brps, ok := variables[BackendResponses]; ok {
 		beresps = brps.AsValueMap()
 	}

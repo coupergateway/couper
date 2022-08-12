@@ -34,7 +34,7 @@ func TestProxy_BlacklistHeaderRemoval(t *testing.T) {
 	outreq := httptest.NewRequest("GET", "https://1.2.3.4/", nil)
 	outreq.Header.Set("Authorization", "Basic 123")
 	outreq.Header.Set("Cookie", "123")
-	outreq = outreq.WithContext(eval.NewContext(nil, &config.Defaults{}).WithClientRequest(outreq))
+	outreq = outreq.WithContext(eval.NewContext(nil, &config.Defaults{}, "").WithClientRequest(outreq))
 	ctx, cancel := context.WithDeadline(outreq.Context(), time.Now().Add(time.Millisecond*50))
 	outreq = outreq.WithContext(ctx)
 	defer cancel()

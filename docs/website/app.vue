@@ -5,25 +5,28 @@
 </template>
 
 <script setup>
-const { result, search } = useAlgoliaSearch("docs");
+const { result, search } = useAlgoliaSearch("docs")
 
 onMounted(async () => {
+	setInterval(() => {
 	for (const pre of document.getElementsByTagName("pre")) {
 		pre.title = "Click to copy to clipboard"
-		pre.addEventListener("click", event => {
+		pre.onclick = (event) => {
 			const target = event.target
 			navigator.clipboard.writeText(target.innerText)
 			target.classList.add("copied")
 		    setTimeout(() => target.classList.remove("copied"), 1500)
-		})
+		}
 	}
+	}, 1000)
 })
 </script>
 
 <style>
-pre {
+.prose pre {
 	position: relative;
-    pointer-events: none
+	pointer-events: none;
+	line-height: 1.5rem
 }
 
 pre::before {
@@ -32,7 +35,7 @@ pre::before {
 	right: 1rem;
 	font-size: 1.5rem;
 	cursor: pointer;
-    pointer-events: auto;
+	pointer-events: auto;
 }
 
 pre:hover::before {
@@ -44,13 +47,9 @@ pre.copied::after {
 	content: "Copied!  ✅";
 	position: absolute;
 	background: #475569;
-	top: 1rem;
+	top: 0.5rem;
 	right: 1rem;
 	padding: 2px 10px;
 	border-radius: 5px;
-}
-
-code  {
-	white-space: pre !important /* line breaks for copy/paste! */
 }
 </style>

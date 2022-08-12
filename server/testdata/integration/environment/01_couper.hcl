@@ -3,7 +3,7 @@ environment "test" {
     endpoint "/test" {
       environment "test" "foo" "bar" {
         set_response_headers = {
-          X-Test-Env = "test"
+          X-Test-Env = couper.environment
         }
       }
       proxy {

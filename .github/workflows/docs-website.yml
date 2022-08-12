@@ -14,7 +14,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: '1.18'
+          go-version: '1.19'
         id: go
       - run: go version
 
@@ -69,7 +69,7 @@ jobs:
       - name: setup git && push
         working-directory: './website'
         run: |
-          git config user.name "couper-gitbot"
-          git config user.email "gitbot@couper.io"
+          git config user.name "couper-bot"
+          git config user.email "couperbot@gmail.com"
           git add -A && git commit -m "Update website"
           git push origin main

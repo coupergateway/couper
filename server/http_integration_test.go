@@ -100,11 +100,14 @@ func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrus
 
 // newCouperWithTemplate applies given variables first and loads Couper with the resulting configuration file.
 // Example template:
-// 		My {{.message}}
+//
+//	My {{.message}}
+//
 // Example value:
-//		map[string]interface{}{
-//			"message": "value",
-//		}
+//
+//	map[string]interface{}{
+//		"message": "value",
+//	}
 func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]interface{}) (func(), *logrustest.Hook) {
 	if vars == nil {
 		return newCouper(file, helper)
@@ -5461,7 +5464,6 @@ func TestEnvironmentSetting(t *testing.T) {
 	tests := []struct {
 		env string
 	}{
-		{""},
 		{"foo"},
 		{"bar"},
 	}

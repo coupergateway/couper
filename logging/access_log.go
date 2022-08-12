@@ -45,12 +45,9 @@ func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 	startTime := req.Context().Value(request.StartTime).(time.Time)
 	fields := Fields{}
 
-	backendName, _ := req.Context().Value(request.BackendName).(string)
-	if backendName == "" {
-		endpointName, _ := req.Context().Value(request.Endpoint).(string)
-		if endpointName != "" {
-			fields["endpoint"] = endpointName
-		}
+	endpointName, _ := req.Context().Value(request.Endpoint).(string)
+	if endpointName != "" {
+		fields["endpoint"] = endpointName
 	}
 
 	fields["method"] = req.Method

@@ -23,7 +23,13 @@ values: [
     "name": "access_control",
     "type": "tuple (string)",
     "default": "[]",
-    "description": "Sets predefined [Access Control](#access-control) for this block."
+    "description": "Sets predefined [access control](../access-control) for this block."
+  },
+  {
+    "name": "add_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response"
   },
   {
     "name": "allowed_methods",
@@ -34,8 +40,20 @@ values: [
   {
     "name": "base_path",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Configures the path prefix for all requests."
+  },
+  {
+    "name": "beta_required_permission",
+    "type": "object",
+    "default": "",
+    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
   },
   {
     "name": "disable_access_control",
@@ -46,20 +64,20 @@ values: [
   {
     "name": "error_file",
     "type": "string",
-    "default": "\"\"",
+    "default": "",
     "description": "Location of the error file template."
   },
   {
-    "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "Defines log fields for custom Logging"
+    "name": "remove_response_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the client response"
   },
   {
-    "name": "beta_required_permission",
+    "name": "set_response_headers",
     "type": "object",
     "default": "",
-    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
+    "description": "key/value pairs to set as response headers in the client response"
   }
 ]
 

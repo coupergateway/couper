@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 var (
@@ -23,13 +25,9 @@ func (w Websockets) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (w Websockets) Inline() interface{} {
 	type Inline struct {
-		AddRequestHeaders  map[string]string `hcl:"add_request_headers,optional"`
-		AddResponseHeaders map[string]string `hcl:"add_response_headers,optional"`
-		DelRequestHeaders  []string          `hcl:"remove_request_headers,optional"`
-		DelResponseHeaders []string          `hcl:"remove_response_headers,optional"`
-		SetRequestHeaders  map[string]string `hcl:"set_request_headers,optional"`
-		SetResponseHeaders map[string]string `hcl:"set_response_headers,optional"`
-		Timeout            string            `hcl:"timeout,optional"`
+		meta.RequestHeadersAttributes
+		meta.ResponseHeadersAttributes
+		Timeout string `hcl:"timeout,optional" docs:"The total deadline [duration](#duration) a WebSocket connection has to exist."`
 	}
 
 	return &Inline{}
@@ -44,5 +42,5 @@ func (w Websockets) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ = gohcl.ImpliedBodySchema(w.Inline())
 
-	return schema
+	return meta.MergeSchemas(schema, meta.RequestHeadersAttributesSchema, meta.ResponseHeadersAttributesSchema)
 }

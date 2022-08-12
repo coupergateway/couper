@@ -42,7 +42,6 @@ var (
 	_ seetie.Object     = &Backend{}
 )
 
-// Backend represents the transport configuration.
 type Backend struct {
 	context             hcl.Body
 	healthInfo          *HealthInfo
@@ -50,7 +49,7 @@ type Backend struct {
 	logEntry            *logrus.Entry
 	name                string
 	openAPIValidator    *validation.OpenAPI
-	tokenRequest        TokenRequest
+	requestAuthorizer   []RequestAuthorizer
 	transport           http.RoundTripper
 	transportConf       *Config
 	transportConfResult Config
@@ -61,25 +60,25 @@ type Backend struct {
 // NewBackend creates a new <*Backend> object by the given <*Config>.
 func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var (
-		healthCheck  *config.HealthCheck
-		openAPI      *validation.OpenAPI
-		tokenRequest TokenRequest
+		healthCheck       *config.HealthCheck
+		openAPI           *validation.OpenAPI
+		requestAuthorizer []RequestAuthorizer
 	)
 
 	if opts != nil {
 		healthCheck = opts.HealthCheck
 		openAPI = validation.NewOpenAPI(opts.OpenAPI)
-		tokenRequest = opts.AuthBackend
+		requestAuthorizer = opts.RequestAuthz
 	}
 
 	backend := &Backend{
-		context:          ctx,
-		healthInfo:       &HealthInfo{Healthy: true, State: StateOk.String()},
-		logEntry:         log.WithField("backend", tc.BackendName),
-		name:             tc.BackendName,
-		openAPIValidator: openAPI,
-		tokenRequest:     tokenRequest,
-		transportConf:    tc,
+		context:           ctx,
+		healthInfo:        &HealthInfo{Healthy: true, State: StateOk.String()},
+		logEntry:          log.WithField("backend", tc.BackendName),
+		name:              tc.BackendName,
+		openAPIValidator:  openAPI,
+		requestAuthorizer: requestAuthorizer,
+		transportConf:     tc,
 	}
 
 	backend.upstreamLog = logging.NewUpstreamLog(backend.logEntry, backend, tc.NoProxyFromEnv)
@@ -119,18 +118,23 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
 	}
 
-	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
-
-	if err := b.isUnhealthy(hclCtx, ctxBody); err != nil {
-		return &http.Response{
-			Request: req, // provide outreq (variable) on error cases
-		}, err
-	}
-
 	// originalReq for token-request retry purposes
 	originalReq, err := b.withTokenRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.BetaBackendTokenRequest.Label(b.name).With(err)
+	}
+
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+	if v, ok := hclCtx.Variables[eval.Backends]; ok {
+		if m, exist := v.AsValueMap()[b.name]; exist {
+			hclCtx.Variables[eval.Backend] = m
+		}
+	}
+
+	if err = b.isUnhealthy(hclCtx, ctxBody); err != nil {
+		return &http.Response{
+			Request: req, // provide outreq (variable) on error cases
+		}, err
 	}
 
 	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
@@ -187,8 +191,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	b.withBasicAuth(req, ctxBody)
-	if err = b.withPathPrefix(req, ctxBody); err != nil {
+	b.withBasicAuth(req, hclCtx, ctxBody)
+	if err = b.withPathPrefix(req, hclCtx, ctxBody); err != nil {
 		return nil, err
 	}
 
@@ -219,8 +223,10 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return beresp, err
 	}
 
+	req = req.WithContext(context.WithValue(req.Context(), request.BackendName, b.name))
+
 	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
-		return beresp, rerr
+		return beresp, errors.BetaBackendTokenRequest.Label(b.name).With(rerr)
 	} else if retry {
 		return b.RoundTrip(originalReq)
 	}
@@ -244,6 +250,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// has own body variable reference?
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
 	evalCtx = evalCtx.WithBeresp(beresp, readBody)
+
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
 	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
@@ -327,41 +334,79 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 }
 
 func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
-	if b.tokenRequest == nil {
+	if b.requestAuthorizer == nil {
 		return nil, nil
 	}
 
 	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
 	if trValue != "" { // prevent loop
-		return nil, nil
+		// TODO this prevents an oauth2 to send token request to (oauth2 or beta_token_request) authorized backend
+		// return nil, nil
 	}
 
 	ctx := context.WithValue(req.Context(), request.BackendTokenRequest, "tr")
 	// Reset for upstream transport; prevent mixing values.
-	// tokenRequest will have their own backend configuration.
+	// requestAuthorizer will have their own backend configuration.
 	ctx = context.WithValue(ctx, request.BackendParams, nil)
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 
 	originalReq := req.Clone(req.Context())
 
 	// WithContext() instead of Clone() due to header-map modification.
-	return originalReq, b.tokenRequest.WithToken(req.WithContext(ctx))
+	req = req.WithContext(ctx)
+
+	errorsCh := make(chan error, len(b.requestAuthorizer))
+	for _, authorizer := range b.requestAuthorizer {
+		err := authorizer.GetToken(req)
+		if err != nil {
+			return originalReq, err
+		}
+
+		go func(ra RequestAuthorizer, r *http.Request) {
+			errorsCh <- ra.GetToken(r)
+		}(authorizer, req)
+	}
+
+	var err error
+	for i := 0; i < len(b.requestAuthorizer); i++ {
+		err = <-errorsCh
+		if err != nil {
+			break
+		}
+	}
+	return originalReq, err
 }
 
 func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {
-	if b.tokenRequest == nil {
+	if len(b.requestAuthorizer) == 0 {
 		return false, nil
 	}
 
 	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
 	if trValue != "" { // prevent loop
-		return false, nil
+		// TODO this prevents an oauth2 to send token request to (oauth2 or beta_token_request) authorized backend
+		// return false, nil
 	}
 
-	return b.tokenRequest.RetryWithToken(req, res)
+	var retry bool
+	for _, ra := range b.requestAuthorizer {
+		r, err := ra.RetryWithToken(req, res)
+		if err != nil {
+			return false, err
+		}
+		if r {
+			retry = true
+			break
+		}
+	}
+	return retry, nil
 }
 
-func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
-	if pathPrefix := b.getAttribute(req, "path_prefix", hclContext); pathPrefix != "" {
+func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) error {
+	if pathPrefix := b.getAttribute(evalCtx, "path_prefix", hclContext); pathPrefix != "" {
 		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
 			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in %q", pathPrefix)
@@ -375,15 +420,15 @@ func (b *Backend) withPathPrefix(req *http.Request, hclContext hcl.Body) error {
 	return nil
 }
 
-func (b *Backend) withBasicAuth(req *http.Request, hclContext hcl.Body) {
-	if creds := b.getAttribute(req, "basic_auth", hclContext); creds != "" {
+func (b *Backend) withBasicAuth(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) {
+	if creds := b.getAttribute(evalCtx, "basic_auth", hclContext); creds != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(creds))
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 }
 
-func (b *Backend) getAttribute(req *http.Request, name string, hclContext hcl.Body) string {
-	attrVal, err := eval.ValueFromBodyAttribute(eval.ContextFromRequest(req).HCLContext(), hclContext, name)
+func (b *Backend) getAttribute(evalContext *hcl.EvalContext, name string, hclContext hcl.Body) string {
+	attrVal, err := eval.ValueFromBodyAttribute(evalContext, hclContext, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
 	}
@@ -566,7 +611,17 @@ func (b *Backend) Value() cty.Value {
 	b.healthyMu.RLock()
 	defer b.healthyMu.RUnlock()
 
-	return seetie.GoToValue(map[string]interface{}{
+	var tokens map[string]interface{}
+	for _, auth := range b.requestAuthorizer {
+		if name, v := auth.value(); v != "" {
+			if tokens == nil {
+				tokens = make(map[string]interface{})
+			}
+			tokens[name] = v
+		}
+	}
+
+	result := map[string]interface{}{
 		"health": map[string]interface{}{
 			"healthy": b.healthInfo.Healthy,
 			"error":   b.healthInfo.Error,
@@ -578,7 +633,16 @@ func (b *Backend) Value() cty.Value {
 		"connect_timeout": b.transportConfResult.ConnectTimeout.String(),
 		"ttfb_timeout":    b.transportConfResult.TTFBTimeout.String(),
 		"timeout":         b.transportConfResult.Timeout.String(),
-	})
+	}
+
+	if tokens != nil {
+		result["beta_tokens"] = tokens
+		if token, ok := tokens["default"]; ok {
+			result["beta_token"] = token
+		}
+	}
+
+	return seetie.GoToValue(result)
 }
 
 // setUserAgent sets an empty one if none is present or empty

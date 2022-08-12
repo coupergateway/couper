@@ -42,7 +42,7 @@ func Test_VerifyBodyAttributes(t *testing.T) {
 			"form_body": {Name: "form_body"},
 		}}, true},
 	} {
-		if err := verifyBodyAttributes(tc.content); !tc.expErr && err != nil {
+		if err := verifyBodyAttributes(request, tc.content); !tc.expErr && err != nil {
 			t.Errorf("Want no error, got: %v", err)
 		}
 	}

@@ -71,13 +71,6 @@ func (oa *OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	return schema
 }
 
-func SchemaWithOAuth2RA(schema *hcl.BodySchema) *hcl.BodySchema {
-	schema.Attributes = append(schema.Attributes, OAuthBlockSchema.Attributes...)
-	schema.Blocks = append(schema.Blocks, OAuthBlockSchema.Blocks...)
-
-	return schema
-}
-
 func (oa *OAuth2ReqAuth) GetClientID() string {
 	return oa.ClientID
 }
