@@ -98,6 +98,10 @@ func TestRingBuffer_Put(t *testing.T) {
 	if !r.buf[2].Equal(now3) {
 		t.Errorf("Unexpected r.buf[2]: %#v", r.buf[2])
 	}
+	if got := r.get(); !got.Equal(now1) {
+		// now1 is the oldest value in the buffer after r.put(now3)
+		t.Errorf("Unexpected r.get(): %#v", got)
+	}
 
 	if r.r != 0 {
 		t.Errorf("Unexpected r.r: %d", r.r)
