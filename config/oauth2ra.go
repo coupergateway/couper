@@ -29,7 +29,7 @@ type OAuth2ReqAuth struct {
 	Password                string   `hcl:"password,optional"` // password undocumented feature!
 	Remain                  hcl.Body `hcl:",remain"`
 	Retries                 *uint8   `hcl:"retries,optional"`
-	Scope                   *string  `hcl:"scope,optional"`
+	Scope                   string   `hcl:"scope,optional"`
 	TokenEndpoint           string   `hcl:"token_endpoint,optional"`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
 	Username                string   `hcl:"username,optional"` // username undocumented feature!
@@ -71,26 +71,12 @@ func (oa *OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	return schema
 }
 
-func SchemaWithOAuth2RA(schema *hcl.BodySchema) *hcl.BodySchema {
-	schema.Attributes = append(schema.Attributes, OAuthBlockSchema.Attributes...)
-	schema.Blocks = append(schema.Blocks, OAuthBlockSchema.Blocks...)
-
-	return schema
-}
-
 func (oa *OAuth2ReqAuth) GetClientID() string {
 	return oa.ClientID
 }
 
 func (oa *OAuth2ReqAuth) GetClientSecret() string {
 	return oa.ClientSecret
-}
-
-func (oa *OAuth2ReqAuth) GetScope() string {
-	if oa.Scope == nil {
-		return ""
-	}
-	return *oa.Scope
 }
 
 func (oa *OAuth2ReqAuth) GetTokenEndpoint() (string, error) {

@@ -9,12 +9,14 @@ import (
 
 // BackendOptions represents the transport <BackendOptions> object.
 type BackendOptions struct {
-	AuthBackend TokenRequest
-	HealthCheck *config.HealthCheck
-	OpenAPI     *validation.OpenAPIOptions
+	RequestAuthz []RequestAuthorizer
+	HealthCheck  *config.HealthCheck
+	OpenAPI      *validation.OpenAPIOptions
 }
 
-type TokenRequest interface {
-	WithToken(req *http.Request) error
+type RequestAuthorizer interface {
+	GetToken(req *http.Request) error
 	RetryWithToken(req *http.Request, res *http.Response) (bool, error)
+
+	value() (string, string)
 }

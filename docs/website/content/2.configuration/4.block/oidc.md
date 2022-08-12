@@ -2,7 +2,7 @@
 
 The `oidc` block lets you configure the [`oauth2_authorization_url()` function](/configuration/functions) and an access
 control for an OIDC **Authorization Code Grant Flow** redirect endpoint.
-Like all [Access Control](#access-control) types, the `oidc` block is defined in the [Definitions Block](definitions) and can be referenced in all configuration blocks by its required _label_.
+Like all [access control](../access-control) types, the `oidc` block is defined in the [`definitions` Block](definitions) and can be referenced in all configuration blocks by its required _label_.
 
 | Block name | Context                                 | Label            | Nested block(s)                                                              |
 |:-----------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------|

@@ -54,7 +54,7 @@ type Context struct {
 	syncedVariables   *SyncedVariables
 }
 
-func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
+func NewContext(srcBytes [][]byte, defaults *config.Defaults, environment string) *Context {
 	var defaultEnvVariables config.DefaultEnvVars
 	if defaults != nil {
 		defaultEnvVariables = defaults.EnvironmentVariables
@@ -62,7 +62,7 @@ func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
 
 	variables := make(map[string]cty.Value)
 	variables[Environment] = newCtyEnvMap(srcBytes, defaultEnvVariables)
-	variables[Couper] = newCtyCouperVariablesMap()
+	variables[Couper] = newCtyCouperVariablesMap(environment)
 
 	return &Context{
 		eval: &hcl.EvalContext{
@@ -73,13 +73,17 @@ func NewContext(srcBytes [][]byte, defaults *config.Defaults) *Context {
 	}
 }
 
+func NewDefaultContext() *Context {
+	return NewContext(nil, nil, "")
+}
+
 // ContextFromRequest extracts the eval.Context implementation value from given request and
 // returns a noop one as fallback.
 func ContextFromRequest(req *http.Request) *Context {
 	if evalCtx, ok := req.Context().Value(request.ContextType).(*Context); ok {
 		return evalCtx
 	}
-	return NewContext(nil, nil)
+	return NewDefaultContext()
 }
 
 func (c *Context) WithContext(ctx context.Context) context.Context {
@@ -183,18 +187,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
 	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
 
-	backendsVariable := map[string]cty.Value{}
-	for _, backend := range ctx.backends {
-		b, ok := backend.(seetie.Object)
-		if !ok {
-			continue
-		}
-		v := b.Value()
-		vm := v.AsValueMap()
-		backendsVariable[vm["name"].AsString()] = v
-	}
-	ctx.eval.Variables[Backends] = cty.ObjectVal(backendsVariable)
-
+	mergeBackendVariables(ctx.eval, Backends, ctx.syncBackendVariables())
 	ctx.updateRequestRelatedFunctions(origin)
 	ctx.updateFunctions()
 
@@ -229,8 +222,9 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 
 	// Prevent overriding existing variables with successive calls to this method.
 	// Could happen with error_handler within an endpoint. Merge them.
-	c.updateBackendVariables(ctx.eval, BackendRequests, bereqs)
-	c.updateBackendVariables(ctx.eval, BackendResponses, resps)
+	mergeBackendVariables(ctx.eval, Backends, ctx.syncBackendVariables())
+	mergeBackendVariables(ctx.eval, BackendRequests, bereqs)
+	mergeBackendVariables(ctx.eval, BackendResponses, resps)
 
 	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
 	originUrl, _ := url.Parse(clientOrigin)
@@ -300,15 +294,18 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	return name, bereqVal, berespVal
 }
 
-func (c *Context) updateBackendVariables(evalCtx *hcl.EvalContext, key string, cmap ContextMap) {
-	if !evalCtx.Variables[key].IsNull() && evalCtx.Variables[key].LengthInt() > 0 {
-		merged, _ := lib.Merge([]cty.Value{evalCtx.Variables[key], cty.ObjectVal(cmap)})
-		if !merged.IsNull() {
-			evalCtx.Variables[key] = merged
+func (c *Context) syncBackendVariables() map[string]cty.Value {
+	backendsVariable := make(map[string]cty.Value)
+	for _, backend := range c.backends {
+		b, ok := backend.(seetie.Object)
+		if !ok {
+			continue
 		}
-	} else {
-		evalCtx.Variables[key] = cty.ObjectVal(cmap)
+		v := b.Value()
+		vm := v.AsValueMap()
+		backendsVariable[vm["name"].AsString()] = v
 	}
+	return backendsVariable
 }
 
 // WithJWTSigningConfigs initially sets up the lib.FnJWTSign function.
@@ -369,6 +366,9 @@ func (c *Context) HCLContextSync() *hcl.EvalContext {
 	e := c.cloneEvalContext()
 	c.syncedVariables.Sync(e.Variables)
 
+	backendsValue := c.syncBackendVariables()
+	mergeBackendVariables(e, Backends, backendsValue)
+
 	return e
 }
 
@@ -425,6 +425,17 @@ func (c *Context) cloneEvalContext() *hcl.EvalContext {
 	}
 
 	return ctx
+}
+
+func mergeBackendVariables(etx *hcl.EvalContext, key string, cmap ContextMap) {
+	if !etx.Variables[key].IsNull() && etx.Variables[key].LengthInt() > 0 {
+		merged, _ := lib.Merge([]cty.Value{etx.Variables[key], cty.ObjectVal(cmap)})
+		if !merged.IsNull() {
+			etx.Variables[key] = merged
+		}
+	} else {
+		etx.Variables[key] = cty.ObjectVal(cmap)
+	}
 }
 
 const defaultMaxMemory = 32 << 20 // 32 MB
@@ -603,11 +614,23 @@ func newCtyEnvMap(srcBytes [][]byte, defaultValues map[string]string) cty.Value 
 	return cty.MapVal(ctyMap)
 }
 
-func newCtyCouperVariablesMap() cty.Value {
+func newCtyCouperVariablesMap(environment string) cty.Value {
 	ctyMap := map[string]cty.Value{
-		"version": cty.StringVal(utils.VersionName),
+		"environment": cty.StringVal(environment),
+		"version":     cty.StringVal(utils.VersionName),
 	}
 	return cty.MapVal(ctyMap)
+}
+
+func MapTokenResponse(evalCtx *hcl.EvalContext, name string) {
+	if name == "" {
+		name = "default"
+	}
+
+	responses := evalCtx.Variables[BackendResponses].AsValueMap()
+	respValue, _ := responses[TokenRequestPrefix+name]
+
+	evalCtx.Variables[TokenResponse] = respValue
 }
 
 // Functions

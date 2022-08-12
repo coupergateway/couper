@@ -442,7 +442,7 @@ func ApplyResponseHeaderOps(httpCtx *hcl.EvalContext, body hcl.Body, headers ...
 }
 
 func getAllAttributes(body hcl.Body) (map[string]*hcl.Attribute, error) {
-	bodyContent, _, diags := body.PartialContent(meta.AttributesSchema)
+	bodyContent, _, diags := body.PartialContent(meta.ModifierAttributesSchema)
 	if diags.HasErrors() {
 		return nil, errors.Evaluation.With(diags)
 	}

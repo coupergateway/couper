@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import defaultTheme from 'tailwindcss/defaultTheme'
+
 module.exports = {
   content: [
     `components/**/*.{vue,js,ts}`,
@@ -7,7 +9,14 @@ module.exports = {
     `plugins/**/*.{js,ts}`,
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        'sans': ['couper', ...defaultTheme.fontFamily.sans],
+      },
+      fontSize: {
+        'base': '1.05rem',
+      }
+    },
   },
   plugins: [
     require('@tailwindcss/typography'),

@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
+	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/errors"
 )
 
@@ -76,8 +77,8 @@ func (j *JWT) HCLBody() hcl.Body {
 // Inline implements the <Inline> interface.
 func (j *JWT) Inline() interface{} {
 	type Inline struct {
-		Backend   *Backend                  `hcl:"backend,block"`
-		LogFields map[string]hcl.Expression `hcl:"custom_log_fields,optional"`
+		meta.LogFieldsAttribute
+		Backend *Backend `hcl:"backend,block"`
 	}
 
 	return &Inline{}
@@ -97,7 +98,7 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 		schema.Blocks = nil
 	}
 
-	return schema
+	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 
 func (j *JWT) check() error {

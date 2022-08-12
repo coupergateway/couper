@@ -6,6 +6,8 @@ import (
 
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/internal/seetie"
+
+	"github.com/avenga/couper/config/meta"
 )
 
 var _ Inline = &BasicAuth{}
@@ -28,7 +30,7 @@ func (b *BasicAuth) HCLBody() hcl.Body {
 
 func (b *BasicAuth) Inline() interface{} {
 	type Inline struct {
-		LogFields map[string]hcl.Expression `hcl:"custom_log_fields,optional" docs:"Defines log fields for custom logging"`
+		meta.LogFieldsAttribute
 	}
 
 	return &Inline{}

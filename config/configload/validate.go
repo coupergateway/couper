@@ -49,7 +49,7 @@ func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) err
 	return nil
 }
 
-func verifyBodyAttributes(content *hcl.BodyContent) error {
+func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
 	_, existsBody := content.Attributes["body"]
 	_, existsFormBody := content.Attributes["form_body"]
 	_, existsJsonBody := content.Attributes["json_body"]
@@ -61,7 +61,7 @@ func verifyBodyAttributes(content *hcl.BodyContent) error {
 		}
 
 		return newDiagErr(&content.Attributes[rangeAttr].Range,
-			"request can only have one of body, form_body or json_body attributes")
+			blockName+" can only have one of body, form_body or json_body attributes")
 	}
 
 	return nil

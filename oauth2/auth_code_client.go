@@ -12,7 +12,7 @@ import (
 // AuthCodeFlowClient represents an OAuth2 client using the authorization code flow.
 type AuthCodeFlowClient interface {
 	GetName() string
-	GetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
+	ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
 	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
 }
 
@@ -26,12 +26,6 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 	grantType := acClientConf.GetGrantType()
 	if grantType != "authorization_code" {
 		return nil, fmt.Errorf("grant_type %s not supported", grantType)
-	}
-
-	if teAuthMethod := acClientConf.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
-		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
-			return nil, fmt.Errorf("token_endpoint_auth_method %s not supported", *teAuthMethod)
-		}
 	}
 
 	switch acClientConf.(type) {
@@ -48,12 +42,11 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 		// skip this for oidc configurations due to possible startup errors
 	}
 
-	client := &Client{
-		Backend:      backend,
-		asConfig:     oauth2AsConf,
-		clientConfig: acClientConf,
-		grantType:    grantType,
+	client, err := NewClient(grantType, oauth2AsConf, acClientConf, backend)
+	if err != nil {
+		return nil, err
 	}
+
 	o := &AuthCodeClient{&AbstractAuthCodeClient{
 		Client: client,
 		name:   acClientConf.GetName(),

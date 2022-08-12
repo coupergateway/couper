@@ -3,6 +3,7 @@ package configload_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -306,6 +307,101 @@ func TestEndpointPaths(t *testing.T) {
 
 			if pattern != tt.expected {
 				subT.Errorf("%q: Unexpected endpoint path:\n\tWant: %q\n\tGot:  %q", tt.name, tt.expected, pattern)
+			}
+		})
+	}
+}
+
+func TestEnvironmentBlocksWithoutEnvironment(t *testing.T) {
+	tests := []struct {
+		name string
+		hcl  string
+		env  string
+		want string
+	}{
+		{
+			"no environment block, no setting",
+			`
+			definitions {}
+			`,
+			"",
+			"configuration error: missing 'server' block",
+		},
+
+		{
+			"environment block, but no setting",
+			`
+			environment "foo" {}
+			server {}
+			`,
+			"",
+			`"environment" blocks found, but "COUPER_ENVIRONMENT" setting is missing`,
+		},
+		{
+			"environment block & setting",
+			`
+			environment "foo" {
+			  server {}
+			}
+			`,
+			"bar",
+			"configuration error: missing 'server' block",
+		},
+		{
+			"environment block & setting",
+			`
+			server {
+			  environment "foo" {
+			    endpoint "/" {}
+			  }
+			}
+			`,
+			"foo",
+			"missing 'default' proxy or request block, or a response definition",
+		},
+		{
+			"environment block & default setting",
+			`
+			environment "foo" {
+			  server {}
+			}
+			settings {
+				environment = "bar"
+			}
+			`,
+			"",
+			"configuration error: missing 'server' block",
+		},
+	}
+
+	helper := test.New(t)
+
+	file, err := os.CreateTemp("", "tmpfile-")
+	helper.Must(err)
+	defer file.Close()
+	defer os.Remove(file.Name())
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			config := []byte(tt.hcl)
+			err := os.Truncate(file.Name(), 0)
+			helper.Must(err)
+			_, err = file.Seek(0, 0)
+			helper.Must(err)
+			_, err = file.Write(config)
+
+			_, err = configload.LoadFile(file.Name(), tt.env)
+			if err == nil && tt.want != "" {
+				subT.Errorf("Missing expected error:\nWant:\t%q\nGot:\tnil", tt.want)
+				return
+			}
+
+			if err != nil {
+				message := err.Error()
+				if !strings.Contains(message, tt.want) {
+					subT.Errorf("Unexpected error message:\nWant:\t%q\nGot:\t%q", tt.want, message)
+					return
+				}
 			}
 		})
 	}

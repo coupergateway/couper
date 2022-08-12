@@ -100,11 +100,14 @@ func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrus
 
 // newCouperWithTemplate applies given variables first and loads Couper with the resulting configuration file.
 // Example template:
-// 		My {{.message}}
+//
+//	My {{.message}}
+//
 // Example value:
-//		map[string]interface{}{
-//			"message": "value",
-//		}
+//
+//	map[string]interface{}{
+//		"message": "value",
+//	}
 func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]interface{}) (func(), *logrustest.Hook) {
 	if vars == nil {
 		return newCouper(file, helper)
@@ -513,7 +516,6 @@ func TestHTTPServer_EnvVars(t *testing.T) {
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", res.StatusCode)
 	}
-
 }
 
 func TestHTTPServer_XFHHeader(t *testing.T) {
@@ -5452,6 +5454,68 @@ func TestWildcardURLAttribute(t *testing.T) {
 
 			if testcase.expectedQuery != r.RawQuery {
 				st.Errorf("Expected query: %q, got: %q", testcase.expectedQuery, r.RawQuery)
+			}
+		})
+	}
+}
+
+func TestEnvironmentSetting(t *testing.T) {
+	helper := test.New(t)
+	tests := []struct {
+		env string
+	}{
+		{"foo"},
+		{"bar"},
+	}
+
+	template := `
+	  server {
+	    endpoint "/" {
+	      response {
+	        environment "foo" {
+	          headers = { X-Env: "foo" }
+	        }
+	        environment "bar" {
+	          headers = { X-Env: "bar" }
+	        }
+	      }
+	    }
+	  }
+	  settings {
+	    environment = "%s"
+	  }
+	`
+
+	file, err := os.CreateTemp("", "tmpfile-")
+	helper.Must(err)
+	defer file.Close()
+	defer os.Remove(file.Name())
+
+	client := newClient()
+	for _, tt := range tests {
+		t.Run(tt.env, func(subT *testing.T) {
+			config := []byte(fmt.Sprintf(template, tt.env))
+			err := os.Truncate(file.Name(), 0)
+			helper.Must(err)
+			_, err = file.Seek(0, 0)
+			helper.Must(err)
+			_, err = file.Write(config)
+			helper.Must(err)
+
+			couperConfig, err := configload.LoadFile(file.Name(), "")
+			helper.Must(err)
+
+			shutdown, _ := newCouperWithConfig(couperConfig, helper)
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if header := res.Header.Get("X-Env"); header != tt.env {
+				subT.Errorf("Unexpected header:\n\tWant: %q\n\tGot:  %q", tt.env, header)
 			}
 		})
 	}

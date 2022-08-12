@@ -3,6 +3,7 @@ package oauth2
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -217,23 +218,9 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 		return nil, nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
 	}
 
-	userinfoResponse, err := o.requestUserinfo(ctx, accessToken)
+	userinfoData, subUserinfo, err := o.getUserinfo(ctx, accessToken)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	userinfoResponseString := string(userinfoResponse)
-	var userinfoData map[string]interface{}
-	err = json.Unmarshal(userinfoResponse, &userinfoData)
-	if err != nil {
-		return nil, nil, errors.Oauth2.Messagef("parsing userinfo response JSON failed, response=%q", userinfoResponseString).With(err)
-	}
-
-	var subUserinfo string
-	if s, ok := userinfoData["sub"].(string); ok {
-		subUserinfo = s
-	} else {
-		return nil, nil, errors.Oauth2.Messagef("missing sub property in userinfo response, response=%q", userinfoResponseString)
+		return nil, nil, errors.Oauth2.Message("userinfo request error").With(err)
 	}
 
 	if subIdtoken != subUserinfo {
@@ -243,27 +230,49 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 	return idTokenClaims, userinfoData, nil
 }
 
-func (o *OidcClient) requestUserinfo(ctx context.Context, accessToken string) ([]byte, error) {
+func (o *OidcClient) getUserinfo(ctx context.Context, accessToken string) (map[string]interface{}, string, error) {
 	userinfoReq, err := o.newUserinfoRequest(ctx, accessToken)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
+	userinfoResponse, err := o.requestUserinfo(userinfoReq)
+
+	return parseUserinfoResponse(userinfoResponse)
+}
+
+func (o *OidcClient) requestUserinfo(userinfoReq *http.Request) ([]byte, error) {
 	userinfoRes, err := o.backends["userinfo_backend"].RoundTrip(userinfoReq)
 	if err != nil {
 		return nil, err
 	}
+	defer userinfoRes.Body.Close()
 
 	userinfoResBytes, err := io.ReadAll(userinfoRes.Body)
 	if err != nil {
-		return nil, errors.Backend.Label(o.asConfig.Reference()).Message("userinfo request read error").With(err)
+		return nil, err
 	}
 
 	if userinfoRes.StatusCode != http.StatusOK {
-		return nil, errors.Backend.Label(o.asConfig.Reference()).Messagef("userinfo request failed, response=%q", string(userinfoResBytes))
+		return nil, fmt.Errorf("wrong status code, status=%d, response=%q", userinfoRes.StatusCode, string(userinfoResBytes))
 	}
 
 	return userinfoResBytes, nil
+}
+
+func parseUserinfoResponse(userinfoResponse []byte) (map[string]interface{}, string, error) {
+	var userinfoData map[string]interface{}
+	err := json.Unmarshal(userinfoResponse, &userinfoData)
+	if err != nil {
+		return nil, "", err
+	}
+
+	sub, ok := userinfoData["sub"].(string)
+	if !ok {
+		return nil, "", fmt.Errorf("missing sub property, response=%q", string(userinfoResponse))
+	}
+
+	return userinfoData, sub, nil
 }
 
 func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {

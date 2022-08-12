@@ -3,6 +3,7 @@ package transport
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/avenga/couper/cache"
@@ -17,14 +18,43 @@ type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
 	locks        sync.Map
 	memStore     *cache.MemoryStore
-	oauth2Client *oauth2.ClientCredentialsClient
+	oauth2Client *oauth2.Client
 	storageKey   string
 }
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
 func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
-	oauth2Client *oauth2.ClientCredentialsClient) TokenRequest {
+	asBackend http.RoundTripper) (RequestAuthorizer, error) {
+
+	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
+		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
+	}
+
+	// grant_type password undocumented feature!
+	// WARNING: this implementation is no proper password flow, but a flow with username and password to login _exactly one_ user
+	// the received access token is stored in cache just like with the client credentials flow
+	if conf.GrantType == "password" {
+		if conf.Username == "" {
+			return nil, fmt.Errorf("username must not be empty with grant_type=password")
+		}
+		if conf.Password == "" {
+			return nil, fmt.Errorf("password must not be empty with grant_type=password")
+		}
+	} else {
+		if conf.Username != "" {
+			return nil, fmt.Errorf("username must not be set with grant_type=%s", conf.GrantType)
+		}
+		if conf.Password != "" {
+			return nil, fmt.Errorf("password must not be set with grant_type=%s", conf.GrantType)
+		}
+	}
+
+	oauth2Client, err := oauth2.NewClient(conf.GrantType, conf, conf, asBackend)
+	if err != nil {
+		return nil, err
+	}
+
 	reqAuth := &OAuth2ReqAuth{
 		config:       conf,
 		oauth2Client: oauth2Client,
@@ -32,17 +62,12 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		locks:        sync.Map{},
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
-	return reqAuth
+	return reqAuth, nil
 }
 
-func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
-	if token, terr := oa.readAccessToken(); terr != nil {
-		// TODO this error is not connected to the OAuth2 client's backend
-		// In fact this can only be a JSON parse error or a missing access_token,
-		// which will occur after having requested the token from the authorization
-		// server. So the erroneous response will never be stored.
-		return errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
-	} else if token != "" {
+func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
+	token := oa.readAccessToken()
+	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
 	}
@@ -51,24 +76,30 @@ func (oa *OAuth2ReqAuth) WithToken(req *http.Request) error {
 	mutex := value.(*sync.Mutex)
 
 	mutex.Lock()
-	token, terr := oa.readAccessToken()
-	if terr != nil {
-		mutex.Unlock()
-		return errors.Backend.Label(oa.config.BackendName).Message("token read error").With(terr)
-	} else if token != "" {
+	token = oa.readAccessToken()
+	if token != "" {
 		mutex.Unlock()
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
 	}
 
-	ctx := req.Context()
-	tokenResponse, tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(ctx)
+	formParams := url.Values{}
+	if oa.config.Scope != "" {
+		formParams.Set("scope", oa.config.Scope)
+	}
+	// password and username undocumented feature!
+	if oa.config.Password != "" || oa.config.Username != "" {
+		formParams.Set("username", oa.config.Username)
+		formParams.Set("password", oa.config.Password)
+	}
+
+	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
 		mutex.Unlock()
 		return errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
 	}
 
-	oa.updateAccessToken(tokenResponse, tokenResponseData)
+	oa.updateAccessToken(token, tokenResponseData)
 	mutex.Unlock()
 
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -86,33 +117,32 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 	if retries, ok := ctx.Value(request.TokenRequestRetries).(*uint8); !ok || *retries < *oa.config.Retries {
 		*retries++ // increase ptr value instead of context value
 		req.Header.Del("Authorization")
-		err := oa.WithToken(req.WithContext(ctx)) // WithContext due to header manipulation
+		err := oa.GetToken(req.WithContext(ctx)) // WithContext due to header manipulation
 		return true, err
 	}
 	return false, nil
 }
 
-func (oa *OAuth2ReqAuth) readAccessToken() (string, error) {
+func (oa *OAuth2ReqAuth) readAccessToken() string {
 	if data := oa.memStore.Get(oa.storageKey); data != nil {
-		_, token, err := oauth2.ParseTokenResponse(data.([]byte))
-		if err != nil {
-			// err can only be JSON parse error, however non-JSON data should never be stored
-			return "", err
-		}
-
-		return token, nil
+		return data.(string)
 	}
 
-	return "", nil
+	return ""
 }
 
-func (oa *OAuth2ReqAuth) updateAccessToken(jsonBytes []byte, jData map[string]interface{}) {
+func (oa *OAuth2ReqAuth) updateAccessToken(token string, jData map[string]interface{}) {
 	if oa.memStore != nil {
 		var ttl int64
 		if t, ok := jData["expires_in"].(float64); ok {
 			ttl = (int64)(t * 0.9)
 		}
 
-		oa.memStore.Set(oa.storageKey, jsonBytes, ttl)
+		oa.memStore.Set(oa.storageKey, token, ttl)
 	}
+}
+
+func (oa *OAuth2ReqAuth) value() (string, string) {
+	token := oa.readAccessToken()
+	return "oauth2", token
 }

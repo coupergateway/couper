@@ -5,7 +5,6 @@
 html {
     height: 100%;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-	font: 18px couper, sans-serif
 }
 
 body {
@@ -20,4 +19,8 @@ body {
 
 blockquote {
 	quotes: none !important
+}
+
+main h2 code  {
+	font-size: 0.8em !important;
 }

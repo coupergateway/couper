@@ -472,18 +472,18 @@ func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 		for _, block := range body.Blocks {
 			if block.Type == defaults {
 				for name, attr := range block.Body.Attributes {
-					if name == "environment_variables" {
+					if name == environmentVars {
 						v, err := eval.Value(nil, attr.Expr)
 						if err != nil {
 							return nil, err
 						}
 
-						for name, value := range v.AsValueMap() {
+						for k, value := range v.AsValueMap() {
 							if value.Type() != cty.String {
 								return nil, fmt.Errorf("value in 'environment_variables' is not a string")
 							}
 
-							envVars[name] = value
+							envVars[k] = value
 						}
 					} else {
 						attrs[name] = attr // Currently not used
@@ -494,8 +494,8 @@ func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	}
 
 	if len(envVars) > 0 {
-		attrs["environment_variables"] = &hclsyntax.Attribute{
-			Name: "environment_variables",
+		attrs[environmentVars] = &hclsyntax.Attribute{
+			Name: environmentVars,
 			Expr: &hclsyntax.LiteralValueExpr{
 				Val: cty.MapVal(envVars),
 			},

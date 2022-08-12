@@ -203,7 +203,7 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 		{
 			"02_couper.hcl",
 			`grant_type=client_credentials`,
-			"Basic dXNlcjpwYXNz",
+			"Basic dXNlcjpwYXNzJTJCK3dvcmQ=",
 		},
 		{
 			"03_couper.hcl",
@@ -990,5 +990,155 @@ func TestNestedBackendOauth2(t *testing.T) {
 		if log.Level == logrus.ErrorLevel {
 			t.Error(log.String())
 		}
+	}
+}
+
+func TestTokenRequest(t *testing.T) {
+	helper := test.New(t)
+
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("KeyId") != "the-key" {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if user, _, _ := req.BasicAuth(); user != "the-key" {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		reqBody, _ := io.ReadAll(req.Body)
+
+		// path_prefix context test prepends "the-key"
+
+		if req.URL.Path == "/the-key/token" {
+			expBody := "grant_type=client_credentials"
+			if expBody != string(reqBody) {
+				t.Errorf("wrong request body /token\nwant: %q\ngot:  %q", expBody, reqBody)
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "tok0",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		} else if req.URL.Path == "/the-key/token1" {
+			expBody := "client_id=clid&client_secret=cls&grant_type=client_credentials"
+			if expBody != string(reqBody) {
+				t.Errorf("wrong request body /token1\nwant: %q\ngot:  %q", expBody, reqBody)
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "tok1",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		} else if req.URL.Path == "/the-key/token2" {
+			if "foo=bar" != req.URL.RawQuery {
+				t.Errorf("wrong request URL query /token2\nwant: %q\ngot:  %q", "foo=bar", req.URL.RawQuery)
+			}
+			expBody := "client_id=clid&client_secret=cls&grant_type=password&password=asdf&username=user"
+			if expBody != string(reqBody) {
+				t.Errorf("wrong request body /token2\nwant: %q\ngot:  %q", expBody, reqBody)
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "tok2",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Authorization") != "Bearer tok0" ||
+			req.Header.Get("Auth-1") != "tok1" ||
+			req.Header.Get("Auth-2") != "tok2" ||
+			req.Header.Get("Auth-3") != "tok2" ||
+			req.Header.Get("Auth-4") != "tok1" ||
+			req.Header.Get("Auth-5") != "tok2" ||
+			req.Header.Get("Auth-6") != "tok2" ||
+			req.Header.Get("KeyId") != "the-key" {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if req.URL.Path == "/resource" {
+			rw.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	defer rsOrigin.Close()
+
+	vaultOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/key" {
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte("the-key")
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer vaultOrigin.Close()
+
+	confPath := "testdata/oauth2/token_request.hcl"
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL, "vaultOrigin": vaultOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+	helper.Must(err)
+	hook.Reset()
+	res, err := newClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
+	}
+}
+
+func TestTokenRequest_Error(t *testing.T) {
+	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+
+	helper := test.New(t)
+
+	confPath := "testdata/oauth2/token_request_error.hcl"
+	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": rsOrigin.URL})
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+	helper.Must(err)
+	hook.Reset()
+	res, err := newClient().Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
 	}
 }

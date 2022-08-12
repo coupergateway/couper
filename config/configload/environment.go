@@ -1,57 +1,68 @@
 package configload
 
 import (
+	"fmt"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 func preprocessEnvironmentBlocks(bodies []*hclsyntax.Body, env string) error {
+	found := false
 	for _, body := range bodies {
-		if err := preprocessBody(body, env); err != nil {
+		f, err := preprocessBody(body, env)
+		if err != nil {
 			return err
 		}
+		found = found || f
+	}
+
+	if found && env == "" {
+		return fmt.Errorf(`"environment" blocks found, but "COUPER_ENVIRONMENT" setting is missing`)
 	}
 
 	return nil
 }
 
-func preprocessBody(parent *hclsyntax.Body, env string) error {
+func preprocessBody(body *hclsyntax.Body, env string) (bool, error) {
 	var blocks []*hclsyntax.Block
+	found := false
 
-	for _, block := range parent.Blocks {
+	for _, block := range body.Blocks {
 		if block.Type != environment {
 			blocks = append(blocks, block)
-
 			continue
 		}
 
+		found = true
+
 		if len(block.Labels) == 0 {
 			defRange := block.DefRange()
-
-			return newDiagErr(&defRange, "Missing label(s) for 'environment' block")
+			return true, newDiagErr(&defRange, "Missing label(s) for 'environment' block")
 		}
 
 		for _, label := range block.Labels {
 			if err := validLabel(label, getRange(block.Body)); err != nil {
-				return err
+				return true, err
 			}
 
 			if label == env {
 				blocks = append(blocks, block.Body.Blocks...)
 
 				for name, attr := range block.Body.Attributes {
-					parent.Attributes[name] = attr
+					body.Attributes[name] = attr
 				}
 			}
 		}
 	}
 
 	for _, block := range blocks {
-		if err := preprocessBody(block.Body, env); err != nil {
-			return err
+		foundInChildren, err := preprocessBody(block.Body, env)
+		if err != nil {
+			return found || foundInChildren, err
 		}
+		found = found || foundInChildren
 	}
 
-	parent.Blocks = blocks
+	body.Blocks = blocks
 
-	return nil
+	return found, nil
 }

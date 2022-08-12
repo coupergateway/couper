@@ -383,7 +383,7 @@ func TestBackend_director(t *testing.T) {
 			if !ok && tt.expReq.Host != outreq.Host {
 				subT.Errorf("expected same host value, want: %q, got: %q", outreq.Host, tt.expReq.Host)
 			} else if ok {
-				hostVal, _ := hostnameExp.Expr.Value(eval.NewContext(nil, nil).HCLContext())
+				hostVal, _ := hostnameExp.Expr.Value(eval.NewDefaultContext().HCLContext())
 				hostname := seetie.ValueToString(hostVal)
 				if hostname != tt.expReq.Host {
 					subT.Errorf("expected a configured request host: %q, got: %q", hostname, tt.expReq.Host)

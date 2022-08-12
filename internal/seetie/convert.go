@@ -32,7 +32,8 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 			result[k] = nil
 			continue
 		}
-		switch v.Type() {
+		t := v.Type()
+		switch t {
 		case cty.Bool:
 			result[k] = v.True()
 		case cty.String:
@@ -45,6 +46,10 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 		case cty.Map(cty.NilType):
 			result[k] = nil
 		default:
+			if t.IsObjectType() {
+				result[k] = ValueToMap(v)
+				continue
+			}
 			if isTuple(v) {
 				result[k] = ValueToStringSlice(v)
 				continue

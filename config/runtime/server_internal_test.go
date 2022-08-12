@@ -208,7 +208,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			tt.args.conf.Context = eval.NewContext(nil, nil)
+			tt.args.conf.Context = eval.NewDefaultContext()
 			tt.args.conf.Settings = &config.DefaultSettings
 
 			logger, _ := logrustest.NewNullLogger()

@@ -1,13 +1,12 @@
 package eval
 
 const (
+	Backend          = "beta_backend"
 	Backends         = "backends"
 	BackendRequest   = "backend_request"
 	BackendRequests  = "backend_requests"
 	BackendResponse  = "backend_response"
 	BackendResponses = "backend_responses"
-	BackendDefault   = "default"
-	State            = "state"
 	Body             = "body"
 	ClientRequest    = "request"
 	CTX              = "context"
@@ -16,7 +15,6 @@ const (
 	Environment      = "env"
 	FormBody         = "form_body"
 	Headers          = "headers"
-	Health           = "health"
 	HttpStatus       = "status"
 	ID               = "id"
 	JsonBody         = "json_body"
@@ -24,6 +22,7 @@ const (
 	Path             = "path"
 	PathParam        = "path_params"
 	Query            = "query"
+	TokenResponse    = "beta_token_response"
 	URL              = "url"
 	Origin           = "origin"
 	Protocol         = "protocol"
