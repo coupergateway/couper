@@ -25,6 +25,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/configload/file"
 	"github.com/avenga/couper/config/env"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/logging"
@@ -227,7 +228,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			tmpMemStore := cache.New(logger, tmpStoreCh)
 
 			dryCtx, cancelDry := context.
-				WithCancel(context.WithValue(context.Background(), "config-dry-run", true))
+				WithCancel(context.WithValue(context.Background(), request.ConfigDryRun, true))
 			cf.Context = cf.Context.(*eval.Context).WithContext(dryCtx)
 
 			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), tmpMemStore)
