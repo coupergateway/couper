@@ -748,27 +748,33 @@ func TestHTTPServer_RateLimiterFixed(t *testing.T) {
 	hook.Reset()
 
 	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
 	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
+	go client.Do(req)
+	time.Sleep(500 * time.Millisecond)
 	go client.Do(req)
 
-	time.Sleep(1200 * time.Millisecond)
+	time.Sleep(700 * time.Millisecond)
 
 	entries := hook.AllEntries()
-	if len(entries) != 6 {
+	if len(entries) != 8 {
 		t.Fatal("Missing log lines")
 	}
 
 	for i, entry := range entries {
-		if i%2 == 0 {
+		if entry.Data["type"] != "couper_access" {
 			continue
 		}
 
 		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
 			t.Fatal("Something is wrong")
-		} else if i < 4 && total > 1000 {
-			t.Errorf("Request time has to be smaller as 1 second")
-		} else if i >= 4 && total < 1000 {
-			t.Errorf("Request time has to be longer as 1 second")
+		} else if i < 4 && total > 500 {
+			t.Errorf("Request %d time has to be smaller as 0.5 seconds, was %fms", i/2, total)
+		} else if i >= 4 && i < 6 && total < 1000 {
+			t.Errorf("Request %d time has to be longer as 1 second, was %fms", i/2, total)
+		} else if i >= 6 && total < 500 {
+			t.Errorf("Request %d time has to be longer as 0.5 seconds, was %fms", i/2, total)
 		}
 	}
 }
@@ -786,27 +792,33 @@ func TestHTTPServer_RateLimiterSliding(t *testing.T) {
 	hook.Reset()
 
 	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
 	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
+	go client.Do(req)
+	time.Sleep(500 * time.Millisecond)
 	go client.Do(req)
 
-	time.Sleep(1200 * time.Millisecond)
+	time.Sleep(1700 * time.Millisecond)
 
 	entries := hook.AllEntries()
-	if len(entries) != 6 {
+	if len(entries) != 8 {
 		t.Fatal("Missing log lines")
 	}
 
 	for i, entry := range entries {
-		if i%2 == 0 {
+		if entry.Data["type"] != "couper_access" {
 			continue
 		}
 
 		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
 			t.Fatal("Something is wrong")
-		} else if i < 4 && total > 1000 {
-			t.Errorf("Request time has to be smaller as 1 second")
-		} else if i >= 4 && total < 1000 {
-			t.Errorf("Request time has to be longer as 1 second")
+		} else if i < 4 && total > 500 {
+			t.Errorf("Request %d time has to be smaller as 0.5 seconds, was %fms", i/2, total)
+		} else if i >= 4 && i < 6 && total < 1000 {
+			t.Errorf("Request %d time has to be longer as 1 second, was %fms", i/2, total)
+		} else if i >= 6 && total < 1500 {
+			t.Errorf("Request %d time has to be longer as 1.5 seconds, was %fms", i/2, total)
 		}
 	}
 }

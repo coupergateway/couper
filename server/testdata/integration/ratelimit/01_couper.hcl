@@ -22,7 +22,7 @@ definitions {
     origin = env.COUPER_TEST_BACKEND_ADDR
 
     beta_rate_limit {
-      period        = "1s"
+      period        = "3s"
       per_period    = 2
       period_window = "fixed"
     }
@@ -32,7 +32,7 @@ definitions {
     origin = env.COUPER_TEST_BACKEND_ADDR
 
     beta_rate_limit {
-      period        = "1s"
+      period        = "3s"
       per_period    = 2
       period_window = "sliding"
     }
