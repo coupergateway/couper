@@ -16,6 +16,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/ratelimit"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
@@ -181,7 +182,12 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block, beConf *co
 	case *config.OAuth2ReqAuth:
 		return transport.NewOAuth2ReqAuth(impl, memStore, authorizerBackend)
 	case *config.TokenRequest:
-		return transport.NewTokenRequest(impl, memStore, authorizerBackend, beConf.Reference())
+		reqs := producer.Requests{&producer.Request{
+			Backend: authorizerBackend,
+			Context: impl.HCLBody(),
+			Name:    impl.Name,
+		}}
+		return transport.NewTokenRequest(impl, memStore, reqs, beConf.Reference())
 	default:
 		return nil, errors.Configuration.Message("unknown authorizer type")
 	}
