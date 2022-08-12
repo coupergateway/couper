@@ -34,7 +34,6 @@ type OAuth2Client interface {
 type OAuth2AcClient interface {
 	OAuth2Client
 	GetGrantType() string
-	GetName() string
 	// GetVerifierMethod retrieves the verifier method (ccm_s256, nonce or state)
 	GetVerifierMethod() (string, error)
 }

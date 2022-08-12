@@ -11,7 +11,6 @@ import (
 
 // AuthCodeFlowClient represents an OAuth2 client using the authorization code flow.
 type AuthCodeFlowClient interface {
-	GetName() string
 	ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
 	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
 }
@@ -49,7 +48,6 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 
 	o := &AuthCodeClient{&AbstractAuthCodeClient{
 		Client: client,
-		name:   acClientConf.GetName(),
 	}}
 	o.AuthCodeFlowClient = o
 	return o, nil

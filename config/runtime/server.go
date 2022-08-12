@@ -524,7 +524,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			oa := ac.NewOAuth2Callback(oauth2Client)
+			oa := ac.NewOAuth2Callback(oauth2Client, oauth2Conf.Name)
 
 			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)
@@ -539,7 +539,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			oa := ac.NewOAuth2Callback(oidcClient)
+			oa := ac.NewOAuth2Callback(oidcClient, oidcConf.Name)
 
 			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
 				return nil, confErr.With(err)

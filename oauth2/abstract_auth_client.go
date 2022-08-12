@@ -19,11 +19,6 @@ import (
 type AbstractAuthCodeClient struct {
 	AuthCodeFlowClient
 	*Client
-	name string
-}
-
-func (a AbstractAuthCodeClient) GetName() string {
-	return a.name
 }
 
 // ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint.
