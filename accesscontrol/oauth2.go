@@ -17,10 +17,10 @@ type OAuth2Callback struct {
 }
 
 // NewOAuth2Callback creates a new access control for the OAuth2 authorization code flow callback.
-func NewOAuth2Callback(oauth2Client oauth2.AuthCodeFlowClient) (*OAuth2Callback, error) {
+func NewOAuth2Callback(oauth2Client oauth2.AuthCodeFlowClient) *OAuth2Callback {
 	return &OAuth2Callback{
 		oauth2Client: oauth2Client,
-	}, nil
+	}
 }
 
 // Validate implements the AccessControl interface
