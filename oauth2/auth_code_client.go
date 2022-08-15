@@ -34,7 +34,7 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 			return nil, err
 		}
 
-		if verifierMethod != config.CcmS256 && verifierMethod != "nonce" && verifierMethod != "state" {
+		if verifierMethod != config.CcmS256 && verifierMethod != "state" {
 			return nil, fmt.Errorf("verifier_method %s not supported", verifierMethod)
 		}
 	default:
