@@ -9,15 +9,9 @@ type OAuth2AS interface {
 	GetTokenEndpoint() (string, error)
 }
 
-// OAuth2AcAS represents the authorization server configuration for OAuth2 clients using the authorization code flow.
-type OAuth2AcAS interface {
-	OAuth2AS
-	GetAuthorizationEndpoint() (string, error)
-}
-
 // OidcAS represents the OIDC server configuration for OIDC clients.
 type OidcAS interface {
-	OAuth2AcAS
+	OAuth2AS
 	GetIssuer() (string, error)
 	GetUserinfoEndpoint() (string, error)
 }

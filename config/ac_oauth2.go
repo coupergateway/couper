@@ -11,7 +11,7 @@ var (
 	_ BackendReference      = &OAuth2AC{}
 	_ BackendInitialization = &OAuth2AC{}
 	_ Inline                = &OAuth2AC{}
-	_ OAuth2AcAS            = &OAuth2AC{}
+	_ OAuth2AS              = &OAuth2AC{}
 	_ OAuth2AcClient        = &OAuth2AC{}
 	_ OAuth2Authorization   = &OAuth2AC{}
 )
