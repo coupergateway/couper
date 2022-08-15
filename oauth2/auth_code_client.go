@@ -47,7 +47,8 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 	}
 
 	o := &AuthCodeClient{&AbstractAuthCodeClient{
-		Client: client,
+		acClientConf: acClientConf,
+		Client:       client,
 	}}
 	o.AuthCodeFlowClient = o
 	return o, nil
