@@ -166,7 +166,7 @@ func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	wrapped := wrapBlock(oauth2, "", backendBody)
 	parent = hclbody.MergeBodies(parent, wrapped)
 
