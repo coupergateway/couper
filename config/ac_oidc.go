@@ -110,10 +110,6 @@ func (o *OIDC) Schema(inline bool) *hcl.BodySchema {
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 
-func (o *OIDC) GetName() string {
-	return o.Name
-}
-
 func (o *OIDC) GetClientID() string {
 	return o.ClientID
 }

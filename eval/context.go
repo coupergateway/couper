@@ -48,7 +48,7 @@ type Context struct {
 	inner             context.Context
 	memStore          *cache.MemoryStore
 	memorize          map[string]interface{}
-	oauth2            []config.OAuth2Authorization
+	oauth2            map[string]config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
 	syncedVariables   *SyncedVariables
@@ -130,7 +130,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		inner:             c.inner,
 		memStore:          c.memStore,
 		memorize:          make(map[string]interface{}),
-		oauth2:            c.oauth2[:],
+		oauth2:            c.oauth2,
 		jwtSigningConfigs: c.jwtSigningConfigs,
 		saml:              c.saml[:],
 		syncedVariables:   NewSyncedVariables(),
@@ -201,7 +201,7 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 		inner:             c.inner,
 		memStore:          c.memStore,
 		memorize:          c.memorize,
-		oauth2:            c.oauth2[:],
+		oauth2:            c.oauth2,
 		jwtSigningConfigs: c.jwtSigningConfigs,
 		saml:              c.saml[:],
 		syncedVariables:   c.syncedVariables,
@@ -321,21 +321,21 @@ func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig
 // WithOAuth2AC adds the OAuth2AC config structs.
 func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 	if c.oauth2 == nil {
-		c.oauth2 = make([]config.OAuth2Authorization, 0)
+		c.oauth2 = make(map[string]config.OAuth2Authorization)
 	}
 	for _, o := range os {
-		c.oauth2 = append(c.oauth2, o)
+		c.oauth2[o.Name] = o
 	}
 	return c
 }
 
 // WithOidcConfig adds the OidcConfig config structs.
 func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
-	for _, oidcConf := range confs {
-		c.oauth2 = append(c.oauth2, oidcConf)
-	}
 	if c.oauth2 == nil {
-		c.oauth2 = make([]config.OAuth2Authorization, 0)
+		c.oauth2 = make(map[string]config.OAuth2Authorization)
+	}
+	for _, oidcConf := range confs {
+		c.oauth2[oidcConf.Name] = oidcConf
 	}
 	return c
 }

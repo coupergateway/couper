@@ -43,7 +43,6 @@ type OAuth2Authorization interface {
 	Inline
 	GetAuthorizationEndpoint() (string, error)
 	GetClientID() string
-	GetName() string
 	GetScope() string
 	GetVerifierMethod() (string, error)
 }
