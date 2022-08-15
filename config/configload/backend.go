@@ -107,18 +107,13 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 	}
 
 	// watch out for oauth blocks and nested backend definitions
-	oauth2Backend, err := newOAuthBackend(helper, backendBody)
+	backendBody, err = wrapOAuthBackend(helper, backendBody)
 	if err != nil {
 		return nil, err
 	}
 
-	if oauth2Backend != nil {
-		wrapped := wrapBlock(oauth2, "", oauth2Backend)
-		backendBody = hclbody.MergeBodies(backendBody, wrapped)
-	}
-
 	// watch out for beta_token_request blocks and nested backend definitions
-	return newTokenRequestBackend(helper, backendBody)
+	return wrapTokenRequestBackend(helper, backendBody)
 }
 
 // getBackendReference reads a referenced backend name and the refined backend block content if any.
@@ -147,9 +142,9 @@ func getBackendReference(inline config.Inline) (string, hcl.Body, error) {
 	return reference, body, nil
 }
 
-// newOAuthBackend prepares a nested backend within a backend-oauth2 block.
+// wrapOAuthBackend prepares a nested backend within a backend-oauth2 block.
 // TODO: Check a possible circular dependency with given parent backend(s).
-func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
+func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(oauth2, parent)
 	if err != nil {
 		return nil, err
@@ -157,7 +152,7 @@ func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 
 	oauthBlocks := innerContent.Blocks.OfType(oauth2)
 	if len(oauthBlocks) == 0 {
-		return nil, nil
+		return parent, nil
 	}
 
 	// oauth block exists, read out backend configuration
@@ -167,12 +162,20 @@ func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 		return nil, diags
 	}
 
-	return PrepareBackend(helper, "", conf.TokenEndpoint, conf)
+	backendBody, err := PrepareBackend(helper, "", conf.TokenEndpoint, conf)
+	if err != nil {
+		return nil, err
+	}
+	
+	wrapped := wrapBlock(oauth2, "", backendBody)
+	parent = hclbody.MergeBodies(parent, wrapped)
+
+	return parent, nil
 }
 
-// newTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
+// wrapTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
 // TODO: Check a possible circular dependency with given parent backend(s).
-func newTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
+func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(tokenRequest, parent)
 	if err != nil {
 		return nil, err
