@@ -107,32 +107,13 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 	}
 
 	// watch out for oauth blocks and nested backend definitions
-	oauth2Backend, err := newOAuthBackend(helper, backendBody)
+	backendBody, err = wrapOAuthBackend(helper, backendBody)
 	if err != nil {
 		return nil, err
-	}
-
-	if oauth2Backend != nil {
-		wrapped := wrapBlock(oauth2, "", oauth2Backend)
-		backendBody = hclbody.MergeBodies(backendBody, wrapped)
 	}
 
 	// watch out for beta_token_request blocks and nested backend definitions
-	tokenRequestBackends, err := newTokenRequestBackend(helper, backendBody)
-	if err != nil {
-		return nil, err
-	}
-
-	if tokenRequestBackends == nil {
-		return backendBody, nil
-	}
-
-	for label, tokenRequestBackend := range tokenRequestBackends {
-		wrapped := wrapBlock(tokenRequest, label, tokenRequestBackend)
-		backendBody = hclbody.MergeBodies(backendBody, wrapped)
-	}
-
-	return backendBody, nil
+	return wrapTokenRequestBackend(helper, backendBody)
 }
 
 // getBackendReference reads a referenced backend name and the refined backend block content if any.
@@ -161,9 +142,9 @@ func getBackendReference(inline config.Inline) (string, hcl.Body, error) {
 	return reference, body, nil
 }
 
-// newOAuthBackend prepares a nested backend within a backend-oauth2 block.
+// wrapOAuthBackend prepares a nested backend within a backend-oauth2 block.
 // TODO: Check a possible circular dependency with given parent backend(s).
-func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
+func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(oauth2, parent)
 	if err != nil {
 		return nil, err
@@ -171,7 +152,7 @@ func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 
 	oauthBlocks := innerContent.Blocks.OfType(oauth2)
 	if len(oauthBlocks) == 0 {
-		return nil, nil
+		return parent, nil
 	}
 
 	// oauth block exists, read out backend configuration
@@ -181,12 +162,20 @@ func newOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 		return nil, diags
 	}
 
-	return PrepareBackend(helper, "", conf.TokenEndpoint, conf)
+	backendBody, err := PrepareBackend(helper, "", conf.TokenEndpoint, conf)
+	if err != nil {
+		return nil, err
+	}
+
+	wrapped := wrapBlock(oauth2, "", backendBody)
+	parent = hclbody.MergeBodies(parent, wrapped)
+
+	return parent, nil
 }
 
-// newTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
+// wrapTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
 // TODO: Check a possible circular dependency with given parent backend(s).
-func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Body, error) {
+func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	innerContent, err := contentByType(tokenRequest, parent)
 	if err != nil {
 		return nil, err
@@ -194,10 +183,9 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 
 	tokenRequestBlocks := innerContent.Blocks.OfType(tokenRequest)
 	if len(tokenRequestBlocks) == 0 {
-		return nil, nil
+		return parent, nil
 	}
 
-	tokenRequestBackends := make(map[string]hcl.Body)
 	// beta_token_request block exists, read out backend configuration
 	for _, tokenRequestBlock := range tokenRequestBlocks {
 		label := ""
@@ -210,7 +198,7 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 			return nil, diags
 		}
 
-		content, _, diags := conf.Remain.PartialContent(conf.Schema(true))
+		content, leftOvers, diags := conf.Remain.PartialContent(conf.Schema(true))
 		if diags.HasErrors() {
 			return nil, diags
 		}
@@ -219,14 +207,25 @@ func newTokenRequestBackend(helper *helper, parent hcl.Body) (map[string]hcl.Bod
 			return nil, err
 		}
 
-		be, berr := PrepareBackend(helper, "", conf.URL, conf)
+		hclbody.RenameAttribute(content, "headers", "set_request_headers")
+		hclbody.RenameAttribute(content, "query_params", "set_query_params")
+		conf.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
+
+		tokenRequestBackend, berr := PrepareBackend(helper, "", conf.URL, conf)
 		if berr != nil {
 			return nil, berr
 		}
-		tokenRequestBackends[label] = be
+
+		if tokenRequestBackend == nil {
+			continue
+		}
+
+		wrapped := wrapBlock(tokenRequest, label,
+			hclbody.MergeBodies(conf.Remain, tokenRequestBackend))
+		parent = hclbody.MergeBodies(parent, wrapped)
 	}
 
-	return tokenRequestBackends, nil
+	return parent, nil
 }
 
 func wrapBlock(blockType, label string, content hcl.Body) hcl.Body {

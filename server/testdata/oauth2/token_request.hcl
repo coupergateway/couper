@@ -42,7 +42,7 @@ definitions {
     }
 
     beta_token_request "default" {
-      url = "{{.asOrigin}}/token2"
+      url = "/token2"
       query_params = {
         foo = "bar"
       }
