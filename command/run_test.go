@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"crypto/tls"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -258,7 +257,7 @@ func TestArgs_CAFile(t *testing.T) {
 	selfSigned, err := server.NewCertificate(expiresIn, nil, nil)
 	helper.Must(err)
 
-	tmpFile, err := ioutil.TempFile("", "ca.cert")
+	tmpFile, err := os.CreateTemp("", "ca.cert")
 	helper.Must(err)
 	_, err = tmpFile.Write(selfSigned.CA)
 	helper.Must(err)
@@ -387,7 +386,7 @@ func TestReadCAFile(t *testing.T) {
 		t.Error("expected no such file error")
 	}
 
-	tmpFile, err := ioutil.TempFile("", "empty.cert")
+	tmpFile, err := os.CreateTemp("", "empty.cert")
 	helper.Must(err)
 	defer os.Remove(tmpFile.Name())
 
@@ -398,7 +397,7 @@ func TestReadCAFile(t *testing.T) {
 		t.Error("expected empty file error with file-name")
 	}
 
-	malformedFile, err := ioutil.TempFile("", "broken.cert")
+	malformedFile, err := os.CreateTemp("", "broken.cert")
 	helper.Must(err)
 	defer os.Remove(malformedFile.Name())
 

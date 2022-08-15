@@ -6,9 +6,9 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -217,7 +217,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 // same way x509.CertPool.AppendCertsFromPEM does.
 // AppendCertsFromPEM method will be used on backend transport creation.
 func readCertificateFile(file string) ([]byte, error) {
-	cert, err := ioutil.ReadFile(file)
+	cert, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("error reading ca-certificate: %v", err)
 	} else if len(cert) == 0 {
