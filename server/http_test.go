@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/internal/test"
+	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server"
 )
 
@@ -731,4 +733,144 @@ func TestHTTPServer_EnvironmentBlocks(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("Unexpected status code: %d", res.StatusCode)
 	}
+}
+
+func TestHTTPServer_RateLimiterFixed(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/ratelimit/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/fixed", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
+	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
+	go client.Do(req)
+	time.Sleep(500 * time.Millisecond)
+	go client.Do(req)
+
+	time.Sleep(700 * time.Millisecond)
+
+	entries := hook.AllEntries()
+	if len(entries) != 8 {
+		t.Fatal("Missing log lines")
+	}
+
+	for i, entry := range entries {
+		if entry.Data["type"] != "couper_access" {
+			continue
+		}
+
+		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
+			t.Fatal("Something is wrong")
+		} else if i < 4 && total > 500 {
+			t.Errorf("Request %d time has to be smaller as 0.5 seconds, was %fms", i/2, total)
+		} else if i >= 4 && i < 6 && total < 1000 {
+			t.Errorf("Request %d time has to be longer as 1 second, was %fms", i/2, total)
+		} else if i >= 6 && total < 500 {
+			t.Errorf("Request %d time has to be longer as 0.5 seconds, was %fms", i/2, total)
+		}
+	}
+}
+
+func TestHTTPServer_RateLimiterSliding(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/ratelimit/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/sliding", nil)
+	helper.Must(err)
+
+	hook.Reset()
+
+	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
+	go client.Do(req)
+	time.Sleep(1000 * time.Millisecond)
+	go client.Do(req)
+	time.Sleep(500 * time.Millisecond)
+	go client.Do(req)
+
+	time.Sleep(1700 * time.Millisecond)
+
+	entries := hook.AllEntries()
+	if len(entries) != 8 {
+		t.Fatal("Missing log lines")
+	}
+
+	for i, entry := range entries {
+		if entry.Data["type"] != "couper_access" {
+			continue
+		}
+
+		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
+			t.Fatal("Something is wrong")
+		} else if i < 4 && total > 500 {
+			t.Errorf("Request %d time has to be smaller as 0.5 seconds, was %fms", i/2, total)
+		} else if i >= 4 && i < 6 && total < 1000 {
+			t.Errorf("Request %d time has to be longer as 1 second, was %fms", i/2, total)
+		} else if i >= 6 && total < 1500 {
+			t.Errorf("Request %d time has to be longer as 1.5 seconds, was %fms", i/2, total)
+		}
+	}
+}
+
+func TestHTTPServer_RateLimiterBlock(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/ratelimit/01_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/block", nil)
+	helper.Must(err)
+
+	var resps [3]*http.Response
+	var mu sync.Mutex
+
+	go func() {
+		mu.Lock()
+		resps[0], _ = client.Do(req)
+		mu.Unlock()
+	}()
+
+	time.Sleep(400 * time.Millisecond)
+
+	go func() {
+		mu.Lock()
+		resps[1], _ = client.Do(req)
+		mu.Unlock()
+	}()
+
+	time.Sleep(400 * time.Millisecond)
+
+	go func() {
+		mu.Lock()
+		resps[2], _ = client.Do(req)
+		mu.Unlock()
+	}()
+
+	time.Sleep(400 * time.Millisecond)
+
+	mu.Lock()
+
+	if resps[0].StatusCode != 200 {
+		t.Errorf("Exp 200, got: %d", resps[0].StatusCode)
+	}
+	if resps[1].StatusCode != 200 {
+		t.Errorf("Exp 200, got: %d", resps[1].StatusCode)
+	}
+	if resps[2].StatusCode != 429 {
+		t.Errorf("Exp 200, got: %d", resps[2].StatusCode)
+	}
+
+	mu.Unlock()
 }

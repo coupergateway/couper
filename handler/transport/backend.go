@@ -26,6 +26,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/ratelimit"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
@@ -42,7 +43,6 @@ var (
 	_ seetie.Object     = &Backend{}
 )
 
-// Backend represents the transport configuration.
 type Backend struct {
 	context             hcl.Body
 	healthInfo          *HealthInfo
@@ -51,7 +51,7 @@ type Backend struct {
 	name                string
 	openAPIValidator    *validation.OpenAPI
 	requestAuthorizer   []RequestAuthorizer
-	transport           *http.Transport
+	transport           http.RoundTripper
 	transportConf       *Config
 	transportConfResult Config
 	transportOnce       sync.Once
@@ -92,9 +92,14 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	return backend.upstreamLog
 }
 
-// initOnce ensures synced transport configuration. First request will setup the origin, hostname and tls.
+// initOnce ensures synced transport configuration. First request will setup the rate limits, origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
-	b.transport = NewTransport(conf, b.logEntry)
+	if len(b.transportConf.RateLimits) > 0 {
+		b.transport = ratelimit.NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.RateLimits)
+	} else {
+		b.transport = NewTransport(conf, b.logEntry)
+	}
+
 	b.healthyMu.Lock()
 	b.transportConfResult = *conf
 	healthy := b.healthInfo.Healthy
@@ -313,6 +318,10 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 				return nil, derr
 			}
 		default:
+			if _, ok := err.(*errors.Error); ok {
+				return nil, err
+			}
+
 			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}

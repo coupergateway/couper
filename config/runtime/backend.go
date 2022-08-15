@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -16,6 +17,7 @@ import (
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/handler/ratelimit"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 )
@@ -70,6 +72,18 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		HTTP2:                  beConf.HTTP2,
 		NoProxyFromEnv:         conf.Settings.NoProxyFromEnv,
 		MaxConnections:         beConf.MaxConnections,
+	}
+
+	if len(beConf.RateLimits) > 0 {
+		if strings.HasPrefix(beConf.Name, "anonymous_") {
+			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'beta_rate_limit' block(s)", beConf.Name)
+		}
+
+		rateLimits, err := ratelimit.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
+		if err != nil {
+			return nil, err
+		}
+		tc.RateLimits = rateLimits
 	}
 
 	options := &transport.BackendOptions{}
