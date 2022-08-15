@@ -1,7 +1,6 @@
 package file
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -89,7 +88,7 @@ func (f *Files) AsList() []string {
 
 func readDir(filePath string) (Files, error) {
 	// ReadDir ... returns a list ... sorted by filename.
-	listing, err := ioutil.ReadDir(filePath)
+	listing, err := os.ReadDir(filePath)
 	if err != nil {
 		return nil, err
 	}

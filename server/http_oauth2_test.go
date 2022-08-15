@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -346,7 +346,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mn-id") {
 					mapClaims["nonce"] = nonce
 				}
-				keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+				keyBytes, err := os.ReadFile("testdata/integration/files/pkcs8.key")
 				if err != nil {
 					errResp(err)
 					return
@@ -398,7 +398,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 
 			return
 		} else if req.URL.Path == "/jwks" {
-			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			jsonBytes, rerr := os.ReadFile("testdata/integration/files/jwks.json")
 			if rerr != nil {
 				errResp(rerr)
 				return
@@ -555,7 +555,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 				"exp": 4000000000,
 				"iat": 1000,
 			}
-			keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+			keyBytes, err := os.ReadFile("testdata/integration/files/pkcs8.key")
 			helper.Must(err)
 			key, parseErr := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
 			helper.Must(parseErr)
@@ -583,7 +583,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 			return
 		} else if req.URL.Path == "/jwks" {
 			rw.Header().Set("Content-Type", "application/json")
-			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			jsonBytes, rerr := os.ReadFile("testdata/integration/files/jwks.json")
 			helper.Must(rerr)
 			b := bytes.NewBuffer(jsonBytes)
 			_, werr := b.WriteTo(rw)
@@ -1046,7 +1046,7 @@ func TestTokenRequest(t *testing.T) {
 
 			return
 		} else if req.URL.Path == "/the-key/token2" {
-			if "foo=bar" != req.URL.RawQuery {
+			if req.URL.RawQuery != "foo=bar" {
 				t.Errorf("wrong request URL query /token2\nwant: %q\ngot:  %q", "foo=bar", req.URL.RawQuery)
 			}
 			expBody := "client_id=clid&client_secret=cls&grant_type=password&password=asdf&username=user"
