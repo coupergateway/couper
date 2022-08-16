@@ -38,9 +38,8 @@ func NewTokenRequest(conf *config.TokenRequest, memStore *cache.MemoryStore, req
 }
 
 func (t *TokenRequest) GetToken(req *http.Request) error {
-	if token, err := t.readToken(); err != nil {
-		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(err)
-	} else if token != "" {
+	token := t.readToken()
+	if token != "" {
 		return nil
 	}
 
@@ -48,14 +47,16 @@ func (t *TokenRequest) GetToken(req *http.Request) error {
 	t.getMu.Lock()
 	defer t.getMu.Unlock()
 
-	token, terr := t.readToken()
-	if terr != nil {
-		return errors.Backend.Label(t.config.BackendName).Message("token read error").With(terr)
-	} else if token != "" {
+	token = t.readToken()
+	if token != "" {
 		return nil
 	}
 
-	token, ttl, err := t.requestToken(req)
+	var (
+		ttl int64
+		err error
+	)
+	token, ttl, err = t.requestToken(req)
 	if err != nil {
 		return errors.Backend.Label(t.config.BackendName).Message("token request error").With(err)
 	}
@@ -68,12 +69,12 @@ func (t *TokenRequest) RetryWithToken(_ *http.Request, _ *http.Response) (bool, 
 	return false, nil
 }
 
-func (t *TokenRequest) readToken() (string, error) {
+func (t *TokenRequest) readToken() string {
 	if data := t.memStore.Get(t.storageKey); data != nil {
-		return data.(string), nil
+		return data.(string)
 	}
 
-	return "", nil
+	return ""
 }
 
 func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
@@ -131,6 +132,6 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 }
 
 func (t *TokenRequest) value() (string, string) {
-	token, _ := t.readToken()
+	token := t.readToken()
 	return t.config.Name, token
 }
