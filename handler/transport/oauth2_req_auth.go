@@ -97,24 +97,6 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 }
 
 func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
-	requestContext := eval.ContextFromRequest(req).HCLContext()
-	assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
-	if err != nil {
-		return err
-	}
-
-	formParams := url.Values{}
-
-	if oa.config.GrantType == config.JwtBearer {
-		if assertionValue.IsNull() {
-			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
-		} else if assertionValue.Type() != cty.String {
-			return fmt.Errorf("assertion must evaluate to a string")
-		} else {
-			formParams.Set("assertion", assertionValue.AsString())
-		}
-	}
-
 	token := oa.readAccessToken()
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -132,6 +114,23 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		return nil
 	}
 
+	formParams := url.Values{}
+
+	if oa.config.GrantType == config.JwtBearer {
+		requestContext := eval.ContextFromRequest(req).HCLContext()
+		assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
+		if err != nil {
+			return err
+		}
+
+		if assertionValue.IsNull() {
+			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
+		} else if assertionValue.Type() != cty.String {
+			return fmt.Errorf("assertion must evaluate to a string")
+		} else {
+			formParams.Set("assertion", assertionValue.AsString())
+		}
+	}
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)
 	}
