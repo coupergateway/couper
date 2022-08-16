@@ -83,6 +83,10 @@ func (oa *OAuth2AC) GetName() string {
 	return oa.Name
 }
 
+func (oa *OAuth2AC) ClientAuthenticationRequired() bool {
+	return true
+}
+
 func (oa *OAuth2AC) GetClientID() string {
 	return oa.ClientID
 }

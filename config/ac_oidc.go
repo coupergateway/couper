@@ -114,6 +114,10 @@ func (o *OIDC) GetName() string {
 	return o.Name
 }
 
+func (o *OIDC) ClientAuthenticationRequired() bool {
+	return true
+}
+
 func (o *OIDC) GetClientID() string {
 	return o.ClientID
 }

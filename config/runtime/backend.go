@@ -40,7 +40,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 
 	b, err = newBackend(ctx, body, log, conf, store)
 	if err != nil {
-		return nil, err
+		return nil, errors.Configuration.Label(name).With(err)
 	}
 
 	// to prevent weird debug sessions; max to set the internal memStore ttl limit.
@@ -76,6 +76,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 	if len(beConf.RateLimits) > 0 {
 		if strings.HasPrefix(beConf.Name, "anonymous_") {
+			// TODO remove " (%q)"?
 			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'beta_rate_limit' block(s)", beConf.Name)
 		}
 
@@ -180,7 +181,7 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block, beConf *co
 
 	switch impl := authorizerConfig.(type) {
 	case *config.OAuth2ReqAuth:
-		return transport.NewOAuth2ReqAuth(impl, memStore, authorizerBackend)
+		return transport.NewOAuth2ReqAuth(evalCtx, impl, memStore, authorizerBackend)
 	case *config.TokenRequest:
 		reqs := producer.Requests{&producer.Request{
 			Backend: authorizerBackend,
