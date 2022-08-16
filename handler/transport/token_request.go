@@ -18,20 +18,18 @@ import (
 )
 
 type TokenRequest struct {
-	authorizedBackendName string
-	config                *config.TokenRequest
-	getMu                 sync.Mutex
-	memStore              *cache.MemoryStore
-	reqProducer           producer.Roundtrip
-	storageKey            string
+	config      *config.TokenRequest
+	getMu       sync.Mutex
+	memStore    *cache.MemoryStore
+	reqProducer producer.Roundtrip
+	storageKey  string
 }
 
-func NewTokenRequest(conf *config.TokenRequest, memStore *cache.MemoryStore, reqProducer producer.Roundtrip, authorizedBackendName string) (RequestAuthorizer, error) {
+func NewTokenRequest(conf *config.TokenRequest, memStore *cache.MemoryStore, reqProducer producer.Roundtrip) (RequestAuthorizer, error) {
 	tr := &TokenRequest{
-		authorizedBackendName: authorizedBackendName,
-		config:                conf,
-		memStore:              memStore,
-		reqProducer:           reqProducer,
+		config:      conf,
+		memStore:    memStore,
+		reqProducer: reqProducer,
 	}
 	tr.storageKey = fmt.Sprintf("TokenRequest-%p", tr)
 	return tr, nil

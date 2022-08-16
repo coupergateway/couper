@@ -188,7 +188,7 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block, beConf *co
 			Context: impl.HCLBody(),
 			Name:    impl.Name,
 		}}
-		return transport.NewTokenRequest(impl, memStore, reqs, beConf.Reference())
+		return transport.NewTokenRequest(impl, memStore, reqs)
 	default:
 		return nil, errors.Configuration.Message("unknown authorizer type")
 	}
