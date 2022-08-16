@@ -3,7 +3,7 @@ package json
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -129,7 +129,7 @@ func (s *SyncedJSON) fetch() error {
 
 	defer response.Body.Close()
 
-	raw, err := ioutil.ReadAll(response.Body)
+	raw, err := io.ReadAll(response.Body)
 	if err != nil {
 		return fmt.Errorf("error reading response for %q: %v", s.uri, err)
 	}

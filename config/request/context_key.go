@@ -13,6 +13,7 @@ const (
 	BetaGrantedPermissions
 	BetaRequiredPermission
 	BufferOptions
+	ConfigDryRun
 	ConnectTimeout
 	ContextVariablesSynced
 	Endpoint

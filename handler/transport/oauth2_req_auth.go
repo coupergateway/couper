@@ -117,7 +117,7 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 	if retries, ok := ctx.Value(request.TokenRequestRetries).(*uint8); !ok || *retries < *oa.config.Retries {
 		*retries++ // increase ptr value instead of context value
 		req.Header.Del("Authorization")
-		err := oa.GetToken(req.WithContext(ctx)) // WithContext due to header manipulation
+		err := oa.GetToken(req)
 		return true, err
 	}
 	return false, nil
