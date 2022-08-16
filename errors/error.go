@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/hashicorp/hcl/v2"
 )
 
 type Error struct {
@@ -132,6 +134,10 @@ func (e *Error) Unwrap() error {
 
 // LogError contains additional context which should be used for logging purposes only.
 func (e *Error) LogError() string {
+	if diags := e.getDiags(); diags != nil {
+		return diags.Error()
+	}
+
 	msg := AppendMsg(e.synopsis, e.label, e.message)
 
 	if e.inner != nil {
@@ -145,6 +151,20 @@ func (e *Error) LogError() string {
 	}
 
 	return msg
+}
+
+func (e *Error) getDiags() hcl.Diagnostics {
+	if e.inner != nil {
+		if diags, ok := e.inner.(hcl.Diagnostics); ok {
+			return diags
+		}
+
+		if innr, ok := e.inner.(*Error); ok {
+			return innr.getDiags()
+		}
+	}
+
+	return nil
 }
 
 // HTTPStatus returns the configured http status code this error should be served with.

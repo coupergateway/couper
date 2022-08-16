@@ -40,9 +40,6 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 
 	b, err = newBackend(ctx, body, log, conf, store)
 	if err != nil {
-		if _, isDiags := err.(hcl.Diagnostics); isDiags {
-			return nil, err
-		}
 		return nil, errors.Configuration.Label(name).With(err)
 	}
 
