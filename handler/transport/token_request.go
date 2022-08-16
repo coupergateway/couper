@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/zclconf/go-cty/cty"
 
@@ -121,9 +120,9 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 
 	token := tokenVal.AsString()
 	ttl := ttlVal.AsString()
-	dur, parseErr := time.ParseDuration(ttl)
+	dur, parseErr := config.ParseDuration("ttl", ttl, 0)
 	if parseErr != nil {
-		return "", 0, errors.Backend.Label(t.config.BackendName).Message("parsing ttl").With(parseErr)
+		return "", 0, errors.Backend.Label(t.config.BackendName).With(parseErr)
 	}
 
 	return token, int64(dur.Seconds()), nil
