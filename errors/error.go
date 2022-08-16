@@ -141,11 +141,11 @@ func (e *Error) LogError() string {
 	msg := AppendMsg(e.synopsis, e.label, e.message)
 
 	if e.inner != nil {
-		if innr, ok := e.inner.(*Error); ok {
-			if Equals(e, innr) {
-				innr.synopsis = "" // at least for one level, prevent duplicated synopsis
+		if inner, ok := e.inner.(*Error); ok {
+			if Equals(e, inner) {
+				inner.synopsis = "" // at least for one level, prevent duplicated synopsis
 			}
-			return AppendMsg(msg, innr.LogError())
+			return AppendMsg(msg, inner.LogError())
 		}
 		msg = AppendMsg(msg, e.inner.Error())
 	}
@@ -159,8 +159,8 @@ func (e *Error) getDiags() hcl.Diagnostics {
 			return diags
 		}
 
-		if innr, ok := e.inner.(*Error); ok {
-			return innr.getDiags()
+		if inner, ok := e.inner.(*Error); ok {
+			return inner.getDiags()
 		}
 	}
 
