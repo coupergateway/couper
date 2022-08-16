@@ -6,12 +6,22 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/oauth2"
 )
+
+var supportedGrantTypes = map[string]struct{}{
+	config.ClientCredentials: struct{}{},
+	config.JwtBearer:         struct{}{},
+	config.Password:          struct{}{},
+}
 
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
@@ -24,17 +34,14 @@ type OAuth2ReqAuth struct {
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
-func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
+func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
-	if conf.GrantType != "client_credentials" && conf.GrantType != "password" {
+	if _, supported := supportedGrantTypes[conf.GrantType]; !supported {
 		return nil, fmt.Errorf("grant_type %s not supported", conf.GrantType)
 	}
 
-	// grant_type password undocumented feature!
-	// WARNING: this implementation is no proper password flow, but a flow with username and password to login _exactly one_ user
-	// the received access token is stored in cache just like with the client credentials flow
-	if conf.GrantType == "password" {
+	if conf.GrantType == config.Password {
 		if conf.Username == "" {
 			return nil, fmt.Errorf("username must not be empty with grant_type=password")
 		}
@@ -47,6 +54,30 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 		}
 		if conf.Password != "" {
 			return nil, fmt.Errorf("password must not be set with grant_type=%s", conf.GrantType)
+		}
+	}
+
+	assertionValue, err := eval.Value(evalCtx, conf.AssertionExpr)
+	if err != nil {
+		return nil, err
+	}
+
+	if conf.GrantType == config.JwtBearer {
+		if assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType {
+			return nil, fmt.Errorf("missing assertion with grant_type=%s", conf.GrantType)
+		}
+	} else {
+		if !(assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType) {
+			return nil, fmt.Errorf("assertion must not be set with grant_type=%s", conf.GrantType)
+		}
+	}
+
+	if conf.ClientAuthenticationRequired() {
+		if conf.ClientID == "" {
+			return nil, fmt.Errorf("client_id must not be empty")
+		}
+		if conf.ClientSecret == "" {
+			return nil, fmt.Errorf("client_secret must not be empty")
 		}
 	}
 
@@ -66,6 +97,24 @@ func NewOAuth2ReqAuth(conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
 }
 
 func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
+	requestContext := eval.ContextFromRequest(req).HCLContext()
+	assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
+	if err != nil {
+		return err
+	}
+
+	formParams := url.Values{}
+
+	if oa.config.GrantType == config.JwtBearer {
+		if assertionValue.IsNull() {
+			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
+		} else if assertionValue.Type() != cty.String {
+			return fmt.Errorf("assertion must evaluate to a string")
+		} else {
+			formParams.Set("assertion", assertionValue.AsString())
+		}
+	}
+
 	token := oa.readAccessToken()
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -83,11 +132,9 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		return nil
 	}
 
-	formParams := url.Values{}
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)
 	}
-	// password and username undocumented feature!
 	if oa.config.Password != "" || oa.config.Username != "" {
 		formParams.Set("username", oa.config.Username)
 		formParams.Set("password", oa.config.Password)
@@ -117,7 +164,7 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 	if retries, ok := ctx.Value(request.TokenRequestRetries).(*uint8); !ok || *retries < *oa.config.Retries {
 		*retries++ // increase ptr value instead of context value
 		req.Header.Del("Authorization")
-		err := oa.GetToken(req.WithContext(ctx)) // WithContext due to header manipulation
+		err := oa.GetToken(req)
 		return true, err
 	}
 	return false, nil

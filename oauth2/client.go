@@ -77,6 +77,10 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 }
 
 func authenticateClient(clientConfig config.OAuth2Client, formParams *url.Values, tokenReq *http.Request) {
+	if !clientConfig.ClientAuthenticationRequired() {
+		return
+	}
+
 	clientID := clientConfig.GetClientID()
 	clientSecret := clientConfig.GetClientSecret()
 	if authMethod := clientConfig.GetTokenEndpointAuthMethod(); authMethod == nil || *authMethod == "client_secret_basic" {

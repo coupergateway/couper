@@ -10,6 +10,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 )
 
@@ -85,12 +86,12 @@ func TestHealthCheck(t *testing.T) {
 		{
 			"Bad interval",
 			`interval = "10sec"`,
-			`time: unknown unit "sec" in duration "10sec"`,
+			`configuration error: foo: time: unknown unit "sec" in duration "10sec"`,
 		},
 		{
 			"Bad timeout",
 			`timeout = 1`,
-			`time: missing unit in duration "1"`,
+			`configuration error: foo: time: missing unit in duration "1"`,
 		},
 		{
 			"Bad threshold",
@@ -147,10 +148,75 @@ func TestHealthCheck(t *testing.T) {
 
 			var errorMsg = ""
 			if err != nil {
-				errorMsg = err.Error()
+				if gErr, ok := err.(errors.GoError); ok {
+					errorMsg = gErr.LogError()
+				} else {
+					errorMsg = err.Error()
+				}
 			}
 
 			if tt.error != errorMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
+			}
+		})
+	}
+}
+
+func TestRateLimit(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"missing per_period",
+			``,
+			`Missing required argument; The argument "per_period" is required`,
+		},
+		{
+			"missing period",
+			`per_period = 10`,
+			`Missing required argument; The argument "period" is required`,
+		},
+		{
+			"OK",
+			`period = "1m"
+			 per_period = 10`,
+			"",
+		},
+	}
+
+	logger, _ := test.NewLogger()
+	log := logger.WithContext(context.TODO())
+
+	template := `
+		server {}
+		definitions {
+		  backend "foo" {
+		    beta_rate_limit {
+		      %s
+		    }
+		  }
+		}`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := configload.LoadBytes([]byte(fmt.Sprintf(template, tt.hcl)), "couper.hcl")
+
+			closeCh := make(chan struct{})
+			defer close(closeCh)
+			memStore := cache.New(log, closeCh)
+
+			if conf != nil {
+				_, err = runtime.NewServerConfiguration(conf, log, memStore)
+			}
+
+			var errorMsg = ""
+			if err != nil {
+				errorMsg = err.Error()
+			}
+
+			if !strings.Contains(errorMsg, tt.error) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
 			}
 		})

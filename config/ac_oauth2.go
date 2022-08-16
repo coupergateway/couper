@@ -79,6 +79,10 @@ func (oa *OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 
+func (oa *OAuth2AC) ClientAuthenticationRequired() bool {
+	return true
+}
+
 func (oa *OAuth2AC) GetClientID() string {
 	return oa.ClientID
 }

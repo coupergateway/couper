@@ -2,12 +2,13 @@ package server_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -19,6 +20,10 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	"github.com/avenga/couper/cache"
+	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/runtime"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/logging"
@@ -220,6 +225,11 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 			`client_id=my_client&client_secret=my_client_secret&grant_type=password&password=pass&scope=scope1+scope2&username=user`,
 			"",
 		},
+		{
+			"16_couper.hcl",
+			`assertion=GET&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer`,
+			"",
+		},
 	} {
 		var tokenSeenCh chan struct{}
 
@@ -268,6 +278,253 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 
 		oauthOrigin.Close()
 		shutdown()
+	}
+}
+
+func TestOAuth2_Config_Errors(t *testing.T) {
+	log, _ := test.NewLogger()
+
+	type testCase struct {
+		name  string
+		hcl   string
+		error string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"grant_type client_credentials without client_id",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+    }
+  }
+}
+`,
+			"configuration error: be: client_id must not be empty",
+		},
+		{
+			"grant_type client_credentials without client_secret",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty",
+		},
+		{
+			"grant_type password without client_id",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_secret  = "my_client_secret"
+      grant_type     = "password"
+      username       = "my_user"
+      password       = "my_password"
+    }
+  }
+}
+`,
+			"configuration error: be: client_id must not be empty",
+		},
+		{
+			"grant_type password without client_secret",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "password"
+      username       = "my_user"
+      password       = "my_password"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty",
+		},
+		{
+			"username with grant_type client_credentials",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      username       = "my_user"
+    }
+  }
+}
+`,
+			"configuration error: be: username must not be set with grant_type=client_credentials",
+		},
+		{
+			"password with grant_type client_credentials",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      password       = "my_password"
+    }
+  }
+}
+`,
+			"configuration error: be: password must not be set with grant_type=client_credentials",
+		},
+		{
+			"username with grant_type jwt-bearer",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      grant_type     = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+      username       = "my_user"
+    }
+  }
+}
+`,
+			"configuration error: be: username must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+		},
+		{
+			"password with grant_type jwt-bearer",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      grant_type     = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+      password       = "my_password"
+    }
+  }
+}
+`,
+			"configuration error: be: password must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+		},
+		{
+			"assertion with grant_type client_credentials",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      assertion      = "my_assertion"
+    }
+  }
+}
+`,
+			"configuration error: be: assertion must not be set with grant_type=client_credentials",
+		},
+		{
+			"assertion with grant_type password",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "password"
+      username       = "my_user"
+      password       = "my_password"
+      assertion      = "my_assertion"
+    }
+  }
+}
+`,
+			"configuration error: be: assertion must not be set with grant_type=password",
+		},
+		{
+			"missing username with grant_type password",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "password"
+    }
+  }
+}
+`,
+			"configuration error: be: username must not be empty with grant_type=password",
+		},
+		{
+			"missing password with grant_type password",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "password"
+      username       = "my_user"
+    }
+  }
+}
+`,
+			"configuration error: be: password must not be empty with grant_type=password",
+		},
+		{
+			"missing assertion with grant_type jwt-bearer",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      grant_type     = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    }
+  }
+}
+`,
+			"configuration error: be: missing assertion with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+		},
+	} {
+		var errMsg string
+		conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
+		if conf != nil {
+			logger := log.WithContext(context.TODO())
+
+			tmpStoreCh := make(chan struct{})
+			defer close(tmpStoreCh)
+
+			_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
+		}
+
+		if err != nil {
+			if _, ok := err.(errors.GoError); ok {
+				errMsg = err.(errors.GoError).LogError()
+			} else {
+				errMsg = err.Error()
+			}
+		}
+
+		if !strings.HasPrefix(errMsg, tc.error) {
+			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
+		}
 	}
 }
 
@@ -346,7 +603,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mn-id") {
 					mapClaims["nonce"] = nonce
 				}
-				keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+				keyBytes, err := os.ReadFile("testdata/integration/files/pkcs8.key")
 				if err != nil {
 					errResp(err)
 					return
@@ -398,7 +655,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 
 			return
 		} else if req.URL.Path == "/jwks" {
-			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			jsonBytes, rerr := os.ReadFile("testdata/integration/files/jwks.json")
 			if rerr != nil {
 				errResp(rerr)
 				return
@@ -555,7 +812,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 				"exp": 4000000000,
 				"iat": 1000,
 			}
-			keyBytes, err := ioutil.ReadFile("testdata/integration/files/pkcs8.key")
+			keyBytes, err := os.ReadFile("testdata/integration/files/pkcs8.key")
 			helper.Must(err)
 			key, parseErr := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
 			helper.Must(parseErr)
@@ -583,7 +840,7 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 			return
 		} else if req.URL.Path == "/jwks" {
 			rw.Header().Set("Content-Type", "application/json")
-			jsonBytes, rerr := ioutil.ReadFile("testdata/integration/files/jwks.json")
+			jsonBytes, rerr := os.ReadFile("testdata/integration/files/jwks.json")
 			helper.Must(rerr)
 			b := bytes.NewBuffer(jsonBytes)
 			_, werr := b.WriteTo(rw)
@@ -1046,7 +1303,7 @@ func TestTokenRequest(t *testing.T) {
 
 			return
 		} else if req.URL.Path == "/the-key/token2" {
-			if "foo=bar" != req.URL.RawQuery {
+			if req.URL.RawQuery != "foo=bar" {
 				t.Errorf("wrong request URL query /token2\nwant: %q\ngot:  %q", "foo=bar", req.URL.RawQuery)
 			}
 			expBody := "client_id=clid&client_secret=cls&grant_type=password&password=asdf&username=user"

@@ -110,6 +110,10 @@ func (o *OIDC) Schema(inline bool) *hcl.BodySchema {
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 
+func (o *OIDC) ClientAuthenticationRequired() bool {
+	return true
+}
+
 func (o *OIDC) GetClientID() string {
 	return o.ClientID
 }
