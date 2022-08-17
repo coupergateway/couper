@@ -124,9 +124,9 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		}
 
 		if assertionValue.IsNull() {
-			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
+			return fmt.Errorf("assertion expression evaluates to null")
 		} else if assertionValue.Type() != cty.String {
-			return fmt.Errorf("assertion must evaluate to a string")
+			return fmt.Errorf("assertion expression must evaluate to a string")
 		} else {
 			formParams.Set("assertion", assertionValue.AsString())
 		}
