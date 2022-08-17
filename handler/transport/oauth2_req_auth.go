@@ -114,6 +114,7 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		return nil
 	}
 
+	requestError := errors.Request.Label("oauth2")
 	formParams := url.Values{}
 
 	if oa.config.GrantType == config.JwtBearer {
@@ -124,9 +125,9 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		}
 
 		if assertionValue.IsNull() {
-			return fmt.Errorf("assertion expression evaluates to null")
+			return requestError.Message("assertion expression evaluates to null")
 		} else if assertionValue.Type() != cty.String {
-			return fmt.Errorf("assertion expression must evaluate to a string")
+			return requestError.Message("assertion expression must evaluate to a string")
 		} else {
 			formParams.Set("assertion", assertionValue.AsString())
 		}
@@ -142,7 +143,7 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
 		mutex.Unlock()
-		return errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
+		return requestError.Message("token request failed") // don't propagate token request roundtrip error
 	}
 
 	oa.updateAccessToken(token, tokenResponseData)

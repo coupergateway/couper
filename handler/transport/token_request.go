@@ -55,7 +55,7 @@ func (t *TokenRequest) GetToken(req *http.Request) error {
 	)
 	token, ttl, err = t.requestToken(req)
 	if err != nil {
-		return errors.Backend.Label(t.config.BackendName).Message("token request error").With(err)
+		return errors.Request.Label(t.config.Name).With(err)
 	}
 
 	t.memStore.Set(t.storageKey, token, ttl)
@@ -83,7 +83,7 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 	t.reqProducer.Produce(outreq, results)
 	result := <-results
 	if result.Err != nil {
-		return "", 0, result.Err
+		return "", 0, fmt.Errorf("token request failed") // don't propagate token request roundtrip error
 	}
 
 	trConf := &config.TokenRequest{Remain: t.config.Remain}
