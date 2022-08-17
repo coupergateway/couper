@@ -578,7 +578,7 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 				t.Errorf("expected status NoContent, got: %d", res.StatusCode)
 			}
 
-			message := getAccessControlMessages(hook)
+			message := getFirstAccessLogMessage(hook)
 			if message != tc.wantErrLog {
 				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
 			}
@@ -839,7 +839,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				}
 			}
 
-			message := getAccessControlMessages(hook)
+			message := getFirstAccessLogMessage(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
 					subT.Errorf("%q: Expected error log: %q, actual: %#v", tc.name, tc.wantErrLog, message)

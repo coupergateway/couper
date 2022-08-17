@@ -3236,7 +3236,7 @@ func TestConfigBodyContentAccessControl(t *testing.T) {
 			helper.Must(err)
 			// t.Errorf(">>> %#v", res.Header)
 
-			message := getAccessControlMessages(hook)
+			message := getFirstAccessLogMessage(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
 					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
@@ -3318,7 +3318,7 @@ func TestAPICatchAll(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			message := getAccessControlMessages(hook)
+			message := getFirstAccessLogMessage(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
 					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
@@ -3422,7 +3422,7 @@ func TestJWTAccessControl(t *testing.T) {
 			res, err := client.Do(req)
 			helper.Must(err)
 
-			message := getAccessControlMessages(hook)
+			message := getFirstAccessLogMessage(hook)
 			if res.StatusCode != tc.status {
 				subT.Errorf("expected Status %d, got: %d (%s)", tc.status, res.StatusCode, message)
 				return
@@ -3497,7 +3497,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 	if res.StatusCode != 200 {
-		message := getAccessControlMessages(hook)
+		message := getFirstAccessLogMessage(hook)
 		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
 	}
 
@@ -3507,7 +3507,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	res, err = client.Do(req)
 	helper.Must(err)
 	if res.StatusCode != 200 {
-		message := getAccessControlMessages(hook)
+		message := getFirstAccessLogMessage(hook)
 		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
 	}
 
@@ -3517,7 +3517,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper.Must(err)
 
 	time.Sleep(time.Second)
-	message := getAccessControlMessages(hook)
+	message := getFirstAccessLogMessage(hook)
 	if res.StatusCode != 403 {
 		t.Fatalf("expected status %d, got: %d (%s)", 403, res.StatusCode, message)
 	}
@@ -3683,7 +3683,7 @@ func TestJWT_CacheControl_private(t *testing.T) {
 	}
 }
 
-func getAccessControlMessages(hook *logrustest.Hook) string {
+func getFirstAccessLogMessage(hook *logrustest.Hook) string {
 	for _, entry := range hook.AllEntries() {
 		if entry.Data["type"] == "couper_access" && entry.Message != "" {
 			return entry.Message
@@ -3772,7 +3772,7 @@ func Test_Permissions(t *testing.T) {
 				subT.Errorf("Expected required permission:\nWant:\t%q\nGot:\t%q", tc.wantRequired, required)
 			}
 
-			message := getAccessControlMessages(hook)
+			message := getFirstAccessLogMessage(hook)
 			if !strings.HasPrefix(message, tc.wantErrLog) {
 				subT.Errorf("Expected error log:\nWant:\t%q\nGot:\t%q", tc.wantErrLog, message)
 			}
