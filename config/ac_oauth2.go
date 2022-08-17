@@ -11,7 +11,7 @@ var (
 	_ BackendReference      = &OAuth2AC{}
 	_ BackendInitialization = &OAuth2AC{}
 	_ Inline                = &OAuth2AC{}
-	_ OAuth2AcAS            = &OAuth2AC{}
+	_ OAuth2AS              = &OAuth2AC{}
 	_ OAuth2AcClient        = &OAuth2AC{}
 	_ OAuth2Authorization   = &OAuth2AC{}
 )
@@ -77,10 +77,6 @@ func (oa *OAuth2AC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
-}
-
-func (oa *OAuth2AC) GetName() string {
-	return oa.Name
 }
 
 func (oa *OAuth2AC) ClientAuthenticationRequired() bool {

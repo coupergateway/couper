@@ -21,13 +21,9 @@ const (
 	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
 )
 
-func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2Configs []config.OAuth2Authorization,
+func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2s map[string]config.OAuth2Authorization,
 	verifier func() (*pkce.CodeVerifier, error), origin *url.URL,
 	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, error)) function.Function {
-	oauth2s := make(map[string]config.OAuth2Authorization)
-	for _, o := range oauth2Configs {
-		oauth2s[o.GetName()] = o
-	}
 
 	emptyStringVal := cty.StringVal("")
 

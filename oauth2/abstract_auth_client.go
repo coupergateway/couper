@@ -1,10 +1,8 @@
 package oauth2
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,11 +17,7 @@ import (
 type AbstractAuthCodeClient struct {
 	AuthCodeFlowClient
 	*Client
-	name string
-}
-
-func (a AbstractAuthCodeClient) GetName() string {
-	return a.name
+	acClientConf config.OAuth2AcClient
 }
 
 // ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint.
@@ -66,7 +60,7 @@ func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Reques
 		return nil, errors.Oauth2.With(err).Messagef("Empty verifier_value")
 	}
 
-	verifierMethod, err := getVerifierMethod(req.Context(), a.asConfig)
+	verifierMethod, err := a.acClientConf.GetVerifierMethod()
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
 	}
@@ -105,12 +99,4 @@ func Base64urlSha256(value string) string {
 	h := sha256.New()
 	h.Write([]byte(value))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
-}
-
-func getVerifierMethod(ctx context.Context, conf interface{}) (string, error) {
-	clientConf, ok := conf.(config.OAuth2AcClient)
-	if !ok {
-		return "", fmt.Errorf("could not obtain verifier method configuration")
-	}
-	return clientConf.GetVerifierMethod()
 }

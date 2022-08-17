@@ -11,7 +11,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go/v4"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/oauth2/oidc"
 )
@@ -80,11 +79,6 @@ func (o *OidcClient) refreshJWTParser() error {
 	o.issLock.Unlock()
 
 	return nil
-}
-
-func (o *OidcClient) getOidcAsConfig() config.OidcAS {
-	oidcAsConfig, _ := o.asConfig.(config.OidcAS)
-	return oidcAsConfig
 }
 
 // validateTokenResponseData validates the token response data
@@ -184,7 +178,7 @@ func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claim
 		return nil, nil, errors.Oauth2.Messagef("azp claim / client ID mismatch, azp = %q, client ID = %q", azp, o.clientConfig.GetClientID())
 	}
 
-	verifierMethod, err := getVerifierMethod(ctx, o.asConfig)
+	verifierMethod, err := o.config.GetVerifierMethod()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -276,7 +270,7 @@ func parseUserinfoResponse(userinfoResponse []byte) (map[string]interface{}, str
 }
 
 func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
-	userinfoEndpoint, err := o.getOidcAsConfig().GetUserinfoEndpoint()
+	userinfoEndpoint, err := o.config.GetUserinfoEndpoint()
 	if err != nil {
 		return nil, err
 	}

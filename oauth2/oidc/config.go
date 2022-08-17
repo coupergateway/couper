@@ -28,7 +28,7 @@ type OpenidConfiguration struct {
 type Configs map[string]*Config
 
 var (
-	_ config.OidcAS              = &Config{}
+	_ config.OAuth2AS            = &Config{}
 	_ config.OAuth2Authorization = &Config{}
 	_ config.OAuth2AcClient      = &Config{}
 

@@ -11,7 +11,6 @@ import (
 
 // AuthCodeFlowClient represents an OAuth2 client using the authorization code flow.
 type AuthCodeFlowClient interface {
-	GetName() string
 	ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
 	validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error
 }
@@ -35,7 +34,7 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 			return nil, err
 		}
 
-		if verifierMethod != config.CcmS256 && verifierMethod != "nonce" && verifierMethod != "state" {
+		if verifierMethod != config.CcmS256 && verifierMethod != "state" {
 			return nil, fmt.Errorf("verifier_method %s not supported", verifierMethod)
 		}
 	default:
@@ -48,8 +47,8 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 	}
 
 	o := &AuthCodeClient{&AbstractAuthCodeClient{
-		Client: client,
-		name:   acClientConf.GetName(),
+		acClientConf: acClientConf,
+		Client:       client,
 	}}
 	o.AuthCodeFlowClient = o
 	return o, nil
