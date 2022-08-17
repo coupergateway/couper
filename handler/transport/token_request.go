@@ -101,10 +101,10 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 		return "", 0, err
 	}
 	if tokenVal.IsNull() {
-		return "", 0, errors.Backend.Label(t.config.BackendName).Message("token expression evaluates to null")
+		return "", 0, fmt.Errorf("token expression evaluates to null")
 	}
 	if tokenVal.Type() != cty.String {
-		return "", 0, errors.Backend.Label(t.config.BackendName).Message("token expression must evaluate to a string")
+		return "", 0, fmt.Errorf("token expression must evaluate to a string")
 	}
 
 	ttlVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "ttl")
@@ -112,17 +112,17 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 		return "", 0, err
 	}
 	if ttlVal.IsNull() {
-		return "", 0, errors.Backend.Label(t.config.BackendName).Message("ttl expression evaluates to null")
+		return "", 0, fmt.Errorf("ttl expression evaluates to null")
 	}
 	if ttlVal.Type() != cty.String {
-		return "", 0, errors.Backend.Label(t.config.BackendName).Message("ttl expression must evaluate to a string")
+		return "", 0, fmt.Errorf("ttl expression must evaluate to a string")
 	}
 
 	token := tokenVal.AsString()
 	ttl := ttlVal.AsString()
 	dur, parseErr := config.ParseDuration("ttl", ttl, 0)
 	if parseErr != nil {
-		return "", 0, errors.Backend.Label(t.config.BackendName).With(parseErr)
+		return "", 0, parseErr
 	}
 
 	return token, int64(dur.Seconds()), nil
