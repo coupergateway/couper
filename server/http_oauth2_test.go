@@ -1469,7 +1469,7 @@ func TestTokenRequest_Errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"token request failed, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr1: token request failed"},
+		{"token request failed, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr: token request failed"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
