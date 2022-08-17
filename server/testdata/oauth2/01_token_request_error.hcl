@@ -16,7 +16,7 @@ server "api" {
 
 definitions {
   backend "be" {
-    origin = "{{.rsOrigin}}"
+    origin = "http://does.not.matter"
 
     beta_token_request "tr1" {
       url = "/token1"
