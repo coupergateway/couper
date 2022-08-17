@@ -528,6 +528,68 @@ definitions {
 	}
 }
 
+func TestOAuth2_Runtime_Errors(t *testing.T) {
+	helper := test.New(t)
+
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/token" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "abcdef0123456789",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	type testCase struct {
+		name       string
+		filename   string
+		wantErrLog string
+	}
+
+	for _, tc := range []testCase{
+		{"null assertion", "17_couper.hcl", "backend error: be: request error: oauth2: assertion expression evaluates to null"},
+		{"non-string assertion", "18_couper.hcl", "backend error: be: request error: oauth2: assertion expression must evaluate to a string"},
+		{"token request failed", "19_couper.hcl", "backend error: be: request error: oauth2: token request failed"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": asOrigin.URL})
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+			h.Must(err)
+
+			hook.Reset()
+
+			res, err := newClient().Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusBadGateway {
+				t.Errorf("expected status NoContent, got: %d", res.StatusCode)
+			}
+
+			message := getAccessControlMessages(hook)
+			if message != tc.wantErrLog {
+				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+			}
+
+			shutdown()
+		})
+	}
+
+	asOrigin.Close()
+}
+
 func TestOAuth2_AccessControl(t *testing.T) {
 	client := newClient()
 

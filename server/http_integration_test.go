@@ -3685,7 +3685,7 @@ func TestJWT_CacheControl_private(t *testing.T) {
 
 func getAccessControlMessages(hook *logrustest.Hook) string {
 	for _, entry := range hook.AllEntries() {
-		if entry.Message != "" {
+		if entry.Data["type"] == "couper_access" && entry.Message != "" {
 			return entry.Message
 		}
 	}
