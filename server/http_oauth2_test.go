@@ -1470,6 +1470,13 @@ func TestTokenRequest_Errors(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"token request failed, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr: token request failed"},
+		{"token expression evaluation error", "02_token_request_error.hcl", http.StatusBadGateway, "couper-bytes.hcl:23,15-31: Call to unknown function; There is no function named \"evaluation_error\"."},
+		{"null token", "03_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression evaluates to null"},
+		{"non-string token", "04_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression must evaluate to a string"},
+		{"ttl expression evaluation error", "05_token_request_error.hcl", http.StatusBadGateway, "couper-bytes.hcl:24,13-29: Call to unknown function; There is no function named \"evaluation_error\"."},
+		{"null ttl", "06_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl expression evaluates to null"},
+		{"non-string ttl", "07_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl expression must evaluate to a string"},
+		{"non-duration ttl", "08_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl: time: invalid duration \"no duration\""},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
