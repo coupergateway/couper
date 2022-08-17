@@ -26,7 +26,7 @@ var supportedGrantTypes = map[string]struct{}{
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
-	locks        sync.Map
+	getMu        sync.Mutex
 	memStore     *cache.MemoryStore
 	oauth2Client *oauth2.Client
 	storageKey   string
@@ -90,7 +90,6 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		config:       conf,
 		oauth2Client: oauth2Client,
 		memStore:     memStore,
-		locks:        sync.Map{},
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
 	return reqAuth, nil
@@ -103,13 +102,11 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		return nil
 	}
 
-	value, _ := oa.locks.LoadOrStore(oa.storageKey, &sync.Mutex{})
-	mutex := value.(*sync.Mutex)
+	oa.getMu.Lock()
+	defer oa.getMu.Unlock()
 
-	mutex.Lock()
 	token = oa.readAccessToken()
 	if token != "" {
-		mutex.Unlock()
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
 	}
@@ -142,12 +139,10 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
-		mutex.Unlock()
 		return requestError.Message("token request failed") // don't propagate token request roundtrip error
 	}
 
 	oa.updateAccessToken(token, tokenResponseData)
-	mutex.Unlock()
 
 	req.Header.Set("Authorization", "Bearer "+token)
 	return nil
