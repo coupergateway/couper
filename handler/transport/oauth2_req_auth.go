@@ -23,6 +23,10 @@ var supportedGrantTypes = map[string]struct{}{
 	config.Password:          struct{}{},
 }
 
+var (
+	_ RequestAuthorizer = &OAuth2ReqAuth{}
+)
+
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth

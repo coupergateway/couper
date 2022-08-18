@@ -16,6 +16,10 @@ import (
 	"github.com/avenga/couper/handler/producer"
 )
 
+var (
+	_ RequestAuthorizer = &TokenRequest{}
+)
+
 type TokenRequest struct {
 	config      *config.TokenRequest
 	getMu       sync.Mutex
