@@ -145,9 +145,9 @@ func getBackendReference(inline config.Inline) (string, hcl.Body, error) {
 // wrapOAuthBackend prepares a nested backend within a backend-oauth2 block.
 // TODO: Check a possible circular dependency with given parent backend(s).
 func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
-	innerContent, err := contentByType(oauth2, parent)
-	if err != nil {
-		return nil, err
+	innerContent, _, diags := parent.PartialContent(config.OAuthBlockSchema)
+	if diags.HasErrors() {
+		return nil, diags
 	}
 
 	oauthBlocks := innerContent.Blocks.OfType(oauth2)
@@ -158,7 +158,7 @@ func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	// oauth block exists, read out backend configuration
 	oauthBody := oauthBlocks[0].Body
 	conf := &config.OAuth2ReqAuth{}
-	if diags := gohcl.DecodeBody(oauthBody, helper.context, conf); diags.HasErrors() {
+	if diags = gohcl.DecodeBody(oauthBody, helper.context, conf); diags.HasErrors() {
 		return nil, diags
 	}
 
@@ -176,9 +176,9 @@ func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 // wrapTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
 // TODO: Check a possible circular dependency with given parent backend(s).
 func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
-	innerContent, err := contentByType(tokenRequest, parent)
-	if err != nil {
-		return nil, err
+	innerContent, _, diags := parent.PartialContent(config.TokenRequestBlockSchema)
+	if diags.HasErrors() {
+		return nil, diags
 	}
 
 	tokenRequestBlocks := innerContent.Blocks.OfType(tokenRequest)
@@ -190,14 +190,14 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 	for _, tokenRequestBlock := range tokenRequestBlocks {
 		tokenRequestBody := tokenRequestBlock.Body
 		conf := &config.TokenRequest{}
-		if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
+		if diags = gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
 			return nil, diags
 		}
 
 		label := defaultNameLabel
 		if len(tokenRequestBlock.Labels) > 0 {
 			label = tokenRequestBlock.Labels[0]
-			if err = validLabel(label, &tokenRequestBlock.LabelRanges[0]); err != nil {
+			if err := validLabel(label, &tokenRequestBlock.LabelRanges[0]); err != nil {
 				return nil, err
 			}
 		}
@@ -208,7 +208,7 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 			return nil, diags
 		}
 
-		if err = verifyBodyAttributes(tokenRequest, content); err != nil {
+		if err := verifyBodyAttributes(tokenRequest, content); err != nil {
 			return nil, err
 		}
 
