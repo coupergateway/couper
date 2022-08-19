@@ -122,7 +122,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 		blocks := content.Blocks.OfType(schema.Blocks[0].Type)
 		for _, block := range blocks {
-			requestAuthorizer, err := newRequestAuthorizer(evalCtx, block, beConf, log, conf, memStore)
+			requestAuthorizer, err := newRequestAuthorizer(evalCtx, block, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
@@ -134,7 +134,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	return b, nil
 }
 
-func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block, beConf *config.Backend,
+func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
 	log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 	var authorizerConfig interface{}
 	switch block.Type {
