@@ -167,7 +167,7 @@ func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 		return nil, err
 	}
 
-	wrapped := wrapBlock(oauth2, "", backendBody)
+	wrapped := wrapBlock(oauth2, oauthBlocks[0].Labels, backendBody)
 	parent = hclbody.MergeBodies(parent, wrapped)
 
 	return parent, nil
@@ -188,12 +188,8 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 
 	// beta_token_request block exists, read out backend configuration
 	for _, tokenRequestBlock := range tokenRequestBlocks {
-		label := ""
-		if len(tokenRequestBlock.Labels) > 0 {
-			label = tokenRequestBlock.Labels[0]
-		}
 		tokenRequestBody := tokenRequestBlock.Body
-		conf := &config.TokenRequest{Name: label}
+		conf := &config.TokenRequest{}
 		if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
 			return nil, diags
 		}
@@ -220,7 +216,7 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 			continue
 		}
 
-		wrapped := wrapBlock(tokenRequest, label,
+		wrapped := wrapBlock(tokenRequest, tokenRequestBlock.Labels,
 			hclbody.MergeBodies(conf.Remain, tokenRequestBackend))
 		parent = hclbody.MergeBodies(parent, wrapped)
 	}
@@ -228,11 +224,7 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 	return parent, nil
 }
 
-func wrapBlock(blockType, label string, content hcl.Body) hcl.Body {
-	var labels []string
-	if label != "" {
-		labels = append(labels, label)
-	}
+func wrapBlock(blockType string, labels []string, content hcl.Body) hcl.Body {
 	return hclbody.New(&hcl.BodyContent{
 		Blocks: []*hcl.Block{
 			{
