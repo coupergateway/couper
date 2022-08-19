@@ -186,6 +186,8 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 		return parent, nil
 	}
 
+	unique := map[string]struct{}{}
+
 	// beta_token_request block exists, read out backend configuration
 	for _, tokenRequestBlock := range tokenRequestBlocks {
 		tokenRequestBody := tokenRequestBlock.Body
@@ -195,13 +197,20 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 		}
 
 		label := defaultNameLabel
+		r := &tokenRequestBlock.DefRange
 		if len(tokenRequestBlock.Labels) > 0 {
 			label = tokenRequestBlock.Labels[0]
-			if err := validLabel(label, &tokenRequestBlock.LabelRanges[0]); err != nil {
+			r = &tokenRequestBlock.LabelRanges[0]
+			if err := validLabel(label, r); err != nil {
 				return nil, err
 			}
 		}
-		// a label uniqueness check is not possible, as beta_token_request blocks with same label were already merged by newBodyWithName() call in helper.addBackend()
+
+		// a label uniqueness check is currently very limited, as beta_token_request blocks with same label were already merged by newBodyWithName() call in helper.addBackend()
+		// however this does find unlabeled vs. explicitly "default" labeled blocks
+		if err := uniqueLabelName(unique, label, r); err != nil {
+			return nil, err
+		}
 
 		content, leftOvers, diags := conf.Remain.PartialContent(conf.Schema(true))
 		if diags.HasErrors() {

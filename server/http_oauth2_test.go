@@ -1463,6 +1463,46 @@ definitions {
 `,
 			"couper.hcl:4,24-35: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_';",
 		},
+		{
+			"multiple default labels (LabelRanges)",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request {
+      url = "http://localhost:8081/token1"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+    beta_token_request "default" {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "2m"
+    }
+  }
+}
+`,
+			"couper.hcl:9,24-33: only one 'default' label is allowed;",
+		},
+		{
+			"multiple default labels (DefRange)",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request "default" {
+      url = "http://localhost:8081/token1"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+    beta_token_request {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "2m"
+    }
+  }
+}
+`,
+			"couper.hcl:9,5-23: only one 'default' label is allowed;",
+		},
 	} {
 		var errMsg string
 		_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")

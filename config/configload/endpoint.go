@@ -84,7 +84,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			}
 
 			if proxyRequestLabelRequired {
-				if err = uniqueLabelName(unique, proxyConfig.Name, &subject); err != nil {
+				if err = uniquePRLabelName(unique, proxyConfig.Name, &subject); err != nil {
 					return err
 				}
 			}
@@ -125,7 +125,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			}
 
 			if proxyRequestLabelRequired {
-				if err = uniqueLabelName(unique, reqConfig.Name, &subject); err != nil {
+				if err = uniquePRLabelName(unique, reqConfig.Name, &subject); err != nil {
 					return err
 				}
 			}
