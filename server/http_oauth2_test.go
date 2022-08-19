@@ -1440,7 +1440,47 @@ func TestTokenRequest(t *testing.T) {
 	}
 }
 
-func TestTokenRequest_Errors(t *testing.T) {
+func TestTokenRequest_Config_Errors(t *testing.T) {
+	type testCase struct {
+		name  string
+		hcl   string
+		error string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"invalid label",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request "the label" {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+  }
+}
+`,
+			"couper.hcl:4,24-35: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_';",
+		},
+	} {
+		var errMsg string
+		_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
+		if err != nil {
+			if _, ok := err.(errors.GoError); ok {
+				errMsg = err.(errors.GoError).LogError()
+			} else {
+				errMsg = err.Error()
+			}
+		}
+
+		if !strings.HasPrefix(errMsg, tc.error) {
+			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
+		}
+	}
+}
+
+func TestTokenRequest_Runtime_Errors(t *testing.T) {
 	helper := test.New(t)
 
 	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

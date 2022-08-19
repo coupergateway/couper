@@ -194,6 +194,15 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 			return nil, diags
 		}
 
+		label := defaultNameLabel
+		if len(tokenRequestBlock.Labels) > 0 {
+			label = tokenRequestBlock.Labels[0]
+			if err = validLabel(label, &tokenRequestBlock.LabelRanges[0]); err != nil {
+				return nil, err
+			}
+		}
+		// a label uniqueness check is not possible, as beta_token_request blocks with same label were already merged by newBodyWithName() call in helper.addBackend()
+
 		content, leftOvers, diags := conf.Remain.PartialContent(conf.Schema(true))
 		if diags.HasErrors() {
 			return nil, diags
@@ -212,6 +221,7 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 			return nil, berr
 		}
 
+		// TODO what is this for? can it be removed?
 		if tokenRequestBackend == nil {
 			continue
 		}
