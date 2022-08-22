@@ -6,8 +6,9 @@ The `proxy` block creates and executes a proxy request to a backend service.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                          | Nested block(s)                                                                                                                                                                                                                                |
 |:-----------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `proxy`    | [Endpoint Block](endpoint) | &#9888; A `proxy` block or [Request Block](request) w/o a label has an implicit label `"default"`. Only **one** `proxy` block or [Request Block](request) w/ label `"default"` per [Endpoint Block](endpoint) is allowed. | [Backend Block](backend) (&#9888; required, if no [Backend Block](backend) reference is defined or no `url` attribute is set.), [Websockets Block](websockets) (&#9888; Either websockets attribute or block is allowed.) |
+| `proxy`    | [Endpoint Block](endpoint) | See `Label` description below. | [Backend Block](backend) (&#9888; required, if no [Backend Block](backend) reference is defined or no `url` attribute is set.), [Websockets Block](websockets) (&#9888; Either websockets attribute or block is allowed.) |
 
+**Label:** If defined in an [Endpoint Block](endpoint), a `proxy` block or [Request Block](request) w/o a label has an implicit name `"default"`. If defined in the [Definitions Block](definitions), the label of `proxy` is used as reference in [Endpoint Blocks](endpoint) and the name can be defined via `name` attribute. Only **one** `proxy` block or [Request Block](request) w/ label `"default"` per [Endpoint Block](endpoint) is allowed. 
 
 ::attributes
 ---
@@ -47,6 +48,12 @@ values: [
     "type": "tuple (int)",
     "default": "[]",
     "description": "If defined, the response status code will be verified against this list of codes. If the status code not included in this list an `unexpected_status` error will be thrown which can be handled with an [`error_handler`](error_handler)."
+  },
+  {
+    "name": "name",
+    "type": "string",
+    "default": "default",
+    "description": "Defines the proxy request name. Allowed only in the [Definitions Block](definitions)."
   },
   {
     "name": "remove_form_params",
