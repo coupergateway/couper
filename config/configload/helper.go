@@ -59,10 +59,7 @@ func (h *helper) addBackend(block *hcl.Block) error {
 			fmt.Sprintf("backend name must not start with 'anonymous_': %q", name))
 	}
 
-	backendBody, err := newBodyWithName(name, block.Body)
-	if err != nil {
-		return err
-	}
+	backendBody := newBodyWithName(name, block.Body)
 
 	h.defsBackends[name] = backendBody
 	return nil

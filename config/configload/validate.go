@@ -37,13 +37,17 @@ func validateBody(body hcl.Body) error {
 				if len(innerBlock.Labels) == 0 {
 					return newDiagErr(&innerBlock.OpenBraceRange, "missing label")
 				}
-
 				label := innerBlock.Labels[0]
+				labelRange := innerBlock.LabelRanges[0]
 
 				switch innerBlock.Type {
 				case backend:
+					if err := validLabel(label, &labelRange); err != nil {
+						return err
+					}
+
 					if _, set := uniqueBackends[label]; set {
-						return newDiagErr(&innerBlock.LabelRanges[0], "backend labels must be unique")
+						return newDiagErr(&labelRange, "backend labels must be unique")
 					}
 					uniqueBackends[label] = struct{}{}
 				}

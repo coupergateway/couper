@@ -204,6 +204,33 @@ func TestLabels(t *testing.T) {
 			"couper.hcl:3,15-16: missing label; ",
 		},
 		{
+			"empty backend label",
+			`server {}
+			 definitions {
+			   backend "" {
+			   }
+			 }`,
+			"couper.hcl:3,15-17: label is empty; ",
+		},
+		{
+			"whitespace backend label",
+			`server {}
+			 definitions {
+			   backend " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,15-19: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'; ",
+		},
+		{
+			"invalid backend label",
+			`server {}
+			 definitions {
+			   backend "foo bar" {
+			   }
+			 }`,
+			"couper.hcl:3,15-24: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'; ",
+		},
+		{
 			"duplicate backend labels",
 			`server {}
 			 definitions {
