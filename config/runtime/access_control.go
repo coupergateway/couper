@@ -7,7 +7,6 @@ import (
 	"github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
 )
 
 type ACDefinitions map[string]*AccessControl
@@ -19,9 +18,6 @@ type AccessControl struct {
 
 func (m ACDefinitions) Add(name string, ac accesscontrol.AccessControl, eh []*config.ErrorHandler) error {
 	n := strings.TrimSpace(name)
-	if eval.IsReservedContextName(n) {
-		return errors.Configuration.Message("accessControl uses reserved name as label")
-	}
 	if _, ok := m[n]; ok {
 		return errors.Configuration.Message("accessControl already defined")
 	}

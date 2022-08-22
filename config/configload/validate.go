@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/eval"
 )
 
 var regexLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -59,6 +60,10 @@ func validateBody(body hcl.Body) error {
 					label = strings.TrimSpace(label)
 					if label == "" {
 						return newDiagErr(&labelRange, "accessControl requires a label")
+					}
+
+					if eval.IsReservedContextName(label) {
+						return newDiagErr(&labelRange, "accessControl uses reserved name as label")
 					}
 				}
 			}

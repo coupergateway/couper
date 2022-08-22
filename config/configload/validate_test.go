@@ -385,6 +385,96 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"couper.hcl:3,12-16: accessControl requires a label; ",
 		},
+		{
+			"basic_auth reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   basic_auth "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
+		},
+		{
+			"basic_auth reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   basic_auth "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
+		},
+		{
+			"beta_oauth2 reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   beta_oauth2 "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
+		},
+		{
+			"beta_oauth2 reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   beta_oauth2 "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
+		},
+		{
+			"jwt reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   jwt "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
+		},
+		{
+			"jwt reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   jwt "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
+		},
+		{
+			"oidc reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   oidc "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
+		{
+			"oidc reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   oidc "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
+		{
+			"saml reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   saml "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
+		{
+			"saml reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   saml "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
 	}
 
 	logger, _ := logrustest.NewNullLogger()
