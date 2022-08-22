@@ -231,6 +231,15 @@ func TestLabels(t *testing.T) {
 			"couper.hcl:3,15-24: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'; ",
 		},
 		{
+			"anonymous_* backend label",
+			`server {}
+			 definitions {
+			   backend "anonymous_foo" {
+			   }
+			 }`,
+			"couper.hcl:3,15-30: backend label must not start with 'anonymous_'; ",
+		},
+		{
 			"duplicate backend labels",
 			`server {}
 			 definitions {

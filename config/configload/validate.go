@@ -3,6 +3,7 @@ package configload
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -44,6 +45,10 @@ func validateBody(body hcl.Body) error {
 				case backend:
 					if err := validLabel(label, &labelRange); err != nil {
 						return err
+					}
+
+					if strings.HasPrefix(label, "anonymous_") {
+						return newDiagErr(&labelRange, "backend label must not start with 'anonymous_'")
 					}
 
 					if _, set := uniqueBackends[label]; set {

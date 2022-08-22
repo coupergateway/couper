@@ -254,9 +254,7 @@ func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper
 			// backends first
 			if backendContent != nil {
 				for _, be := range backendContent.Blocks {
-					if err = helper.addBackend(be); err != nil {
-						return nil, err
-					}
+					helper.addBackend(be)
 				}
 
 				if err = helper.configureDefinedBackends(); err != nil {
