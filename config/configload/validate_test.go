@@ -475,6 +475,72 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
 		},
+		{
+			"duplicate AC labels 1",
+			`server {}
+			 definitions {
+			   basic_auth "foo" {
+			   }
+			   beta_oauth2 "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,19-24: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 2",
+			`server {}
+			 definitions {
+			   beta_oauth2 "foo" {
+			   }
+			   jwt "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,11-16: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 3",
+			`server {}
+			 definitions {
+			   jwt "foo" {
+			   }
+			   oidc "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,12-17: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 4",
+			`server {}
+			 definitions {
+			   oidc "foo" {
+			   }
+			   saml "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,12-17: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 5",
+			`server {}
+			 definitions {
+			   saml "foo" {
+			   }
+			   basic_auth "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,18-23: AC labels must be unique; ",
+		},
+		{
+			"same label for backend and AC",
+			`server {}
+			 definitions {
+			   backend "foo" {
+			   }
+			   basic_auth "foo" {
+			   }
+			 }`,
+			"",
+		},
 	}
 
 	logger, _ := logrustest.NewNullLogger()

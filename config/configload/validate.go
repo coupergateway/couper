@@ -35,6 +35,7 @@ func validateBody(body hcl.Body) error {
 	for _, outerBlock := range hsBody.Blocks {
 		if outerBlock.Type == definitions {
 			uniqueBackends := make(map[string]struct{})
+			uniqueACs := make(map[string]struct{})
 			for _, innerBlock := range outerBlock.Body.Blocks {
 				if len(innerBlock.Labels) == 0 {
 					return newDiagErr(&innerBlock.OpenBraceRange, "missing label")
@@ -65,6 +66,11 @@ func validateBody(body hcl.Body) error {
 					if eval.IsReservedContextName(label) {
 						return newDiagErr(&labelRange, "accessControl uses reserved name as label")
 					}
+
+					if _, set := uniqueACs[label]; set {
+						return newDiagErr(&labelRange, "AC labels must be unique")
+					}
+					uniqueACs[label] = struct{}{}
 				}
 			}
 		}

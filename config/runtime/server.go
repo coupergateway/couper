@@ -477,9 +477,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			if err = accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler)
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
@@ -490,9 +488,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler)
 		}
 
 		for _, saml := range conf.Definitions.SAML {
@@ -507,9 +503,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(saml.Name, s, saml.ErrorHandler)
 		}
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
@@ -526,9 +520,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			oa := ac.NewOAuth2Callback(oauth2Client, oauth2Conf.Name)
 
-			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler)
 		}
 
 		for _, oidcConf := range conf.Definitions.OIDC {
@@ -541,9 +533,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			oa := ac.NewOAuth2Callback(oidcClient, oidcConf.Name)
 
-			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler)
 		}
 	}
 
