@@ -194,6 +194,26 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"",
 		},
+		{
+			"missing backend label",
+			`server {}
+			 definitions {
+			   backend {
+			   }
+			 }`,
+			"couper.hcl:3,15-16: missing label; ",
+		},
+		{
+			"duplicate backend labels",
+			`server {}
+			 definitions {
+			   backend "foo" {
+			   }
+			   backend "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,15-20: backend labels must be unique; ",
+		},
 	}
 
 	logger, _ := logrustest.NewNullLogger()

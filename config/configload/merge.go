@@ -415,10 +415,6 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 						definitionsBlock[innerBlock.Type] = make(data)
 					}
 
-					if len(innerBlock.Labels) == 0 {
-						return nil, newMergeError(errUniqueLabels, innerBlock)
-					}
-
 					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
 
 					// Count the "backend" blocks and "backend" attributes to

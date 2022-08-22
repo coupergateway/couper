@@ -54,10 +54,7 @@ func newHelper(body hcl.Body, src [][]byte, environment string) (*helper, error)
 func (h *helper) addBackend(block *hcl.Block) error {
 	name := block.Labels[0]
 
-	if _, ok := h.defsBackends[name]; ok {
-		return newDiagErr(&block.LabelRanges[0],
-			fmt.Sprintf("duplicate backend name: %q", name))
-	} else if strings.HasPrefix(name, "anonymous_") {
+	if strings.HasPrefix(name, "anonymous_") {
 		return newDiagErr(&block.LabelRanges[0],
 			fmt.Sprintf("backend name must not start with 'anonymous_': %q", name))
 	}

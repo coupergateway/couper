@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
 )
@@ -21,6 +22,36 @@ func newDiagErr(subject *hcl.Range, summary string) error {
 		Summary:  summary,
 		Subject:  subject,
 	}}
+}
+
+func validateBody(body hcl.Body) error {
+	hsBody, ok := body.(*hclsyntax.Body)
+	if !ok {
+		return fmt.Errorf("body must be hclsyntax.Body")
+	}
+
+	for _, outerBlock := range hsBody.Blocks {
+		if outerBlock.Type == definitions {
+			uniqueBackends := make(map[string]struct{})
+			for _, innerBlock := range outerBlock.Body.Blocks {
+				if len(innerBlock.Labels) == 0 {
+					return newDiagErr(&innerBlock.OpenBraceRange, "missing label")
+				}
+
+				label := innerBlock.Labels[0]
+
+				switch innerBlock.Type {
+				case backend:
+					if _, set := uniqueBackends[label]; set {
+						return newDiagErr(&innerBlock.LabelRanges[0], "backend labels must be unique")
+					}
+					uniqueBackends[label] = struct{}{}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func validLabel(name string, subject *hcl.Range) error {

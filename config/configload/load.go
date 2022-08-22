@@ -177,6 +177,10 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		if err = absolutizePaths(body); err != nil {
 			return nil, err
 		}
+
+		if err = validateBody(body); err != nil {
+			return nil, err
+		}
 	}
 
 	settingsBlock := mergeSettings(parsedBodies)
@@ -218,6 +222,10 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	hclBody, diags := parser.Load(src, filename)
 	if diags.HasErrors() {
 		return nil, diags
+	}
+
+	if err := validateBody(hclBody); err != nil {
+		return nil, err
 	}
 
 	return LoadConfig(hclBody, [][]byte{src}, "")
