@@ -5,6 +5,12 @@ server "couper" {
       status = 204
     }
   }
+  endpoint "/reuse" {
+    proxy = "test"
+    response {
+      status = 204
+    }
+  }
 
   endpoint "/default" {
     proxy = "defaultName"

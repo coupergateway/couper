@@ -977,6 +977,7 @@ func TestEndpoint_ReusableProxies(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"/abcdef", "abcdef", 204},
+		{"/reuse", "abcdef", 204},
 		{"/default", "default", 204},
 	} {
 		t.Run(tc.path, func(st *testing.T) {
