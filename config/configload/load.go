@@ -181,12 +181,12 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 
 	settingsBlock := mergeSettings(parsedBodies)
 
-	definitionsBlock, err := mergeDefinitions(parsedBodies)
+	definitionsBlock, proxies, err := mergeDefinitions(parsedBodies)
 	if err != nil {
 		return nil, err
 	}
 
-	serverBlocks, err := mergeServers(parsedBodies)
+	serverBlocks, err := mergeServers(parsedBodies, proxies)
 	if err != nil {
 		return nil, err
 	}

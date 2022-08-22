@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	errMultipleBackends = "Multiple definitions of backend are not allowed."
-	errUniqueLabels     = "All %s blocks must have unique labels."
+	errMissingReferencedProxy = "The %s references a non-defined proxy block."
+	errMultipleBackends       = "Multiple definitions of backend are not allowed."
+	errUniqueLabels           = "All %s blocks must have unique labels."
 )
 
-func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
+func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block) (hclsyntax.Blocks, error) {
 	type (
 		namedBlocks   map[string]*hclsyntax.Block
 		apiDefinition struct {
@@ -149,6 +150,21 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 
 					if len(block.Labels) == 0 {
 						return nil, newMergeError(errUniqueLabels, block)
+					}
+
+					if attr, ok := block.Body.Attributes[proxy]; ok {
+						reference, err := attrStringValue(attr)
+						if err != nil {
+							return nil, err
+						}
+
+						delete(block.Body.Attributes, proxy)
+
+						if proxyBlock, ok := proxies[reference]; !ok {
+							return nil, newMergeError(errMissingReferencedProxy, block)
+						} else {
+							block.Body.Blocks = append(block.Body.Blocks, proxyBlock)
+						}
 					}
 
 					results[serverKey].endpoints[block.Labels[0]] = block
@@ -401,11 +417,12 @@ func mergeServers(bodies []*hclsyntax.Body) (hclsyntax.Blocks, error) {
 	return mergedServers, nil
 }
 
-func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
+func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*hclsyntax.Block, error) {
 	type data map[string]*hclsyntax.Block
 	type list map[string]data
 
 	definitionsBlock := make(list)
+	proxiesList := make(data)
 
 	for _, body := range bodies {
 		for _, outerBlock := range body.Blocks {
@@ -416,10 +433,8 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					if len(innerBlock.Labels) == 0 {
-						return nil, newMergeError(errUniqueLabels, innerBlock)
+						return nil, nil, newMergeError(errUniqueLabels, innerBlock)
 					}
-
-					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
 
 					// Count the "backend" blocks and "backend" attributes to
 					// forbid multiple backend definitions.
@@ -429,7 +444,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					for _, block := range innerBlock.Body.Blocks {
 						if block.Type == errorHandler {
 							if err := absInBackends(block); err != nil {
-								return nil, err
+								return nil, nil, err
 							}
 						} else if block.Type == backend {
 							backends++
@@ -441,7 +456,28 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					}
 
 					if backends > 1 {
-						return nil, newMergeError(errMultipleBackends, innerBlock)
+						return nil, nil, newMergeError(errMultipleBackends, innerBlock)
+					}
+
+					if innerBlock.Type != proxy {
+						definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
+					} else {
+						label := innerBlock.Labels[0]
+
+						if attr, ok := innerBlock.Body.Attributes["name"]; ok {
+							name, err := attrStringValue(attr)
+							if err != nil {
+								return nil, nil, err
+							}
+
+							innerBlock.Labels[0] = name
+
+							delete(innerBlock.Body.Attributes, "name")
+						} else {
+							innerBlock.Labels[0] = defaultNameLabel
+						}
+
+						proxiesList[label] = innerBlock
 					}
 				}
 			}
@@ -461,7 +497,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 		Body: &hclsyntax.Body{
 			Blocks: blocks,
 		},
-	}, nil
+	}, proxiesList, nil
 }
 
 func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
@@ -590,6 +626,15 @@ func absInBackends(block *hclsyntax.Block) error {
 	}
 
 	return nil
+}
+
+func attrStringValue(attr *hclsyntax.Attribute) (string, error) {
+	v, err := eval.Value(nil, attr.Expr)
+	if err != nil {
+		return "", err
+	}
+
+	return v.AsString(), nil
 }
 
 // newErrorHandlerKey returns a merge key based on a possible mixed error-kind format.
