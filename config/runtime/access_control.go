@@ -19,9 +19,6 @@ type AccessControl struct {
 
 func (m ACDefinitions) Add(name string, ac accesscontrol.AccessControl, eh []*config.ErrorHandler) error {
 	n := strings.TrimSpace(name)
-	if n == "" {
-		return errors.Configuration.Message("accessControl requires a label")
-	}
 	if eval.IsReservedContextName(n) {
 		return errors.Configuration.Message("accessControl uses reserved name as label")
 	}

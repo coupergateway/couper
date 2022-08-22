@@ -250,6 +250,141 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"couper.hcl:5,15-20: backend labels must be unique; ",
 		},
+		{
+			"missing basic_auth label",
+			`server {}
+			 definitions {
+			   basic_auth {
+			   }
+			 }`,
+			"couper.hcl:3,18-19: missing label; ",
+		},
+		{
+			"missing beta_oauth2 label",
+			`server {}
+			 definitions {
+			   beta_oauth2 {
+			   }
+			 }`,
+			"couper.hcl:3,19-20: missing label; ",
+		},
+		{
+			"missing jwt label",
+			`server {}
+			 definitions {
+			   jwt {
+			   }
+			 }`,
+			"couper.hcl:3,11-12: missing label; ",
+		},
+		{
+			"missing oidc label",
+			`server {}
+			 definitions {
+			   oidc {
+			   }
+			 }`,
+			"couper.hcl:3,12-13: missing label; ",
+		},
+		{
+			"missing saml label",
+			`server {}
+			 definitions {
+			   saml {
+			   }
+			 }`,
+			"couper.hcl:3,12-13: missing label; ",
+		},
+		{
+			"basic_auth with empty label",
+			`server {}
+			 definitions {
+			   basic_auth "" {
+			   }
+			 }`,
+			"couper.hcl:3,18-20: accessControl requires a label; ",
+		},
+		{
+			"beta_oauth2 with empty label",
+			`server {}
+			 definitions {
+			   beta_oauth2 "" {
+			   }
+			 }`,
+			"couper.hcl:3,19-21: accessControl requires a label; ",
+		},
+		{
+			"jwt with empty label",
+			`server {}
+			 definitions {
+			   jwt "" {
+			   }
+			 }`,
+			"couper.hcl:3,11-13: accessControl requires a label; ",
+		},
+		{
+			"oidc with empty label",
+			`server {}
+			 definitions {
+			   oidc "" {
+			   }
+			 }`,
+			"couper.hcl:3,12-14: accessControl requires a label; ",
+		},
+		{
+			"saml with empty label",
+			`server {}
+			 definitions {
+			   saml "" {
+			   }
+			 }`,
+			"couper.hcl:3,12-14: accessControl requires a label; ",
+		},
+		{
+			"basic_auth with whitespace label",
+			`server {}
+			 definitions {
+			   basic_auth " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,18-22: accessControl requires a label; ",
+		},
+		{
+			"beta_oauth2 with whitespace label",
+			`server {}
+			 definitions {
+			   beta_oauth2 " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,19-23: accessControl requires a label; ",
+		},
+		{
+			"jwt with whitespace label",
+			`server {}
+			 definitions {
+			   jwt " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,11-15: accessControl requires a label; ",
+		},
+		{
+			"oidc with whitespace label",
+			`server {}
+			 definitions {
+			   oidc " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,12-16: accessControl requires a label; ",
+		},
+		{
+			"saml with whitespace label",
+			`server {}
+			 definitions {
+			   saml " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,12-16: accessControl requires a label; ",
+		},
 	}
 
 	logger, _ := logrustest.NewNullLogger()

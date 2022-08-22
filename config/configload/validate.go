@@ -55,6 +55,11 @@ func validateBody(body hcl.Body) error {
 						return newDiagErr(&labelRange, "backend labels must be unique")
 					}
 					uniqueBackends[label] = struct{}{}
+				case "basic_auth", "beta_oauth2", "jwt", "oidc", "saml":
+					label = strings.TrimSpace(label)
+					if label == "" {
+						return newDiagErr(&labelRange, "accessControl requires a label")
+					}
 				}
 			}
 		}

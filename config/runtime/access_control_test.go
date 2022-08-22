@@ -76,33 +76,6 @@ func TestACDefinitions_errors(t *testing.T) {
 			`,
 			"configuration error: beta_required_permission: accessControl uses reserved name as label",
 		},
-		{
-			"jwt with empty label",
-			`
-			server "test" {
-			}
-			definitions {
-				jwt "" {
-					signature_algorithm = "HS256"
-					key = "$3cRe4"
-					header = "Authorization"
-				}
-			}
-			`,
-			"configuration error: accessControl requires a label",
-		},
-		{
-			"basic_auth with empty label",
-			`
-			server "test" {
-			}
-			definitions {
-				basic_auth "" {
-				}
-			}
-			`,
-			"configuration error: accessControl requires a label",
-		},
 	}
 
 	for _, tt := range tests {
