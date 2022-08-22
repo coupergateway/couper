@@ -1,0 +1,26 @@
+server "couper" {
+  endpoint "/abcdef" {
+    proxy = "test"
+    response {
+      status = 204
+    }
+  }
+
+  endpoint "/default" {
+    proxy = "defaultName"
+    response {
+      status = 204
+    }
+  }
+}
+
+definitions {
+  proxy "defaultName" {
+    url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+  }
+
+  proxy "test" {
+    name = "abcdef"
+    url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+  }
+}
