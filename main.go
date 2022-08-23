@@ -153,6 +153,10 @@ func realmain(ctx context.Context, arguments []string) int {
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
 
+	if flags.DebugEndpoint {
+		debugListenAndServe(logger)
+	}
+
 	if !flags.FileWatch {
 		if err = command.NewCommand(ctx, cmd).Execute(args, confFile, logger); err != nil {
 			logger.WithError(err).Error()
@@ -172,10 +176,6 @@ func realmain(ctx context.Context, arguments []string) int {
 	go func() {
 		errCh <- execCmd.Execute(args, confFile, logger)
 	}()
-
-	if flags.DebugEndpoint {
-		debugListenAndServe(logger)
-	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
