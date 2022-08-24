@@ -2,6 +2,7 @@ package configload
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -709,6 +710,83 @@ func TestLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLabelsMultiple(t *testing.T) {
+	tests := []struct {
+		name   string
+		hcls   []string
+		errors []string
+	}{
+		{
+			"duplicate AC labels",
+			[]string{
+				`server {}
+				 definitions {
+				   saml "foo" {
+				   }
+				 }`,
+				`server {}
+				 definitions {
+				   basic_auth "foo" {
+				   }
+				 }`,
+			},
+			[]string{"couper_0.hcl:3,13-18: AC labels must be unique; ", "couper_1.hcl:3,19-24: AC labels must be unique; "},
+		},
+		{
+			"duplicate endpoint patterns",
+			[]string{
+				`server {
+				   endpoint "/a/b" {
+				     response {
+				       body = "1"
+				     }
+				   }
+				 }`,
+				`server {
+				   api {
+				     base_path = "/a"
+				     endpoint "/b" {
+				       response {
+				         body = "2"
+				       }
+				     }
+				   }
+				 }`,
+			},
+			[]string{"couper_1.hcl:4,19-23: duplicate endpoint; "},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			var testContents []TestContent
+			for i, hcl := range tt.hcls {
+				testContents = append(testContents, TestContent{fmt.Sprintf("couper_%d.hcl", i), []byte(hcl)})
+			}
+
+			_, err := LoadTestContents(testContents)
+
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+
+			if !oneOfErrorMsgs(tt.errors, errMsg) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant one of: %v\n\tGot:         %q", tt.name, tt.errors, errMsg)
+			}
+		})
+	}
+}
+
+func oneOfErrorMsgs(msgs []string, errorMsg string) bool {
+	for _, msg := range msgs {
+		if msg == errorMsg {
+			return true
+		}
+	}
+	return false
 }
 
 func TestAttributeObjectKeys(t *testing.T) {

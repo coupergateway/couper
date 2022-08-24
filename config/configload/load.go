@@ -128,6 +128,63 @@ func parseFiles(files configfile.Files) ([]*hclsyntax.Body, [][]byte, error) {
 	return parsedBodies, srcBytes, nil
 }
 
+func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env string) (*config.Couper, error) {
+	defaultsBlock, err := mergeDefaults(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	defs := &hclsyntax.Body{
+		Blocks: hclsyntax.Blocks{defaultsBlock},
+	}
+
+	if diags := updateContext(defs, srcBytes, env); diags.HasErrors() {
+		return nil, diags
+	}
+
+	for _, body := range parsedBodies {
+		if err = absolutizePaths(body); err != nil {
+			return nil, err
+		}
+
+		if err = validateBody(body, srcBytes, env, false); err != nil {
+			return nil, err
+		}
+	}
+
+	settingsBlock := mergeSettings(parsedBodies)
+
+	definitionsBlock, err := mergeDefinitions(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	serverBlocks, err := mergeServers(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	configBlocks := serverBlocks
+	configBlocks = append(configBlocks, definitionsBlock)
+	configBlocks = append(configBlocks, defaultsBlock)
+	configBlocks = append(configBlocks, settingsBlock)
+
+	configBody := &hclsyntax.Body{
+		Blocks: configBlocks,
+	}
+
+	if err = validateBody(configBody, srcBytes, env, true); err != nil {
+		return nil, err
+	}
+
+	conf, err := LoadConfig(configBody, srcBytes, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return conf, nil
+}
+
 func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	configFiles, err := configfile.NewFiles(filesList)
 	if err != nil {
@@ -160,55 +217,10 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		return nil, errorBeforeRetry
 	}
 
-	defaultsBlock, err := mergeDefaults(parsedBodies)
+	conf, err := bodiesToConfig(parsedBodies, srcBytes, env)
 	if err != nil {
 		return nil, err
 	}
-
-	defs := &hclsyntax.Body{
-		Blocks: hclsyntax.Blocks{defaultsBlock},
-	}
-
-	if diags := updateContext(defs, srcBytes, env); diags.HasErrors() {
-		return nil, diags
-	}
-
-	for _, body := range parsedBodies {
-		if err = absolutizePaths(body); err != nil {
-			return nil, err
-		}
-
-		if err = validateBody(body, srcBytes, env); err != nil {
-			return nil, err
-		}
-	}
-
-	settingsBlock := mergeSettings(parsedBodies)
-
-	definitionsBlock, err := mergeDefinitions(parsedBodies)
-	if err != nil {
-		return nil, err
-	}
-
-	serverBlocks, err := mergeServers(parsedBodies)
-	if err != nil {
-		return nil, err
-	}
-
-	configBlocks := serverBlocks
-	configBlocks = append(configBlocks, definitionsBlock)
-	configBlocks = append(configBlocks, defaultsBlock)
-	configBlocks = append(configBlocks, settingsBlock)
-
-	configBody := &hclsyntax.Body{
-		Blocks: configBlocks,
-	}
-
-	conf, err := LoadConfig(configBody, srcBytes, env)
-	if err != nil {
-		return nil, err
-	}
-
 	conf.Files = configFiles
 
 	return conf, nil
@@ -218,13 +230,37 @@ func LoadFile(file, env string) (*config.Couper, error) {
 	return LoadFiles([]string{file}, env)
 }
 
+type TestContent struct {
+	filename string
+	src      []byte
+}
+
+func LoadTestContents(tcs []TestContent) (*config.Couper, error) {
+	var (
+		parsedBodies []*hclsyntax.Body
+		srcs         [][]byte
+	)
+
+	for _, tc := range tcs {
+		hclBody, diags := parser.Load(tc.src, tc.filename)
+		if diags.HasErrors() {
+			return nil, diags
+		}
+
+		parsedBodies = append(parsedBodies, hclBody.(*hclsyntax.Body))
+		srcs = append(srcs, tc.src)
+	}
+
+	return bodiesToConfig(parsedBodies, srcs, "")
+}
+
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	hclBody, diags := parser.Load(src, filename)
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
-	if err := validateBody(hclBody, [][]byte{src}, ""); err != nil {
+	if err := validateBody(hclBody, [][]byte{src}, "", false); err != nil {
 		return nil, err
 	}
 

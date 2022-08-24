@@ -32,7 +32,7 @@ func newDiagErr(subject *hcl.Range, summary string) error {
 	}}
 }
 
-func validateBody(body hcl.Body, src [][]byte, environment string) error {
+func validateBody(body hcl.Body, src [][]byte, environment string, afterMerge bool) error {
 	hsBody, ok := body.(*hclsyntax.Body)
 	if !ok {
 		return fmt.Errorf("body must be hclsyntax.Body")
@@ -48,34 +48,40 @@ func validateBody(body hcl.Body, src [][]byte, environment string) error {
 			uniqueBackends := make(map[string]struct{})
 			uniqueACs := make(map[string]struct{})
 			for _, innerBlock := range outerBlock.Body.Blocks {
-				if len(innerBlock.Labels) == 0 {
-					return newDiagErr(&innerBlock.OpenBraceRange, "missing label")
+				if !afterMerge {
+					if len(innerBlock.Labels) == 0 {
+						return newDiagErr(&innerBlock.OpenBraceRange, "missing label")
+					}
 				}
 				label := innerBlock.Labels[0]
 				labelRange := innerBlock.LabelRanges[0]
 
 				switch innerBlock.Type {
 				case backend:
-					if err := validLabel(label, &labelRange); err != nil {
-						return err
-					}
+					if !afterMerge {
+						if err := validLabel(label, &labelRange); err != nil {
+							return err
+						}
 
-					if strings.HasPrefix(label, "anonymous_") {
-						return newDiagErr(&labelRange, "backend label must not start with 'anonymous_'")
-					}
+						if strings.HasPrefix(label, "anonymous_") {
+							return newDiagErr(&labelRange, "backend label must not start with 'anonymous_'")
+						}
 
-					if _, set := uniqueBackends[label]; set {
-						return newDiagErr(&labelRange, "backend labels must be unique")
+						if _, set := uniqueBackends[label]; set {
+							return newDiagErr(&labelRange, "backend labels must be unique")
+						}
+						uniqueBackends[label] = struct{}{}
 					}
-					uniqueBackends[label] = struct{}{}
 				case "basic_auth", "beta_oauth2", "jwt", "oidc", "saml":
 					label = strings.TrimSpace(label)
-					if label == "" {
-						return newDiagErr(&labelRange, "accessControl requires a label")
-					}
+					if !afterMerge {
+						if label == "" {
+							return newDiagErr(&labelRange, "accessControl requires a label")
+						}
 
-					if eval.IsReservedContextName(label) {
-						return newDiagErr(&labelRange, "accessControl uses reserved name as label")
+						if eval.IsReservedContextName(label) {
+							return newDiagErr(&labelRange, "accessControl uses reserved name as label")
+						}
 					}
 
 					if _, set := uniqueACs[label]; set {
