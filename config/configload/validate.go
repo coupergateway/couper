@@ -2,17 +2,23 @@ package configload
 
 import (
 	"fmt"
+	"path"
 	"regexp"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/utils"
 )
 
-var regexLabel = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+var (
+	regexLabel     = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	reCleanPattern = regexp.MustCompile(`{([^}]+)}`)
+)
 
 // https://datatracker.ietf.org/doc/html/rfc7231#section-4
 // https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
@@ -26,10 +32,15 @@ func newDiagErr(subject *hcl.Range, summary string) error {
 	}}
 }
 
-func validateBody(body hcl.Body) error {
+func validateBody(body hcl.Body, src [][]byte, environment string) error {
 	hsBody, ok := body.(*hclsyntax.Body)
 	if !ok {
 		return fmt.Errorf("body must be hclsyntax.Body")
+	}
+
+	helper, err := newHelper(body, src, environment)
+	if err != nil {
+		return err
 	}
 
 	for _, outerBlock := range hsBody.Blocks {
@@ -71,6 +82,55 @@ func validateBody(body hcl.Body) error {
 						return newDiagErr(&labelRange, "AC labels must be unique")
 					}
 					uniqueACs[label] = struct{}{}
+				}
+			}
+		} else if outerBlock.Type == server {
+			uniqueEndpoints := make(map[string]struct{})
+			serverBasePath := ""
+			if bp, set := outerBlock.Body.Attributes["base_path"]; set {
+				bpv, diags := bp.Expr.Value(helper.context)
+				if diags.HasErrors() {
+					return diags
+				}
+				if bpv.Type() != cty.String {
+					sr := bp.Expr.StartRange()
+					return newDiagErr(&sr, "base_path must evaluate to string")
+				}
+				serverBasePath = bpv.AsString()
+			}
+			basePath := path.Join("/", serverBasePath)
+			for _, innerBlock := range outerBlock.Body.Blocks {
+				if innerBlock.Type == endpoint {
+					pattern := utils.JoinOpenAPIPath(basePath, innerBlock.Labels[0])
+					pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
+					if _, set := uniqueEndpoints[pattern]; set {
+						return newDiagErr(&innerBlock.LabelRanges[0], "duplicate endpoint")
+					}
+					uniqueEndpoints[pattern] = struct{}{}
+				} else if innerBlock.Type == api {
+					apiBasePath := ""
+					if bp, set := innerBlock.Body.Attributes["base_path"]; set {
+						bpv, diags := bp.Expr.Value(helper.context)
+						if diags.HasErrors() {
+							return diags
+						}
+						if bpv.Type() != cty.String {
+							sr := bp.Expr.StartRange()
+							return newDiagErr(&sr, "base_path must evaluate to string")
+						}
+						apiBasePath = bpv.AsString()
+					}
+					basePath := path.Join(basePath, apiBasePath)
+					for _, innerInnerBlock := range innerBlock.Body.Blocks {
+						if innerInnerBlock.Type == endpoint {
+							pattern := utils.JoinOpenAPIPath(basePath, innerInnerBlock.Labels[0])
+							pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
+							if _, set := uniqueEndpoints[pattern]; set {
+								return newDiagErr(&innerInnerBlock.LabelRanges[0], "duplicate endpoint")
+							}
+							uniqueEndpoints[pattern] = struct{}{}
+						}
+					}
 				}
 			}
 		}

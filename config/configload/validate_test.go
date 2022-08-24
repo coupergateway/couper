@@ -541,6 +541,149 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"",
 		},
+		{
+			"duplicate endpoint pattern 1",
+			`server {
+			   base_path = "/s"
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			     endpoint "/" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:9,18-21: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 2",
+			`server {
+			   base_path = "/s"
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:11,18-21: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 3",
+			`server {
+			   base_path = "/s"
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   endpoint "/" {
+			     response {
+			       body = "2"
+			     }
+			   }
+			 }`,
+			"couper.hcl:10,16-19: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 4",
+			`server {
+			   base_path = "/s"
+			   endpoint "/" {
+			     response {
+			       body = "1"
+			     }
+			   }
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:9,18-21: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 5",
+			`server {
+			   base_path = "/s"
+			   api {
+			     base_path = "/a"
+			     endpoint "/b/{c}" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   api {
+			     base_path = "/a/b"
+			     endpoint "/{d}" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:13,18-24: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 6",
+			`server {
+			   endpoint "/a/b" {
+			     response {
+			       body = "1"
+			     }
+			   }
+			   api {
+			     base_path = "/a"
+			     endpoint "/b" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:9,18-22: duplicate endpoint; ",
+		},
+		{
+			"distinct endpoint patterns",
+			`server {
+			   base_path = "/s"
+			   api {
+			     base_path = "/a"
+			     endpoint "/{b}/c" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   api {
+			     base_path = "/a/b"
+			     endpoint "/c" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"",
+		},
 	}
 
 	logger, _ := logrustest.NewNullLogger()

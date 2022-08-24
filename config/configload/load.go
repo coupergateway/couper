@@ -178,7 +178,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 			return nil, err
 		}
 
-		if err = validateBody(body); err != nil {
+		if err = validateBody(body, srcBytes, env); err != nil {
 			return nil, err
 		}
 	}
@@ -224,7 +224,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	if err := validateBody(hclBody); err != nil {
+	if err := validateBody(hclBody, [][]byte{src}, ""); err != nil {
 		return nil, err
 	}
 

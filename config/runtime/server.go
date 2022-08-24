@@ -245,7 +245,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 		}
 
-		endpointPatterns := make(map[string]bool)
 		endpointsMap, err := newEndpointMap(srvConf, serverOptions)
 		if err != nil {
 			return nil, err
@@ -255,17 +254,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if endpointConf.Pattern == "" { // could happen for internally registered endpoints
 				return nil, fmt.Errorf("endpoint path pattern required")
 			}
-
-			basePath := serverOptions.SrvBasePath
-			if parentAPI != nil {
-				basePath = serverOptions.APIBasePaths[parentAPI]
-			}
-			pattern := utils.JoinOpenAPIPath(basePath, endpointConf.Pattern)
-			unique, cleanPattern := isUnique(endpointPatterns, pattern)
-			if !unique {
-				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpointConf.HCLBody().MissingItemRange().String(), pattern)
-			}
-			endpointPatterns[cleanPattern] = true
 
 			epOpts, err := newEndpointOptions(confCtx, endpointConf, parentAPI, serverOptions,
 				log, conf, memStore)
@@ -374,6 +362,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			epHandler = middleware.NewCustomLogsHandler(
 				append(bodies, endpointConf.Remain), epHandler, epOpts.LogHandlerKind,
 			)
+
+			basePath := serverOptions.SrvBasePath
+			if parentAPI != nil {
+				basePath = serverOptions.APIBasePaths[parentAPI]
+			}
+
+			pattern := utils.JoinOpenAPIPath(basePath, endpointConf.Pattern)
 
 			endpointHandlers[endpointConf] = epHandler
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
