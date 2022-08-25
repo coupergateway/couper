@@ -87,7 +87,7 @@ values: [
   },
   {
     "name": "scope",
-    "type": "object",
+    "type": "string",
     "default": "",
     "description": "A space separated list of requested scope values for the access token."
   },
@@ -99,8 +99,8 @@ values: [
   },
   {
     "name": "token_endpoint_auth_method",
-    "type": "object",
-    "default": "client_secret_basic",
+    "type": "string",
+    "default": "\"client_secret_basic\"",
     "description": "Defines the method to authenticate the client at the token endpoint. If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication."
   },
   {
