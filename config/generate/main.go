@@ -121,7 +121,6 @@ func main() {
 			fieldType := field.Tag.Get("type")
 			if fieldType == "" {
 				ft := strings.Replace(field.Type.String(), "*", "", 1)
-				println(ft)
 				if ft[:2] == "[]" {
 					ft = "tuple (" + ft[2:] + ")"
 				} else if strings.Contains(ft, "int") {
