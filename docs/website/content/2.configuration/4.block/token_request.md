@@ -17,12 +17,6 @@ values: [
     "description": "backend block reference is required if no backend block is defined"
   },
   {
-    "name": "url",
-    "type": "string",
-    "default": "",
-    "description": "If defined, the host part of the URL must be the same as the <code>origin</code> attribute of the <code>backend</code> block (if defined)."
-  },
-  {
     "name": "body",
     "type": "string",
     "default": "",
@@ -69,6 +63,12 @@ values: [
     "type": "string",
     "default": "",
     "description": "The time span for which the token is to be stores."
+  },
+  {
+    "name": "url",
+    "type": "string",
+    "default": "",
+    "description": "If defined, the host part of the URL must be the same as the <code>origin</code> attribute of the <code>backend</code> block (if defined)."
   }
 ]
 
