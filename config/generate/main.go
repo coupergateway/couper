@@ -76,6 +76,7 @@ func main() {
 		&config.Proxy{},
 		&config.RateLimit{},
 		&config.Request{},
+		&config.Response{},
 		&config.Server{},
 		&config.Settings{},
 		&config.TokenRequest{},
