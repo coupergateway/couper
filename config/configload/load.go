@@ -230,12 +230,12 @@ func LoadFile(file, env string) (*config.Couper, error) {
 	return LoadFiles([]string{file}, env)
 }
 
-type TestContent struct {
+type testContent struct {
 	filename string
 	src      []byte
 }
 
-func LoadTestContents(tcs []TestContent) (*config.Couper, error) {
+func loadTestContents(tcs []testContent) (*config.Couper, error) {
 	var (
 		parsedBodies []*hclsyntax.Body
 		srcs         [][]byte

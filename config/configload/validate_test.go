@@ -785,12 +785,12 @@ func Test_validateBody_multiple(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			var testContents []TestContent
+			var testContents []testContent
 			for i, hcl := range tt.hcls {
-				testContents = append(testContents, TestContent{fmt.Sprintf("couper_%d.hcl", i), []byte(hcl)})
+				testContents = append(testContents, testContent{fmt.Sprintf("couper_%d.hcl", i), []byte(hcl)})
 			}
 
-			_, err := LoadTestContents(testContents)
+			_, err := loadTestContents(testContents)
 
 			var errMsg string
 			if err != nil {
