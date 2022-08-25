@@ -11,26 +11,139 @@ Since responses from endpoints protected by JWT access controls are not publicly
 |:-----------|:----------------------------------------|:-----------------|:---------------------------------------------------------------------------------|
 | `jwt`      | [Definitions Block](definitions) | &#9888; required | [JWKS `backend`](backend), [Error Handler Block(s)](error_handler) |
 
-| Attribute(s)              | Type                  | Default | Description                                                                                                   | Characteristic(s)                                                                                                                                                            | Example                                                                       |
-|:--------------------------|:----------------------|:--------|:--------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------|
-| `cookie`                  | string                | -       | Read token value from a cookie.                                                                               | cannot be used together with `header` or `token_value`                                                                                                                       | `cookie = "AccessToken"`                                                      |
-| `custom_log_fields`       | object                | -       | Defines log fields for [Custom Logging](/observation/logging#custom-logging).                                              | &#9888; Inherited by nested blocks.                                                                                                                                          | -                                                                             |
-| `header`                  | string                | -       | Read token value from a request header field.                                                                 | &#9888; Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`. | `header = "Authorization"`                                                    |
-| `token_value`             | string                | -       | expression to obtain the token                                                                                | cannot be used together with `cookie` or `header`                                                                                                                            | `token_value = request.form_body.token[0]`                                    |
-| `key`                     | string                | -       | Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.                    | -                                                                                                                                                                            | -                                                                             |
-| `key_file`                | string                | -       | Optional file reference instead of `key` usage.                                                               | -                                                                                                                                                                            | -                                                                             |
-| `signature_algorithm`     | string                | -       | -                                                                                                             | Valid values: `"RS256"`, `"RS384"`, `"RS512"`, `"HS256"`, `"HS384"`, `"HS512"`, `"ES256"`, `"ES384"`, `"ES512"`                                                              | -                                                                             |
-| `claims`                  | object                | -       | Object with claims that must be given for a valid token (equals comparison with JWT payload).                 | The claim values are evaluated per request.                                                                                                                                  | `claims = { pid = request.path_params.pid }`                                  |
-| `required_claims`         | string                | -       | List of claim names that must be given for a valid token                                                      | -                                                                                                                                                                            | `required_claims = ["roles"]`                                                 |
-| `beta_permissions_claim`  | string                | -       | name of claim containing the granted permissions                                                              | The claim value must either be a string containing a space-separated list of permissions or a list of string permissions                                                     | `beta_permissions_claim = "scope"`                                            |
-| `beta_permissions_map`    | object (string)       | -       | mapping of granted permissions to additional granted permissions                                              | Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively.                                                            | `beta_permissions_map = { p1 = ["p3", "p4"], p2 = ["p5"] }`                   |
-| `beta_roles_claim`        | string                | -       | name of claim specifying the roles of the user represented by the token                                       | The claim value must either be a string containing a space-separated list of role values or a list of string role values                                                     | `beta_roles_claim = "roles"`                                                  |
-| `beta_roles_map`          | object (string)       | -       | mapping of roles to granted permissions                                                                       | Non-mapped roles can be assigned with `*` to specific permissions.                                                                                                           | `beta_roles_map = { role1 = ["p1", "p2"], role2 = ["p3"], "*" = ["public"] }` |
-| `jwks_url`                | string                | -       | URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)            | -                                                                                                                                                                            | `jwks_url = "http://identityprovider:8080/jwks.json"`                         |
-| `jwks_ttl`                | [duration](#duration) | `"1h"`  | Time period the JWK set stays valid and may be cached.                                                        | -                                                                                                                                                                            | `jwks_ttl = "1800s"`                                                          |
-| `jwks_max_stale`          | [duration](#duration) | `"1h"`  | Time period the cached JWK set stays valid after its TTL has passed.                                          | -                                                                                                                                                                            | `jwks_max_stale = "45m"`                                                      |
-| `backend`                 | string                | -       | [backend reference](backend) for enhancing JWKS requests                                               | -                                                                                                                                                                            | `backend = "jwks_backend"`                                                    |
-| `disable_private_caching` | bool                  | `false` | If set to `true`, Couper does not add the `private` directive to the `Cache-Control` HTTP header field value. | -                                                                                                                                                                            | -                                                                             |
+::attributes
+---
+values: [
+  {
+    "name": "backend",
+    "type": "string",
+    "default": "",
+    "description": "[`backend` block](backend) reference for enhancing JWKS requests."
+  },
+  {
+    "name": "beta_permissions_claim",
+    "type": "string",
+    "default": "",
+    "description": "Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions."
+  },
+  {
+    "name": "beta_permissions_map",
+    "type": "object",
+    "default": "",
+    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively."
+  },
+  {
+    "name": "beta_roles_claim",
+    "type": "string",
+    "default": "",
+    "description": "Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values."
+  },
+  {
+    "name": "beta_roles_map",
+    "type": "object",
+    "default": "",
+    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions."
+  },
+  {
+    "name": "claims",
+    "type": "object",
+    "default": "",
+    "description": "Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request."
+  },
+  {
+    "name": "cookie",
+    "type": "string",
+    "default": "",
+    "description": "Read token value from a cookie. Cannot be used together with `header` or `token_value`"
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+  },
+  {
+    "name": "disable_private_caching",
+    "type": "bool",
+    "default": "false",
+    "description": "If set to `true`, Couper does not add the `private` directive to the `Cache-Control` HTTP header field value."
+  },
+  {
+    "name": "header",
+    "type": "string",
+    "default": "",
+    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`."
+  },
+  {
+    "name": "jwks_max_stale",
+    "type": "duration",
+    "default": "\"1h\"",
+    "description": "Time period the cached JWK set stays valid after its TTL has passed."
+  },
+  {
+    "name": "jwks_ttl",
+    "type": "duration",
+    "default": "\"1h\"",
+    "description": "Time period the JWK set stays valid and may be cached."
+  },
+  {
+    "name": "jwks_url",
+    "type": "string",
+    "default": "",
+    "description": "URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)"
+  },
+  {
+    "name": "key",
+    "type": "string",
+    "default": "",
+    "description": "Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm."
+  },
+  {
+    "name": "key_file",
+    "type": "string",
+    "default": "",
+    "description": "Optional file reference instead of `key` usage."
+  },
+  {
+    "name": "required_claims",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "List of claim names that must be given for a valid token."
+  },
+  {
+    "name": "signature_algorithm",
+    "type": "string",
+    "default": "",
+    "description": "Valid values: `RS256`, `RS384`, `RS512`, `HS256`, `HS384`, `HS512`, `ES256`, `ES384`, `ES512`"
+  },
+  {
+    "name": "signing_key",
+    "type": "string",
+    "default": "",
+    "description": "Private key (in PEM format) for `RS*` and `ES*` variants."
+  },
+  {
+    "name": "signing_key_file",
+    "type": "string",
+    "default": "",
+    "description": "Optional file reference instead of `signing_key` usage."
+  },
+  {
+    "name": "signing_ttl",
+    "type": "duration",
+    "default": "",
+    "description": "The token's time-to-live (creates the `exp` claim)."
+  },
+  {
+    "name": "token_value",
+    "type": "object",
+    "default": "",
+    "description": "Expression to obtain the token. Cannot be used together with `cookie` or `header`."
+  }
+]
+
+---
+::
 
 The attributes `header`, `cookie` and `token_value` are mutually exclusive.
 If all three attributes are missing, `header = "Authorization"` will be implied, i.e. the token will be read from the incoming `Authorization` header.
@@ -45,12 +158,6 @@ A JWT access control configured by this block can extract permissions from
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](../functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
-**Note:** A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
-
-| Attribute(s)       | Type                  | Default | Description                                               | Characteristic(s) | Example |
-|:-------------------|:----------------------|:--------|:----------------------------------------------------------|:------------------|:--------|
-| `signing_key`      | string                | -       | Private key (in PEM format) for `RS*` and `ES*` variants. | -                 | -       |
-| `signing_key_file` | string                | -       | Optional file reference instead of `signing_key` usage.   | -                 | -       |
-| `signing_ttl`      | [duration](#duration) | -       | The token's time-to-live (creates the `exp` claim).       | -                 | -       |
+> **Note:** A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
 
 ::duration

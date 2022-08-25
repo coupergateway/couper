@@ -12,11 +12,11 @@ var _ Inline = &ErrorHandler{}
 // ErrorHandler represents a subset of Endpoint.
 type ErrorHandler struct {
 	Kinds     []string
-	ErrorFile string    `hcl:"error_file,optional"`
-	Proxies   Proxies   `hcl:"proxy,block"`
+	ErrorFile string    `hcl:"error_file,optional" docs:"Location of the error file template."`
+	Proxies   Proxies   `hcl:"proxy,block" docs:"[{proxy}](proxy) block definition."`
 	Remain    hcl.Body  `hcl:",remain"`
-	Requests  Requests  `hcl:"request,block"`
-	Response  *Response `hcl:"response,block"`
+	Requests  Requests  `hcl:"request,block" docs:"[{request}](request) block definition."`
+	Response  *Response `hcl:"response,block" docs:"[{response}](response) block definition."`
 }
 
 // ErrorHandlerGetter defines the <ErrorHandlerGetter> interface.

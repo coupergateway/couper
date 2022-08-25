@@ -13,13 +13,13 @@ type SPAs []*Spa
 
 // Spa represents the <Spa> object.
 type Spa struct {
-	AccessControl        []string `hcl:"access_control,optional"`
-	BasePath             string   `hcl:"base_path,optional"`
-	BootstrapFile        string   `hcl:"bootstrap_file"`
-	CORS                 *CORS    `hcl:"cors,block"`
-	DisableAccessControl []string `hcl:"disable_access_control,optional"`
+	AccessControl        []string `hcl:"access_control,optional" docs:"Sets predefined [access control](../access-control) for {spa} block context."`
+	BasePath             string   `hcl:"base_path,optional" docs:"Configures the path prefix for all requests."`
+	BootstrapFile        string   `hcl:"bootstrap_file" docs:"Location of the bootstrap file."`
+	CORS                 *CORS    `hcl:"cors,block" docs:"Configure [CORS](cors) settings."`
+	DisableAccessControl []string `hcl:"disable_access_control,optional" docs:"Disables access controls by name."`
 	Name                 string   `hcl:"name,label,optional"`
-	Paths                []string `hcl:"paths"`
+	Paths                []string `hcl:"paths" docs:"List of SPA paths that need the bootstrap file."`
 	Remain               hcl.Body `hcl:",remain"`
 }
 

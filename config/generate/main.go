@@ -50,7 +50,7 @@ func main() {
 	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
 	index := client.InitIndex(searchIndex)
 
-	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z]+)`)
+	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z0-9]+)`)
 	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
 
 	attributesMap := map[string][]reflect.StructField{
@@ -68,14 +68,23 @@ func main() {
 		&config.CORS{},
 		&config.Defaults{},
 		&config.Endpoint{},
+		&config.ErrorHandler{},
 		&config.Files{},
 		&config.Health{},
 		&config.JWTSigningProfile{},
+		&config.JWT{},
+		&config.OAuth2AC{},
+		&config.OAuth2ReqAuth{},
+		&config.OIDC{},
 		&config.OpenAPI{},
 		&config.Proxy{},
+		&config.RateLimit{},
 		&config.Request{},
+		&config.Response{},
+		&config.SAML{},
 		&config.Server{},
 		&config.Settings{},
+		&config.Spa{},
 		&config.TokenRequest{},
 		&config.Websockets{},
 	} {
@@ -83,10 +92,9 @@ func main() {
 		name := reflect.TypeOf(impl).String()
 		name = strings.TrimPrefix(name, "*config.")
 		fileName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
-
 		result := entry{
 			Name: name,
-			Url:  basePath + name,
+			Url:  strings.ToLower(basePath + fileName),
 			Type: "block",
 		}
 		result.ID = result.Url
@@ -116,7 +124,7 @@ func main() {
 
 			fieldType := field.Tag.Get("type")
 			if fieldType == "" {
-				ft := field.Type.String()
+				ft := strings.Replace(field.Type.String(), "*", "", 1)
 				if ft[:2] == "[]" {
 					ft = "tuple (" + ft[2:] + ")"
 				} else if strings.Contains(ft, "int") {

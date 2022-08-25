@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Logo from "~/components/content/Logo.vue";
+import SearchResult from "~/components/SearchResult.vue";
 
 const indexName = 'docs'
 const algoliaClient = useAlgoliaRef()
@@ -37,15 +38,11 @@ const searchClient = {
         </div>
         <div class="hidden w-full lg:flex items-center text-sm pl-4">
           <ais-instant-search :index-name="indexName" :search-client="searchClient">
-            <ais-search-box class="leading-6 rounded-md shadow-sm py-1.5 pl-2 pr-3" />
+            <ais-search-box @blur="onBlur" v-model="needle" class="leading-6 rounded-md shadow-sm py-1.5 pl-2 pr-3" />
             <ais-hits class="absolute">
-              <template v-slot:item="{ item }">
-                  <NuxtLink :to="item.url" class="text-sky-600">
-                    {{item.name}}
-                    {{item.description}}
-  <!--                  &lt;!&ndash;                <h2>{{ item.name }}</h2>&ndash;&gt;-->
-  <!--                  <ais-highlight attribute="name" :hit="item" />-->
-  <!--                  <ais-highlight attribute="description" :hit="item" />-->
+              <template v-show="item.url" v-slot:item="{ item }">
+                  <NuxtLink :to="item.url.toLowerCase()" class="text-sky-600">
+                    <SearchResult :item="item" />
                   </NuxtLink>
               </template>
             </ais-hits>
@@ -56,10 +53,34 @@ const searchClient = {
   </header>
 </template>
 
+<script lang="ts">
+export default {
+  name: 'Navbar.vue',
+  data() {
+    return {
+      needle: '',
+    }
+  },
+  methods: {
+    reset() {
+      this.needle = ''
+    },
+    onBlur() {
+      setTimeout(this.reset, 75)
+    }
+  }
+}
+</script>
+
 <style>
   .ais-Hits-item {
-    width: 10rem;
+    width: auto;
     background-color: whitesmoke;
+  }
+
+  .ais-Hits-list {
+    margin-left: 0;
+    /*flex: none;*/
   }
 
   .ais-InstantSearch {
