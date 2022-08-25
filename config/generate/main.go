@@ -79,6 +79,7 @@ func main() {
 		&config.Response{},
 		&config.Server{},
 		&config.Settings{},
+		&config.Spa{},
 		&config.TokenRequest{},
 		&config.Websockets{},
 	} {
