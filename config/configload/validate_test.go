@@ -195,6 +195,39 @@ func TestLabels(t *testing.T) {
 			 }`,
 			"",
 		},
+	}
+
+	logger, _ := logrustest.NewNullLogger()
+	log := logger.WithContext(context.TODO())
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
+			if conf != nil {
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
+
+				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
+			}
+
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+
+			if tt.error != errMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errMsg)
+			}
+		})
+	}
+}
+
+func Test_validateBody(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
 		{
 			"missing backend label",
 			`server {}
@@ -687,18 +720,9 @@ func TestLabels(t *testing.T) {
 		},
 	}
 
-	logger, _ := logrustest.NewNullLogger()
-	log := logger.WithContext(context.TODO())
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			conf, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
-			if conf != nil {
-				tmpStoreCh := make(chan struct{})
-				defer close(tmpStoreCh)
-
-				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
-			}
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
 
 			var errMsg string
 			if err != nil {
@@ -712,7 +736,7 @@ func TestLabels(t *testing.T) {
 	}
 }
 
-func TestLabelsMultiple(t *testing.T) {
+func Test_validateBody_multiple(t *testing.T) {
 	tests := []struct {
 		name   string
 		hcls   []string
