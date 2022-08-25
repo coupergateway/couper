@@ -17,7 +17,7 @@ values: [
     "name": "backend",
     "type": "string",
     "default": "",
-    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) is defined within."
+    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `url` is defined within."
   },
   {
     "name": "body",

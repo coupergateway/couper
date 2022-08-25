@@ -13,7 +13,7 @@ var (
 
 // Request represents the <Request> object.
 type Request struct {
-	BackendName string   `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Required, if no [{backend} block](backend) is defined within."`
+	BackendName string   `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Required, if no [{backend} block](backend) or {url} is defined within."`
 	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 
