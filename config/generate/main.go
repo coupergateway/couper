@@ -72,6 +72,7 @@ func main() {
 		&config.Health{},
 		&config.JWTSigningProfile{},
 		&config.OAuth2AC{},
+		&config.OAuth2ReqAuth{},
 		&config.OIDC{},
 		&config.OpenAPI{},
 		&config.Proxy{},
