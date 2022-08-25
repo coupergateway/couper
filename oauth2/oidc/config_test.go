@@ -68,7 +68,7 @@ func TestConfig_Synced(t *testing.T) {
 		backends[k] = transport.NewBackend(b, &transport.Config{}, nil, logger)
 	}
 
-	o, err := oidc.NewConfig(oconf, backends)
+	o, err := oidc.NewConfig(context.TODO(), oconf, backends)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

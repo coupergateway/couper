@@ -33,7 +33,9 @@ type SyncedJSON struct {
 	fileMode    bool
 }
 
-func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, roundTripName string, ttl time.Duration, maxStale time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
+func NewSyncedJSON(
+	ctx context.Context, file, fileContext, uri string, transport http.RoundTripper, roundTripName string,
+	ttl time.Duration, maxStale time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
 	sj := &SyncedJSON{
 		dataRequest:   make(chan chan *dataRequest, 10),
 		maxStale:      maxStale,
@@ -50,7 +52,7 @@ func NewSyncedJSON(file, fileContext, uri string, transport http.RoundTripper, r
 		}
 		sj.fileMode = true
 	} else if transport != nil {
-		go sj.sync(context.Background()) // TODO: at least cmd cancel ctx (reload)
+		go sj.sync(ctx)
 	} else {
 		return nil, fmt.Errorf("synced JSON: missing both file and request")
 	}

@@ -1,6 +1,7 @@
 package jwk
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -30,7 +31,7 @@ type JWKS struct {
 	syncedJSON *jsn.SyncedJSON
 }
 
-func NewJWKS(uri string, ttl string, maxStale string, transport http.RoundTripper) (*JWKS, error) {
+func NewJWKS(ctx context.Context, uri string, ttl string, maxStale string, transport http.RoundTripper) (*JWKS, error) {
 	timetolive, err := config.ParseDuration("jwks_ttl", ttl, time.Hour)
 	if err != nil {
 		return nil, err
@@ -47,7 +48,7 @@ func NewJWKS(uri string, ttl string, maxStale string, transport http.RoundTrippe
 	}
 
 	jwks := &JWKS{}
-	jwks.syncedJSON, err = jsn.NewSyncedJSON(file, "jwks_url", uri, transport, "jwks", timetolive, maxStaleTime, jwks)
+	jwks.syncedJSON, err = jsn.NewSyncedJSON(ctx, file, "jwks_url", uri, transport, "jwks", timetolive, maxStaleTime, jwks)
 	return jwks, err
 }
 
