@@ -253,7 +253,7 @@ func Test_validateBody(t *testing.T) {
 			   backend " 	" {
 			   }
 			 }`,
-			"couper.hcl:3,15-19: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'; ",
+			"couper.hcl:3,15-19: label is empty; ",
 		},
 		{
 			"invalid backend label",

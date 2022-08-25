@@ -54,6 +54,7 @@ func validateBody(body hcl.Body, src [][]byte, environment string, afterMerge bo
 					}
 				}
 				label := innerBlock.Labels[0]
+				label = strings.TrimSpace(label)
 				labelRange := innerBlock.LabelRanges[0]
 
 				switch innerBlock.Type {
@@ -73,7 +74,6 @@ func validateBody(body hcl.Body, src [][]byte, environment string, afterMerge bo
 						uniqueBackends[label] = struct{}{}
 					}
 				case "basic_auth", "beta_oauth2", "jwt", "oidc", "saml":
-					label = strings.TrimSpace(label)
 					if !afterMerge {
 						if label == "" {
 							return newDiagErr(&labelRange, "accessControl requires a label")
