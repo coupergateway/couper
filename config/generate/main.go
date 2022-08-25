@@ -77,6 +77,7 @@ func main() {
 		&config.RateLimit{},
 		&config.Request{},
 		&config.Response{},
+		&config.SAML{},
 		&config.Server{},
 		&config.Settings{},
 		&config.Spa{},
