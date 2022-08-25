@@ -50,7 +50,7 @@ func main() {
 	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
 	index := client.InitIndex(searchIndex)
 
-	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z]+)`)
+	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z0-9]+)`)
 	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
 
 	attributesMap := map[string][]reflect.StructField{
@@ -71,6 +71,7 @@ func main() {
 		&config.Files{},
 		&config.Health{},
 		&config.JWTSigningProfile{},
+		&config.OAuth2AC{},
 		&config.OIDC{},
 		&config.OpenAPI{},
 		&config.Proxy{},

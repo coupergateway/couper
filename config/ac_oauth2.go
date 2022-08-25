@@ -19,17 +19,18 @@ var (
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
 	ErrorHandlerSetter
-	AuthorizationEndpoint   string   `hcl:"authorization_endpoint"` // used for lib.FnOAuthAuthorizationUrl
-	BackendName             string   `hcl:"backend,optional"`
-	ClientID                string   `hcl:"client_id"`
-	ClientSecret            string   `hcl:"client_secret"`
-	GrantType               string   `hcl:"grant_type"`
+	// AuthorizationEndpoint is used for lib.FnOAuthAuthorizationUrl
+	AuthorizationEndpoint   string   `hcl:"authorization_endpoint" docs:"The authorization server endpoint URL used for authorization."`
+	BackendName             string   `hcl:"backend,optional" docs:"[{backend} block](backend) reference."`
+	ClientID                string   `hcl:"client_id" docs:"The client identifier."`
+	ClientSecret            string   `hcl:"client_secret" docs:"The client password."`
+	GrantType               string   `hcl:"grant_type" docs:"The grant type. Required, to be set to: {authorization_code}"`
 	Name                    string   `hcl:"name,label"`
 	Remain                  hcl.Body `hcl:",remain"`
-	Scope                   *string  `hcl:"scope,optional"`
-	TokenEndpoint           string   `hcl:"token_endpoint"`
-	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	VerifierMethod          string   `hcl:"verifier_method"`
+	Scope                   *string  `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
+	TokenEndpoint           string   `hcl:"token_endpoint" docs:"The authorization server endpoint URL used for requesting the token."`
+	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional" default:"client_secret_basic" docs:"Defines the method to authenticate the client at the token endpoint. If set to {client_secret_post}, the client credentials are transported in the request body. If set to {client_secret_basic}, the client credentials are transported via Basic Authentication."`
+	VerifierMethod          string   `hcl:"verifier_method" docs:"The method to verify the integrity of the authorization code flow. Available values: {ccm_s256} ({code_challenge} parameter with {code_challenge_method} {S256}), {state} ({state} parameter)"`
 
 	// internally used
 	Backend hcl.Body
@@ -55,8 +56,8 @@ func (oa *OAuth2AC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
 		Backend       *Backend `hcl:"backend,block"`
-		RedirectURI   string   `hcl:"redirect_uri"`
-		VerifierValue string   `hcl:"verifier_value"`
+		RedirectURI   string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}([settings](settings)) attribute if Couper is running behind a proxy."`
+		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier. E.g. using cookie value created with {oauth2_verifier()} function](../functions)"`
 	}
 
 	return &Inline{}
