@@ -147,7 +147,7 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 			return nil, err
 		}
 
-		if err = validateBody(body, srcBytes, env, false); err != nil {
+		if err = validateBody(body, false); err != nil {
 			return nil, err
 		}
 	}
@@ -173,7 +173,7 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 		Blocks: configBlocks,
 	}
 
-	if err = validateBody(configBody, srcBytes, env, true); err != nil {
+	if err = validateBody(configBody, true); err != nil {
 		return nil, err
 	}
 
@@ -260,7 +260,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	if err := validateBody(hclBody, [][]byte{src}, "", false); err != nil {
+	if err := validateBody(hclBody, false); err != nil {
 		return nil, err
 	}
 

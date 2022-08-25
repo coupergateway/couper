@@ -32,15 +32,10 @@ func newDiagErr(subject *hcl.Range, summary string) error {
 	}}
 }
 
-func validateBody(body hcl.Body, src [][]byte, environment string, afterMerge bool) error {
+func validateBody(body hcl.Body, afterMerge bool) error {
 	hsBody, ok := body.(*hclsyntax.Body)
 	if !ok {
 		return fmt.Errorf("body must be hclsyntax.Body")
-	}
-
-	helper, err := newHelper(body, src, environment)
-	if err != nil {
-		return err
 	}
 
 	for _, outerBlock := range hsBody.Blocks {
@@ -94,7 +89,7 @@ func validateBody(body hcl.Body, src [][]byte, environment string, afterMerge bo
 			uniqueEndpoints := make(map[string]struct{})
 			serverBasePath := ""
 			if bp, set := outerBlock.Body.Attributes["base_path"]; set {
-				bpv, diags := bp.Expr.Value(helper.context)
+				bpv, diags := bp.Expr.Value(nil)
 				if diags.HasErrors() {
 					return diags
 				}
@@ -116,7 +111,7 @@ func validateBody(body hcl.Body, src [][]byte, environment string, afterMerge bo
 				} else if innerBlock.Type == api {
 					apiBasePath := ""
 					if bp, set := innerBlock.Body.Attributes["base_path"]; set {
-						bpv, diags := bp.Expr.Value(helper.context)
+						bpv, diags := bp.Expr.Value(nil)
 						if diags.HasErrors() {
 							return diags
 						}
