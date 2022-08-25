@@ -76,6 +76,10 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	logger := log.WithContext(context.TODO())
 	tmpMemStore := cache.New(logger, tmpStoreCh)
 
+	confCTX, confCancel := context.WithCancel(conf.Context)
+	conf.Context = confCTX
+	defer confCancel()
+
 	srvConf, err := runtime.NewServerConfiguration(conf, logger, tmpMemStore)
 	helper.Must(err)
 
@@ -177,6 +181,10 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 
 	logger := log.WithContext(context.TODO())
 	tmpMemStore := cache.New(logger, tmpStoreCh)
+
+	confCTX, confCancel := context.WithCancel(conf.Context)
+	conf.Context = confCTX
+	defer confCancel()
 
 	srvConf, err := runtime.NewServerConfiguration(conf, logger, tmpMemStore)
 	helper.Must(err)

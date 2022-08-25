@@ -224,6 +224,11 @@ func TestDuplicateEndpoint(t *testing.T) {
 			logger := log.WithContext(context.TODO())
 			tmpStoreCh := make(chan struct{})
 			defer close(tmpStoreCh)
+
+			ctx, cancel := context.WithCancel(conf.Context)
+			conf.Context = ctx
+			defer cancel()
+
 			server, err := runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 
 			if err != nil {
