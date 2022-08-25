@@ -83,10 +83,9 @@ func main() {
 		name := reflect.TypeOf(impl).String()
 		name = strings.TrimPrefix(name, "*config.")
 		fileName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
-
 		result := entry{
 			Name: name,
-			Url:  basePath + name,
+			Url:  strings.ToLower(basePath + fileName),
 			Type: "block",
 		}
 		result.ID = result.Url
