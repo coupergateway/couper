@@ -173,9 +173,52 @@ func wrapOAuthBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
 	return parent, nil
 }
 
+func checkTokenRequestLabels(backendBody hcl.Body, unique map[string]struct{}) error {
+	ic, _, diags := backendBody.PartialContent(config.TokenRequestBlockSchema)
+	if diags.HasErrors() {
+		return diags
+	}
+
+	trbs := ic.Blocks.OfType(tokenRequest)
+	if len(trbs) > 0 {
+		for _, trb := range trbs {
+			label := defaultNameLabel
+			r := &trb.DefRange
+			if len(trb.Labels) > 0 {
+				label = trb.Labels[0]
+				r = &trb.LabelRanges[0]
+				if err := validLabel(label, r); err != nil {
+					return err
+				}
+			}
+
+			if err := uniqueLabelName(unique, label, r); err != nil {
+				return err
+			}
+
+		}
+	}
+	return nil
+}
+
 // wrapTokenRequestBackend prepares a nested backend within each backend-tokenRequest block.
 // TODO: Check a possible circular dependency with given parent backend(s).
 func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) {
+	unique := map[string]struct{}{}
+	if mb, ok := parent.(hclbody.MergedBodies); ok {
+		for _, bo := range mb {
+			err := checkTokenRequestLabels(bo, unique)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		err := checkTokenRequestLabels(parent, unique)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	innerContent, _, diags := parent.PartialContent(config.TokenRequestBlockSchema)
 	if diags.HasErrors() {
 		return nil, diags
@@ -186,30 +229,12 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 		return parent, nil
 	}
 
-	unique := map[string]struct{}{}
-
 	// beta_token_request block exists, read out backend configuration
 	for _, tokenRequestBlock := range tokenRequestBlocks {
 		tokenRequestBody := tokenRequestBlock.Body
 		conf := &config.TokenRequest{}
 		if diags = gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
 			return nil, diags
-		}
-
-		label := defaultNameLabel
-		r := &tokenRequestBlock.DefRange
-		if len(tokenRequestBlock.Labels) > 0 {
-			label = tokenRequestBlock.Labels[0]
-			r = &tokenRequestBlock.LabelRanges[0]
-			if err := validLabel(label, r); err != nil {
-				return nil, err
-			}
-		}
-
-		// a label uniqueness check is currently very limited, as beta_token_request blocks with same label were already merged by newBodyWithName() call in helper.addBackend()
-		// however this does find unlabeled vs. explicitly "default" labeled blocks
-		if err := uniqueLabelName(unique, label, r); err != nil {
-			return nil, err
 		}
 
 		content, leftOvers, diags := conf.Remain.PartialContent(conf.Schema(true))

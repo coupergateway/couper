@@ -1503,6 +1503,74 @@ definitions {
 `,
 			"couper.hcl:9,5-23: only one 'default' label is allowed;",
 		},
+		{
+			"multiple default labels (inline backend)",
+			`
+server {
+  endpoint "/" {
+    proxy {
+      backend {
+        beta_token_request "default" {
+          url = "http://localhost:8081/token1"
+          token = beta_token_response.json_body.tok
+          ttl = "1m"
+        }
+        beta_token_request {
+          url = "http://localhost:8082/token2"
+          token = beta_token_response.json_body.tok
+          ttl = "2m"
+        }
+      }
+    }
+  }
+}
+`,
+			"couper.hcl:11,9-27: only one 'default' label is allowed;",
+		},
+		{
+			"multiple labels",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request "a" {
+      url = "http://localhost:8081/token1"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+    beta_token_request "a" {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "2m"
+    }
+  }
+}
+`,
+			"couper.hcl:9,24-27: labels must be unique: \"a\"; ",
+		},
+		{
+			"multiple labels (inline backend)",
+			`
+server {
+   endpoint "/" {
+     proxy {
+       backend {
+         beta_token_request "a" {
+          url = "http://localhost:8081/token1"
+          token = beta_token_response.json_body.tok
+          ttl = "1m"
+        }
+        beta_token_request "a" {
+          url = "http://localhost:8082/token2"
+          token = beta_token_response.json_body.tok
+          ttl = "2m"
+        }
+      }
+    }
+  }
+}
+`,
+			"couper.hcl:11,28-31: labels must be unique: \"a\"; ",
+		},
 	} {
 		var errMsg string
 		_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
