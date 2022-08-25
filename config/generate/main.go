@@ -68,6 +68,7 @@ func main() {
 		&config.CORS{},
 		&config.Defaults{},
 		&config.Endpoint{},
+		&config.RateLimit{},
 		&config.Files{},
 		&config.Health{},
 		&config.JWTSigningProfile{},
