@@ -214,6 +214,21 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 								return nil, newMergeError(errUniqueLabels, subBlock)
 							}
 
+							if attr, ok := subBlock.Body.Attributes[proxy]; ok {
+								reference, err := attrStringValue(attr)
+								if err != nil {
+									return nil, err
+								}
+
+								delete(subBlock.Body.Attributes, proxy)
+
+								if proxyBlock, ok := proxies[reference]; !ok {
+									return nil, newMergeError(errMissingReferencedProxy, subBlock)
+								} else {
+									subBlock.Body.Blocks = append(subBlock.Body.Blocks, proxyBlock)
+								}
+							}
+
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
 						} else if subBlock.Type == errorHandler {
 							if err := absInBackends(subBlock); err != nil {

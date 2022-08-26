@@ -18,6 +18,28 @@ server "couper" {
       status = 204
     }
   }
+
+  api {
+    endpoint "/api-abcdef" {
+      proxy = "test"
+      response {
+        status = 204
+      }
+    }
+    endpoint "/api-reuse" {
+      proxy = "test"
+      response {
+        status = 204
+      }
+    }
+
+    endpoint "/api-default" {
+      proxy = "defaultName"
+      response {
+        status = 204
+      }
+    }
+  }
 }
 
 definitions {

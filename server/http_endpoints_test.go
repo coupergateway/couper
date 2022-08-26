@@ -979,6 +979,9 @@ func TestEndpoint_ReusableProxies(t *testing.T) {
 		{"/abcdef", "abcdef", 204},
 		{"/reuse", "abcdef", 204},
 		{"/default", "default", 204},
+		{"/api-abcdef", "abcdef", 204},
+		{"/api-reuse", "abcdef", 204},
+		{"/api-default", "default", 204},
 	} {
 		t.Run(tc.path, func(st *testing.T) {
 			h := test.New(st)
