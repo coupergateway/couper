@@ -8,28 +8,123 @@ Like all [access control](../access-control) types, the `oidc` block is defined 
 |:-----------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------|
 | `oidc`     | [Definitions Block](definitions) | &#9888; required | [Backend Block](backend), [Error Handler Block](error_handler) |
 
+> any `backend` attributes: Do not disable the peer certificate validation with `disable_certificate_validation = true`.
 
-| Attribute(s)                 | Type                  | Default                 | Description                                                                    | Characteristic(s)                                                                                                                                                                                                                 | Example                                     |
-|:-----------------------------|:----------------------|:------------------------|:-------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------|
-| `backend`                    | string                | -                       | [Backend Block Reference](backend)                                      | &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`!                                                                                                                              | -                                           |
-| `configuration_url`          | string                | -                       | The OpenID configuration URL.                                                  | &#9888; required                                                                                                                                                                                                                  | -                                           |
-| `configuration_ttl`          | [duration](#duration) | `"1h"`                  | The duration to cache the OpenID configuration located at `configuration_url`. | -                                                                                                                                                                                                                                 | `configuration_ttl = "1d"`                  |
-| `configuration_max_stale`    | [duration](#duration) | `"1h"`                  | Duration a cached OpenID configuration stays valid after its TTL has passed.   | -                                                                                                                                                                                                                                 | `configuration_max_stale = "2h"`            |
-| `token_endpoint_auth_method` | string                | `"client_secret_basic"` | Defines the method to authenticate the client at the token endpoint.           | If set to `"client_secret_post"`, the client credentials are transported in the request body. If set to `"client_secret_basic"`, the client credentials are transported via Basic Authentication.                                 | -                                           |
-| `redirect_uri`               | string                | -                       | The Couper endpoint for receiving the authorization code.                      | &#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](settings) attribute if Couper is running behind a proxy. | -                                           |
-| `client_id`                  | string                | -                       | The client identifier.                                                         | &#9888; required                                                                                                                                                                                                                  | -                                           |
-| `client_secret`              | string                | -                       | The client password.                                                           | &#9888; required.                                                                                                                                                                                                                 | -                                           |
-| `scope`                      | string                | -                       | A space separated list of requested scope values for the access token.         | `openid` is automatically added.                                                                                                                                                                                                  | `scope = "profile read"`                    |
-| `verifier_method`            | string                | -                       | The method to verify the integrity of the authorization code flow              | available values: `"ccm_s256"` (`code_challenge` parameter with `code_challenge_method` `S256`), `"nonce"` (`nonce` parameter)                                                                                                    | `verifier_method = "nonce"`                 |
-| `verifier_value`             | string or expression  | -                       | The value of the (unhashed) verifier.                                          | &#9888; required; e.g. using cookie value created with [`oauth2_verifier()` function](/configuration/functions)                                                                                                                                 | `verifier_value = request.cookies.verifier` |
-| `custom_log_fields`          | object                | -                       | Defines log fields for [Custom Logging](/observation/logging#custom-logging).               | &#9888; Inherited by nested blocks.                                                                                                                                                                                               | -                                           |
-| `jwks_ttl`                   | [duration](#duration) | `"1h"`                  | Time period the JWK set stays valid and may be cached.                         | -                                                                                                                                                                                                                                 | `jwks_ttl = "3h"`                           |
-| `jwks_max_stale`             | [duration](#duration) | `"1h"`                  | Time period the cached JWK set stays valid after its TTL has passed.           | -                                                                                                                                                                                                                                 | `jwks_max_stale = "1h30m"`                  |
-| `configuration_backend`      | string                | -                       | [Backend Block Reference](backend)                                      | &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`!                                                                                                                              | -                                           |
-| `jwks_uri_backend`           | string                | -                       | [Backend Block Reference](backend)                                      | &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`!                                                                                                                              | -                                           |
-| `token_backend`              | string                | -                       | [Backend Block Reference](backend)                                      | &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`!                                                                                                                              | -                                           |
-| `userinfo_backend`           | string                | -                       | [Backend Block Reference](backend)                                      | &#9888; Do not disable the peer certificate validation with `disable_certificate_validation = true`!                                                                                                                              | -                                           |
+::attributes
+---
+values: [
+  {
+    "name": "backend",
+    "type": "string",
+    "default": "",
+    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `configuration_url` is defined within."
+  },
+  {
+    "name": "client_id",
+    "type": "string",
+    "default": "",
+    "description": "The client identifier."
+  },
+  {
+    "name": "client_secret",
+    "type": "string",
+    "default": "",
+    "description": "The client password."
+  },
+  {
+    "name": "configuration_backend",
+    "type": "object",
+    "default": "",
+    "description": "Optional option to configure specific behaviour for a given oidc backend."
+  },
+  {
+    "name": "configuration_max_stale",
+    "type": "duration",
+    "default": "\"1h\"",
+    "description": "Duration a cached OpenID configuration stays valid after its TTL has passed."
+  },
+  {
+    "name": "configuration_ttl",
+    "type": "duration",
+    "default": "\"1h\"",
+    "description": "The duration to cache the OpenID configuration located at `configuration_url`."
+  },
+  {
+    "name": "configuration_url",
+    "type": "string",
+    "default": "",
+    "description": "The OpenID configuration URL."
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+  },
+  {
+    "name": "jwks_max_stale",
+    "type": "duration",
+    "default": "\"1h\"",
+    "description": "Time period the cached JWK set stays valid after its TTL has passed."
+  },
+  {
+    "name": "jwks_ttl",
+    "type": "duration",
+    "default": "\"1h\"",
+    "description": "Time period the JWK set stays valid and may be cached."
+  },
+  {
+    "name": "jwks_uri_backend",
+    "type": "object",
+    "default": "",
+    "description": "Optional option to configure specific behaviour for a given oidc backend."
+  },
+  {
+    "name": "redirect_uri",
+    "type": "string",
+    "default": "",
+    "description": "The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`(`settings` block) attribute if Couper is running behind a proxy."
+  },
+  {
+    "name": "scope",
+    "type": "string",
+    "default": "",
+    "description": "A space separated list of requested scope values for the access token."
+  },
+  {
+    "name": "token_backend",
+    "type": "object",
+    "default": "",
+    "description": "Optional option to configure specific behaviour for a given oidc backend."
+  },
+  {
+    "name": "token_endpoint_auth_method",
+    "type": "string",
+    "default": "\"client_secret_basic\"",
+    "description": "Defines the method to authenticate the client at the token endpoint. If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication."
+  },
+  {
+    "name": "userinfo_backend",
+    "type": "object",
+    "default": "",
+    "description": "Optional option to configure specific behaviour for a given oidc backend."
+  },
+  {
+    "name": "verifier_method",
+    "type": "string",
+    "default": "",
+    "description": "The method to verify the integrity of the authorization code flow."
+  },
+  {
+    "name": "verifier_value",
+    "type": "string",
+    "default": "",
+    "description": "The value of the (unhashed) verifier."
+  }
+]
 
+---
+::
 
 In most cases, referencing one `backend` (backend attribute) for all the backend requests sent by the OIDC client is enough.
 You should only use `configuration_backend`, `jwks_uri_backend`, `token_backend` or `userinfo_backend` if you need to configure a specific behaviour for the respective request (e.g. timeouts).
