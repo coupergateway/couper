@@ -14,9 +14,6 @@ server "couper" {
 
   endpoint "/default" {
     proxy = "defaultName"
-    response {
-      status = 204
-    }
   }
 
   api {
@@ -35,9 +32,6 @@ server "couper" {
 
     endpoint "/api-default" {
       proxy = "defaultName"
-      response {
-        status = 204
-      }
     }
   }
 }
