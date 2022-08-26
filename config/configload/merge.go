@@ -152,19 +152,8 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 						return nil, newMergeError(errUniqueLabels, block)
 					}
 
-					if attr, ok := block.Body.Attributes[proxy]; ok {
-						reference, err := attrStringValue(attr)
-						if err != nil {
-							return nil, err
-						}
-
-						delete(block.Body.Attributes, proxy)
-
-						if proxyBlock, ok := proxies[reference]; !ok {
-							return nil, newMergeError(errMissingReferencedProxy, block)
-						} else {
-							block.Body.Blocks = append(block.Body.Blocks, proxyBlock)
-						}
+					if err := addProxy(block, proxies); err != nil {
+						return nil, err
 					}
 
 					results[serverKey].endpoints[block.Labels[0]] = block
@@ -214,19 +203,8 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 								return nil, newMergeError(errUniqueLabels, subBlock)
 							}
 
-							if attr, ok := subBlock.Body.Attributes[proxy]; ok {
-								reference, err := attrStringValue(attr)
-								if err != nil {
-									return nil, err
-								}
-
-								delete(subBlock.Body.Attributes, proxy)
-
-								if proxyBlock, ok := proxies[reference]; !ok {
-									return nil, newMergeError(errMissingReferencedProxy, subBlock)
-								} else {
-									subBlock.Body.Blocks = append(subBlock.Body.Blocks, proxyBlock)
-								}
+							if err := addProxy(subBlock, proxies); err != nil {
+								return nil, err
 							}
 
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
@@ -637,6 +615,25 @@ func absInBackends(block *hclsyntax.Block) error {
 
 		if backends > 1 {
 			return newMergeError(errMultipleBackends, block)
+		}
+	}
+
+	return nil
+}
+
+func addProxy(block *hclsyntax.Block, proxies map[string]*hclsyntax.Block) error {
+	if attr, ok := block.Body.Attributes[proxy]; ok {
+		reference, err := attrStringValue(attr)
+		if err != nil {
+			return err
+		}
+
+		delete(block.Body.Attributes, proxy)
+
+		if proxyBlock, ok := proxies[reference]; !ok {
+			return newMergeError(errMissingReferencedProxy, block)
+		} else {
+			block.Body.Blocks = append(block.Body.Blocks, proxyBlock)
 		}
 	}
 
