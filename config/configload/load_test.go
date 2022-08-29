@@ -74,6 +74,34 @@ definitions {
 			"openapi",
 			`openapi { file = ""}`,
 		},
+		{
+			"oauth2",
+			`oauth2 {
+  grant_type = "client_credentials"
+  token_endpoint = ""
+  client_id = "asdf"
+  client_secret = "asdf"
+}`,
+		},
+		{
+			"beta_health",
+			`beta_health {
+}`,
+		},
+		{
+			"beta_token_request",
+			`beta_token_request {
+  token = "asdf"
+  ttl = "1s"
+}`,
+		},
+		{
+			"beta_rate_limit",
+			`beta_rate_limit {
+  per_period = 10
+  period = "10s"
+}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
