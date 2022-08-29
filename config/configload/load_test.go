@@ -96,6 +96,13 @@ definitions {
 }`,
 		},
 		{
+			"beta_token_request",
+			`beta_token_request "name" {
+  token = "asdf"
+  ttl = "1s"
+}`,
+		},
+		{
 			"beta_rate_limit",
 			`beta_rate_limit {
   per_period = 10

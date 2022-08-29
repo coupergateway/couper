@@ -83,15 +83,11 @@ var forbiddenInRefinedBackendBlockSchema = &hcl.BodySchema{
 		{
 			Type: "openapi",
 		},
-		{
-			Type: "oauth2",
-		},
+		config.OAuthBlockHeaderSchema,
 		{
 			Type: "beta_health",
 		},
-		{
-			Type: "beta_token_request",
-		},
+		config.TokenRequestBlockHeaderSchema,
 		{
 			Type: "beta_rate_limit",
 		},
