@@ -66,14 +66,28 @@ definitions {
 	}
 }`
 
-	_, err := configload.LoadBytes([]byte(fmt.Sprintf(config, `openapi { file = ""}`)), "test.hcl")
-	if err == nil {
-		t.Fatal("expected an error")
+	tests := []struct {
+		name string
+		hcl  string
+	}{
+		{
+			"openapi",
+			`openapi { file = ""}`,
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := configload.LoadBytes([]byte(fmt.Sprintf(config, tt.hcl)), "test.hcl")
+			if err == nil {
+				subT.Error("expected an error")
+				return
+			}
 
-	if !strings.HasSuffix(err.Error(),
-		fmt.Sprintf("backend reference: refinement for %q is not permitted; ", "openapi")) {
-		t.Error(err)
+			if !strings.HasSuffix(err.Error(),
+				fmt.Sprintf("backend reference: refinement for %q is not permitted; ", tt.name)) {
+				subT.Error(err)
+			}
+		})
 	}
 }
 
