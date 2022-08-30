@@ -92,10 +92,10 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 				return err
 			}
 
-			basePath := path.Join("/", serverBasePath)
+			serverBasePath = path.Join("/", serverBasePath)
 			for _, innerBlock := range outerBlock.Body.Blocks {
 				if innerBlock.Type == endpoint {
-					pattern := utils.JoinOpenAPIPath(basePath, innerBlock.Labels[0])
+					pattern := utils.JoinOpenAPIPath(serverBasePath, innerBlock.Labels[0])
 					pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
 					if _, set := uniqueEndpoints[pattern]; set {
 						return newDiagErr(&innerBlock.LabelRanges[0], "duplicate endpoint")
@@ -108,10 +108,10 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 						return err
 					}
 
-					basePath := path.Join(basePath, apiBasePath)
+					apiBasePath = path.Join(serverBasePath, apiBasePath)
 					for _, innerInnerBlock := range innerBlock.Body.Blocks {
 						if innerInnerBlock.Type == endpoint {
-							pattern := utils.JoinOpenAPIPath(basePath, innerInnerBlock.Labels[0])
+							pattern := utils.JoinOpenAPIPath(apiBasePath, innerInnerBlock.Labels[0])
 							pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
 							if _, set := uniqueEndpoints[pattern]; set {
 								return newDiagErr(&innerInnerBlock.LabelRanges[0], "duplicate endpoint")
