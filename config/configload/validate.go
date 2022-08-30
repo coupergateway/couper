@@ -95,13 +95,9 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 			serverBasePath = path.Join("/", serverBasePath)
 			for _, innerBlock := range outerBlock.Body.Blocks {
 				if innerBlock.Type == endpoint {
-					pattern := utils.JoinOpenAPIPath(serverBasePath, innerBlock.Labels[0])
-					pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
-					if _, set := uniqueEndpoints[pattern]; set {
-						return newDiagErr(&innerBlock.LabelRanges[0], "duplicate endpoint")
+					if err = registerEndpointPattern(uniqueEndpoints, serverBasePath, innerBlock); err != nil {
+						return err
 					}
-
-					uniqueEndpoints[pattern] = struct{}{}
 				} else if innerBlock.Type == api {
 					apiBasePath, err := getBasePath(innerBlock)
 					if err != nil {
@@ -111,13 +107,9 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 					apiBasePath = path.Join(serverBasePath, apiBasePath)
 					for _, innerInnerBlock := range innerBlock.Body.Blocks {
 						if innerInnerBlock.Type == endpoint {
-							pattern := utils.JoinOpenAPIPath(apiBasePath, innerInnerBlock.Labels[0])
-							pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
-							if _, set := uniqueEndpoints[pattern]; set {
-								return newDiagErr(&innerInnerBlock.LabelRanges[0], "duplicate endpoint")
+							if err = registerEndpointPattern(uniqueEndpoints, apiBasePath, innerInnerBlock); err != nil {
+								return err
 							}
-
-							uniqueEndpoints[pattern] = struct{}{}
 						}
 					}
 				}
@@ -143,6 +135,17 @@ func getBasePath(bl *hclsyntax.Block) (string, error) {
 	}
 
 	return basePath, nil
+}
+
+func registerEndpointPattern(endpointPatterns map[string]struct{}, basePath string, bl *hclsyntax.Block) error {
+	pattern := utils.JoinOpenAPIPath(basePath, bl.Labels[0])
+	pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
+	if _, set := endpointPatterns[pattern]; set {
+		return newDiagErr(&bl.LabelRanges[0], "duplicate endpoint")
+	}
+
+	endpointPatterns[pattern] = struct{}{}
+	return nil
 }
 
 func validLabel(name string, subject *hcl.Range) error {
