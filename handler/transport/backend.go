@@ -521,7 +521,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
 
-	var origin, hostname, proxyURL, oidcBackend string
+	var origin, hostname, proxyURL string
 	var connectTimeout, ttfbTimeout, timeout string
 	type pair struct {
 		attrName string
@@ -531,7 +531,6 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		{"origin", &origin},
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
-		{"_oidc_backend", &oidcBackend}, // prepared by config-load
 		// dynamic timings
 		{"connect_timeout", &connectTimeout},
 		{"ttfb_timeout", &ttfbTimeout},
