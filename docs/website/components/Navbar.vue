@@ -5,7 +5,7 @@ import SearchResult from "~/components/SearchResult.vue";
 const indexName = 'docs'
 const algoliaClient = useAlgoliaRef()
 
-import { AisInstantSearch, AisSearchBox, AisHits, AisHighlight } from 'vue-instantsearch/vue3/es'
+import { AisInstantSearch, AisSearchBox } from 'vue-instantsearch/vue3/es'
 
 const searchClient = {
   ...algoliaClient,
@@ -36,17 +36,12 @@ const searchClient = {
         <div class="box-border text-base">
           <div class="rounded-md bg-lime-500 p-0.5">edge</div>
         </div>
-        <div class="hidden w-full lg:flex items-center text-sm pl-4">
+        <div class="w-full lg:flex items-center text-sm pl-4">
           <ais-instant-search :index-name="indexName" :search-client="searchClient">
             <ais-search-box @blur="onBlur" v-model="needle" class="leading-6 rounded-md shadow-sm py-1.5 pl-2 pr-3" />
-            <ais-hits class="absolute">
-              <template v-show="item.url" v-slot:item="{ item }">
-                  <NuxtLink :to="item.url.toLowerCase()" class="text-sky-600">
-                    <SearchResult :item="item" />
-                  </NuxtLink>
-              </template>
-            </ais-hits>
+            <SearchResult />
           </ais-instant-search>
+
         </div>
       </div>
     </div>
