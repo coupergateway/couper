@@ -87,18 +87,11 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 			}
 		} else if outerBlock.Type == server {
 			uniqueEndpoints := make(map[string]struct{})
-			serverBasePath := ""
-			if bp, set := outerBlock.Body.Attributes["base_path"]; set {
-				bpv, diags := bp.Expr.Value(nil)
-				if diags.HasErrors() {
-					return diags
-				}
-				if bpv.Type() != cty.String {
-					sr := bp.Expr.StartRange()
-					return newDiagErr(&sr, "base_path must evaluate to string")
-				}
-				serverBasePath = bpv.AsString()
+			serverBasePath, err := getBasePath(outerBlock)
+			if err != nil {
+				return err
 			}
+
 			basePath := path.Join("/", serverBasePath)
 			for _, innerBlock := range outerBlock.Body.Blocks {
 				if innerBlock.Type == endpoint {
@@ -107,20 +100,14 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 					if _, set := uniqueEndpoints[pattern]; set {
 						return newDiagErr(&innerBlock.LabelRanges[0], "duplicate endpoint")
 					}
+
 					uniqueEndpoints[pattern] = struct{}{}
 				} else if innerBlock.Type == api {
-					apiBasePath := ""
-					if bp, set := innerBlock.Body.Attributes["base_path"]; set {
-						bpv, diags := bp.Expr.Value(nil)
-						if diags.HasErrors() {
-							return diags
-						}
-						if bpv.Type() != cty.String {
-							sr := bp.Expr.StartRange()
-							return newDiagErr(&sr, "base_path must evaluate to string")
-						}
-						apiBasePath = bpv.AsString()
+					apiBasePath, err := getBasePath(innerBlock)
+					if err != nil {
+						return err
 					}
+
 					basePath := path.Join(basePath, apiBasePath)
 					for _, innerInnerBlock := range innerBlock.Body.Blocks {
 						if innerInnerBlock.Type == endpoint {
@@ -129,6 +116,7 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 							if _, set := uniqueEndpoints[pattern]; set {
 								return newDiagErr(&innerInnerBlock.LabelRanges[0], "duplicate endpoint")
 							}
+
 							uniqueEndpoints[pattern] = struct{}{}
 						}
 					}
@@ -138,6 +126,23 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 	}
 
 	return nil
+}
+
+func getBasePath(bl *hclsyntax.Block) (string, error) {
+	basePath := ""
+	if bp, set := bl.Body.Attributes["base_path"]; set {
+		bpv, diags := bp.Expr.Value(nil)
+		if diags.HasErrors() {
+			return "", diags
+		}
+		if bpv.Type() != cty.String {
+			sr := bp.Expr.StartRange()
+			return "", newDiagErr(&sr, "base_path must evaluate to string")
+		}
+		basePath = bpv.AsString()
+	}
+
+	return basePath, nil
 }
 
 func validLabel(name string, subject *hcl.Range) error {
