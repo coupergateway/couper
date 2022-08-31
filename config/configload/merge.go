@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	errMissingReferencedProxy = "The %s references a non-defined proxy block."
-	errMultipleBackends       = "Multiple definitions of backend are not allowed."
-	errUniqueLabels           = "All %s blocks must have unique labels."
+	errMultipleBackends = "Multiple definitions of backend are not allowed."
+	errUniqueLabels     = "All %s blocks must have unique labels."
 )
 
 func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block) (hclsyntax.Blocks, error) {
@@ -631,7 +630,9 @@ func addProxy(block *hclsyntax.Block, proxies map[string]*hclsyntax.Block) error
 		delete(block.Body.Attributes, proxy)
 
 		if proxyBlock, ok := proxies[reference]; !ok {
-			return newMergeError(errMissingReferencedProxy, block)
+			sr := attr.Expr.StartRange()
+
+			return newDiagErr(&sr, "proxy reference is not defined")
 		} else {
 			block.Body.Blocks = append(block.Body.Blocks, proxyBlock)
 		}
