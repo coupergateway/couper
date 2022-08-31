@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
-	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/meta"
 )
 
@@ -55,10 +54,6 @@ func (o *OIDC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 		if err != nil {
 			return err
 		}
-
-		// exceptions
-		o.Backends[field] = hclbody.MergeBodies(o.Backends[field],
-			hclbody.New(hclbody.NewContentWithAttrName("_oidc_backend", "true")))
 	}
 	return nil
 }
