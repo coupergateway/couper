@@ -52,6 +52,7 @@ func Test_realmain(t *testing.T) {
 		{"invalid method in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/14_couper.hcl"}, nil, `level=error msg="%s/14_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
 		{"invalid method in allowed_methods in api", []string{"couper", "run", "-f", base + "/15_couper.hcl"}, nil, `level=error msg="%s/15_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
 		{"rate_limit block in anonymous backend", []string{"couper", "run", "-f", base + "/17_couper.hcl"}, nil, `level=error msg="configuration error: anonymous_3_11: anonymous backend (\"anonymous_3_11\") cannot define 'beta_rate_limit' block(s)" build=dev`, 1},
+		{"non-string proxy reference", []string{"couper", "run", "-f", base + "/19_couper.hcl"}, nil, `level=error msg="%s/19_couper.hcl:3,13-14: proxy must evaluate to string; " build=dev`, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
