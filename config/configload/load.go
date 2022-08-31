@@ -128,6 +128,63 @@ func parseFiles(files configfile.Files) ([]*hclsyntax.Body, [][]byte, error) {
 	return parsedBodies, srcBytes, nil
 }
 
+func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env string) (*config.Couper, error) {
+	defaultsBlock, err := mergeDefaults(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	defs := &hclsyntax.Body{
+		Blocks: hclsyntax.Blocks{defaultsBlock},
+	}
+
+	if diags := updateContext(defs, srcBytes, env); diags.HasErrors() {
+		return nil, diags
+	}
+
+	for _, body := range parsedBodies {
+		if err = absolutizePaths(body); err != nil {
+			return nil, err
+		}
+
+		if err = validateBody(body, false); err != nil {
+			return nil, err
+		}
+	}
+
+	settingsBlock := mergeSettings(parsedBodies)
+
+	definitionsBlock, err := mergeDefinitions(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	serverBlocks, err := mergeServers(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	configBlocks := serverBlocks
+	configBlocks = append(configBlocks, definitionsBlock)
+	configBlocks = append(configBlocks, defaultsBlock)
+	configBlocks = append(configBlocks, settingsBlock)
+
+	configBody := &hclsyntax.Body{
+		Blocks: configBlocks,
+	}
+
+	if err = validateBody(configBody, true); err != nil {
+		return nil, err
+	}
+
+	conf, err := LoadConfig(configBody, srcBytes, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return conf, nil
+}
+
 func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	configFiles, err := configfile.NewFiles(filesList)
 	if err != nil {
@@ -160,51 +217,10 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		return nil, errorBeforeRetry
 	}
 
-	defaultsBlock, err := mergeDefaults(parsedBodies)
+	conf, err := bodiesToConfig(parsedBodies, srcBytes, env)
 	if err != nil {
 		return nil, err
 	}
-
-	defs := &hclsyntax.Body{
-		Blocks: hclsyntax.Blocks{defaultsBlock},
-	}
-
-	if diags := updateContext(defs, srcBytes, env); diags.HasErrors() {
-		return nil, diags
-	}
-
-	for _, body := range parsedBodies {
-		if err = absolutizePaths(body); err != nil {
-			return nil, err
-		}
-	}
-
-	settingsBlock := mergeSettings(parsedBodies)
-
-	definitionsBlock, err := mergeDefinitions(parsedBodies)
-	if err != nil {
-		return nil, err
-	}
-
-	serverBlocks, err := mergeServers(parsedBodies)
-	if err != nil {
-		return nil, err
-	}
-
-	configBlocks := serverBlocks
-	configBlocks = append(configBlocks, definitionsBlock)
-	configBlocks = append(configBlocks, defaultsBlock)
-	configBlocks = append(configBlocks, settingsBlock)
-
-	configBody := &hclsyntax.Body{
-		Blocks: configBlocks,
-	}
-
-	conf, err := LoadConfig(configBody, srcBytes, env)
-	if err != nil {
-		return nil, err
-	}
-
 	conf.Files = configFiles
 
 	return conf, nil
@@ -214,10 +230,38 @@ func LoadFile(file, env string) (*config.Couper, error) {
 	return LoadFiles([]string{file}, env)
 }
 
+type testContent struct {
+	filename string
+	src      []byte
+}
+
+func loadTestContents(tcs []testContent) (*config.Couper, error) {
+	var (
+		parsedBodies []*hclsyntax.Body
+		srcs         [][]byte
+	)
+
+	for _, tc := range tcs {
+		hclBody, diags := parser.Load(tc.src, tc.filename)
+		if diags.HasErrors() {
+			return nil, diags
+		}
+
+		parsedBodies = append(parsedBodies, hclBody.(*hclsyntax.Body))
+		srcs = append(srcs, tc.src)
+	}
+
+	return bodiesToConfig(parsedBodies, srcs, "")
+}
+
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	hclBody, diags := parser.Load(src, filename)
 	if diags.HasErrors() {
 		return nil, diags
+	}
+
+	if err := validateBody(hclBody, false); err != nil {
+		return nil, err
 	}
 
 	return LoadConfig(hclBody, [][]byte{src}, "")
@@ -246,9 +290,7 @@ func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper
 			// backends first
 			if backendContent != nil {
 				for _, be := range backendContent.Blocks {
-					if err = helper.addBackend(be); err != nil {
-						return nil, err
-					}
+					helper.addBackend(be)
 				}
 
 				if err = helper.configureDefinedBackends(); err != nil {
@@ -316,9 +358,6 @@ func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper
 
 	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
 	for _, profile := range helper.config.Definitions.JWTSigningProfile {
-		if _, exists := jwtSigningConfigs[profile.Name]; exists {
-			return nil, errors.Configuration.Messagef("jwt_signing_profile block with label %s already defined", profile.Name)
-		}
 		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
@@ -331,9 +370,6 @@ func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper
 			return nil, errors.Configuration.Label(jwt.Name).With(err)
 		}
 		if signConf != nil {
-			if _, exists := jwtSigningConfigs[jwt.Name]; exists {
-				return nil, errors.Configuration.Messagef("jwt_signing_profile or jwt with label %s already defined", jwt.Name)
-			}
 			jwtSigningConfigs[jwt.Name] = signConf
 		}
 	}
