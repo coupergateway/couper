@@ -424,8 +424,6 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 						definitionsBlock[innerBlock.Type] = make(data)
 					}
 
-					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
-
 					// Count the "backend" blocks and "backend" attributes to
 					// forbid multiple backend definitions.
 
