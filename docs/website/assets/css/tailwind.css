@@ -24,3 +24,7 @@ blockquote {
 main h2 code  {
 	font-size: 0.8em !important;
 }
+
+mark {
+    background-color: rgb(245 158 11 / var(--tw-text-opacity));
+}

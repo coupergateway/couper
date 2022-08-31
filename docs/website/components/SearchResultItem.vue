@@ -1,12 +1,12 @@
 <template>
   <div class="flex flex-col w-128 min-w-min">
-    <div class="flex flex-col">
-      <h3 class="uppercase" v-html="name"></h3>
+    <div class="flex flex-col m-2">
+      <h3 class="uppercase blockTitle pt-4 text-lg text-gray-800" v-html="name"></h3>
       <div v-html="description"></div>
       <table class="table-auto">
         <tbody>
         <tr class="prose align-top" v-for="attr in filtered" :key="attr.name+attr.desc">
-          <td class="font-semibold" v-html="attr.name"></td>
+          <td class="font-semibold text-purple-600" v-html="attr.name"></td>
           <td v-html="attr.desc"></td>
         </tr>
         </tbody>
@@ -62,5 +62,13 @@ export default {
 </script>
 
 <style scoped>
-
+.blockTitle::before {
+  content: "";
+  position: absolute;
+  top: 0.5em;
+  left: 2.2em;
+  height: 0.3em;
+  width: 2.6em;
+  background: rgb(101, 179, 46);
+}
 </style>
