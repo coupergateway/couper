@@ -1,11 +1,11 @@
 <template>
-  <div class="flex flex-col w-128 min-w-min">
+  <div class="flex flex-col w-128 min-w-min prose prose-slate prose-lg prose-code:bg-sky-100 result">
     <div class="flex flex-col m-2">
       <h3 class="uppercase blockTitle pt-4 text-lg text-gray-800" v-html="name"></h3>
       <div v-html="description"></div>
       <table class="table-auto">
         <tbody>
-        <tr class="prose align-top" v-for="attr in filtered" :key="attr.name+attr.desc">
+        <tr class="align-top" v-for="attr in filtered" :key="attr.name+attr.desc">
           <td class="font-semibold text-purple-600" v-html="attr.name"></td>
           <td v-html="attr.desc"></td>
         </tr>
@@ -70,5 +70,10 @@ export default {
   height: 0.3em;
   width: 2.6em;
   background: rgb(101, 179, 46);
+}
+
+.result >>> em {
+  background-color: rgb(245 158 11 / var(--tw-text-opacity));
+  font-style: normal;
 }
 </style>
