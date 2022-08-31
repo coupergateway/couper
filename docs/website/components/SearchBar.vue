@@ -39,7 +39,7 @@ const searchClient = {
 
 <script lang="ts">
 export default {
-  name: 'SearchBar.vue',
+  name: 'SearchBar',
   data() {
     return {
       needle: '',
