@@ -37,7 +37,10 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 }
 
 func (c *Client) requestToken(tokenReq *http.Request) ([]byte, int, error) {
-	tokenRes, err := c.backend.RoundTrip(tokenReq)
+	ctx, cancel := context.WithCancel(tokenReq.Context())
+	defer cancel()
+
+	tokenRes, err := c.backend.RoundTrip(tokenReq.WithContext(ctx))
 	if err != nil {
 		return nil, 0, err
 	}

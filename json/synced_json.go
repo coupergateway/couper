@@ -72,7 +72,7 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 
 	init()
 
-	err := s.fetch() // initial fetch, provide any startup errors for first dataRequest's
+	err := s.fetch(ctx) // initial fetch, provide any startup errors for first dataRequest's
 	if err != nil {
 		expired = time.After(0)
 	}
@@ -82,7 +82,7 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-expired:
-			err = s.fetch()
+			err = s.fetch(ctx)
 			if err != nil {
 				invalidated = time.After(s.maxStale)
 				expired = time.After(backoff)
@@ -115,11 +115,13 @@ func (s *SyncedJSON) Data() (interface{}, error) {
 }
 
 // fetch blocks all data reads until we will have an updated one.
-func (s *SyncedJSON) fetch() error {
+func (s *SyncedJSON) fetch(ctx context.Context) error {
 	req, _ := http.NewRequest("GET", s.uri, nil)
 
-	ctx := context.WithValue(context.Background(), request.RoundTripName, s.roundTripName)
-	req = req.WithContext(ctx)
+	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, s.roundTripName))
+	defer cancel()
+
+	req = req.WithContext(outCtx)
 
 	response, err := s.transport.RoundTrip(req)
 	if err != nil {
