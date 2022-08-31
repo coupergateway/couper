@@ -12,12 +12,12 @@ var _ Inline = &SAML{}
 // SAML represents the <SAML> object.
 type SAML struct {
 	ErrorHandlerSetter
-	ArrayAttributes []string `hcl:"array_attributes,optional"`
-	IdpMetadataFile string   `hcl:"idp_metadata_file"`
+	ArrayAttributes []string `hcl:"array_attributes,optional" docs:"A list of assertion attributes that may have several values. Results in at least an empty array in {request.context.<label>.attributes.<name>}"`
+	IdpMetadataFile string   `hcl:"idp_metadata_file" docs:"File reference to the Identity Provider metadata XML file."`
 	Name            string   `hcl:"name,label"`
 	Remain          hcl.Body `hcl:",remain"`
-	SpAcsUrl        string   `hcl:"sp_acs_url"`
-	SpEntityId      string   `hcl:"sp_entity_id"`
+	SpAcsUrl        string   `hcl:"sp_acs_url" docs:"The URL of the Service Provider's ACS endpoint. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}([settings](settings)) attribute if Couper is running behind a proxy."`
+	SpEntityId      string   `hcl:"sp_entity_id" docs:"The Service Provider's entity ID."`
 
 	// internally used
 	MetadataBytes []byte

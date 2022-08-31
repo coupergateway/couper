@@ -521,7 +521,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		return nil, errors.Evaluation.Label(b.name).With(diags)
 	}
 
-	var origin, hostname, proxyURL, oidcBackend string
+	var origin, hostname, proxyURL string
 	var connectTimeout, ttfbTimeout, timeout string
 	type pair struct {
 		attrName string
@@ -531,7 +531,6 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		{"origin", &origin},
 		{"hostname", &hostname},
 		{"proxy", &proxyURL},
-		{"_oidc_backend", &oidcBackend}, // prepared by config-load
 		// dynamic timings
 		{"connect_timeout", &connectTimeout},
 		{"ttfb_timeout", &ttfbTimeout},
@@ -552,16 +551,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 			Messagef("invalid url: %s", originURL.String())
 	} else if origin == "" {
 		originURL = req.URL
-	} // TODO: still required???
-	//} else if origin != "" && req.URL.Host != originURL.Host {
-	//	errctx := "url"
-	//	if tr := req.Context().Value(request.TokenRequest); tr != nil {
-	//		errctx = "token_endpoint"
-	//	}
-	//	return nil, errors.Configuration.Label(b.name).Kind(errctx).
-	//		Messagef("backend: the host '%s' must be equal to 'backend.origin' host: '%s'",
-	//			req.URL.Host, originURL.Host)
-	//}
+	}
 
 	if hostname == "" {
 		hostname = originURL.Host

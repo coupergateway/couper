@@ -6,11 +6,78 @@ The `spa` blocks configure the Web serving for SPA assets. Can be defined multip
 |:-----------|:------------------------------|:---------|:--------------------------|
 | `spa`      | [Server Block](server) | Optional | [CORS Block](cors) |
 
-| Attribute(s)             | Type           | Default | Description                                                                | Characteristic(s)                   | Example                                  |
-|:-------------------------|:---------------|:--------|:---------------------------------------------------------------------------|:------------------------------------|:-----------------------------------------|
-| `base_path`              | string         | -       | Configures the path prefix for all requests.                               | -                                   | `base_path = "/assets"`                  |
-| `bootstrap_file`         | string         | -       | Location of the bootstrap file.                                            | &#9888; required                    | `bootstrap_file = "./htdocs/index.html"` |
-| `paths`                  | tuple (string) | -       | List of SPA paths that need the bootstrap file.                            | &#9888; required                    | `paths = ["/app/**"]`                    |
-| `access_control`         | tuple (string) | -       | Sets predefined [access control](../access-control) for `spa` block context. | -                                   | `access_control = ["foo"]`               |
-| `disable_access_control` | tuple (string) | -       | Disables access controls by name.                                          | -                                   | `disable_access_control = ["foo"]`       |
-| `custom_log_fields`      | object         | -       | Defines log fields for [Custom Logging](/observation/logging#custom-logging).           | &#9888; Inherited by nested blocks. | -                                        |
+```hcl
+spa {
+    base_path = "/my-app" # mounts on /my-app(/**,/special)
+    bootstrap_file = "./htdocs/index.html"
+    paths = ["/**", "/special"]
+}
+```
+
+::attributes
+---
+values: [
+  {
+    "name": "access_control",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "Sets predefined [access control](../access-control) for `spa` block context."
+  },
+  {
+    "name": "add_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response"
+  },
+  {
+    "name": "base_path",
+    "type": "string",
+    "default": "",
+    "description": "Configures the path prefix for all requests."
+  },
+  {
+    "name": "bootstrap_file",
+    "type": "string",
+    "default": "",
+    "description": "Location of the bootstrap file."
+  },
+  {
+    "name": "cors",
+    "type": "object",
+    "default": "",
+    "description": "Configure [CORS](cors) settings."
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+  },
+  {
+    "name": "disable_access_control",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "Disables access controls by name."
+  },
+  {
+    "name": "paths",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "List of SPA paths that need the bootstrap file."
+  },
+  {
+    "name": "remove_response_headers",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "list of names to remove headers from the client response"
+  },
+  {
+    "name": "set_response_headers",
+    "type": "object",
+    "default": "",
+    "description": "key/value pairs to set as response headers in the client response"
+  }
+]
+
+---
+::

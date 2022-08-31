@@ -10,16 +10,60 @@ required _label_.
 |:-----------|:----------------------------------------|:-----------------|:--------------------------------------------|
 | `saml`     | [Definitions Block](definitions) | &#9888; required | [Error Handler Block](error_handler) |
 
-| Attribute(s)        | Type           | Default | Description                                                      | Characteristic(s)                                                                                                                                                                                                                 | Example                           |
-|:--------------------|:---------------|:--------|:-----------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------|
-| `idp_metadata_file` | string         | -       | File reference to the Identity Provider metadata XML file.       | &#9888; required                                                                                                                                                                                                                  | -                                 |
-| `sp_acs_url`        | string         | -       | The URL of the Service Provider's ACS endpoint.                  | &#9888; required. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url`](settings) attribute if Couper is running behind a proxy. | -                                 |
-| `sp_entity_id`      | string         | -       | The Service Provider's entity ID.                                | &#9888; required                                                                                                                                                                                                                  | -                                 |
-| `array_attributes`  | tuple (string) | `[]`    | A list of assertion attributes that may have several values.     | Results in at least an empty array in `request.context.<label>.attributes.<name>`                                                                                                                                                 | `array_attributes = ["memberOf"]` |
-| `custom_log_fields` | object         | -       | Defines log fields for [custom logging](/observation/logging#custom-logging). | &#9888; Inherited by nested blocks.                                                                                                                                                                                               | -                                 |
+## Example
+
+A complete example can be found [here](https://github.com/avenga/couper-examples/tree/master/saml).
+
+```hcl
+saml "SSO" {
+  idp_metadata_file = "idp-metadata.xml"
+  sp_entity_id = env.SP_ENTITY_ID
+  sp_acs_url = "http://localhost:8080/saml/acs"
+  array_attributes = ["eduPersonAffiliation"] # or ["memberOf"]
+}
+```
+
+
+::attributes
+---
+values: [
+  {
+    "name": "array_attributes",
+    "type": "tuple (string)",
+    "default": "[]",
+    "description": "A list of assertion attributes that may have several values. Results in at least an empty array in `request.context.<label>.attributes.<name>`"
+  },
+  {
+    "name": "custom_log_fields",
+    "type": "object",
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+  },
+  {
+    "name": "idp_metadata_file",
+    "type": "string",
+    "default": "",
+    "description": "File reference to the Identity Provider metadata XML file."
+  },
+  {
+    "name": "sp_acs_url",
+    "type": "string",
+    "default": "",
+    "description": "The URL of the Service Provider's ACS endpoint. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`([settings](settings)) attribute if Couper is running behind a proxy."
+  },
+  {
+    "name": "sp_entity_id",
+    "type": "string",
+    "default": "",
+    "description": "The Service Provider's entity ID."
+  }
+]
+
+---
+::
 
 Some information from the assertion consumed at the ACS endpoint is provided in the context at `request.context.<label>`:
 
-- the `NameID` of the assertion's `Subject` (`request.context.<label>.sub`)
-- the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `request.context.<label>.exp`)
-- the attributes (`request.context.<label>.attributes.<name>`)
+  - the `NameID` of the assertion's `Subject` (`request.context.<label>.sub`)
+  - the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `request.context.<label>.exp`)
+  - the attributes (`request.context.<label>.attributes.<name>`)

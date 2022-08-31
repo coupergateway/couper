@@ -21,18 +21,19 @@ import (
 )
 
 type entry struct {
-	ID         string `json:"objectID"`
-	Name       string `json:"name"`
-	Type       string `json:"type"`
-	Url        string `json:"url"`
-	Attributes []attr `json:"attributes"`
+	Attributes  []attr `json:"attributes"`
+	Description string `json:"description"`
+	ID          string `json:"objectID"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Url         string `json:"url"`
 }
 
 type attr struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
 	Default     string `json:"default"`
 	Description string `json:"description"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
 }
 
 const (
@@ -50,8 +51,9 @@ func main() {
 	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
 	index := client.InitIndex(searchIndex)
 
-	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z]+)`)
+	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z0-9]+)`)
 	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
+	mdHeaderRegex := regexp.MustCompile(`#(.+)\n(\n(.+)\n)`)
 
 	attributesMap := map[string][]reflect.StructField{
 		"RequestHeadersAttributes":  newFields(&meta.RequestHeadersAttributes{}),
@@ -61,6 +63,8 @@ func main() {
 		"LogFieldsAttribute":        newFields(&meta.LogFieldsAttribute{}),
 	}
 
+	processedFiles := make(map[string]struct{})
+
 	for _, impl := range []interface{}{
 		&config.API{},
 		&config.Backend{},
@@ -68,14 +72,23 @@ func main() {
 		&config.CORS{},
 		&config.Defaults{},
 		&config.Endpoint{},
+		&config.ErrorHandler{},
 		&config.Files{},
 		&config.Health{},
 		&config.JWTSigningProfile{},
+		&config.JWT{},
+		&config.OAuth2AC{},
+		&config.OAuth2ReqAuth{},
+		&config.OIDC{},
 		&config.OpenAPI{},
 		&config.Proxy{},
+		&config.RateLimit{},
 		&config.Request{},
+		&config.Response{},
+		&config.SAML{},
 		&config.Server{},
 		&config.Settings{},
+		&config.Spa{},
 		&config.TokenRequest{},
 		&config.Websockets{},
 	} {
@@ -83,10 +96,9 @@ func main() {
 		name := reflect.TypeOf(impl).String()
 		name = strings.TrimPrefix(name, "*config.")
 		fileName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
-
 		result := entry{
 			Name: name,
-			Url:  basePath + name,
+			Url:  strings.ToLower(basePath + fileName),
 			Type: "block",
 		}
 		result.ID = result.Url
@@ -116,7 +128,7 @@ func main() {
 
 			fieldType := field.Tag.Get("type")
 			if fieldType == "" {
-				ft := field.Type.String()
+				ft := strings.Replace(field.Type.String(), "*", "", 1)
 				if ft[:2] == "[]" {
 					ft = "tuple (" + ft[2:] + ")"
 				} else if strings.Contains(ft, "int") {
@@ -213,10 +225,50 @@ values: %s
 			panic(err)
 		}
 
+		processedFiles[file.Name()] = struct{}{}
 		println("Attributes written: " + fileName)
 
 		if os.Getenv(searchClientKey) != "" {
 			_, err = index.SaveObjects(result) //, opt.AutoGenerateObjectIDIfNotExist(true))
+			if err != nil {
+				panic(err)
+			}
+			println("SearchIndex updated")
+		}
+	}
+
+	if os.Getenv(searchClientKey) == "" {
+		return
+	}
+
+	// index non generated markdown
+	dirEntries, err := os.ReadDir(docsBlockPath)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, dirEntry := range dirEntries {
+		if dirEntry.IsDir() {
+			continue
+		}
+		entryPath := filepath.Join(docsBlockPath, dirEntry.Name())
+		if _, ok := processedFiles[entryPath]; !ok {
+			println("Indexing from file: " + dirEntry.Name())
+			fileContent, rerr := os.ReadFile(entryPath)
+			if rerr != nil {
+				panic(err)
+			}
+			matches := mdHeaderRegex.FindSubmatch(fileContent)
+			urlPath := filepath.Join(basePath, dirEntry.Name()[:len(dirEntry.Name())-3])
+			result := &entry{
+				Description: string(bytes.ToLower(matches[3])),
+				ID:          urlPath,
+				Name:        string(bytes.ToLower(matches[1])),
+				Type:        "block",
+				Url:         urlPath,
+			}
+
+			_, err = index.SaveObjects(result)
 			if err != nil {
 				panic(err)
 			}

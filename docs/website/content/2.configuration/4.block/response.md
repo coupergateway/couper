@@ -6,9 +6,36 @@ The `response` block creates and sends a client response.
 |:-----------|:----------------------------------|:---------|:----------------|
 | `response` | [Endpoint Block](endpoint) | no label | -               |
 
-| Attribute(s) | Type                                      | Default | Description                                                           | Characteristic(s)                                                       | Example |
-|:-------------|:------------------------------------------|:--------|:----------------------------------------------------------------------|:------------------------------------------------------------------------|:--------|
-| `body`       | string                                    | -       | -                                                                     | Creates implicit default `Content-Type: text/plain` header field.       | -       |
-| `json_body`  | null, bool, number, string, object, tuple | -       | -                                                                     | Creates implicit default `Content-Type: application/json` header field. | -       |
-| `status`     | integer                                   | `200`   | HTTP status code.                                                     | -                                                                       | -       |
-| `headers`    | object                                    | -       | Same as `set_response_headers` in [Request Header](../modifiers#response-header). | -                                                                       | -       |
+The response body can be omitted or must be one of `body` or `json_body`.
+
+::attributes
+---
+values: [
+  {
+    "name": "body",
+    "type": "string",
+    "default": "",
+    "description": "Response body which creates implicit default `Content-Type: text/plain` header field."
+  },
+  {
+    "name": "headers",
+    "type": "object",
+    "default": "",
+    "description": "Same as `set_response_headers` in [Request Header](../modifiers#response-header)."
+  },
+  {
+    "name": "json_body",
+    "type": "null, bool, number, string, object, tuple",
+    "default": "",
+    "description": "JSON response body which creates implicit default `Content-Type: application/json` header field."
+  },
+  {
+    "name": "status",
+    "type": "number",
+    "default": "200",
+    "description": "The HTTP status code to return."
+  }
+]
+
+---
+::

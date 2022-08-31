@@ -111,8 +111,8 @@ values: [
   },
   {
     "name": "websockets",
-    "type": "object",
-    "default": "",
+    "type": "bool",
+    "default": "false",
     "description": "Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other `proxy` blocks, `request` blocks or `response` blocks are not allowed within the current `endpoint` block."
   }
 ]
