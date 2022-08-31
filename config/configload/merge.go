@@ -647,6 +647,11 @@ func attrStringValue(attr *hclsyntax.Attribute) (string, error) {
 		return "", err
 	}
 
+	if v.Type() != cty.String {
+		sr := attr.Expr.StartRange()
+		return "", newDiagErr(&sr, fmt.Sprintf("%s must evaluate to string", attr.Name))
+	}
+
 	return v.AsString(), nil
 }
 
