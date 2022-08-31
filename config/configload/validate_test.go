@@ -288,7 +288,7 @@ func Test_validateBody(t *testing.T) {
 			"duplicate proxy labels",
 			`server {}
 			 definitions {
-				proxy "foo" {
+			   proxy "foo" {
 			   }
 			   proxy "foo" {
 			   }
