@@ -961,3 +961,52 @@ func TestEndpointACBufferOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestEndpoint_ReusableProxies(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "18_couper.hcl"), helper)
+	defer shutdown()
+
+	type testCase struct {
+		path      string
+		name      string
+		expStatus int
+	}
+
+	for _, tc := range []testCase{
+		{"/abcdef", "abcdef", 204},
+		{"/reuse", "abcdef", 204},
+		{"/default", "default", 200},
+		{"/api-abcdef", "abcdef", 204},
+		{"/api-reuse", "abcdef", 204},
+		{"/api-default", "default", 200},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			h := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
+			h.Must(err)
+
+			hook.Reset()
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("want: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			for _, e := range hook.AllEntries() {
+				if e.Data["type"] != "couper_backend" {
+					continue
+				}
+
+				if name := e.Data["request"].(logging.Fields)["name"]; name != tc.name {
+					st.Errorf("want: %s, got: %s", tc.name, name)
+				}
+			}
+		})
+	}
+}

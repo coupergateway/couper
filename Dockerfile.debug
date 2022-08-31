@@ -1,0 +1,27 @@
+FROM golang as builder
+ARG BUILD=dev
+ARG COUPER_PATH=/opt/couper
+COPY . ${COUPER_PATH}
+WORKDIR ${COUPER_PATH}
+RUN CGO_ENABLED=0 go build \
+  -gcflags "all=-N -l" \
+	-o /couper \
+	&& ls -lh /couper
+
+# extra for caching
+FROM golang as dlv-builder
+ENV CGO_ENABLED=0
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+FROM alpine
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /
+
+COPY --from=builder /couper /
+COPY --from=dlv-builder /go/bin/dlv /
+
+EXPOSE 8080 40000
+
+ENTRYPOINT ["/dlv", "-l=:40000", "--headless", "--api-version=2", "--accept-multiclient", "exec", "/couper", "--"]
+CMD ["run", "-d", "/conf"]
