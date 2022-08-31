@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
+	"go.uber.org/goleak"
 
 	"github.com/avenga/couper/config/env"
 )
@@ -103,4 +105,43 @@ func Test_realmain(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_Main_Leaks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+
+	// defer goleak.VerifyNone(t)
+
+	t.Errorf("1 >>> %d", runtime.NumGoroutine())
+	go realmain(ctx, []string{"couper", "run", "-f", "server/testdata/settings/18_couper.hcl", "-watch"})
+	time.Sleep(time.Second / 2)
+	t.Errorf("2 >>> %d", runtime.NumGoroutine())
+
+	time.Sleep(time.Second / 3)
+
+	currentTime := time.Now()
+	os.Chtimes("server/testdata/settings/18_couper.hcl", currentTime, currentTime)
+	t.Errorf("3 >>> %d", runtime.NumGoroutine())
+
+	time.Sleep(time.Second / 3)
+
+	currentTime = time.Now()
+	os.Chtimes("server/testdata/settings/18_couper.hcl", currentTime, currentTime)
+	t.Errorf("4 >>> %d", runtime.NumGoroutine())
+
+	time.Sleep(time.Second / 3)
+
+	currentTime = time.Now()
+	os.Chtimes("server/testdata/settings/18_couper.hcl", currentTime, currentTime)
+	t.Errorf("5 >>> %d", runtime.NumGoroutine())
+
+	time.Sleep(time.Second / 3)
+
+	currentTime = time.Now()
+	os.Chtimes("server/testdata/settings/18_couper.hcl", currentTime, currentTime)
+	t.Errorf("6 >>> %d", runtime.NumGoroutine())
+
+	cancel()
+	goleak.VerifyNone(t)
 }
