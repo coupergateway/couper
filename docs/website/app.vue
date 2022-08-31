@@ -29,6 +29,10 @@ onMounted(async () => {
 	line-height: 1.5rem
 }
 
+.prose {
+  max-width: 80%;
+}
+
 pre::before {
 	content: "📋";
 	position: absolute;

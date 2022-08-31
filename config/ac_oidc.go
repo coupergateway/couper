@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
-	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/meta"
 )
 
@@ -19,19 +18,19 @@ var (
 // the url with the backend origin definition.
 type OIDC struct {
 	ErrorHandlerSetter
-	BackendName             string   `hcl:"backend,optional"`
-	ClientID                string   `hcl:"client_id"`
-	ClientSecret            string   `hcl:"client_secret"`
-	ConfigurationURL        string   `hcl:"configuration_url"`
-	JWKsTTL                 string   `hcl:"jwks_ttl,optional"`
-	JWKsMaxStale            string   `hcl:"jwks_max_stale,optional"`
+	BackendName             string   `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Required, if no [{backend} block](backend) or {configuration_url} is defined within."`
+	ClientID                string   `hcl:"client_id" docs:"The client identifier."`
+	ClientSecret            string   `hcl:"client_secret" docs:"The client password."`
+	ConfigurationURL        string   `hcl:"configuration_url" docs:"The OpenID configuration URL."`
+	JWKsTTL                 string   `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
+	JWKsMaxStale            string   `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
 	Name                    string   `hcl:"name,label"`
 	Remain                  hcl.Body `hcl:",remain"`
-	Scope                   *string  `hcl:"scope,optional"`
-	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional"`
-	ConfigurationTTL        string   `hcl:"configuration_ttl,optional"`
-	ConfigurationMaxStale   string   `hcl:"configuration_max_stale,optional"`
-	VerifierMethod          string   `hcl:"verifier_method,optional"`
+	Scope                   *string  `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
+	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional" docs:"Defines the method to authenticate the client at the token endpoint. If set to {client_secret_post}, the client credentials are transported in the request body. If set to {client_secret_basic}, the client credentials are transported via Basic Authentication." default:"client_secret_basic"`
+	ConfigurationTTL        string   `hcl:"configuration_ttl,optional" docs:"The duration to cache the OpenID configuration located at {configuration_url}." type:"duration" default:"1h"`
+	ConfigurationMaxStale   string   `hcl:"configuration_max_stale,optional" docs:"Duration a cached OpenID configuration stays valid after its TTL has passed." type:"duration" default:"1h"`
+	VerifierMethod          string   `hcl:"verifier_method,optional" docs:"The method to verify the integrity of the authorization code flow."`
 
 	// configuration related backends
 	ConfigurationBackendName string `hcl:"configuration_backend,optional"`
@@ -55,10 +54,6 @@ func (o *OIDC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 		if err != nil {
 			return err
 		}
-
-		// exceptions
-		o.Backends[field] = hclbody.MergeBodies(o.Backends[field],
-			hclbody.New(hclbody.NewContentWithAttrName("_oidc_backend", "true")))
 	}
 	return nil
 }
@@ -78,16 +73,16 @@ func (o *OIDC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
 		Backend       *Backend `hcl:"backend,block"`
-		RedirectURI   string   `hcl:"redirect_uri"`
-		VerifierValue string   `hcl:"verifier_value"`
+		RedirectURI   string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}({settings} block) attribute if Couper is running behind a proxy."`
+		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier."`
 
 		AuthorizationBackend       *Backend `hcl:"authorization_backend,block"`
-		ConfigurationBackend       *Backend `hcl:"configuration_backend,block"`
+		ConfigurationBackend       *Backend `hcl:"configuration_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
 		DeviceAuthorizationBackend *Backend `hcl:"device_authorization_backend,block"`
-		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block"`
+		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
 		RevocationBackend          *Backend `hcl:"revocation_backend,block"`
-		TokenBackend               *Backend `hcl:"token_backend,block"`
-		UserinfoBackend            *Backend `hcl:"userinfo_backend,block"`
+		TokenBackend               *Backend `hcl:"token_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
+		UserinfoBackend            *Backend `hcl:"userinfo_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
 	}
 
 	return &Inline{}
