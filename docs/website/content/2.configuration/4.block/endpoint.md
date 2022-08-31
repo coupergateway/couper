@@ -101,6 +101,12 @@ values: [
     "description": "Location of the error file template."
   },
   {
+    "name": "proxy",
+    "type": "string",
+    "default": "",
+    "description": "proxy block reference"
+  },
+  {
     "name": "remove_form_params",
     "type": "object",
     "default": "",

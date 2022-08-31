@@ -43,6 +43,7 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 			uniqueBackends := make(map[string]struct{})
 			uniqueACs := make(map[string]struct{})
 			uniqueJWTSigningProfiles := make(map[string]struct{})
+			uniqueProxies := make(map[string]struct{})
 			for _, innerBlock := range outerBlock.Body.Blocks {
 				if !afterMerge {
 					if len(innerBlock.Labels) == 0 {
@@ -91,6 +92,13 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 					err := checkJWTSigningProfiles(uniqueJWTSigningProfiles, label, labelRange)
 					if err != nil {
 						return err
+					}
+				case proxy:
+					if !afterMerge {
+						if _, set := uniqueProxies[label]; set {
+							return newDiagErr(&labelRange, "proxy labels must be unique")
+						}
+						uniqueProxies[label] = struct{}{}
 					}
 				}
 			}

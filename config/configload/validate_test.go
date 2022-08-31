@@ -285,6 +285,17 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:5,15-20: backend labels must be unique; ",
 		},
 		{
+			"duplicate proxy labels",
+			`server {}
+			 definitions {
+			   proxy "foo" {
+			   }
+			   proxy "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,13-18: proxy labels must be unique; ",
+		},
+		{
 			"missing basic_auth label",
 			`server {}
 			 definitions {
