@@ -5,11 +5,8 @@ import (
 	"regexp"
 )
 
-var (
-	// reValidFormat validates the format only, validating for a valid host or port is out of scope.
-	reValidFormat  = regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
-	reCleanPattern = regexp.MustCompile(`{([^}]+)}`)
-)
+// reValidFormat validates the format only, validating for a valid host or port is out of scope.
+var reValidFormat = regexp.MustCompile(`^([a-z0-9.-]+|\*)(:\*|:\d{1,5})?$`)
 
 func validateHosts(serverName string, hosts []string, isHostsMandatory bool) error {
 	if isHostsMandatory && len(hosts) == 0 {
@@ -23,10 +20,4 @@ func validateHosts(serverName string, hosts []string, isHostsMandatory bool) err
 	}
 
 	return nil
-}
-
-func isUnique(endpoints map[string]bool, pattern string) (bool, string) {
-	pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
-
-	return !endpoints[pattern], pattern
 }
