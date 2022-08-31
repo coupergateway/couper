@@ -94,10 +94,12 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 						return err
 					}
 				case proxy:
-					if _, set := uniqueProxies[label]; set {
-						return newDiagErr(&labelRange, "proxy labels must be unique")
+					if !afterMerge {
+						if _, set := uniqueProxies[label]; set {
+							return newDiagErr(&labelRange, "proxy labels must be unique")
+						}
+						uniqueProxies[label] = struct{}{}
 					}
-					uniqueProxies[label] = struct{}{}
 				}
 			}
 		} else if outerBlock.Type == server {
