@@ -565,6 +565,46 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:5,18-23: AC labels must be unique; ",
 		},
 		{
+			"duplicate signing profile labels 1",
+			`server {}
+			 definitions {
+			   jwt "foo" {
+			     signing_ttl = "1m"
+			   }
+			   jwt_signing_profile "foo" {
+			   }
+			 }`,
+			"couper.hcl:6,27-32: JWT signing profile labels must be unique; ",
+		},
+		{
+			"jwt not used as signing profile",
+			`server {}
+			 definitions {
+			   jwt_signing_profile "foo" {
+			     signature_algorithm = "HS256"
+			     key = "asdf"
+			     ttl = "1m"
+			   }
+			   jwt "foo" {
+			     signature_algorithm = "HS256"
+			     key = "sdfg"
+			   }
+			 }`,
+			"",
+		},
+		{
+			"duplicate signing profile labels 2",
+			`server {}
+			 definitions {
+			   jwt_signing_profile "foo" {
+			   }
+			   jwt "foo" {
+			     signing_ttl = "1m"
+			   }
+			 }`,
+			"couper.hcl:5,11-16: JWT signing profile labels must be unique; ",
+		},
+		{
 			"same label for backend and AC",
 			`server {}
 			 definitions {
@@ -780,6 +820,23 @@ func Test_validateBody_multiple(t *testing.T) {
 				 }`,
 			},
 			[]string{"couper_1.hcl:4,19-23: duplicate endpoint; "},
+		},
+		{
+			"duplicate signing profile labels",
+			[]string{
+				`server {}
+				 definitions {
+			       jwt "foo" {
+			         signing_ttl = "1m"
+			       }
+				 }`,
+				`server {}
+				 definitions {
+			       jwt_signing_profile "foo" {
+			       }
+				 }`,
+			},
+			[]string{"couper_0.hcl:3,15-20: JWT signing profile labels must be unique; ", "couper_1.hcl:3,31-36: JWT signing profile labels must be unique; "},
 		},
 	}
 

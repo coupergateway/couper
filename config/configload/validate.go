@@ -42,6 +42,7 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 		if outerBlock.Type == definitions {
 			uniqueBackends := make(map[string]struct{})
 			uniqueACs := make(map[string]struct{})
+			uniqueJWTSigningProfiles := make(map[string]struct{})
 			for _, innerBlock := range outerBlock.Body.Blocks {
 				if !afterMerge {
 					if len(innerBlock.Labels) == 0 {
@@ -68,21 +69,29 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 						}
 						uniqueBackends[label] = struct{}{}
 					}
-				case "basic_auth", "beta_oauth2", "jwt", "oidc", "saml":
-					if !afterMerge {
-						if label == "" {
-							return newDiagErr(&labelRange, "accessControl requires a label")
-						}
-
-						if eval.IsReservedContextName(label) {
-							return newDiagErr(&labelRange, "accessControl uses reserved name as label")
-						}
+				case "basic_auth", "beta_oauth2", "oidc", "saml":
+					err := checkAC(uniqueACs, label, labelRange, afterMerge)
+					if err != nil {
+						return err
+					}
+				case "jwt":
+					err := checkAC(uniqueACs, label, labelRange, afterMerge)
+					if err != nil {
+						return err
 					}
 
-					if _, set := uniqueACs[label]; set {
-						return newDiagErr(&labelRange, "AC labels must be unique")
+					attrs, _ := innerBlock.Body.JustAttributes() // just get attributes, ignore diags for now
+					if _, set := attrs["signing_ttl"]; set {
+						err = checkJWTSigningProfiles(uniqueJWTSigningProfiles, label, labelRange)
+						if err != nil {
+							return err
+						}
 					}
-					uniqueACs[label] = struct{}{}
+				case "jwt_signing_profile":
+					err := checkJWTSigningProfiles(uniqueJWTSigningProfiles, label, labelRange)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		} else if outerBlock.Type == server {
@@ -145,6 +154,34 @@ func registerEndpointPattern(endpointPatterns map[string]struct{}, basePath stri
 	}
 
 	endpointPatterns[pattern] = struct{}{}
+	return nil
+}
+
+func checkAC(acLabels map[string]struct{}, label string, labelRange hcl.Range, afterMerge bool) error {
+	if !afterMerge {
+		if label == "" {
+			return newDiagErr(&labelRange, "accessControl requires a label")
+		}
+
+		if eval.IsReservedContextName(label) {
+			return newDiagErr(&labelRange, "accessControl uses reserved name as label")
+		}
+	}
+
+	if _, set := acLabels[label]; set {
+		return newDiagErr(&labelRange, "AC labels must be unique")
+	}
+
+	acLabels[label] = struct{}{}
+	return nil
+}
+
+func checkJWTSigningProfiles(spLabels map[string]struct{}, label string, labelRange hcl.Range) error {
+	if _, set := spLabels[label]; set {
+		return newDiagErr(&labelRange, "JWT signing profile labels must be unique")
+	}
+
+	spLabels[label] = struct{}{}
 	return nil
 }
 
