@@ -102,4 +102,9 @@ export default defineNuxtConfig({
             }
         }
     },
+    generate: {
+        // https://nuxtjs.org/docs/configuration-glossary/configuration-generate/#subfolders
+        // Does not seem to work in Nuxt3!
+        subFolders: false
+    }
 })
