@@ -22,8 +22,8 @@ var backendBlockSchema = &hcl.BodySchema{
 	},
 }
 
-var defaultBackend = hclbody.New(&hcl.BodyContent{
-	Attributes: map[string]*hcl.Attribute{
+var defaultBackend = &hclsyntax.Body{
+	Attributes: map[string]*hclsyntax.Attribute{
 		"connect_timeout": {
 			Name: "connect_timeout",
 			Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("10s")},
@@ -37,7 +37,7 @@ var defaultBackend = hclbody.New(&hcl.BodyContent{
 			Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("300s")},
 		},
 	},
-})
+}
 
 // PrepareBackend is a method which is mandatory to call for preparing any kind of backend.
 // This applies to defined, reference, anonymous and endpoint/url related configurations.
