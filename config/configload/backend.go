@@ -22,21 +22,23 @@ var backendBlockSchema = &hcl.BodySchema{
 	},
 }
 
-var defaultBackend = &hclsyntax.Body{
-	Attributes: map[string]*hclsyntax.Attribute{
-		"connect_timeout": {
-			Name: "connect_timeout",
-			Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("10s")},
+func newDefaultBackend() *hclsyntax.Body {
+	return &hclsyntax.Body{
+		Attributes: map[string]*hclsyntax.Attribute{
+			"connect_timeout": {
+				Name: "connect_timeout",
+				Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("10s")},
+			},
+			"ttfb_timeout": {
+				Name: "ttfb_timeout",
+				Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("60s")},
+			},
+			"timeout": {
+				Name: "timeout",
+				Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("300s")},
+			},
 		},
-		"ttfb_timeout": {
-			Name: "ttfb_timeout",
-			Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("60s")},
-		},
-		"timeout": {
-			Name: "timeout",
-			Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("300s")},
-		},
-	},
+	}
 }
 
 // PrepareBackend is a method which is mandatory to call for preparing any kind of backend.
@@ -69,7 +71,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 
 		if backendBody == nil {
 			if attrName == "_init" { // initial definitions case
-				backendBody = hclbody.MergeBodies(defaultBackend, refBody)
+				backendBody = hclbody.MergeBds(refBody.(*hclsyntax.Body), newDefaultBackend(), false)
 			} else { // plain reference without params
 				return refBody, nil
 			}
@@ -80,7 +82,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			if err = invalidOriginRefinement(refBody, backendBody); err != nil {
 				return nil, err
 			}
-			backendBody = newBodyWithName(reference, backendBody)
+			backendBody = newBodyWithName(reference, backendBody.(*hclsyntax.Body))
 			// no child blocks are allowed, so no need to try to wrap with oauth2 or token request
 			return backendBody, nil
 		}
@@ -95,12 +97,25 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 		anonLabel := newAnonLabel(block.HCLBody(), labelRange) + labelSuffix
 		// ensure our default settings
 		if backendBody == nil {
-			backendBody = defaultBackend
+			backendBody = newDefaultBackend()
 		} else {
-			backendBody = hclbody.MergeBodies(defaultBackend, backendBody)
+			switch labelSuffix {
+			// TODO do we also have to add _configuration_backend?
+			case "_jwks_uri_backend", "_token_backend", "_userinfo_backend":
+				p := backendBody.(*hclsyntax.Body)
+				copied := *p
+				// create new Attributes to allow different name later
+				copied.Attributes = make(map[string]*hclsyntax.Attribute, len(p.Attributes))
+				for k, v := range p.Attributes {
+					copied.Attributes[k] = v
+				}
+				backendBody = hclbody.MergeBds(&copied, newDefaultBackend(), false)
+			default:
+				backendBody = hclbody.MergeBds(backendBody.(*hclsyntax.Body), newDefaultBackend(), false)
+			}
 		}
 
-		backendBody = newBodyWithName(anonLabel, backendBody)
+		backendBody = newBodyWithName(anonLabel, backendBody.(*hclsyntax.Body))
 	}
 
 	// watch out for oauth blocks and nested backend definitions
@@ -281,10 +296,11 @@ func newBlock(blockType string, content hcl.Body) hcl.Body {
 	})
 }
 
-func newBodyWithName(nameValue string, config hcl.Body) hcl.Body {
-	return hclbody.MergeBodies(
+func newBodyWithName(nameValue string, config *hclsyntax.Body) *hclsyntax.Body {
+	return hclbody.MergeBds(
 		config,
 		hclbody.NewHCLSyntaxBodyWithStringAttr("name", nameValue),
+		true,
 	)
 }
 

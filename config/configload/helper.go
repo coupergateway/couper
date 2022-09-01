@@ -54,7 +54,7 @@ func newHelper(body hcl.Body, src [][]byte, environment string) (*helper, error)
 func (h *helper) addBackend(block *hcl.Block) {
 	name := block.Labels[0]
 
-	backendBody := newBodyWithName(name, block.Body)
+	backendBody := newBodyWithName(name, block.Body.(*hclsyntax.Body))
 
 	h.defsBackends[name] = backendBody
 }

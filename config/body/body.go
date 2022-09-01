@@ -32,6 +32,18 @@ func NewHCLSyntaxBodyWithStringAttr(name, value string) *hclsyntax.Body {
 	}
 }
 
+func MergeBds(dest, src *hclsyntax.Body, replace bool) *hclsyntax.Body {
+	for k, v := range src.Attributes {
+		if _, set := dest.Attributes[k]; replace || !set {
+			dest.Attributes[k] = v
+		}
+	}
+	for _, bl := range src.Blocks {
+		dest.Blocks = append(dest.Blocks, bl)
+	}
+	return dest
+}
+
 func RenameAttribute(content *hcl.BodyContent, old, new string) {
 	if attr, ok := content.Attributes[old]; ok {
 		attr.Name = new
