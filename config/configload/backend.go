@@ -80,9 +80,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			if err = invalidOriginRefinement(refBody, backendBody); err != nil {
 				return nil, err
 			}
-			backendBody = hclbody.MergeBodies(
-				hclbody.New(hclbody.NewContentWithAttrName("name", reference)),
-				backendBody)
+			backendBody = newBodyWithName(reference, backendBody)
 			// no child blocks are allowed, so no need to try to wrap with oauth2 or token request
 			return backendBody, nil
 		}
@@ -286,7 +284,7 @@ func newBlock(blockType string, content hcl.Body) hcl.Body {
 func newBodyWithName(nameValue string, config hcl.Body) hcl.Body {
 	return hclbody.MergeBodies(
 		config,
-		hclbody.New(hclbody.NewContentWithAttrName("name", nameValue)),
+		hclbody.NewHCLSyntaxBodyWithStringAttr("name", nameValue),
 	)
 }
 
