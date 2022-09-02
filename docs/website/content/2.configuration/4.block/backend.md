@@ -63,13 +63,13 @@ values: [
     "name": "disable_certificate_validation",
     "type": "bool",
     "default": "false",
-    "description": "Disables the peer certificate validation."
+    "description": "Disables the peer certificate validation. Must not be used in backend refinement."
   },
   {
     "name": "disable_connection_reuse",
     "type": "bool",
     "default": "false",
-    "description": "Disables reusage of connections to the origin."
+    "description": "Disables reusage of connections to the origin. Must not be used in backend refinement."
   },
   {
     "name": "hostname",
@@ -81,13 +81,13 @@ values: [
     "name": "http2",
     "type": "bool",
     "default": "false",
-    "description": "Enables the HTTP2 support."
+    "description": "Enables the HTTP2 support. Must not be used in backend refinement."
   },
   {
     "name": "max_connections",
     "type": "number",
     "default": "0",
-    "description": "The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin."
+    "description": "The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. Must not be used in backend refinement."
   },
   {
     "name": "origin",
@@ -186,6 +186,38 @@ values: [
     "description": "Ignores the health state and continues with the outgoing request"
   }
 ]
+
+## Refining a referenced backend
+
+Referenced backends may be "refined" by using a labeled `backend` block in places where an unlabeled `backend` block would also be allowed, e.g. in a `proxy` block:
+
+```hcl
+    proxy {
+      backend "ref_be" {      # refine referenced backend
+        path = "/b"           # override existing attribute value
+        add_form_params = {   # set new attribute
+          # ...
+        }
+      }
+    }
+
+# ...
+
+definitions {
+  backend "ref_be" {
+    origin = "https://example.com"
+    path = "/a"
+  }
+}
+```
+
+If an attribute is set in both the _referenced_ and the _refining_ block, the value in the _refining_ block is used.
+
+**Note:** Child _blocks_ and the following _attributes_ are not allowed in refining `backend` blocks:
+* `disable_certificate_validation`,
+* `disable_connection_reuse`,
+* `http2` and
+* `max_connections`.
 
 ---
 ::

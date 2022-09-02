@@ -66,14 +66,63 @@ definitions {
 	}
 }`
 
-	_, err := configload.LoadBytes([]byte(fmt.Sprintf(config, `openapi { file = ""}`)), "test.hcl")
-	if err == nil {
-		t.Fatal("expected an error")
+	tests := []struct {
+		name string
+		hcl  string
+	}{
+		{
+			"openapi",
+			`openapi { file = ""}`,
+		},
+		{
+			"oauth2",
+			`oauth2 {
+  grant_type = "client_credentials"
+  token_endpoint = ""
+  client_id = "asdf"
+  client_secret = "asdf"
+}`,
+		},
+		{
+			"beta_health",
+			`beta_health {
+}`,
+		},
+		{
+			"beta_token_request",
+			`beta_token_request {
+  token = "asdf"
+  ttl = "1s"
+}`,
+		},
+		{
+			"beta_token_request",
+			`beta_token_request "name" {
+  token = "asdf"
+  ttl = "1s"
+}`,
+		},
+		{
+			"beta_rate_limit",
+			`beta_rate_limit {
+  per_period = 10
+  period = "10s"
+}`,
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := configload.LoadBytes([]byte(fmt.Sprintf(config, tt.hcl)), "test.hcl")
+			if err == nil {
+				subT.Error("expected an error")
+				return
+			}
 
-	if !strings.HasSuffix(err.Error(),
-		fmt.Sprintf("backend reference: refinement for %q is not permitted; ", "openapi")) {
-		t.Error(err)
+			if !strings.HasSuffix(err.Error(),
+				fmt.Sprintf("backend reference: refinement for %q is not permitted; ", tt.name)) {
+				subT.Error(err)
+			}
+		})
 	}
 }
 

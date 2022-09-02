@@ -83,6 +83,8 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			backendBody = hclbody.MergeBodies(
 				hclbody.New(hclbody.NewContentWithAttrName("name", reference)),
 				backendBody)
+			// no child blocks are allowed, so no need to try to wrap with oauth2 or token request
+			return backendBody, nil
 		}
 	} else { // anonymous backend block
 		var labelRange *hcl.Range

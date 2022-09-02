@@ -248,10 +248,18 @@ func verifyResponseBodyAttrs(b hcl.Body) error {
 }
 
 var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections"}
-var openApiBlockSchema = &hcl.BodySchema{
+var forbiddenInRefinedBackendBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
 		{
 			Type: "openapi",
+		},
+		config.OAuthBlockHeaderSchema,
+		{
+			Type: "beta_health",
+		},
+		config.TokenRequestBlockHeaderSchema,
+		{
+			Type: "beta_rate_limit",
 		},
 	},
 }
@@ -269,9 +277,9 @@ func invalidRefinement(body hcl.Body) error {
 		}
 	}
 
-	content, _, _ := body.PartialContent(openApiBlockSchema)
-	if content != nil && len(content.Blocks.OfType("openapi")) > 0 {
-		return newDiagErr(&content.Blocks.OfType("openapi")[0].DefRange, fmt.Sprintf(message, "openapi"))
+	content, _, _ := body.PartialContent(forbiddenInRefinedBackendBlockSchema)
+	if content != nil && len(content.Blocks) > 0 {
+		return newDiagErr(&content.Blocks[0].DefRange, fmt.Sprintf(message, content.Blocks[0].Type))
 	}
 
 	return nil
