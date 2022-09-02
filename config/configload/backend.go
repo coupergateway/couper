@@ -45,9 +45,9 @@ func newDefaultBackend() *hclsyntax.Body {
 // This applies to defined, reference, anonymous and endpoint/url related configurations.
 // This method will be called recursively and is used as wrapped injector for
 // access-control backends via config.PrepareBackendFunc.
-func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inline) (hcl.Body, error) {
+func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inline) (*hclsyntax.Body, error) {
 	var reference string // backend definitions
-	var backendBody hcl.Body
+	var backendBody *hclsyntax.Body
 	var err error
 
 	reference, backendBody, err = getBackendReference(block)
@@ -71,7 +71,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 
 		if backendBody == nil {
 			if attrName == "_init" { // initial definitions case
-				backendBody = hclbody.MergeBds(refBody.(*hclsyntax.Body), newDefaultBackend(), false)
+				backendBody = hclbody.MergeBds(refBody, newDefaultBackend(), false)
 			} else { // plain reference without params
 				return refBody, nil
 			}
@@ -82,7 +82,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			if err = invalidOriginRefinement(refBody, backendBody); err != nil {
 				return nil, err
 			}
-			backendBody = newBodyWithName(reference, backendBody.(*hclsyntax.Body))
+			backendBody = newBodyWithName(reference, backendBody)
 			// no child blocks are allowed, so no need to try to wrap with oauth2 or token request
 			return backendBody, nil
 		}
@@ -102,34 +102,33 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			switch labelSuffix {
 			// TODO do we also have to add _configuration_backend?
 			case "_jwks_uri_backend", "_token_backend", "_userinfo_backend":
-				p := backendBody.(*hclsyntax.Body)
-				copied := *p
+				copied := *backendBody
 				// create new Attributes to allow different name later
-				copied.Attributes = make(map[string]*hclsyntax.Attribute, len(p.Attributes))
-				for k, v := range p.Attributes {
+				copied.Attributes = make(map[string]*hclsyntax.Attribute, len(backendBody.Attributes))
+				for k, v := range backendBody.Attributes {
 					copied.Attributes[k] = v
 				}
 				backendBody = hclbody.MergeBds(&copied, newDefaultBackend(), false)
 			default:
-				backendBody = hclbody.MergeBds(backendBody.(*hclsyntax.Body), newDefaultBackend(), false)
+				backendBody = hclbody.MergeBds(backendBody, newDefaultBackend(), false)
 			}
 		}
 
-		backendBody = newBodyWithName(anonLabel, backendBody.(*hclsyntax.Body))
+		backendBody = newBodyWithName(anonLabel, backendBody)
 	}
 
 	// watch out for oauth blocks and nested backend definitions
-	backendBody, err = setOAuth2Backend(helper, backendBody.(*hclsyntax.Body))
+	backendBody, err = setOAuth2Backend(helper, backendBody)
 	if err != nil {
 		return nil, err
 	}
 
 	// watch out for beta_token_request blocks and nested backend definitions
-	return setTokenRequestBackend(helper, backendBody.(*hclsyntax.Body))
+	return setTokenRequestBackend(helper, backendBody)
 }
 
 // getBackendReference reads a referenced backend name and the refined backend block content if any.
-func getBackendReference(inline config.Inline) (string, hcl.Body, error) {
+func getBackendReference(inline config.Inline) (string, *hclsyntax.Body, error) {
 	var reference string
 
 	content, _, diags := inline.HCLBody().PartialContent(inline.Schema(true))
@@ -147,7 +146,7 @@ func getBackendReference(inline config.Inline) (string, hcl.Body, error) {
 		return reference, nil, nil
 	}
 
-	body := backends[0].Body
+	body := backends[0].Body.(*hclsyntax.Body)
 	if len(backends[0].Labels) > 0 {
 		reference = backends[0].Labels[0]
 	}
@@ -176,7 +175,7 @@ func setOAuth2Backend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.Body, 
 
 	backendBlock := &hclsyntax.Block{
 		Type: backend,
-		Body: backendBody.(*hclsyntax.Body),
+		Body: backendBody,
 	}
 	oauthBody.Blocks = append(oauthBody.Blocks, backendBlock)
 
@@ -240,7 +239,7 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 
 		backendBlock := &hclsyntax.Block{
 			Type: backend,
-			Body: hclbody.MergeBds(backendBody.(*hclsyntax.Body), tokenRequestBody, false),
+			Body: hclbody.MergeBds(backendBody, tokenRequestBody, false),
 		}
 		tokenRequestBody.Blocks = append(tokenRequestBody.Blocks, backendBlock)
 	}

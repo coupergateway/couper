@@ -18,7 +18,7 @@ type helper struct {
 	config       *config.Couper
 	context      *hcl.EvalContext
 	content      *hcl.BodyContent
-	defsBackends map[string]hcl.Body
+	defsBackends map[string]*hclsyntax.Body
 }
 
 // newHelper creates a container with some methods to keep things simple here and there.
@@ -47,7 +47,7 @@ func newHelper(body hcl.Body, src [][]byte, environment string) (*helper, error)
 		config:       couperConfig,
 		content:      content,
 		context:      couperConfig.Context.(*eval.Context).HCLContext(),
-		defsBackends: make(map[string]hcl.Body),
+		defsBackends: make(map[string]*hclsyntax.Body),
 	}, nil
 }
 
