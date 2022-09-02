@@ -23,6 +23,13 @@ func ValueFromBodyAttribute(ctx *hcl.EvalContext, body hcl.Body, name string) (c
 	if body == nil {
 		return cty.NilVal, nil
 	}
+	if hsb, ok := body.(*hclsyntax.Body); ok {
+		attr, ok := hsb.Attributes[name]
+		if !ok {
+			return cty.NilVal, nil
+		}
+		return Value(ctx, attr.Expr)
+	}
 	schema := &hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: name}}}
 	content, _, _ := body.PartialContent(schema)
 	if content == nil || len(content.Attributes) == 0 {

@@ -258,6 +258,25 @@ func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
 	return nil
 }
 
+func verifyBodyAttributes1(blockName string, body *hclsyntax.Body) error {
+	_, existsBody := body.Attributes["body"]
+	_, existsFormBody := body.Attributes["form_body"]
+	_, existsJsonBody := body.Attributes["json_body"]
+
+	if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
+		rangeAttr := "body"
+		if !existsBody {
+			rangeAttr = "form_body"
+		}
+
+		r := body.Attributes[rangeAttr].Range()
+		return newDiagErr(&r,
+			blockName+" can only have one of body, form_body or json_body attributes")
+	}
+
+	return nil
+}
+
 func verifyResponseBodyAttrs(b hcl.Body) error {
 	content, _, _ := b.PartialContent(config.ResponseInlineSchema)
 	_, existsBody := content.Attributes["body"]

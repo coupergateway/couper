@@ -44,11 +44,29 @@ func MergeBds(dest, src *hclsyntax.Body, replace bool) *hclsyntax.Body {
 	return dest
 }
 
+func BlocksOfType(body *hclsyntax.Body, blockType string) []*hclsyntax.Block {
+	var blocks []*hclsyntax.Block
+	for _, bl := range body.Blocks {
+		if bl.Type == blockType {
+			blocks = append(blocks, bl)
+		}
+	}
+	return blocks
+}
+
 func RenameAttribute(content *hcl.BodyContent, old, new string) {
 	if attr, ok := content.Attributes[old]; ok {
 		attr.Name = new
 		content.Attributes[new] = attr
 		delete(content.Attributes, old)
+	}
+}
+
+func RenameAttribute1(body *hclsyntax.Body, old, new string) {
+	if attr, ok := body.Attributes[old]; ok {
+		attr.Name = new
+		body.Attributes[new] = attr
+		delete(body.Attributes, old)
 	}
 }
 

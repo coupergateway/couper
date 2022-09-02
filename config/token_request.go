@@ -69,10 +69,7 @@ func (t *TokenRequest) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(t.Inline())
 
-	// A backend reference is defined, backend block is not allowed.
-	if t.BackendName != "" {
-		schema.Blocks = nil
-	}
+	// TODO: check backend attribute vs backend block conflict at configload
 
 	return schema
 }

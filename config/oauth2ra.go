@@ -71,10 +71,7 @@ func (oa *OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(oa.Inline())
 
-	// A backend reference is defined, backend block is not allowed.
-	if oa.BackendName != "" {
-		schema.Blocks = nil
-	}
+	// TODO: check backend attribute vs backend block conflict at configload
 
 	return schema
 }

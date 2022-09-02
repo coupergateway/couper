@@ -102,6 +102,15 @@ func TestBody_MergeBds(t *testing.T) {
 			if len(merged.Blocks) != 6 {
 				subT.Fatal("expected 6 blocks")
 			}
+			if len(body.BlocksOfType(merged, "a")) != 2 {
+				subT.Fatal("expected 2 blocks of type a")
+			}
+			if len(body.BlocksOfType(merged, "b")) != 2 {
+				subT.Fatal("expected 2 blocks of type b")
+			}
+			if len(body.BlocksOfType(merged, "c")) != 2 {
+				subT.Fatal("expected 2 blocks of type c")
+			}
 		})
 	}
 }
