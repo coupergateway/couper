@@ -82,7 +82,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			if err = invalidOriginRefinement(refBody, backendBody); err != nil {
 				return nil, err
 			}
-			backendBody = newBodyWithName(reference, backendBody)
+			setName(reference, backendBody)
 			// no child blocks are allowed, so no need to try to wrap with oauth2 or token request
 			return backendBody, nil
 		}
@@ -114,7 +114,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			}
 		}
 
-		backendBody = newBodyWithName(anonLabel, backendBody)
+		setName(anonLabel, backendBody)
 	}
 
 	// watch out for oauth blocks and nested backend definitions
@@ -247,12 +247,11 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 	return parent, nil
 }
 
-func newBodyWithName(nameValue string, config *hclsyntax.Body) *hclsyntax.Body {
-	return hclbody.MergeBds(
-		config,
-		hclbody.NewHCLSyntaxBodyWithStringAttr("name", nameValue),
-		true,
-	)
+func setName(nameValue string, backendBody *hclsyntax.Body) {
+	backendBody.Attributes["name"] = &hclsyntax.Attribute{
+		Name: "name",
+		Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(nameValue)},
+	}
 }
 
 func newAnonLabel(body hcl.Body, labelRange *hcl.Range) string {
