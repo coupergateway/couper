@@ -38,13 +38,13 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	withTimingsFn := func(base hcl.Body, connect, ttfb, timeout string) hcl.Body {
+	withTimingsFn := func(base *hclsyntax.Body, connect, ttfb, timeout string) hcl.Body {
 		content := &hclsyntax.Body{Attributes: hclsyntax.Attributes{
 			"connect_timeout": {Name: "connect_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(connect)}},
 			"ttfb_timeout":    {Name: "ttfb_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(ttfb)}},
 			"timeout":         {Name: "timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(timeout)}},
 		}}
-		return hclbody.MergeBodies(base, content)
+		return hclbody.MergeBds(base, content, true)
 	}
 
 	tests := []struct {
@@ -359,8 +359,9 @@ func TestBackend_director(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
-			backend := transport.NewBackend(hclbody.MergeBodies(hclContext,
+			backend := transport.NewBackend(hclbody.MergeBds(hclContext,
 				hclbody.NewHCLSyntaxBodyWithStringAttr("timeout", "1s"),
+				true,
 			), &transport.Config{}, nil, nullLog)
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)

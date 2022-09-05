@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 
@@ -35,7 +36,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	// The store is newly created per run.
 	b := store.Get(prefix + name)
 	if b != nil {
-		return backend.NewContext(body, b.(http.RoundTripper)), nil
+		return backend.NewContext(body.(*hclsyntax.Body), b.(http.RoundTripper)), nil
 	}
 
 	b, err = newBackend(ctx, body, log, conf, store)

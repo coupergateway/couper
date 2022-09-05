@@ -21,7 +21,7 @@ func NewBody(content *hcl.BodyContent) hcl.Body {
 	return &body{content}
 }
 
-func NewHCLSyntaxBodyWithStringAttr(name string, value cty.Value, rng hcl.Range) *hclsyntax.Body {
+func NewHCLSyntaxBodyWithAttr(name string, value cty.Value, rng hcl.Range) *hclsyntax.Body {
 	return &hclsyntax.Body{
 		Attributes: hclsyntax.Attributes{
 			name: {
@@ -37,6 +37,9 @@ func NewHCLSyntaxBodyWithStringAttr(name, value string) *hclsyntax.Body {
 }
 
 func MergeBds(dest, src *hclsyntax.Body, replace bool) *hclsyntax.Body {
+	if src == dest {
+		return dest
+	}
 	for k, v := range src.Attributes {
 		if _, set := dest.Attributes[k]; replace || !set {
 			dest.Attributes[k] = v

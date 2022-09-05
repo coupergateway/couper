@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
@@ -44,7 +45,7 @@ var (
 )
 
 type Backend struct {
-	context             hcl.Body
+	context             *hclsyntax.Body
 	healthInfo          *HealthInfo
 	healthyMu           sync.RWMutex
 	logEntry            *logrus.Entry
@@ -73,7 +74,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	}
 
 	backend := &Backend{
-		context:           ctx,
+		context:           ctx.(*hclsyntax.Body),
 		healthInfo:        &HealthInfo{Healthy: true, State: StateOk.String()},
 		logEntry:          log.WithField("backend", tc.BackendName),
 		name:              tc.BackendName,
@@ -112,11 +113,11 @@ func (b *Backend) initOnce(conf *Config) {
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctxBody, _ := req.Context().Value(request.BackendParams).(hcl.Body)
+	ctxBody, _ := req.Context().Value(request.BackendParams).(*hclsyntax.Body)
 	if ctxBody == nil {
 		ctxBody = b.context
 	} else {
-		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
+		ctxBody = hclbody.MergeBds(ctxBody, b.context, false)
 	}
 
 	// originalReq for token-request retry purposes

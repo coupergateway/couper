@@ -15,25 +15,15 @@ import (
 
 func TestBody_MergeBds(t *testing.T) {
 	tests := []struct {
-		name     string
-		dest     *hclsyntax.Body
-		src      *hclsyntax.Body
-		replace  bool
-		expAttrs map[string]string
+		name            string
+		src             *hclsyntax.Body
+		replace         bool
+		expAttrs        map[string]string
+		expBlocksTotal  int
+		expBlocksOfType map[string]int
 	}{
 		{
-			"merge with replace",
-			&hclsyntax.Body{
-				Attributes: hclsyntax.Attributes{
-					"a": &hclsyntax.Attribute{Name: "a", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("a1")}},
-					"b": &hclsyntax.Attribute{Name: "b", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("b")}},
-				},
-				Blocks: hclsyntax.Blocks{
-					&hclsyntax.Block{Type: "a", Labels: []string{}, Body: &hclsyntax.Body{}},
-					&hclsyntax.Block{Type: "b", Labels: []string{"label"}, Body: &hclsyntax.Body{}},
-					&hclsyntax.Block{Type: "c", Labels: []string{""}, Body: &hclsyntax.Body{}},
-				},
-			},
+			"merge, replace",
 			&hclsyntax.Body{
 				Attributes: hclsyntax.Attributes{
 					"a": &hclsyntax.Attribute{Name: "a", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("a2")}},
@@ -47,20 +37,11 @@ func TestBody_MergeBds(t *testing.T) {
 			},
 			true,
 			map[string]string{"a": "a2", "b": "b", "c": "c"},
+			6,
+			map[string]int{"a": 2, "b": 2, "c": 2},
 		},
 		{
-			"merge with no replace",
-			&hclsyntax.Body{
-				Attributes: hclsyntax.Attributes{
-					"a": &hclsyntax.Attribute{Name: "a", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("a1")}},
-					"b": &hclsyntax.Attribute{Name: "b", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("b")}},
-				},
-				Blocks: hclsyntax.Blocks{
-					&hclsyntax.Block{Type: "a", Labels: []string{}, Body: &hclsyntax.Body{}},
-					&hclsyntax.Block{Type: "b", Labels: []string{"label"}, Body: &hclsyntax.Body{}},
-					&hclsyntax.Block{Type: "c", Labels: []string{""}, Body: &hclsyntax.Body{}},
-				},
-			},
+			"merge, no replace",
 			&hclsyntax.Body{
 				Attributes: hclsyntax.Attributes{
 					"a": &hclsyntax.Attribute{Name: "a", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("a2")}},
@@ -74,6 +55,24 @@ func TestBody_MergeBds(t *testing.T) {
 			},
 			false,
 			map[string]string{"a": "a1", "b": "b", "c": "c"},
+			6,
+			map[string]int{"a": 2, "b": 2, "c": 2},
+		},
+		{
+			"'merge' with self, replace",
+			nil,
+			true,
+			map[string]string{"a": "a1", "b": "b"},
+			3,
+			map[string]int{"a": 1, "b": 1, "c": 1},
+		},
+		{
+			"'merge' with self, no replace",
+			nil,
+			false,
+			map[string]string{"a": "a1", "b": "b"},
+			3,
+			map[string]int{"a": 1, "b": 1, "c": 1},
 		},
 	}
 
@@ -81,9 +80,24 @@ func TestBody_MergeBds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			merged := body.MergeBds(tt.dest, tt.src, tt.replace)
-			if len(merged.Attributes) != 3 {
-				subT.Fatal("expected 3 attributes")
+			dest := &hclsyntax.Body{
+				Attributes: hclsyntax.Attributes{
+					"a": &hclsyntax.Attribute{Name: "a", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("a1")}},
+					"b": &hclsyntax.Attribute{Name: "b", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("b")}},
+				},
+				Blocks: hclsyntax.Blocks{
+					&hclsyntax.Block{Type: "a", Labels: []string{}, Body: &hclsyntax.Body{}},
+					&hclsyntax.Block{Type: "b", Labels: []string{"label"}, Body: &hclsyntax.Body{}},
+					&hclsyntax.Block{Type: "c", Labels: []string{""}, Body: &hclsyntax.Body{}},
+				},
+			}
+			src := tt.src
+			if tt.src == nil {
+				src = dest
+			}
+			merged := body.MergeBds(dest, src, tt.replace)
+			if len(merged.Attributes) != len(tt.expAttrs) {
+				subT.Fatalf("expected %d attributes, was %d", len(tt.expAttrs), len(merged.Attributes))
 			}
 			for k, expV := range tt.expAttrs {
 				attr, set := merged.Attributes[k]
@@ -99,17 +113,17 @@ func TestBody_MergeBds(t *testing.T) {
 					subT.Errorf("attribute value for %q:\nwant: %q\ngot:  %q", k, expV, sVal)
 				}
 			}
-			if len(merged.Blocks) != 6 {
-				subT.Fatal("expected 6 blocks")
+			if len(merged.Blocks) != tt.expBlocksTotal {
+				subT.Fatalf("expected %d blocks, was %d", tt.expBlocksTotal, len(merged.Blocks))
 			}
-			if len(body.BlocksOfType(merged, "a")) != 2 {
-				subT.Fatal("expected 2 blocks of type a")
+			if len(body.BlocksOfType(merged, "a")) != tt.expBlocksOfType["a"] {
+				subT.Errorf("expected %d blocks of type a", tt.expBlocksOfType["a"])
 			}
-			if len(body.BlocksOfType(merged, "b")) != 2 {
-				subT.Fatal("expected 2 blocks of type b")
+			if len(body.BlocksOfType(merged, "b")) != tt.expBlocksOfType["b"] {
+				subT.Errorf("expected %d blocks of type b", tt.expBlocksOfType["b"])
 			}
-			if len(body.BlocksOfType(merged, "c")) != 2 {
-				subT.Fatal("expected 2 blocks of type c")
+			if len(body.BlocksOfType(merged, "c")) != tt.expBlocksOfType["c"] {
+				subT.Errorf("expected %d blocks of type c", tt.expBlocksOfType["c"])
 			}
 		})
 	}
