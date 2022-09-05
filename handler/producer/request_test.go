@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
@@ -33,7 +32,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 	logger, _ := test.NewLogger()
 	logEntry := logger.WithContext(context.Background())
 
-	backend := transport.NewBackend(hcl.EmptyBody(), &transport.Config{Origin: origin.URL}, nil, logEntry)
+	backend := transport.NewBackend(&hclsyntax.Body{}, &transport.Config{Origin: origin.URL}, nil, logEntry)
 
 	clientRequest, _ := http.NewRequest(http.MethodGet, "http://couper.local", nil)
 

@@ -21,7 +21,7 @@ func MergeBodies(bodies ...hcl.Body) hcl.Body {
 	if len(bodies) == 0 {
 		// Swap out for our singleton empty body, to reduce the number of
 		// empty slices we have hanging around.
-		return EmptyBody()
+		return emptyBody
 	}
 
 	// If any of the given bodies are already merged bodies, we'll unpack
@@ -60,12 +60,6 @@ func MergeBodies(bodies ...hcl.Body) hcl.Body {
 }
 
 var emptyBody = MergedBodies([]hcl.Body{})
-
-// EmptyBody returns a body with no content. This body can be used as a
-// placeholder when a body is required but no body content is available.
-func EmptyBody() hcl.Body {
-	return emptyBody
-}
 
 type MergedBodies []hcl.Body
 

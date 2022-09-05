@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/avenga/couper/config/request"
@@ -212,7 +213,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
 					ErrorTemplate: errors.DefaultJSON,
-					Context:       hcl.EmptyBody(),
+					Context:       &hclsyntax.Body{},
 					ReqBodyLimit:  1024,
 					Proxies: producer.Proxies{
 						&producer.Proxy{Name: "default", RoundTrip: backend},
@@ -424,7 +425,7 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	mockProducer := &mockProducerResult{rt}
 
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
-		Context:       hcl.EmptyBody(),
+		Context:       &hclsyntax.Body{},
 		ErrorTemplate: errors.DefaultJSON,
 		Proxies:       &mockProducerResult{},
 		Requests:      mockProducer,
@@ -476,7 +477,7 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	mockProducer := &mockProducerResult{rt}
 
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
-		Context:       hcl.EmptyBody(),
+		Context:       &hclsyntax.Body{},
 		ErrorTemplate: errors.DefaultJSON,
 		Proxies:       &mockProducerResult{},
 		Requests:      mockProducer,

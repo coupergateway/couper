@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 func Load(src []byte, name string) (hcl.Body, hcl.Diagnostics) {
@@ -20,7 +21,7 @@ func Load(src []byte, name string) (hcl.Body, hcl.Diagnostics) {
 	}
 
 	if file == nil || file.Body == nil {
-		return hcl.EmptyBody(), diags
+		return &hclsyntax.Body{}, diags
 	}
 	return file.Body, diags
 }

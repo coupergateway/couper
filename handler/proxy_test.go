@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
@@ -23,7 +23,7 @@ func TestProxy_BlacklistHeaderRemoval(t *testing.T) {
 		transport.NewBackend(body.NewHCLSyntaxBodyWithStringAttr("origin", "https://1.2.3.4"), &transport.Config{
 			Origin: "https://1.2.3.4/",
 		}, nil, logEntry),
-		hcl.EmptyBody(),
+		&hclsyntax.Body{},
 		logEntry,
 	)
 
