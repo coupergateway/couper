@@ -15,7 +15,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/hashicorp/hcl/v2/hcltest"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
@@ -99,12 +98,7 @@ func TestBackend_Compression_Disabled(t *testing.T) {
 	logger, _ := logrustest.NewNullLogger()
 	log := logger.WithContext(context.Background())
 
-	u := seetie.GoToValue(origin.URL)
-	hclBody := hcltest.MockBody(&hcl.BodyContent{
-		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
-			"origin": hcltest.MockExprLiteral(u),
-		}),
-	})
+	hclBody := test.NewRemainContext("origin", origin.URL)
 	backend := transport.NewBackend(hclBody, &transport.Config{}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
@@ -139,12 +133,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	logger, _ := logrustest.NewNullLogger()
 	log := logger.WithContext(context.Background())
 
-	u := seetie.GoToValue(origin.URL)
-	hclBody := hcltest.MockBody(&hcl.BodyContent{
-		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
-			"origin": hcltest.MockExprLiteral(u),
-		}),
-	})
+	hclBody := test.NewRemainContext("origin", origin.URL)
 
 	backend := transport.NewBackend(hclBody, &transport.Config{
 		Origin: origin.URL,
