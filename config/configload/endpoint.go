@@ -104,7 +104,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				}
 
 				if wsBody != nil {
-					proxyConfig.Remain = hclbody.MergeBodies(proxyConfig.Remain, wsBody)
+					proxyConfig.Remain = hclbody.MergeBds(proxyConfig.Remain.(*hclsyntax.Body), wsBody, true)
 				}
 			}
 
@@ -176,7 +176,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 	return nil
 }
 
-func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
+func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, error) {
 	content, _, diags := proxyConfig.Remain.PartialContent(
 		&hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{{Type: "websockets"}}},
 	)
@@ -189,15 +189,15 @@ func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
 	}
 
 	if proxyConfig.Websockets != nil {
-		var body hcl.Body
+		var body *hclsyntax.Body
 
 		if *proxyConfig.Websockets {
-			block := &hcl.Block{
+			block := &hclsyntax.Block{
 				Type: "websockets",
-				Body: hclbody.EmptyBody(),
+				Body: &hclsyntax.Body{},
 			}
 
-			body = hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{block}})
+			body = &hclsyntax.Body{Blocks: []*hclsyntax.Block{block}}
 		}
 
 		return *proxyConfig.Websockets, body, nil
