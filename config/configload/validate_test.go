@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config/runtime"
@@ -15,35 +15,35 @@ import (
 
 func Test_VerifyBodyAttributes(t *testing.T) {
 	type testCase struct {
-		name    string
-		content *hcl.BodyContent
-		expErr  bool
+		name   string
+		body   *hclsyntax.Body
+		expErr bool
 	}
 
 	for _, tc := range []testCase{
-		{"without any body", &hcl.BodyContent{}, false},
-		{"body", &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{"body": {Name: "body"}}}, false},
-		{"json_body", &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{"json_body": {Name: "json_body"}}}, false},
-		{"form_body", &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{"form_body": {Name: "form_body"}}}, false},
-		{"body/form_body", &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		{"without any body attributes", &hclsyntax.Body{}, false},
+		{"body", &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{"body": {Name: "body"}}}, false},
+		{"json_body", &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{"json_body": {Name: "json_body"}}}, false},
+		{"form_body", &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{"form_body": {Name: "form_body"}}}, false},
+		{"body/form_body", &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{
 			"body":      {Name: "body"},
 			"form_body": {Name: "form_body"},
 		}}, true},
-		{"body/json_body", &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		{"body/json_body", &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{
 			"body":      {Name: "body"},
 			"json_body": {Name: "json_body"},
 		}}, true},
-		{"form_body/json_body", &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		{"form_body/json_body", &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{
 			"form_body": {Name: "form_body"},
 			"json_body": {Name: "json_body"},
 		}}, true},
-		{"body/json_body/form_body", &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		{"body/json_body/form_body", &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{
 			"body":      {Name: "body"},
 			"json_body": {Name: "json_body"},
 			"form_body": {Name: "form_body"},
 		}}, true},
 	} {
-		if err := verifyBodyAttributes(request, tc.content); !tc.expErr && err != nil {
+		if err := verifyBodyAttributes(request, tc.body); !tc.expErr && err != nil {
 			t.Errorf("Want no error, got: %v", err)
 		}
 	}

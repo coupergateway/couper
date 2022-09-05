@@ -240,30 +240,12 @@ func uniqueLabelName(scopeOfUniqueness string, unique map[string]struct{}, name 
 	return nil
 }
 
-func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
-	_, existsBody := content.Attributes["body"]
-	_, existsFormBody := content.Attributes["form_body"]
-	_, existsJSONBody := content.Attributes["json_body"]
-
-	if existsBody && existsFormBody || existsBody && existsJSONBody || existsFormBody && existsJSONBody {
-		rangeAttr := "body"
-		if !existsBody {
-			rangeAttr = "form_body"
-		}
-
-		return newDiagErr(&content.Attributes[rangeAttr].Range,
-			blockName+" can only have one of body, form_body or json_body attributes")
-	}
-
-	return nil
-}
-
-func verifyBodyAttributes1(blockName string, body *hclsyntax.Body) error {
+func verifyBodyAttributes(blockName string, body *hclsyntax.Body) error {
 	_, existsBody := body.Attributes["body"]
 	_, existsFormBody := body.Attributes["form_body"]
-	_, existsJsonBody := body.Attributes["json_body"]
+	_, existsJSONBody := body.Attributes["json_body"]
 
-	if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
+	if existsBody && existsFormBody || existsBody && existsJSONBody || existsFormBody && existsJSONBody {
 		rangeAttr := "body"
 		if !existsBody {
 			rangeAttr = "form_body"

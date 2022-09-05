@@ -225,7 +225,7 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 			return nil, diags
 		}
 
-		if err := verifyBodyAttributes1(tokenRequest, tokenRequestBody); err != nil {
+		if err := verifyBodyAttributes(tokenRequest, tokenRequestBody); err != nil {
 			return nil, err
 		}
 

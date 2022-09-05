@@ -134,7 +134,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 
 			// remap request specific names for headers and query to well known ones
 			reqBody := reqConfig.Remain.(*hclsyntax.Body)
-			if err = verifyBodyAttributes1(request, reqBody); err != nil {
+			if err = verifyBodyAttributes(request, reqBody); err != nil {
 				return err
 			}
 
