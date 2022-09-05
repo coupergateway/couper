@@ -54,15 +54,7 @@ func BlocksOfType(body *hclsyntax.Body, blockType string) []*hclsyntax.Block {
 	return blocks
 }
 
-func RenameAttribute(content *hcl.BodyContent, old, new string) {
-	if attr, ok := content.Attributes[old]; ok {
-		attr.Name = new
-		content.Attributes[new] = attr
-		delete(content.Attributes, old)
-	}
-}
-
-func RenameAttribute1(body *hclsyntax.Body, old, new string) {
+func RenameAttribute(body *hclsyntax.Body, old, new string) {
 	if attr, ok := body.Attributes[old]; ok {
 		attr.Name = new
 		body.Attributes[new] = attr

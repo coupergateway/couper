@@ -133,19 +133,13 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			}
 
 			// remap request specific names for headers and query to well known ones
-			content, leftOvers, diags := reqConfig.Remain.PartialContent(reqConfig.Schema(true))
-			if diags.HasErrors() {
-				return diags
-			}
-
-			if err = verifyBodyAttributes(request, content); err != nil {
+			reqBody := reqConfig.Remain.(*hclsyntax.Body)
+			if err = verifyBodyAttributes1(request, reqBody); err != nil {
 				return err
 			}
 
-			hclbody.RenameAttribute(content, "headers", "set_request_headers")
-			hclbody.RenameAttribute(content, "query_params", "set_query_params")
-
-			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
+			hclbody.RenameAttribute(reqBody, "headers", "set_request_headers")
+			hclbody.RenameAttribute(reqBody, "query_params", "set_query_params")
 
 			reqConfig.Backend, err = PrepareBackend(helper, "", "", reqConfig)
 			if err != nil {

@@ -229,8 +229,8 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 			return nil, err
 		}
 
-		hclbody.RenameAttribute1(tokenRequestBody, "headers", "set_request_headers")
-		hclbody.RenameAttribute1(tokenRequestBody, "query_params", "set_query_params")
+		hclbody.RenameAttribute(tokenRequestBody, "headers", "set_request_headers")
+		hclbody.RenameAttribute(tokenRequestBody, "query_params", "set_query_params")
 
 		backendBody, berr := PrepareBackend(helper, "", conf.URL, conf)
 		if berr != nil {
