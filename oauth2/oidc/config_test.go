@@ -15,7 +15,6 @@ import (
 
 	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/internal/test"
@@ -57,10 +56,10 @@ func TestConfig_Synced(t *testing.T) {
 	oconf := &config.OIDC{
 		ConfigurationURL: origin.URL + "/.well-known/openid-configuration",
 		ConfigurationTTL: "100ms",
-		Remain: hclbody.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		Remain: &hclsyntax.Body{Attributes: hclsyntax.Attributes{
 			"redirect_uri":   {Name: "redirect_uri", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("")}},
 			"verifier_value": {Name: "verifier_value", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("")}},
-		}}),
+		}},
 	}
 	// configload internals here... TODO: integration test?
 	err := oconf.Prepare(func(attr string, val string, body config.Inline) (hcl.Body, error) {

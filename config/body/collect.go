@@ -23,7 +23,7 @@ func CollectAttributes(bodies ...hcl.Body) []*hcl.Attribute {
 			for _, block := range sb.Blocks {
 				allAttributes = append(allAttributes, CollectAttributes(block.Body)...)
 			}
-		case *Body:
+		case *body:
 			content, _, _ := sb.PartialContent(nil)
 			for _, attr := range content.Attributes {
 				allAttributes = append(allAttributes, attr)
@@ -69,7 +69,7 @@ func CollectBlockTypes(bodies ...hcl.Body) []string {
 				nested := append(append([]string{}, block.Type), CollectBlockTypes(block.Body)...)
 				addUniqueFn(nested...)
 			}
-		case *Body:
+		case *body:
 			content, _, _ := sb.PartialContent(nil)
 			for _, block := range content.Blocks {
 				nested := append(append([]string{}, block.Type), CollectBlockTypes(block.Body)...)

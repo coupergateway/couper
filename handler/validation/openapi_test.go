@@ -9,8 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hcltest"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
@@ -44,12 +43,7 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
 	beConf := &config.Backend{
-		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
-			"origin": &hcl.Attribute{
-				Name: "origin",
-				Expr: hcltest.MockExprLiteral(cty.StringVal(origin.URL)),
-			},
-		}}),
+		Remain: body.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL),
 		OpenAPI: &config.OpenAPI{
 			File: filepath.Join("testdata/backend_01_openapi.yaml"),
 		},
@@ -124,12 +118,7 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
 	beConf := &config.Backend{
-		Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
-			"origin": &hcl.Attribute{
-				Name: "origin",
-				Expr: hcltest.MockExprLiteral(cty.StringVal("https://httpbin.org")),
-			},
-		}}),
+		Remain: body.NewHCLSyntaxBodyWithStringAttr("origin", "https://httpbin.org"),
 		OpenAPI: &config.OpenAPI{
 			File: filepath.Join("testdata/backend_02_openapi.yaml"),
 		},
@@ -183,24 +172,24 @@ func TestOpenAPIValidator_TemplateVariables(t *testing.T) {
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			beConf := &config.Backend{
-				Remain: body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
-					"origin": &hcl.Attribute{
+				Remain: &hclsyntax.Body{Attributes: hclsyntax.Attributes{
+					"origin": &hclsyntax.Attribute{
 						Name: "origin",
-						Expr: hcltest.MockExprLiteral(cty.StringVal(tc.origin)),
+						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(tc.origin)},
 					},
-					"hostname": &hcl.Attribute{
+					"hostname": &hclsyntax.Attribute{
 						Name: "hostname",
-						Expr: hcltest.MockExprLiteral(cty.StringVal(tc.hostname)),
+						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(tc.hostname)},
 					},
-					"proxy": &hcl.Attribute{
+					"proxy": &hclsyntax.Attribute{
 						Name: "proxy",
-						Expr: hcltest.MockExprLiteral(cty.StringVal(origin.Addr())),
+						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin.Addr())},
 					},
-					"path": &hcl.Attribute{
+					"path": &hclsyntax.Attribute{
 						Name: "path",
-						Expr: hcltest.MockExprLiteral(cty.StringVal("/anything")),
+						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("/anything")},
 					},
-				}}),
+				}},
 			}
 
 			backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
@@ -253,20 +242,20 @@ func TestOpenAPIValidator_NonCanonicalServerURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			Remain := body.New(&hcl.BodyContent{Attributes: hcl.Attributes{
-				"origin": &hcl.Attribute{
+			Remain := &hclsyntax.Body{Attributes: hclsyntax.Attributes{
+				"origin": &hclsyntax.Attribute{
 					Name: "origin",
-					Expr: hcltest.MockExprLiteral(cty.StringVal(tt.url)),
+					Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(tt.url)},
 				},
-				"path": &hcl.Attribute{
+				"path": &hclsyntax.Attribute{
 					Name: "path",
-					Expr: hcltest.MockExprLiteral(cty.StringVal("/anything")),
+					Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("/anything")},
 				},
-				"proxy": &hcl.Attribute{
+				"proxy": &hclsyntax.Attribute{
 					Name: "proxy",
-					Expr: hcltest.MockExprLiteral(cty.StringVal(origin.Addr())),
+					Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin.Addr())},
 				},
-			}})
+			}}
 
 			backend := transport.NewBackend(Remain, &transport.Config{}, &transport.BackendOptions{
 				OpenAPI: openAPI,

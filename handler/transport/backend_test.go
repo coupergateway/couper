@@ -40,12 +40,12 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	defer origin.Close()
 
 	withTimingsFn := func(base hcl.Body, connect, ttfb, timeout string) hcl.Body {
-		content := &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		content := &hclsyntax.Body{Attributes: hclsyntax.Attributes{
 			"connect_timeout": {Name: "connect_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(connect)}},
 			"ttfb_timeout":    {Name: "ttfb_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(ttfb)}},
 			"timeout":         {Name: "timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(timeout)}},
 		}}
-		return hclbody.MergeBodies(base, hclbody.New(content))
+		return hclbody.MergeBodies(base, content)
 	}
 
 	tests := []struct {

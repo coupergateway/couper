@@ -6,30 +6,34 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var _ hcl.Body = &Body{}
+var _ hcl.Body = &body{}
 
 type Attributes interface {
 	JustAllAttributes() []hcl.Attributes
 	JustAllAttributesWithName(string) []hcl.Attributes
 }
 
-type Body struct {
+type body struct {
 	content *hcl.BodyContent
 }
 
-func New(content *hcl.BodyContent) hcl.Body {
-	return &Body{content}
+func NewBody(content *hcl.BodyContent) hcl.Body {
+	return &body{content}
 }
 
-func NewHCLSyntaxBodyWithStringAttr(name, value string) *hclsyntax.Body {
+func NewHCLSyntaxBodyWithStringAttr(name string, value cty.Value, rng hcl.Range) *hclsyntax.Body {
 	return &hclsyntax.Body{
-		Attributes: map[string]*hclsyntax.Attribute{
+		Attributes: hclsyntax.Attributes{
 			name: {
 				Name: name,
-				Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(value)},
+				Expr: &hclsyntax.LiteralValueExpr{Val: value, SrcRange: rng},
 			},
 		},
 	}
+}
+
+func NewHCLSyntaxBodyWithStringAttr(name, value string) *hclsyntax.Body {
+	return NewHCLSyntaxBodyWithAttr(name, cty.StringVal(value), hcl.Range{})
 }
 
 func MergeBds(dest, src *hclsyntax.Body, replace bool) *hclsyntax.Body {
@@ -62,15 +66,15 @@ func RenameAttribute(body *hclsyntax.Body, old, new string) {
 	}
 }
 
-func (e *Body) Content(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {
+func (e *body) Content(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {
 	return e.content, nil
 }
 
-func (e *Body) PartialContent(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Body, hcl.Diagnostics) {
+func (e *body) PartialContent(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Body, hcl.Diagnostics) {
 	return e.content, e, nil
 }
 
-func (e *Body) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
+func (e *body) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
 	attrs := hcl.Attributes{}
 	for k, v := range e.content.Attributes {
 		cv := *v
@@ -79,6 +83,6 @@ func (e *Body) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
 	return attrs, nil
 }
 
-func (e *Body) MissingItemRange() hcl.Range {
+func (e *body) MissingItemRange() hcl.Range {
 	return e.content.MissingItemRange
 }

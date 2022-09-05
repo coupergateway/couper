@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zclconf/go-cty/cty"
-
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/avenga/couper/config"
@@ -22,9 +20,7 @@ func TestProxy_BlacklistHeaderRemoval(t *testing.T) {
 	log, _ := test.NewLogger()
 	logEntry := log.WithContext(context.Background())
 	p := handler.NewProxy(
-		transport.NewBackend(body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
-			"origin": {Name: "origin", Expr: hcl.StaticExpr(cty.StringVal("https://1.2.3.4"), hcl.Range{})},
-		}}), &transport.Config{
+		transport.NewBackend(body.NewHCLSyntaxBodyWithStringAttr("origin", "https://1.2.3.4"), &transport.Config{
 			Origin: "https://1.2.3.4/",
 		}, nil, logEntry),
 		hcl.EmptyBody(),

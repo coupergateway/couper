@@ -15,20 +15,11 @@ import (
 )
 
 func newCatchAllEndpoint() *config.Endpoint {
-	responseBody := hclbody.New(&hcl.BodyContent{
-		Attributes: map[string]*hcl.Attribute{
-			"status": {
-				Name: "status",
-				Expr: &hclsyntax.LiteralValueExpr{
-					Val: cty.NumberIntVal(http.StatusNotFound),
-				},
-			},
-		},
-	})
+	responseBody := hclbody.NewHCLSyntaxBodyWithAttr("status", cty.NumberIntVal(http.StatusNotFound), hcl.Range{})
 
 	return &config.Endpoint{
 		Pattern: "/**",
-		Remain:  hclbody.New(&hcl.BodyContent{}),
+		Remain:  &hclsyntax.Body{},
 		Response: &config.Response{
 			Remain: responseBody,
 		},

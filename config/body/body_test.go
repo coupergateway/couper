@@ -132,7 +132,7 @@ func TestBody_Body(t *testing.T) {
 		Attributes:       attrs,
 		MissingItemRange: itemRange,
 	}
-	body := body.New(content)
+	body := body.NewBody(content)
 
 	mir := body.MissingItemRange()
 	if !reflect.DeepEqual(mir, itemRange) {

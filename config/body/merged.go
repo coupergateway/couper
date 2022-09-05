@@ -209,7 +209,7 @@ func (mb MergedBodies) mergedContent(schema *hcl.BodySchema, partial bool) (*hcl
 
 				content.Blocks[idx].Body = MergeBodies(
 					thisContentBlock.Body, // keep child blocks
-					New(&hcl.BodyContent{
+					NewBody(&hcl.BodyContent{
 						Attributes:       contentAttrs,
 						MissingItemRange: content.Blocks[idx].DefRange}),
 				)
