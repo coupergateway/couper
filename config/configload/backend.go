@@ -53,11 +53,11 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 		return nil, err
 	}
 
-	if reference != "" {
-		if strings.HasSuffix(attrName, "_backend") && attrValue != "" { // specific attribute overrides; prefer
-			reference = attrValue
-		}
+	if strings.HasSuffix(attrName, "_backend") && attrValue != "" { // specific attribute overrides; prefer
+		reference = attrValue
+	}
 
+	if reference != "" {
 		refBody, ok := helper.defsBackends[reference]
 		if !ok {
 			r := block.HCLBody().MissingItemRange()
