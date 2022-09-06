@@ -7,7 +7,8 @@
     "predev": "npm run inject-couper-highlighting",
     "prebuild": "npm run inject-couper-highlighting",
     "preview": "nuxi preview",
-    "generate": "NODE_ENV=production nuxi generate"
+    "generate": "NODE_ENV=production nuxi generate",
+    "pregenerate": "for file in $(find content -name '*.md' | sort); do base=\"$(dirname \"$file\" | sed -re 's#/[0-9]\\.#/#g' -e 's/^content//')\"; node rewritelinks.js \"$file\" \"$base\"; done"
   },
   "devDependencies": {
     "@nuxtjs/algolia": "^1.0.0",
