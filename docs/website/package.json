@@ -7,8 +7,7 @@
     "predev": "npm run inject-couper-highlighting",
     "prebuild": "npm run inject-couper-highlighting",
     "preview": "nuxi preview",
-    "generate": "NODE_ENV=production nuxi generate",
-    "postgenerate": "cd .output/public; for file in $(find -mindepth 2 -name index.html | sort); do page=\"$(dirname \"$file\")\" && echo \"ℹ Fixing ${page##./}...\" && mv \"$file\" \"$page.new\" && rmdir \"$page\" && mv \"$page.new\" \"$page\"; done"
+    "generate": "NODE_ENV=production nuxi generate"
   },
   "devDependencies": {
     "@nuxtjs/algolia": "^1.0.0",
