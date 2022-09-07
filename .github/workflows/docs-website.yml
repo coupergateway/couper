@@ -64,7 +64,7 @@ jobs:
           token: ${{ secrets.GH_COUPER_API_TOKEN }}
           path: 'website'
           repository: 'avenga/couper-docs'
-      - run: rm -rf website/*/ # clear sub-folders
+      - run: rm -rf website/*/ website/access-control website/command-line # clear sub-folders
       - run: cp -RTv dist/ website
       - name: setup git && push
         working-directory: './website'

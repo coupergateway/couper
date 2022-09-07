@@ -83,6 +83,8 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			backendBody = hclbody.MergeBodies(
 				hclbody.New(hclbody.NewContentWithAttrName("name", reference)),
 				backendBody)
+			// no child blocks are allowed, so no need to try to wrap with oauth2 or token request
+			return backendBody, nil
 		}
 	} else { // anonymous backend block
 		var labelRange *hcl.Range
@@ -100,10 +102,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 			backendBody = hclbody.MergeBodies(defaultBackend, backendBody)
 		}
 
-		backendBody, err = newBodyWithName(anonLabel, backendBody)
-		if err != nil {
-			return nil, err
-		}
+		backendBody = newBodyWithName(anonLabel, backendBody)
 	}
 
 	// watch out for oauth blocks and nested backend definitions
@@ -284,15 +283,11 @@ func newBlock(blockType string, content hcl.Body) hcl.Body {
 	})
 }
 
-func newBodyWithName(nameValue string, config hcl.Body) (hcl.Body, error) {
-	if err := validLabel(nameValue, getRange(config)); err != nil {
-		return nil, err
-	}
-
+func newBodyWithName(nameValue string, config hcl.Body) hcl.Body {
 	return hclbody.MergeBodies(
 		config,
 		hclbody.New(hclbody.NewContentWithAttrName("name", nameValue)),
-	), nil
+	)
 }
 
 func newAnonLabel(body hcl.Body, labelRange *hcl.Range) string {

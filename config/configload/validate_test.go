@@ -2,6 +2,7 @@ package configload
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -219,6 +220,665 @@ func TestLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_validateBody(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"missing backend label",
+			`server {}
+			 definitions {
+			   backend {
+			   }
+			 }`,
+			"couper.hcl:3,15-16: missing label; ",
+		},
+		{
+			"empty backend label",
+			`server {}
+			 definitions {
+			   backend "" {
+			   }
+			 }`,
+			"couper.hcl:3,15-17: label is empty; ",
+		},
+		{
+			"whitespace backend label",
+			`server {}
+			 definitions {
+			   backend " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,15-19: label is empty; ",
+		},
+		{
+			"invalid backend label",
+			`server {}
+			 definitions {
+			   backend "foo bar" {
+			   }
+			 }`,
+			"couper.hcl:3,15-24: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_'; ",
+		},
+		{
+			"anonymous_* backend label",
+			`server {}
+			 definitions {
+			   backend "anonymous_foo" {
+			   }
+			 }`,
+			"couper.hcl:3,15-30: backend label must not start with 'anonymous_'; ",
+		},
+		{
+			"duplicate backend labels",
+			`server {}
+			 definitions {
+			   backend "foo" {
+			   }
+			   backend "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,15-20: backend labels must be unique; ",
+		},
+		{
+			"duplicate proxy labels",
+			`server {}
+			 definitions {
+			   proxy "foo" {
+			   }
+			   proxy "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,13-18: proxy labels must be unique; ",
+		},
+		{
+			"missing basic_auth label",
+			`server {}
+			 definitions {
+			   basic_auth {
+			   }
+			 }`,
+			"couper.hcl:3,18-19: missing label; ",
+		},
+		{
+			"missing beta_oauth2 label",
+			`server {}
+			 definitions {
+			   beta_oauth2 {
+			   }
+			 }`,
+			"couper.hcl:3,19-20: missing label; ",
+		},
+		{
+			"missing jwt label",
+			`server {}
+			 definitions {
+			   jwt {
+			   }
+			 }`,
+			"couper.hcl:3,11-12: missing label; ",
+		},
+		{
+			"missing oidc label",
+			`server {}
+			 definitions {
+			   oidc {
+			   }
+			 }`,
+			"couper.hcl:3,12-13: missing label; ",
+		},
+		{
+			"missing saml label",
+			`server {}
+			 definitions {
+			   saml {
+			   }
+			 }`,
+			"couper.hcl:3,12-13: missing label; ",
+		},
+		{
+			"basic_auth with empty label",
+			`server {}
+			 definitions {
+			   basic_auth "" {
+			   }
+			 }`,
+			"couper.hcl:3,18-20: accessControl requires a label; ",
+		},
+		{
+			"beta_oauth2 with empty label",
+			`server {}
+			 definitions {
+			   beta_oauth2 "" {
+			   }
+			 }`,
+			"couper.hcl:3,19-21: accessControl requires a label; ",
+		},
+		{
+			"jwt with empty label",
+			`server {}
+			 definitions {
+			   jwt "" {
+			   }
+			 }`,
+			"couper.hcl:3,11-13: accessControl requires a label; ",
+		},
+		{
+			"oidc with empty label",
+			`server {}
+			 definitions {
+			   oidc "" {
+			   }
+			 }`,
+			"couper.hcl:3,12-14: accessControl requires a label; ",
+		},
+		{
+			"saml with empty label",
+			`server {}
+			 definitions {
+			   saml "" {
+			   }
+			 }`,
+			"couper.hcl:3,12-14: accessControl requires a label; ",
+		},
+		{
+			"basic_auth with whitespace label",
+			`server {}
+			 definitions {
+			   basic_auth " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,18-22: accessControl requires a label; ",
+		},
+		{
+			"beta_oauth2 with whitespace label",
+			`server {}
+			 definitions {
+			   beta_oauth2 " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,19-23: accessControl requires a label; ",
+		},
+		{
+			"jwt with whitespace label",
+			`server {}
+			 definitions {
+			   jwt " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,11-15: accessControl requires a label; ",
+		},
+		{
+			"oidc with whitespace label",
+			`server {}
+			 definitions {
+			   oidc " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,12-16: accessControl requires a label; ",
+		},
+		{
+			"saml with whitespace label",
+			`server {}
+			 definitions {
+			   saml " 	" {
+			   }
+			 }`,
+			"couper.hcl:3,12-16: accessControl requires a label; ",
+		},
+		{
+			"basic_auth reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   basic_auth "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
+		},
+		{
+			"basic_auth reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   basic_auth "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
+		},
+		{
+			"beta_oauth2 reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   beta_oauth2 "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
+		},
+		{
+			"beta_oauth2 reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   beta_oauth2 "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
+		},
+		{
+			"jwt reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   jwt "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
+		},
+		{
+			"jwt reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   jwt "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
+		},
+		{
+			"oidc reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   oidc "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
+		{
+			"oidc reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   oidc "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
+		{
+			"saml reserved label beta_granted_permissions",
+			`server {}
+			 definitions {
+			   saml "beta_granted_permissions" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
+		{
+			"saml reserved label beta_required_permission",
+			`server {}
+			 definitions {
+			   saml "beta_required_permission" {
+			   }
+			 }`,
+			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+		},
+		{
+			"duplicate AC labels 1",
+			`server {}
+			 definitions {
+			   basic_auth "foo" {
+			   }
+			   beta_oauth2 "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,19-24: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 2",
+			`server {}
+			 definitions {
+			   beta_oauth2 "foo" {
+			   }
+			   jwt "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,11-16: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 3",
+			`server {}
+			 definitions {
+			   jwt "foo" {
+			   }
+			   oidc "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,12-17: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 4",
+			`server {}
+			 definitions {
+			   oidc "foo" {
+			   }
+			   saml "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,12-17: AC labels must be unique; ",
+		},
+		{
+			"duplicate AC labels 5",
+			`server {}
+			 definitions {
+			   saml "foo" {
+			   }
+			   basic_auth "foo" {
+			   }
+			 }`,
+			"couper.hcl:5,18-23: AC labels must be unique; ",
+		},
+		{
+			"duplicate signing profile labels 1",
+			`server {}
+			 definitions {
+			   jwt "foo" {
+			     signing_ttl = "1m"
+			   }
+			   jwt_signing_profile "foo" {
+			   }
+			 }`,
+			"couper.hcl:6,27-32: JWT signing profile labels must be unique; ",
+		},
+		{
+			"jwt not used as signing profile",
+			`server {}
+			 definitions {
+			   jwt_signing_profile "foo" {
+			     signature_algorithm = "HS256"
+			     key = "asdf"
+			     ttl = "1m"
+			   }
+			   jwt "foo" {
+			     signature_algorithm = "HS256"
+			     key = "sdfg"
+			   }
+			 }`,
+			"",
+		},
+		{
+			"duplicate signing profile labels 2",
+			`server {}
+			 definitions {
+			   jwt_signing_profile "foo" {
+			   }
+			   jwt "foo" {
+			     signing_ttl = "1m"
+			   }
+			 }`,
+			"couper.hcl:5,11-16: JWT signing profile labels must be unique; ",
+		},
+		{
+			"same label for backend and AC",
+			`server {}
+			 definitions {
+			   backend "foo" {
+			   }
+			   basic_auth "foo" {
+			   }
+			 }`,
+			"",
+		},
+		{
+			"duplicate endpoint pattern 1",
+			`server {
+			   base_path = "/s"
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			     endpoint "/" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:9,18-21: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 2",
+			`server {
+			   base_path = "/s"
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:11,18-21: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 3",
+			`server {
+			   base_path = "/s"
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   endpoint "/" {
+			     response {
+			       body = "2"
+			     }
+			   }
+			 }`,
+			"couper.hcl:10,16-19: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 4",
+			`server {
+			   base_path = "/s"
+			   endpoint "/" {
+			     response {
+			       body = "1"
+			     }
+			   }
+			   api {
+			     endpoint "/" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:9,18-21: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 5",
+			`server {
+			   base_path = "/s"
+			   api {
+			     base_path = "/a"
+			     endpoint "/b/{c}" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   api {
+			     base_path = "/a/b"
+			     endpoint "/{d}" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:13,18-24: duplicate endpoint; ",
+		},
+		{
+			"duplicate endpoint pattern 6",
+			`server {
+			   endpoint "/a/b" {
+			     response {
+			       body = "1"
+			     }
+			   }
+			   api {
+			     base_path = "/a"
+			     endpoint "/b" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"couper.hcl:9,18-22: duplicate endpoint; ",
+		},
+		{
+			"distinct endpoint patterns",
+			`server {
+			   base_path = "/s"
+			   api {
+			     base_path = "/a"
+			     endpoint "/{b}/c" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			   api {
+			     base_path = "/a/b"
+			     endpoint "/c" {
+			       response {
+			         body = "2"
+			       }
+			     }
+			   }
+			 }`,
+			"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
+
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+
+			if tt.error != errMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errMsg)
+			}
+		})
+	}
+}
+
+func Test_validateBody_multiple(t *testing.T) {
+	tests := []struct {
+		name   string
+		hcls   []string
+		errors []string
+	}{
+		{
+			"duplicate AC labels",
+			[]string{
+				`server {}
+				 definitions {
+				   saml "foo" {
+				   }
+				 }`,
+				`server {}
+				 definitions {
+				   basic_auth "foo" {
+				   }
+				 }`,
+			},
+			[]string{"couper_0.hcl:3,13-18: AC labels must be unique; ", "couper_1.hcl:3,19-24: AC labels must be unique; "},
+		},
+		{
+			"duplicate endpoint patterns",
+			[]string{
+				`server {
+				   endpoint "/a/b" {
+				     response {
+				       body = "1"
+				     }
+				   }
+				 }`,
+				`server {
+				   api {
+				     base_path = "/a"
+				     endpoint "/b" {
+				       response {
+				         body = "2"
+				       }
+				     }
+				   }
+				 }`,
+			},
+			[]string{"couper_1.hcl:4,19-23: duplicate endpoint; "},
+		},
+		{
+			"duplicate signing profile labels",
+			[]string{
+				`server {}
+				 definitions {
+			       jwt "foo" {
+			         signing_ttl = "1m"
+			       }
+				 }`,
+				`server {}
+				 definitions {
+			       jwt_signing_profile "foo" {
+			       }
+				 }`,
+			},
+			[]string{"couper_0.hcl:3,15-20: JWT signing profile labels must be unique; ", "couper_1.hcl:3,31-36: JWT signing profile labels must be unique; "},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			var testContents []testContent
+			for i, hcl := range tt.hcls {
+				testContents = append(testContents, testContent{fmt.Sprintf("couper_%d.hcl", i), []byte(hcl)})
+			}
+
+			_, err := loadTestContents(testContents)
+
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+
+			if !oneOfErrorMsgs(tt.errors, errMsg) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant one of: %v\n\tGot:         %q", tt.name, tt.errors, errMsg)
+			}
+		})
+	}
+}
+
+func oneOfErrorMsgs(msgs []string, errorMsg string) bool {
+	for _, msg := range msgs {
+		if msg == errorMsg {
+			return true
+		}
+	}
+	return false
 }
 
 func TestAttributeObjectKeys(t *testing.T) {

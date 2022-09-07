@@ -11,13 +11,14 @@ var (
 	_ Inline           = &TokenRequest{}
 )
 
+var TokenRequestBlockHeaderSchema = hcl.BlockHeaderSchema{
+	Type:          "beta_token_request",
+	LabelNames:    []string{"name"},
+	LabelOptional: true,
+}
 var TokenRequestBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
-		{
-			Type:          "beta_token_request",
-			LabelNames:    []string{"name"},
-			LabelOptional: true,
-		},
+		TokenRequestBlockHeaderSchema,
 	},
 }
 

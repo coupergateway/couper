@@ -245,7 +245,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 		}
 
-		endpointPatterns := make(map[string]bool)
 		endpointsMap, err := newEndpointMap(srvConf, serverOptions)
 		if err != nil {
 			return nil, err
@@ -255,17 +254,6 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if endpointConf.Pattern == "" { // could happen for internally registered endpoints
 				return nil, fmt.Errorf("endpoint path pattern required")
 			}
-
-			basePath := serverOptions.SrvBasePath
-			if parentAPI != nil {
-				basePath = serverOptions.APIBasePaths[parentAPI]
-			}
-			pattern := utils.JoinOpenAPIPath(basePath, endpointConf.Pattern)
-			unique, cleanPattern := isUnique(endpointPatterns, pattern)
-			if !unique {
-				return nil, fmt.Errorf("%s: duplicate endpoint: '%s'", endpointConf.HCLBody().MissingItemRange().String(), pattern)
-			}
-			endpointPatterns[cleanPattern] = true
 
 			epOpts, err := newEndpointOptions(confCtx, endpointConf, parentAPI, serverOptions,
 				log, conf, memStore)
@@ -375,6 +363,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				append(bodies, endpointConf.Remain), epHandler, epOpts.LogHandlerKind,
 			)
 
+			basePath := serverOptions.SrvBasePath
+			if parentAPI != nil {
+				basePath = serverOptions.APIBasePaths[parentAPI]
+			}
+
+			pattern := utils.JoinOpenAPIPath(basePath, endpointConf.Pattern)
+
 			endpointHandlers[endpointConf] = epHandler
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
@@ -477,9 +472,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			if err = accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler)
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
@@ -490,9 +483,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			if err = accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler)
 		}
 
 		for _, saml := range conf.Definitions.SAML {
@@ -507,9 +498,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			if err = accessControls.Add(saml.Name, s, saml.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(saml.Name, s, saml.ErrorHandler)
 		}
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
@@ -526,9 +515,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			oa := ac.NewOAuth2Callback(oauth2Client, oauth2Conf.Name)
 
-			if err = accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(oauth2Conf.Name, oa, oauth2Conf.ErrorHandler)
 		}
 
 		for _, oidcConf := range conf.Definitions.OIDC {
@@ -541,9 +528,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 			oa := ac.NewOAuth2Callback(oidcClient, oidcConf.Name)
 
-			if err = accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler); err != nil {
-				return nil, confErr.With(err)
-			}
+			accessControls.Add(oidcConf.Name, oa, oidcConf.ErrorHandler)
 		}
 	}
 

@@ -39,8 +39,8 @@ func preprocessBody(body *hclsyntax.Body, env string) (bool, error) {
 			return true, newDiagErr(&defRange, "Missing label(s) for 'environment' block")
 		}
 
-		for _, label := range block.Labels {
-			if err := validLabel(label, getRange(block.Body)); err != nil {
+		for i, label := range block.Labels {
+			if err := validLabel(label, &block.LabelRanges[i]); err != nil {
 				return true, err
 			}
 
