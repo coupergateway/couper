@@ -44,15 +44,12 @@ type JWT struct {
 
 	// Internally used
 	BodyContent *hcl.BodyContent
-	Backends    map[string]hcl.Body
+	Backend     hcl.Body
 }
 
 func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if j.JWKsURL != "" {
-		if j.Backends == nil {
-			j.Backends = make(map[string]hcl.Body)
-		}
-		j.Backends["backend"], err = backendFunc("jwks_url", j.JWKsURL, j)
+		j.Backend, err = backendFunc("jwks_url", j.JWKsURL, j)
 		if err != nil {
 			return err
 		}
@@ -106,9 +103,9 @@ func (j *JWT) check() error {
 		return fmt.Errorf("signature_algorithm or jwks_url attribute required")
 	}
 
-	if j.JWKsURL == "" && (j.BackendName != "" || j.Backends != nil) {
+	if j.JWKsURL == "" && (j.BackendName != "" || j.Backend != nil) {
 		return fmt.Errorf("backend is obsolete without jwks_url attribute")
-	} else if j.BackendName != "" && j.Backends == nil {
+	} else if j.BackendName != "" && j.Backend == nil {
 		return fmt.Errorf("backend must be either a block or an attribute")
 	}
 
