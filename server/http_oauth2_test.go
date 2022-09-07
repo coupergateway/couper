@@ -528,6 +528,68 @@ definitions {
 	}
 }
 
+func TestOAuth2_Runtime_Errors(t *testing.T) {
+	helper := test.New(t)
+
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/token" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"access_token": "abcdef0123456789",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	type testCase struct {
+		name       string
+		filename   string
+		wantErrLog string
+	}
+
+	for _, tc := range []testCase{
+		{"null assertion", "17_couper.hcl", "backend error: be: request error: oauth2: assertion expression evaluates to null"},
+		{"non-string assertion", "18_couper.hcl", "backend error: be: request error: oauth2: assertion expression must evaluate to a string"},
+		{"token request failed", "19_couper.hcl", "backend error: be: request error: oauth2: token request failed"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": asOrigin.URL})
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+			h.Must(err)
+
+			hook.Reset()
+
+			res, err := newClient().Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusBadGateway {
+				t.Errorf("expected status NoContent, got: %d", res.StatusCode)
+			}
+
+			message := getFirstAccessLogMessage(hook)
+			if message != tc.wantErrLog {
+				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+			}
+
+			shutdown()
+		})
+	}
+
+	asOrigin.Close()
+}
+
 func TestOAuth2_AccessControl(t *testing.T) {
 	client := newClient()
 
@@ -777,7 +839,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				}
 			}
 
-			message := getAccessControlMessages(hook)
+			message := getFirstAccessLogMessage(hook)
 			if tc.wantErrLog == "" {
 				if message != "" {
 					subT.Errorf("%q: Expected error log: %q, actual: %#v", tc.name, tc.wantErrLog, message)
@@ -1378,24 +1440,216 @@ func TestTokenRequest(t *testing.T) {
 	}
 }
 
-func TestTokenRequest_Error(t *testing.T) {
-	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.WriteHeader(http.StatusInternalServerError)
-	}))
+func TestTokenRequest_Config_Errors(t *testing.T) {
+	type testCase struct {
+		name  string
+		hcl   string
+		error string
+	}
 
+	for _, tc := range []testCase{
+		{
+			"invalid label",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request "the label" {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+  }
+}
+`,
+			"couper.hcl:4,24-35: label contains invalid character(s), allowed are 'a-z', 'A-Z', '0-9' and '_';",
+		},
+		{
+			"multiple default labels (LabelRanges)",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request {
+      url = "http://localhost:8081/token1"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+    beta_token_request "default" {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "2m"
+    }
+  }
+}
+`,
+			"couper.hcl:9,24-33: token request names (either default or explicitly set via label) must be unique: \"default\";",
+		},
+		{
+			"multiple default labels (DefRange)",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request "default" {
+      url = "http://localhost:8081/token1"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+    beta_token_request {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "2m"
+    }
+  }
+}
+`,
+			"couper.hcl:9,5-23: token request names (either default or explicitly set via label) must be unique: \"default\";",
+		},
+		{
+			"multiple default labels (inline backend)",
+			`
+server {
+  endpoint "/" {
+    proxy {
+      backend {
+        beta_token_request "default" {
+          url = "http://localhost:8081/token1"
+          token = beta_token_response.json_body.tok
+          ttl = "1m"
+        }
+        beta_token_request {
+          url = "http://localhost:8082/token2"
+          token = beta_token_response.json_body.tok
+          ttl = "2m"
+        }
+      }
+    }
+  }
+}
+`,
+			"couper.hcl:11,9-27: token request names (either default or explicitly set via label) must be unique: \"default\";",
+		},
+		{
+			"multiple labels",
+			`server {}
+definitions {
+  backend "be" {
+    beta_token_request "a" {
+      url = "http://localhost:8081/token1"
+      token = beta_token_response.json_body.tok
+      ttl = "1m"
+    }
+    beta_token_request "a" {
+      url = "http://localhost:8082/token2"
+      token = beta_token_response.json_body.tok
+      ttl = "2m"
+    }
+  }
+}
+`,
+			"couper.hcl:9,24-27: token request names (either default or explicitly set via label) must be unique: \"a\"; ",
+		},
+		{
+			"multiple labels (inline backend)",
+			`
+server {
+   endpoint "/" {
+     proxy {
+       backend {
+         beta_token_request "a" {
+          url = "http://localhost:8081/token1"
+          token = beta_token_response.json_body.tok
+          ttl = "1m"
+        }
+        beta_token_request "a" {
+          url = "http://localhost:8082/token2"
+          token = beta_token_response.json_body.tok
+          ttl = "2m"
+        }
+      }
+    }
+  }
+}
+`,
+			"couper.hcl:11,28-31: token request names (either default or explicitly set via label) must be unique: \"a\"; ",
+		},
+	} {
+		var errMsg string
+		_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
+		if err != nil {
+			if _, ok := err.(errors.GoError); ok {
+				errMsg = err.(errors.GoError).LogError()
+			} else {
+				errMsg = err.Error()
+			}
+		}
+
+		if !strings.HasPrefix(errMsg, tc.error) {
+			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
+		}
+	}
+}
+
+func TestTokenRequest_Runtime_Errors(t *testing.T) {
 	helper := test.New(t)
 
-	confPath := "testdata/oauth2/token_request_error.hcl"
-	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": rsOrigin.URL})
-	defer shutdown()
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/token" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
 
-	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
-	helper.Must(err)
-	hook.Reset()
-	res, err := newClient().Do(req)
-	helper.Must(err)
+			body := []byte(`{
+				"access_token": "abcdef0123456789",
+				"token_type": "bearer",
+				"expires_in": 100
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
 
-	if res.StatusCode != http.StatusNoContent {
-		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
+	type testCase struct {
+		name       string
+		filename   string
+		wantStatus int
+		wantErrLog string
 	}
+
+	for _, tc := range []testCase{
+		{"token request failed, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr: token request failed"},
+		{"token expression evaluation error", "02_token_request_error.hcl", http.StatusBadGateway, "couper-bytes.hcl:23,15-31: Call to unknown function; There is no function named \"evaluation_error\"."},
+		{"null token", "03_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression evaluates to null"},
+		{"non-string token", "04_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression must evaluate to a string"},
+		{"ttl expression evaluation error", "05_token_request_error.hcl", http.StatusBadGateway, "couper-bytes.hcl:24,13-29: Call to unknown function; There is no function named \"evaluation_error\"."},
+		{"null ttl", "06_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl expression evaluates to null"},
+		{"non-string ttl", "07_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl expression must evaluate to a string"},
+		{"non-duration ttl", "08_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl: time: invalid duration \"no duration\""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": asOrigin.URL})
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+			h.Must(err)
+			hook.Reset()
+			res, err := newClient().Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.wantStatus {
+				subT.Errorf("expected status %d, got: %d", tc.wantStatus, res.StatusCode)
+			}
+
+			message := getFirstAccessLogMessage(hook)
+			if message != tc.wantErrLog {
+				subT.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+			}
+
+			shutdown()
+		})
+	}
+
+	asOrigin.Close()
 }

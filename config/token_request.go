@@ -53,7 +53,7 @@ func (t *TokenRequest) Inline() interface{} {
 		JsonBody       string               `hcl:"json_body,optional" docs:"Creates implicit default <code>Content-Type: application/json</code> header field" type:"null, bool, number, string, object, tuple"`
 		Method         string               `hcl:"method,optional" default:"GET"`
 		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"sets the url query parameters"`
-		TTL            string               `hcl:"ttl" docs:"The time span for which the token is to be stores."`
+		TTL            string               `hcl:"ttl" docs:"The time span for which the token is to be stored."`
 		Token          string               `hcl:"token" docs:"The token to be stored in <code>backends.<backend_name>.tokens.<token_request_name></code>"`
 	}
 
