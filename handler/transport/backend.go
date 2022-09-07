@@ -501,13 +501,8 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 	return errCh
 }
 
-func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *http.Request) (*Config, error) {
+func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params *hclsyntax.Body, req *http.Request) (*Config, error) {
 	log := b.upstreamLog.LogEntry()
-
-	bodyContent, _, diags := params.PartialContent(config.BackendInlineSchema)
-	if diags.HasErrors() {
-		return nil, errors.Evaluation.Label(b.name).With(diags)
-	}
 
 	var origin, hostname, proxyURL string
 	var connectTimeout, ttfbTimeout, timeout string
@@ -524,7 +519,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		{"ttfb_timeout", &ttfbTimeout},
 		{"timeout", &timeout},
 	} {
-		if v, err := eval.ValueFromAttribute(httpCtx, bodyContent, p.attrName); err != nil {
+		if v, err := eval.ValueFromBodyAttribute(httpCtx, params, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
 		} else if v != cty.NilVal {
 			*p.target = seetie.ValueToString(v)
@@ -555,12 +550,8 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		WithTimings(connectTimeout, ttfbTimeout, timeout, log), nil
 }
 
-func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params hcl.Body) error {
-	paramsContent, _, diags := params.PartialContent(config.BackendInlineSchema)
-	if diags.HasErrors() {
-		return diags
-	}
-	val, err := eval.ValueFromAttribute(ctx, paramsContent, "use_when_unhealthy")
+func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params *hclsyntax.Body) error {
+	val, err := eval.ValueFromBodyAttribute(ctx, params, "use_when_unhealthy")
 	if err != nil {
 		return err
 	}
