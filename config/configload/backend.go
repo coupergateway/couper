@@ -71,7 +71,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 
 		if backendBody == nil {
 			if attrName == "_init" { // initial definitions case
-				backendBody = hclbody.MergeBds(refBody, newDefaultBackend(), false)
+				backendBody = hclbody.MergeBodies(refBody, newDefaultBackend(), false)
 			} else { // plain reference without params
 				return refBody, nil
 			}
@@ -108,9 +108,9 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 				for k, v := range backendBody.Attributes {
 					copied.Attributes[k] = v
 				}
-				backendBody = hclbody.MergeBds(&copied, newDefaultBackend(), false)
+				backendBody = hclbody.MergeBodies(&copied, newDefaultBackend(), false)
 			default:
-				backendBody = hclbody.MergeBds(backendBody, newDefaultBackend(), false)
+				backendBody = hclbody.MergeBodies(backendBody, newDefaultBackend(), false)
 			}
 		}
 
@@ -239,7 +239,7 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 
 		backendBlock := &hclsyntax.Block{
 			Type: backend,
-			Body: hclbody.MergeBds(backendBody, tokenRequestBody, false),
+			Body: hclbody.MergeBodies(backendBody, tokenRequestBody, false),
 		}
 		tokenRequestBody.Blocks = append(tokenRequestBody.Blocks, backendBlock)
 	}

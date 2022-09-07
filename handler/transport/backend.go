@@ -117,7 +117,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	if ctxBody == nil {
 		ctxBody = b.context
 	} else {
-		ctxBody = hclbody.MergeBds(ctxBody, b.context, false)
+		ctxBody = hclbody.MergeBodies(ctxBody, b.context, false)
 	}
 
 	// originalReq for token-request retry purposes

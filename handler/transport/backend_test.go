@@ -44,7 +44,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 			"ttfb_timeout":    {Name: "ttfb_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(ttfb)}},
 			"timeout":         {Name: "timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(timeout)}},
 		}}
-		return hclbody.MergeBds(base, content, true)
+		return hclbody.MergeBodies(base, content, true)
 	}
 
 	tests := []struct {
@@ -359,7 +359,7 @@ func TestBackend_director(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
-			backend := transport.NewBackend(hclbody.MergeBds(hclContext,
+			backend := transport.NewBackend(hclbody.MergeBodies(hclContext,
 				hclbody.NewHCLSyntaxBodyWithStringAttr("timeout", "1s"),
 				true,
 			), &transport.Config{}, nil, nullLog)

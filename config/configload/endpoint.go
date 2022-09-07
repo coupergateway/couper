@@ -95,7 +95,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				}
 
 				if wsBody != nil {
-					proxyConfig.Remain = hclbody.MergeBds(proxyConfig.Remain.(*hclsyntax.Body), wsBody, true)
+					proxyConfig.Remain = hclbody.MergeBodies(proxyConfig.Remain.(*hclsyntax.Body), wsBody, true)
 				}
 			}
 

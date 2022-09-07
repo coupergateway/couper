@@ -10,7 +10,7 @@ import (
 	"github.com/avenga/couper/eval"
 )
 
-func TestBody_MergeBds(t *testing.T) {
+func TestBody_MergeBodies(t *testing.T) {
 	tests := []struct {
 		name            string
 		src             *hclsyntax.Body
@@ -92,7 +92,7 @@ func TestBody_MergeBds(t *testing.T) {
 			if tt.src == nil {
 				src = dest
 			}
-			merged := body.MergeBds(dest, src, tt.replace)
+			merged := body.MergeBodies(dest, src, tt.replace)
 			if len(merged.Attributes) != len(tt.expAttrs) {
 				subT.Fatalf("expected %d attributes, was %d", len(tt.expAttrs), len(merged.Attributes))
 			}
