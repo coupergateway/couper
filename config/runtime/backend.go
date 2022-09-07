@@ -26,7 +26,8 @@ import (
 func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	conf *config.Couper, store *cache.MemoryStore) (http.RoundTripper, error) {
 	const prefix = "backend_"
-	name, err := getBackendName(ctx, body)
+	hsbody, _ := body.(*hclsyntax.Body)
+	name, err := getBackendName(ctx, hsbody)
 
 	if err != nil {
 		return nil, err
@@ -36,10 +37,10 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	// The store is newly created per run.
 	b := store.Get(prefix + name)
 	if b != nil {
-		return backend.NewContext(body.(*hclsyntax.Body), b.(http.RoundTripper)), nil
+		return backend.NewContext(hsbody, b.(http.RoundTripper)), nil
 	}
 
-	b, err = newBackend(ctx, body, log, conf, store)
+	b, err = newBackend(ctx, hsbody, log, conf, store)
 	if err != nil {
 		return nil, errors.Configuration.Label(name).With(err)
 	}
@@ -50,7 +51,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	return b.(http.RoundTripper), nil
 }
 
-func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
+func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logrus.Entry,
 	conf *config.Couper, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := &config.Backend{}
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, beConf); diags.HasErrors() {
@@ -197,20 +198,14 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
 	}
 }
 
-func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {
-	content, _, _ := backendCtx.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{
-		{Name: "name"}},
-	})
-
-	if content != nil && len(content.Attributes) > 0 {
-		if n, exist := content.Attributes["name"]; exist {
-			v, err := eval.Value(evalCtx, n.Expr)
-			if err != nil {
-				return "", err
-			}
-
-			return v.AsString(), nil
+func getBackendName(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body) (string, error) {
+	if n, exist := backendCtx.Attributes["name"]; exist {
+		v, err := eval.Value(evalCtx, n.Expr)
+		if err != nil {
+			return "", err
 		}
+
+		return v.AsString(), nil
 	}
 
 	return "", nil
