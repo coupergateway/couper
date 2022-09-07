@@ -18,6 +18,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Disallow empty path parameters ([#526](https://github.com/avenga/couper/pull/526))
   * Basic Auth client authentication with OAuth2 (client ID and secret must be URL encoded) ([#537](https://github.com/avenga/couper/pull/537))
   * Config validation, e.g. label-uniqueness checks ([#563](https://github.com/avenga/couper/pull/563))
+  * [OIDC](https://docs.couper.io/configuration/block/oidc) not using referenced backends, if only specific backends (`configuration_backend`, `jwks_uri_backend`, `token_backend`, `userinfo_backend`) were configured ([#570](https://github.com/avenga/couper/pull/570))
 
 * **Removed**
   * Endpoint path normalization to better match OpenAPI behavior ([#526](https://github.com/avenga/couper/pull/526))
