@@ -22,7 +22,7 @@ var (
 
 type TokenRequest struct {
 	config      *config.TokenRequest
-	getMu       sync.Mutex
+	mu          sync.Mutex
 	memStore    *cache.MemoryStore
 	reqProducer producer.Roundtrip
 	storageKey  string
@@ -45,8 +45,8 @@ func (t *TokenRequest) GetToken(req *http.Request) error {
 	}
 
 	// block during read/request process
-	t.getMu.Lock()
-	defer t.getMu.Unlock()
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	token = t.readToken()
 	if token != "" {

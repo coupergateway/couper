@@ -30,7 +30,7 @@ var (
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
-	getMu        sync.Mutex
+	mu           sync.Mutex
 	memStore     *cache.MemoryStore
 	oauth2Client *oauth2.Client
 	storageKey   string
@@ -106,8 +106,8 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 		return nil
 	}
 
-	oa.getMu.Lock()
-	defer oa.getMu.Unlock()
+	oa.mu.Lock()
+	defer oa.mu.Unlock()
 
 	token = oa.readAccessToken()
 	if token != "" {
