@@ -443,6 +443,7 @@ func TestEnvironmentBlocksWithoutEnvironment(t *testing.T) {
 			_, err = file.Seek(0, 0)
 			helper.Must(err)
 			_, err = file.Write(config)
+			helper.Must(err)
 
 			_, err = configload.LoadFile(file.Name(), tt.env)
 			if err == nil && tt.want != "" {

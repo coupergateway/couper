@@ -71,7 +71,12 @@ func (p *PermissionsControl) Validate(req *http.Request) error {
 	if p.permissionExpr == nil {
 		return nil
 	}
+
 	permissionVal, err := eval.Value(eval.ContextFromRequest(req).HCLContext(), p.permissionExpr)
+	if err != nil {
+		return errors.Evaluation.With(err)
+	}
+
 	permission, permissionMap, err := seetie.ValueToPermission(permissionVal)
 	if err != nil {
 		return errors.Evaluation.With(err)

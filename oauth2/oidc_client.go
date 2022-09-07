@@ -231,6 +231,9 @@ func (o *OidcClient) getUserinfo(ctx context.Context, accessToken string) (map[s
 	}
 
 	userinfoResponse, err := o.requestUserinfo(userinfoReq)
+	if err != nil {
+		return nil, "", err
+	}
 
 	return parseUserinfoResponse(userinfoResponse)
 }
