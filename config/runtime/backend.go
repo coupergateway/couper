@@ -15,6 +15,7 @@ import (
 	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
@@ -115,16 +116,11 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 		}
 	}
 
-	for _, schema := range []*hcl.BodySchema{
-		config.OAuthBlockSchema,
-		config.TokenRequestBlockSchema,
+	for _, blockType := range []string{
+		config.OAuthBlockSchema.Blocks[0].Type,
+		config.TokenRequestBlockSchema.Blocks[0].Type,
 	} {
-		content, _, _ := backendCtx.PartialContent(schema)
-		if content == nil || len(schema.Blocks) == 0 {
-			continue
-		}
-
-		blocks := content.Blocks.OfType(schema.Blocks[0].Type)
+		blocks := hclbody.BlocksOfType(backendCtx, blockType)
 		for _, block := range blocks {
 			requestAuthorizer, err := newRequestAuthorizer(evalCtx, block, log, conf, memStore)
 			if err != nil {
@@ -138,7 +134,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 	return b, nil
 }
 
-func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
+func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 	log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 	var authorizerConfig interface{}
 	switch block.Type {
@@ -161,15 +157,9 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
 		return nil, diags
 	}
 
-	inlineSchema, _ := authorizerConfig.(config.Inline)
-	innerContent, _, diags := inlineSchema.HCLBody().PartialContent(inlineSchema.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	backendBlocks := innerContent.Blocks.OfType("backend")
+	backendBlocks := hclbody.BlocksOfType(block.Body, "backend")
 	if len(backendBlocks) == 0 {
-		r := inlineSchema.HCLBody().MissingItemRange()
+		r := block.Body.MissingItemRange()
 		diag := &hcl.Diagnostics{&hcl.Diagnostic{
 			Subject: &r,
 			Summary: "missing backend initialization",
