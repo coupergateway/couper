@@ -188,6 +188,9 @@ func checkTokenRequestLabels(trbs []*hclsyntax.Block, unique map[string]struct{}
 			if err := validLabel(label, r); err != nil {
 				return err
 			}
+		} else {
+			// add "default" label if no label is configured
+			trb.Labels = append(trb.Labels, label)
 		}
 
 		if err := uniqueLabelName("token request", unique, label, r); err != nil {

@@ -143,11 +143,8 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 			Retries: &one,
 		}
 	case config.TokenRequestBlockSchema.Blocks[0].Type:
-		label := "default"
-		if len(block.Labels) > 0 {
-			label = block.Labels[0]
-		}
-		authorizerConfig = &config.TokenRequest{Name: label}
+		// block is guaranteed to have a label ("default" being added at configload)
+		authorizerConfig = &config.TokenRequest{Name: block.Labels[0]}
 	default:
 		return nil, errors.Configuration.Messagef("request authorizer not implemented: %s", block.Type)
 	}
