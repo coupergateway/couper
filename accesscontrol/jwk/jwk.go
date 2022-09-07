@@ -1,13 +1,11 @@
 package jwk
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -105,23 +103,6 @@ func (j *JWK) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func fromRsaPublicKey(pub *rsa.PublicKey) *rawJWK {
-	return &rawJWK{
-		Kty: "RSA",
-		N:   newBase64URLEncodedField(pub.N.Bytes()),
-		E:   newBase64EncodedFieldFromInt(uint64(pub.E)),
-	}
-}
-
-func fromECDSAPublicKey(pub *ecdsa.PublicKey) *rawJWK {
-	return &rawJWK{
-		Kty: "EC",
-		Crv: pub.Curve.Params().Name,
-		X:   newBase64EncodedFieldFromInt(pub.X.Uint64()),
-		Y:   newBase64EncodedFieldFromInt(pub.Y.Uint64()),
-	}
-}
-
 // Base64URL encoded
 
 type base64URLEncodedField struct {
@@ -132,12 +113,6 @@ func newBase64URLEncodedField(data []byte) *base64URLEncodedField {
 	return &base64URLEncodedField{
 		data: data,
 	}
-}
-
-func newBase64EncodedFieldFromInt(num uint64) *base64URLEncodedField {
-	data := make([]byte, 8)
-	binary.BigEndian.PutUint64(data, num)
-	return newBase64URLEncodedField(bytes.TrimLeft(data, "\x00"))
 }
 
 func (f *base64URLEncodedField) MarshalJSON() ([]byte, error) {

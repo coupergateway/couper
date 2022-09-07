@@ -42,7 +42,6 @@ type Config struct {
 	context    context.Context
 	syncedJSON *jsn.SyncedJSON
 	jwks       *jwk.JWKS
-	cmu        sync.RWMutex // conf
 	jmu        sync.RWMutex // jkws
 }
 
