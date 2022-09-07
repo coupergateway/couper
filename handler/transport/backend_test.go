@@ -53,10 +53,10 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 		req         *http.Request
 		expectedErr string
 	}{
-		{"with zero timings", test.NewRemainContext("origin", origin.URL), httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
-		{"with overall timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "1m", "30s", "500ms"), httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
-		{"with connect timeout", withTimingsFn(test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), "750ms", "500ms", "1m"), httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
-		{"with ttfb timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "10s", "1s", "1m"), httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
+		{"with zero timings", hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL), httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
+		{"with overall timeout", withTimingsFn(hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL), "1m", "30s", "500ms"), httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
+		{"with connect timeout", withTimingsFn(hclbody.NewHCLSyntaxBodyWithStringAttr("origin", "http://blackhole.webpagetest.org"), "750ms", "500ms", "1m"), httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
+		{"with ttfb timeout", withTimingsFn(hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL), "10s", "1s", "1m"), httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
 	}
 
 	logger, hook := logrustest.NewNullLogger()
@@ -98,7 +98,7 @@ func TestBackend_Compression_Disabled(t *testing.T) {
 	logger, _ := logrustest.NewNullLogger()
 	log := logger.WithContext(context.Background())
 
-	hclBody := test.NewRemainContext("origin", origin.URL)
+	hclBody := hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL)
 	backend := transport.NewBackend(hclBody, &transport.Config{}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
@@ -133,7 +133,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	logger, _ := logrustest.NewNullLogger()
 	log := logger.WithContext(context.Background())
 
-	hclBody := test.NewRemainContext("origin", origin.URL)
+	hclBody := hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL)
 
 	backend := transport.NewBackend(hclBody, &transport.Config{
 		Origin: origin.URL,
