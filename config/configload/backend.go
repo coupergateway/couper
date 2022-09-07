@@ -131,12 +131,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 func getBackendReference(inline config.Inline) (string, *hclsyntax.Body, error) {
 	var reference string
 
-	content, _, diags := inline.HCLBody().PartialContent(inline.Schema(true))
-	if diags.HasErrors() {
-		return "", nil, diags
-	}
-
-	backends := content.Blocks.OfType(backend)
+	backends := hclbody.BlocksOfType(inline.HCLBody().(*hclsyntax.Body), backend)
 	if len(backends) == 0 {
 		if beref, ok := inline.(config.BackendReference); ok {
 			if beref.Reference() != "" {
@@ -146,7 +141,7 @@ func getBackendReference(inline config.Inline) (string, *hclsyntax.Body, error) 
 		return reference, nil, nil
 	}
 
-	body := backends[0].Body.(*hclsyntax.Body)
+	body := backends[0].Body
 	if len(backends[0].Labels) > 0 {
 		reference = backends[0].Labels[0]
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -164,27 +165,16 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 func (h *helper) collectBackendDeps(refs map[string][]string) {
 	for name, b := range h.defsBackends {
 		refs[name] = nil
-		content, _, _ := b.PartialContent(&hcl.BodySchema{
-			Blocks: []hcl.BlockHeaderSchema{
-				{Type: oauth2},
-				{Type: tokenRequest, LabelNames: []string{"name"}, LabelOptional: true},
-			}},
-		)
-		oaBlocks := content.Blocks.OfType(oauth2)
+		oaBlocks := hclbody.BlocksOfType(b, oauth2)
 		h.collectFromBlocks(oaBlocks, name, refs)
-		trBlocks := content.Blocks.OfType(tokenRequest)
+		trBlocks := hclbody.BlocksOfType(b, tokenRequest)
 		h.collectFromBlocks(trBlocks, name, refs)
 	}
 }
 
-func (h *helper) collectFromBlocks(authorizerBlocks hcl.Blocks, name string, refs map[string][]string) {
+func (h *helper) collectFromBlocks(authorizerBlocks hclsyntax.Blocks, name string, refs map[string][]string) {
 	for _, ab := range authorizerBlocks {
-		asb, ok := ab.Body.(*hclsyntax.Body)
-		if !ok {
-			continue
-		}
-
-		for _, be := range asb.Attributes {
+		for _, be := range ab.Body.Attributes {
 			if be.Name == backend {
 				val, _ := be.Expr.Value(envContext)
 				refs[name] = append(refs[name], val.AsString())
@@ -192,7 +182,7 @@ func (h *helper) collectFromBlocks(authorizerBlocks hcl.Blocks, name string, ref
 			}
 		}
 
-		for _, block := range asb.Blocks {
+		for _, block := range ab.Body.Blocks {
 			if block.Type != backend {
 				continue
 			}
