@@ -19,7 +19,7 @@ var (
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
 type OAuth2AC struct {
 	ErrorHandlerSetter
-	// AuthorizationEndpoint is used for lib.FnOAuthAuthorizationUrl
+	// AuthorizationEndpoint is used for lib.FnOAuthAuthorizationURL
 	AuthorizationEndpoint   string   `hcl:"authorization_endpoint" docs:"The authorization server endpoint URL used for authorization."`
 	BackendName             string   `hcl:"backend,optional" docs:"[{backend} block](backend) reference."`
 	ClientID                string   `hcl:"client_id" docs:"The client identifier."`

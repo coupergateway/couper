@@ -493,7 +493,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsUrl, saml.SpEntityId, saml.ArrayAttributes)
+			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsURL, saml.SpEntityID, saml.ArrayAttributes)
 			if err != nil {
 				return nil, confErr.With(err)
 			}

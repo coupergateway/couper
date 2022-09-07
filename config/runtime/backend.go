@@ -88,11 +88,13 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	}
 
 	options := &transport.BackendOptions{}
-	if opts, err := validation.NewOpenAPIOptions(beConf.OpenAPI); err != nil {
+
+	opts, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	if err != nil {
 		return nil, err
-	} else {
-		options.OpenAPI = opts
 	}
+
+	options.OpenAPI = opts
 
 	if beConf.Health != nil {
 		origin, diags := eval.ValueFromBodyAttribute(evalCtx, backendCtx, "origin")

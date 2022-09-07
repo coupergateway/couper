@@ -222,9 +222,9 @@ func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) err
 func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
 	_, existsBody := content.Attributes["body"]
 	_, existsFormBody := content.Attributes["form_body"]
-	_, existsJsonBody := content.Attributes["json_body"]
+	_, existsJSONBody := content.Attributes["json_body"]
 
-	if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
+	if existsBody && existsFormBody || existsBody && existsJSONBody || existsFormBody && existsJSONBody {
 		rangeAttr := "body"
 		if !existsBody {
 			rangeAttr = "form_body"
@@ -240,8 +240,8 @@ func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
 func verifyResponseBodyAttrs(b hcl.Body) error {
 	content, _, _ := b.PartialContent(config.ResponseInlineSchema)
 	_, existsBody := content.Attributes["body"]
-	_, existsJsonBody := content.Attributes["json_body"]
-	if existsBody && existsJsonBody {
+	_, existsJSONBody := content.Attributes["json_body"]
+	if existsBody && existsJSONBody {
 		return newDiagErr(&content.Attributes["body"].Range, "response can only have one of body or json_body attributes")
 	}
 	return nil

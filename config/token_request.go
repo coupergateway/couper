@@ -50,7 +50,7 @@ func (t *TokenRequest) Inline() interface{} {
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a <code>beta_backend_token_request</code> error can be handled with an <code>error_handler</code>"`
 		FormBody       string               `hcl:"form_body,optional" docs:"Creates implicit default <code>Content-Type: application/x-www-form-urlencoded</code> header field."`
 		Headers        map[string]string    `hcl:"headers,optional" docs:"sets the given request headers"`
-		JsonBody       string               `hcl:"json_body,optional" docs:"Creates implicit default <code>Content-Type: application/json</code> header field" type:"null, bool, number, string, object, tuple"`
+		JSONBody       string               `hcl:"json_body,optional" docs:"Creates implicit default <code>Content-Type: application/json</code> header field" type:"null, bool, number, string, object, tuple"`
 		Method         string               `hcl:"method,optional" default:"GET"`
 		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"sets the url query parameters"`
 		TTL            string               `hcl:"ttl" docs:"The time span for which the token is to be stores."`

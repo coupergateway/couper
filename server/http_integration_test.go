@@ -2783,7 +2783,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 		Origin   string                 `json:"origin"`
 		Url      string                 `json:"url"`
 		Body     string                 `json:"body"`
-		JsonBody map[string]interface{} `json:"json_body"`
+		JSONBody map[string]interface{} `json:"json_body"`
 		FormBody map[string][]string    `json:"form_body"`
 	}
 
@@ -2817,7 +2817,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Origin:   ResourceOrigin.URL,
 				Url:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     "abcd1234",
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2836,7 +2836,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Origin:   ResourceOrigin.URL,
 				Url:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     `{"s":"abcd1234"}`,
-				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				JSONBody: map[string]interface{}{"s": "abcd1234"},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2855,7 +2855,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Origin:   ResourceOrigin.URL,
 				Url:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     `s=abcd1234`,
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{"s": {"abcd1234"}},
 			},
 		},
@@ -2908,7 +2908,7 @@ func TestHTTPServer_request_variables(t *testing.T) {
 		Origin   string                 `json:"origin"`
 		Url      string                 `json:"url"`
 		Body     string                 `json:"body"`
-		JsonBody map[string]interface{} `json:"json_body"`
+		JSONBody map[string]interface{} `json:"json_body"`
 		FormBody map[string][]string    `json:"form_body"`
 	}
 
@@ -2936,7 +2936,7 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/body?foo=bar",
 				Body:     "abcd1234",
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2955,7 +2955,7 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/json_body?foo=bar",
 				Body:     `{"s":"abcd1234"}`,
-				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				JSONBody: map[string]interface{}{"s": "abcd1234"},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2974,7 +2974,7 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Origin:   "http://localhost:8080",
 				Url:      "http://localhost:8080/form_body?foo=bar",
 				Body:     `s=abcd1234`,
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{"s": {"abcd1234"}},
 			},
 		},

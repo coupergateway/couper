@@ -106,7 +106,7 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 					if rootName == ClientRequest || rootName == BackendRequest {
 						result |= BufferRequest
 					}
-				case JsonBody:
+				case JSONBody:
 					switch rootName {
 					case ClientRequest:
 						fallthrough

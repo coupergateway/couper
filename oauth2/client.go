@@ -114,9 +114,9 @@ func (c *Client) GetTokenResponse(ctx context.Context, formParams url.Values) (m
 		if dExists {
 			msg += fmt.Sprintf(", error_description=%s", errorDescription)
 		}
-		errorUri, uExists := tokenResponseData["error_uri"].(string)
+		errorURI, uExists := tokenResponseData["error_uri"].(string)
 		if uExists {
-			msg += fmt.Sprintf(", error_uri=%s", errorUri)
+			msg += fmt.Sprintf(", error_uri=%s", errorURI)
 		}
 		return nil, "", fmt.Errorf(msg)
 	}

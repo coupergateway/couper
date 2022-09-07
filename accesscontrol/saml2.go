@@ -25,7 +25,7 @@ type Saml2 struct {
 	sp              *saml2.SAMLServiceProvider
 }
 
-func NewSAML2ACS(metadata []byte, name string, acsUrl string, spEntityId string, arrayAttributes []string) (*Saml2, error) {
+func NewSAML2ACS(metadata []byte, name string, acsURL string, spEntityID string, arrayAttributes []string) (*Saml2, error) {
 	metadataEntity := &types.EntityDescriptor{}
 	if err := xml.Unmarshal(metadata, metadataEntity); err != nil {
 		return nil, err
@@ -55,8 +55,8 @@ func NewSAML2ACS(metadata []byte, name string, acsUrl string, spEntityId string,
 	}
 
 	sp := &saml2.SAMLServiceProvider{
-		AssertionConsumerServiceURL: acsUrl,
-		AudienceURI:                 spEntityId,
+		AssertionConsumerServiceURL: acsURL,
+		AudienceURI:                 spEntityID,
 		IDPCertificateStore:         &certStore,
 		IdentityProviderIssuer:      metadataEntity.EntityID,
 	}
@@ -83,11 +83,11 @@ func (s *Saml2) Validate(req *http.Request) error {
 	}
 
 	origin := eval.NewRawOrigin(req.URL)
-	absAcsUrl, err := lib.AbsoluteURL(s.sp.AssertionConsumerServiceURL, origin)
+	absAcsURL, err := lib.AbsoluteURL(s.sp.AssertionConsumerServiceURL, origin)
 	if err != nil {
 		return errors.Saml.With(err)
 	}
-	s.sp.AssertionConsumerServiceURL = absAcsUrl
+	s.sp.AssertionConsumerServiceURL = absAcsURL
 
 	encodedResponse := req.FormValue("SAMLResponse")
 	req.ContentLength = 0

@@ -24,7 +24,7 @@ func Test_NewSAML2ACS(t *testing.T) {
 	helper := test.New(t)
 
 	type testCase struct {
-		metadataFile, acsUrl, spEntityId string
+		metadataFile, acsURL, spEntityID string
 		arrayAttributes                  []string
 		expErrMsg                        string
 		shouldFail                       bool
@@ -47,7 +47,7 @@ func Test_NewSAML2ACS(t *testing.T) {
 			continue
 		}
 
-		_, err = ac.NewSAML2ACS(metadata, "test", tc.acsUrl, tc.spEntityId, tc.arrayAttributes)
+		_, err = ac.NewSAML2ACS(metadata, "test", tc.acsURL, tc.spEntityID, tc.arrayAttributes)
 		helper.Must(err)
 	}
 }

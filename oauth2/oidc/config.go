@@ -20,7 +20,7 @@ type OpenidConfiguration struct {
 	AuthorizationEndpoint         string   `json:"authorization_endpoint"`
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 	Issuer                        string   `json:"issuer"`
-	JwksUri                       string   `json:"jwks_uri"`
+	JwksURI                       string   `json:"jwks_uri"`
 	TokenEndpoint                 string   `json:"token_endpoint"`
 	UserinfoEndpoint              string   `json:"userinfo_endpoint"`
 }
@@ -177,11 +177,11 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 	}
 
 	jwksBackend := backend.NewContext(hclbody.
-		New(hclbody.NewContentWithAttrName("_backend_url", jsonData.JwksUri)),
+		New(hclbody.NewContentWithAttrName("_backend_url", jsonData.JwksURI)),
 		c.backends["jwks_uri_backend"],
 	)
 
-	newJWKS, err := jwk.NewJWKS(jsonData.JwksUri, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
+	newJWKS, err := jwk.NewJWKS(jsonData.JwksURI, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
 	if err != nil { // do not replace possible working jwks on err
 		return jsonData, err
 	}

@@ -99,7 +99,7 @@ func Test_SamlSsoUrl(t *testing.T) {
 			h.Must(err)
 			evalContext = evalContext.WithClientRequest(req)
 
-			ssoUrl, err := evalContext.HCLContext().Functions[lib.FnSamlSsoUrl].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
+			ssoURL, err := evalContext.HCLContext().Functions[lib.FnSamlSsoURL].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
 			if err == nil && tt.wantErr {
 				subT.Fatal("Error expected")
 			}
@@ -111,11 +111,11 @@ func Test_SamlSsoUrl(t *testing.T) {
 				}
 			}
 
-			if !strings.HasPrefix(ssoUrl.AsString(), tt.wantPfx) {
-				subT.Errorf("Expected to start with %q, got: %#v", tt.wantPfx, ssoUrl.AsString())
+			if !strings.HasPrefix(ssoURL.AsString(), tt.wantPfx) {
+				subT.Errorf("Expected to start with %q, got: %#v", tt.wantPfx, ssoURL.AsString())
 			}
 
-			u, err := url.Parse(ssoUrl.AsString())
+			u, err := url.Parse(ssoURL.AsString())
 			h.Must(err)
 
 			q := u.Query()

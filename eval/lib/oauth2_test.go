@@ -22,7 +22,7 @@ import (
 	"github.com/avenga/couper/oauth2/oidc"
 )
 
-func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
+func TestNewOAuthAuthorizationURLFunction(t *testing.T) {
 	helper := test.New(t)
 
 	var origin *httptest.Server
@@ -33,7 +33,7 @@ func TestNewOAuthAuthorizationUrlFunction(t *testing.T) {
 				AuthorizationEndpoint:         origin.URL + "/auth",
 				CodeChallengeMethodsSupported: []string{config.CcmS256},
 				Issuer:                        "thatsme",
-				JwksUri:                       origin.URL + "/jwks",
+				JwksURI:                       origin.URL + "/jwks",
 				TokenEndpoint:                 origin.URL + "/token",
 				UserinfoEndpoint:              origin.URL + "/userinfo",
 			}
@@ -91,7 +91,7 @@ definitions {
 		WithBeresp(res, false).
 		HCLContext()
 
-	val, furr := hclCtx.Functions[lib.FnOAuthAuthorizationUrl].Call([]cty.Value{cty.StringVal("auth-ref")})
+	val, furr := hclCtx.Functions[lib.FnOAuthAuthorizationURL].Call([]cty.Value{cty.StringVal("auth-ref")})
 	helper.Must(furr)
 
 	authUrl := seetie.ValueToString(val)

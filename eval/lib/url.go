@@ -13,11 +13,11 @@ import (
 var (
 	// https://datatracker.ietf.org/doc/html/rfc3986#page-50
 	regexParseURL   = regexp.MustCompile(`^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?`)
-	UrlEncodeFunc   = newUrlEncodeFunction()
-	RelativeUrlFunc = newRelativeUrlFunction()
+	URLEncodeFunc   = newURLEncodeFunction()
+	RelativeURLFunc = newRelativeURLFunction()
 )
 
-func newUrlEncodeFunction() function.Function {
+func newURLEncodeFunction() function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{{
 			Name: "s",
@@ -44,7 +44,7 @@ func AbsoluteURL(urlRef string, origin *url.URL) (string, error) {
 	return urlRef, nil
 }
 
-func newRelativeUrlFunction() function.Function {
+func newRelativeURLFunction() function.Function {
 	return function.New(&function.Spec{
 		Params: []function.Parameter{{
 			Name: "s",
