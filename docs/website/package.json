@@ -8,7 +8,7 @@
     "prebuild": "npm run inject-couper-highlighting",
     "preview": "nuxi preview",
     "generate": "NODE_ENV=production nuxi generate",
-    "postgenerate": "cd .output/public; for file in $(find -mindepth 2 -name index.html | sort); do page=\"$(dirname \"$file\")\" && echo \"ℹ Fixing ${page##./}...\" && mv \"$file\" \"$page.new\" && rmdir \"$page\" && mv \"$page.new\" \"$page\"; done"
+    "pregenerate": "for file in $(find content -name '*.md' | sort); do base=\"$(dirname \"$file\" | sed -re 's#/[0-9]\\.#/#g' -e 's/^content//')\"; node rewritelinks.js \"$file\" \"$base\"; done"
   },
   "devDependencies": {
     "@nuxtjs/algolia": "^1.0.0",
