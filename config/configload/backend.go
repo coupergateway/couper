@@ -253,11 +253,6 @@ func wrapTokenRequestBackend(helper *helper, parent hcl.Body) (hcl.Body, error) 
 			return nil, berr
 		}
 
-		// TODO what is this for? can it be removed?
-		if tokenRequestBackend == nil {
-			continue
-		}
-
 		wrapped := wrapBlock(tokenRequest, tokenRequestBlock.Labels,
 			hclbody.MergeBodies(conf.Remain, tokenRequestBackend))
 		parent = hclbody.MergeBodies(parent, wrapped)
