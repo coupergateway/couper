@@ -23,26 +23,6 @@ func CollectAttributes(bodies ...hcl.Body) []*hcl.Attribute {
 			for _, block := range sb.Blocks {
 				allAttributes = append(allAttributes, CollectAttributes(block.Body)...)
 			}
-		case *body:
-			content, _, _ := sb.PartialContent(nil)
-			for _, attr := range content.Attributes {
-				allAttributes = append(allAttributes, attr)
-			}
-			for _, block := range content.Blocks {
-				allAttributes = append(allAttributes, CollectAttributes(block.Body)...)
-			}
-		case MergedBodies:
-			// top-level attrs
-			for _, attrs := range sb.JustAllAttributes() {
-				for _, attr := range attrs {
-					allAttributes = append(allAttributes, attr)
-				}
-			}
-
-			// nested block attrs
-			for _, mb := range sb {
-				allAttributes = append(allAttributes, CollectAttributes(mb)...)
-			}
 		}
 	}
 
@@ -67,18 +47,6 @@ func CollectBlockTypes(bodies ...hcl.Body) []string {
 
 			for _, block := range sb.Blocks {
 				nested := append(append([]string{}, block.Type), CollectBlockTypes(block.Body)...)
-				addUniqueFn(nested...)
-			}
-		case *body:
-			content, _, _ := sb.PartialContent(nil)
-			for _, block := range content.Blocks {
-				nested := append(append([]string{}, block.Type), CollectBlockTypes(block.Body)...)
-				addUniqueFn(nested...)
-			}
-		case MergedBodies:
-			// nested block
-			for _, mb := range sb {
-				nested := append([]string{}, CollectBlockTypes(mb)...)
 				addUniqueFn(nested...)
 			}
 		}

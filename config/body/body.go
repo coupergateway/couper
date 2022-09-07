@@ -6,21 +6,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var _ hcl.Body = &body{}
-
-type Attributes interface {
-	JustAllAttributes() []hcl.Attributes
-	JustAllAttributesWithName(string) []hcl.Attributes
-}
-
-type body struct {
-	content *hcl.BodyContent
-}
-
-func NewBody(content *hcl.BodyContent) hcl.Body {
-	return &body{content}
-}
-
 func NewHCLSyntaxBodyWithAttr(name string, value cty.Value, rng hcl.Range) *hclsyntax.Body {
 	return &hclsyntax.Body{
 		Attributes: hclsyntax.Attributes{
@@ -67,25 +52,4 @@ func RenameAttribute(body *hclsyntax.Body, old, new string) {
 		body.Attributes[new] = attr
 		delete(body.Attributes, old)
 	}
-}
-
-func (e *body) Content(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Diagnostics) {
-	return e.content, nil
-}
-
-func (e *body) PartialContent(_ *hcl.BodySchema) (*hcl.BodyContent, hcl.Body, hcl.Diagnostics) {
-	return e.content, e, nil
-}
-
-func (e *body) JustAttributes() (hcl.Attributes, hcl.Diagnostics) {
-	attrs := hcl.Attributes{}
-	for k, v := range e.content.Attributes {
-		cv := *v
-		attrs[k] = &cv
-	}
-	return attrs, nil
-}
-
-func (e *body) MissingItemRange() hcl.Range {
-	return e.content.MissingItemRange
 }
