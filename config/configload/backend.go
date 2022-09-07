@@ -192,7 +192,7 @@ func checkTokenRequestLabels(backendBody hcl.Body, unique map[string]struct{}) e
 				}
 			}
 
-			if err := uniqueLabelName(unique, label, r); err != nil {
+			if err := uniqueLabelName("token request", unique, label, r); err != nil {
 				return err
 			}
 

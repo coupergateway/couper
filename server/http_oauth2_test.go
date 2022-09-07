@@ -1481,7 +1481,7 @@ definitions {
   }
 }
 `,
-			"couper.hcl:9,24-33: only one 'default' label is allowed;",
+			"couper.hcl:9,24-33: token request names (either default or explicitly set via label) must be unique: \"default\";",
 		},
 		{
 			"multiple default labels (DefRange)",
@@ -1501,7 +1501,7 @@ definitions {
   }
 }
 `,
-			"couper.hcl:9,5-23: only one 'default' label is allowed;",
+			"couper.hcl:9,5-23: token request names (either default or explicitly set via label) must be unique: \"default\";",
 		},
 		{
 			"multiple default labels (inline backend)",
@@ -1525,7 +1525,7 @@ server {
   }
 }
 `,
-			"couper.hcl:11,9-27: only one 'default' label is allowed;",
+			"couper.hcl:11,9-27: token request names (either default or explicitly set via label) must be unique: \"default\";",
 		},
 		{
 			"multiple labels",
@@ -1545,7 +1545,7 @@ definitions {
   }
 }
 `,
-			"couper.hcl:9,24-27: labels must be unique: \"a\"; ",
+			"couper.hcl:9,24-27: token request names (either default or explicitly set via label) must be unique: \"a\"; ",
 		},
 		{
 			"multiple labels (inline backend)",
@@ -1569,7 +1569,7 @@ server {
   }
 }
 `,
-			"couper.hcl:11,28-31: labels must be unique: \"a\"; ",
+			"couper.hcl:11,28-31: token request names (either default or explicitly set via label) must be unique: \"a\"; ",
 		},
 	} {
 		var errMsg string

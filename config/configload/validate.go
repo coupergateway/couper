@@ -35,27 +35,9 @@ func validLabel(name string, subject *hcl.Range) error {
 	return nil
 }
 
-func uniquePRLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
+func uniqueLabelName(scopeOfUniqueness string, unique map[string]struct{}, name string, hr *hcl.Range) error {
 	if _, exist := unique[name]; exist {
-		if name == defaultNameLabel {
-			return newDiagErr(hr, fmt.Sprintf("proxy and request labels are required and only one '%s' label is allowed", defaultNameLabel))
-		}
-
-		return newDiagErr(hr, fmt.Sprintf("proxy and request labels are required and must be unique: %q", name))
-	}
-
-	unique[name] = struct{}{}
-
-	return nil
-}
-
-func uniqueLabelName(unique map[string]struct{}, name string, hr *hcl.Range) error {
-	if _, exist := unique[name]; exist {
-		if name == defaultNameLabel {
-			return newDiagErr(hr, fmt.Sprintf("only one '%s' label is allowed", defaultNameLabel))
-		}
-
-		return newDiagErr(hr, fmt.Sprintf("labels must be unique: %q", name))
+		return newDiagErr(hr, fmt.Sprintf("%s names (either default or explicitly set via label) must be unique: %q", scopeOfUniqueness, name))
 	}
 
 	unique[name] = struct{}{}
