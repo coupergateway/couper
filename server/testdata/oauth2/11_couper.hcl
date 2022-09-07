@@ -21,6 +21,13 @@ server "oauth-client" {
     }
   }
 
+  endpoint "/oidc1.1/redir" {
+    access_control = ["ac-oidc-1-1"]
+    response {
+      json_body = request.context.ac-oidc-1-1
+    }
+  }
+
   endpoint "/oidc2/redir" {
     access_control = ["ac-oidc-2"]
     response {
@@ -67,6 +74,19 @@ definitions {
     configuration_ttl = "1h"
     backend           = "configuration" # base for configuration_backend, token_backend
     token_backend     = "token"
+    client_id         = "foo"
+    client_secret     = "etbinbp4in"
+    verifier_method   = "ccm_s256"
+    verifier_value    = request.cookies.pkcecv
+    redirect_uri      = "http://localhost:8080/oidc/redir"
+  }
+  oidc "ac-oidc-1-1" {
+    configuration_url = "{{.asOrigin}}/.well-known/openid-configuration"
+    configuration_ttl = "1h"
+    configuration_backend = "configuration"
+    token_backend     = "token"
+    userinfo_backend = "configuration"
+    jwks_uri_backend = "configuration"
     client_id         = "foo"
     client_secret     = "etbinbp4in"
     verifier_method   = "ccm_s256"
