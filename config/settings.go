@@ -59,6 +59,8 @@ var DefaultSettings = Settings{
 	LogLevel:                 "info",
 	LogPretty:                false,
 	NoProxyFromEnv:           false,
+	PProf:                    false,
+	PProfPort:                6060,
 	RequestIDBackendHeader:   "Couper-Request-ID",
 	RequestIDClientHeader:    "Couper-Request-ID",
 	RequestIDFormat:          "common",
@@ -88,6 +90,8 @@ type Settings struct {
 	LogLevel                  string   `hcl:"log_level,optional" docs:"sets the log level: {\"panic\"}, {\"fatal\"}, {\"error\"}, {\"warn\"}, {\"info\"}, {\"debug\"}, {\"trace\"}" default:"info"`
 	LogPretty                 bool     `hcl:"log_pretty,optional" docs:"global option for {json} log format which pretty prints with basic key coloring"`
 	NoProxyFromEnv            bool     `hcl:"no_proxy_from_env,optional" docs:"disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy)"`
+	PProf                     bool     `hcl:"pprof,optional" docs:"enables profiling (https://github.com/google/pprof/blob/main/doc/README.md#pprof)"`
+	PProfPort                 int      `hcl:"pprof_port,optional" docs:"Port for profiling interface" default:"6060"`
 	RequestIDAcceptFromHeader string   `hcl:"request_id_accept_from_header,optional" docs:"client request HTTP header field that transports the {request.id} which Couper takes for logging and transport to the backend (if configured)"`
 	RequestIDBackendHeader    string   `hcl:"request_id_backend_header,optional" docs:"HTTP header field which Couper uses to transport the {request.id} to the backend" default:"Couper-Request-ID"`
 	RequestIDClientHeader     string   `hcl:"request_id_client_header,optional" docs:"HTTP header field which Couper uses to transport the {request.id} to the client" default:"Couper-Request-ID"`

@@ -13,6 +13,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -54,7 +55,8 @@ func realmain(ctx context.Context, arguments []string) int {
 	filesList := filesList{}
 
 	type globalFlags struct {
-		DebugEndpoint       bool          `env:"debug"`
+		DebugEndpoint       bool          `env:"pprof"`
+		DebugPort           int           `env:"pprof_port"`
 		FilePath            string        `env:"file"`
 		DirPath             string        `env:"file_directory"`
 		Environment         string        `env:"environment"`
@@ -68,7 +70,8 @@ func realmain(ctx context.Context, arguments []string) int {
 	var flags globalFlags
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
-	set.BoolVar(&flags.DebugEndpoint, "debug", false, "-debug")
+	set.BoolVar(&flags.DebugEndpoint, "pprof", false, "-pprof")
+	set.IntVar(&flags.DebugPort, "pprof-port", config.DefaultSettings.PProfPort, "-pprof-port 1234")
 	set.Var(&filesList, "f", "-f /path/to/couper.hcl ...")
 	set.Var(&filesList, "d", "-d /path/to/couper.d/ ...")
 	set.StringVar(&flags.Environment, "e", "", "-e stage")
@@ -154,7 +157,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
 
 	if flags.DebugEndpoint {
-		debugListenAndServe(logger)
+		debugListenAndServe(flags.DebugPort, logger)
 	}
 
 	if !flags.FileWatch {
@@ -428,8 +431,8 @@ func newRestartableCommand(ctx context.Context, cmd string) (command.Cmd, chan<-
 	return command.NewCommand(watchContext, cmd), sig
 }
 
-func debugListenAndServe(logEntry *logrus.Entry) {
-	const tracePort = "6060"
+func debugListenAndServe(port int, logEntry *logrus.Entry) {
+	tracePort := strconv.Itoa(port)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
