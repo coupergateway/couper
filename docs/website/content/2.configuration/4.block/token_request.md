@@ -62,7 +62,7 @@ values: [
     "name": "ttl",
     "type": "string",
     "default": "",
-    "description": "The time span for which the token is to be stores."
+    "description": "The time span for which the token is to be stored."
   },
   {
     "name": "url",

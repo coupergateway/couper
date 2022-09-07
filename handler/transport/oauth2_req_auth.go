@@ -23,10 +23,14 @@ var supportedGrantTypes = map[string]struct{}{
 	config.Password:          struct{}{},
 }
 
+var (
+	_ RequestAuthorizer = &OAuth2ReqAuth{}
+)
+
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
-	locks        sync.Map
+	mu           sync.Mutex
 	memStore     *cache.MemoryStore
 	oauth2Client *oauth2.Client
 	storageKey   string
@@ -90,48 +94,45 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		config:       conf,
 		oauth2Client: oauth2Client,
 		memStore:     memStore,
-		locks:        sync.Map{},
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
 	return reqAuth, nil
 }
 
 func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
-	requestContext := eval.ContextFromRequest(req).HCLContext()
-	assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
-	if err != nil {
-		return err
-	}
-
-	formParams := url.Values{}
-
-	if oa.config.GrantType == config.JwtBearer {
-		if assertionValue.IsNull() {
-			return fmt.Errorf("null assertion with grant_type=%s", oa.config.GrantType)
-		} else if assertionValue.Type() != cty.String {
-			return fmt.Errorf("assertion must evaluate to a string")
-		} else {
-			formParams.Set("assertion", assertionValue.AsString())
-		}
-	}
-
 	token := oa.readAccessToken()
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
 	}
 
-	value, _ := oa.locks.LoadOrStore(oa.storageKey, &sync.Mutex{})
-	mutex := value.(*sync.Mutex)
+	oa.mu.Lock()
+	defer oa.mu.Unlock()
 
-	mutex.Lock()
 	token = oa.readAccessToken()
 	if token != "" {
-		mutex.Unlock()
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
 	}
 
+	requestError := errors.Request.Label("oauth2")
+	formParams := url.Values{}
+
+	if oa.config.GrantType == config.JwtBearer {
+		requestContext := eval.ContextFromRequest(req).HCLContext()
+		assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
+		if err != nil {
+			return err
+		}
+
+		if assertionValue.IsNull() {
+			return requestError.Message("assertion expression evaluates to null")
+		} else if assertionValue.Type() != cty.String {
+			return requestError.Message("assertion expression must evaluate to a string")
+		} else {
+			formParams.Set("assertion", assertionValue.AsString())
+		}
+	}
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)
 	}
@@ -142,12 +143,10 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
-		mutex.Unlock()
-		return errors.Backend.Label(oa.config.BackendName).Message("token request error").With(err)
+		return requestError.Message("token request failed") // don't propagate token request roundtrip error
 	}
 
 	oa.updateAccessToken(token, tokenResponseData)
-	mutex.Unlock()
 
 	req.Header.Set("Authorization", "Bearer "+token)
 	return nil
