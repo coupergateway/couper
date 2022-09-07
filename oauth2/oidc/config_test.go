@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
@@ -62,7 +61,7 @@ func TestConfig_Synced(t *testing.T) {
 		}},
 	}
 	// configload internals here... TODO: integration test?
-	err := oconf.Prepare(func(attr string, val string, body config.Inline) (hcl.Body, error) {
+	err := oconf.Prepare(func(attr string, val string, body config.Body) (*hclsyntax.Body, error) {
 		return configload.PrepareBackend(nil, attr, val, body)
 	})
 	helper.Must(err)

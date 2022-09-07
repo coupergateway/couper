@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -18,7 +19,7 @@ type Request struct {
 	Remain      hcl.Body `hcl:",remain"`
 
 	// Internally used
-	Backend hcl.Body
+	Backend *hclsyntax.Body
 }
 
 // Requests represents a list of <Requests> objects.

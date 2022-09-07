@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
@@ -38,7 +37,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	withTimingsFn := func(base *hclsyntax.Body, connect, ttfb, timeout string) hcl.Body {
+	withTimingsFn := func(base *hclsyntax.Body, connect, ttfb, timeout string) *hclsyntax.Body {
 		content := &hclsyntax.Body{Attributes: hclsyntax.Attributes{
 			"connect_timeout": {Name: "connect_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(connect)}},
 			"ttfb_timeout":    {Name: "ttfb_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(ttfb)}},
@@ -49,7 +48,7 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		context     hcl.Body
+		context     *hclsyntax.Body
 		req         *http.Request
 		expectedErr string
 	}{

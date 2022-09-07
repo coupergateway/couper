@@ -45,7 +45,7 @@ func newDefaultBackend() *hclsyntax.Body {
 // This applies to defined, reference, anonymous and endpoint/url related configurations.
 // This method will be called recursively and is used as wrapped injector for
 // access-control backends via config.PrepareBackendFunc.
-func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inline) (*hclsyntax.Body, error) {
+func PrepareBackend(helper *helper, attrName, attrValue string, block config.Body) (*hclsyntax.Body, error) {
 	var reference string // backend definitions
 	var backendBody *hclsyntax.Body
 	var err error
@@ -128,12 +128,12 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Inl
 }
 
 // getBackendReference reads a referenced backend name and the refined backend block content if any.
-func getBackendReference(inline config.Inline) (string, *hclsyntax.Body, error) {
+func getBackendReference(b config.Body) (string, *hclsyntax.Body, error) {
 	var reference string
 
-	backends := hclbody.BlocksOfType(inline.HCLBody().(*hclsyntax.Body), backend)
+	backends := hclbody.BlocksOfType(b.HCLBody().(*hclsyntax.Body), backend)
 	if len(backends) == 0 {
-		if beref, ok := inline.(config.BackendReference); ok {
+		if beref, ok := b.(config.BackendReference); ok {
 			if beref.Reference() != "" {
 				reference = beref.Reference()
 			}

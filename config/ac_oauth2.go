@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -34,7 +35,7 @@ type OAuth2AC struct {
 	VerifierMethod          string   `hcl:"verifier_method" docs:"The method to verify the integrity of the authorization code flow. Available values: {ccm_s256} ({code_challenge} parameter with {code_challenge_method} {S256}), {state} ({state} parameter)"`
 
 	// internally used
-	Backend hcl.Body
+	Backend *hclsyntax.Body
 }
 
 func (oa *OAuth2AC) Prepare(backendFunc PrepareBackendFunc) (err error) {

@@ -97,8 +97,8 @@ func (h *helper) configureACBackends() error {
 	}
 
 	for _, ac := range acs {
-		if err := ac.Prepare(func(attr string, attrVal string, i config.Inline) (hcl.Body, error) {
-			return PrepareBackend(h, attr, attrVal, i) // wrap helper
+		if err := ac.Prepare(func(attr string, attrVal string, b config.Body) (*hclsyntax.Body, error) {
+			return PrepareBackend(h, attr, attrVal, b) // wrap helper
 		}); err != nil {
 			return err
 		}

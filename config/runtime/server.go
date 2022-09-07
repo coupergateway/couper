@@ -106,7 +106,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	// Populate defined backends first...
 	if conf.Definitions != nil {
 		for _, backend := range conf.Definitions.Backend {
-			_, err := NewBackend(confCtx, backend.HCLBody(), log, conf, memStore)
+			_, err := NewBackend(confCtx, backend.HCLBody().(*hclsyntax.Body), log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}

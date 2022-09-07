@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -40,12 +41,12 @@ type OIDC struct {
 	UserinfoBackendName      string `hcl:"userinfo_backend,optional"`
 
 	// internally used
-	Backends map[string]hcl.Body
+	Backends map[string]*hclsyntax.Body
 }
 
 func (o *OIDC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if o.Backends == nil {
-		o.Backends = make(map[string]hcl.Body)
+		o.Backends = make(map[string]*hclsyntax.Body)
 	}
 
 	fields := BackendAttrFields(o)

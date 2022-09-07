@@ -24,11 +24,10 @@ import (
 	"github.com/avenga/couper/handler/validation"
 )
 
-func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
+func NewBackend(ctx *hcl.EvalContext, body *hclsyntax.Body, log *logrus.Entry,
 	conf *config.Couper, store *cache.MemoryStore) (http.RoundTripper, error) {
 	const prefix = "backend_"
-	hsbody, _ := body.(*hclsyntax.Body)
-	name, err := getBackendName(ctx, hsbody)
+	name, err := getBackendName(ctx, body)
 
 	if err != nil {
 		return nil, err
@@ -38,10 +37,10 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	// The store is newly created per run.
 	b := store.Get(prefix + name)
 	if b != nil {
-		return backend.NewContext(hsbody, b.(http.RoundTripper)), nil
+		return backend.NewContext(body, b.(http.RoundTripper)), nil
 	}
 
-	b, err = newBackend(ctx, hsbody, log, conf, store)
+	b, err = newBackend(ctx, body, log, conf, store)
 	if err != nil {
 		return nil, errors.Configuration.Label(name).With(err)
 	}

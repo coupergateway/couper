@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/errors"
@@ -43,7 +44,7 @@ type JWT struct {
 	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}."`
 
 	// Internally used
-	Backend hcl.Body
+	Backend *hclsyntax.Body
 }
 
 func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {

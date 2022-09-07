@@ -60,7 +60,7 @@ type Backend struct {
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
+func NewBackend(ctx *hclsyntax.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var (
 		healthCheck       *config.HealthCheck
 		openAPI           *validation.OpenAPI
@@ -74,7 +74,7 @@ func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entr
 	}
 
 	backend := &Backend{
-		context:           ctx.(*hclsyntax.Body),
+		context:           ctx,
 		healthInfo:        &HealthInfo{Healthy: true, State: StateOk.String()},
 		logEntry:          log.WithField("backend", tc.BackendName),
 		name:              tc.BackendName,

@@ -42,16 +42,14 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
-	beConf := &config.Backend{
-		Remain: body.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL),
-		OpenAPI: &config.OpenAPI{
-			File: filepath.Join("testdata/backend_01_openapi.yaml"),
-		},
+	backendBody := body.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL)
+	oa := &config.OpenAPI{
+		File: filepath.Join("testdata/backend_01_openapi.yaml"),
 	}
-	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	openAPI, err := validation.NewOpenAPIOptions(oa)
 	helper.Must(err)
 
-	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+	backend := transport.NewBackend(backendBody, &transport.Config{}, &transport.BackendOptions{
 		OpenAPI: openAPI,
 	}, logger)
 
@@ -117,16 +115,14 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
-	beConf := &config.Backend{
-		Remain: body.NewHCLSyntaxBodyWithStringAttr("origin", "https://httpbin.org"),
-		OpenAPI: &config.OpenAPI{
-			File: filepath.Join("testdata/backend_02_openapi.yaml"),
-		},
+	backendBody := body.NewHCLSyntaxBodyWithStringAttr("origin", "https://httpbin.org")
+	oa := &config.OpenAPI{
+		File: filepath.Join("testdata/backend_02_openapi.yaml"),
 	}
-	openAPI, err := validation.NewOpenAPIOptions(beConf.OpenAPI)
+	openAPI, err := validation.NewOpenAPIOptions(oa)
 	helper.Must(err)
 
-	backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+	backend := transport.NewBackend(backendBody, &transport.Config{}, &transport.BackendOptions{
 		OpenAPI: openAPI,
 	}, logger)
 
@@ -171,28 +167,26 @@ func TestOpenAPIValidator_TemplateVariables(t *testing.T) {
 		{name: "relative url", origin: origin.Addr()},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
-			beConf := &config.Backend{
-				Remain: &hclsyntax.Body{Attributes: hclsyntax.Attributes{
-					"origin": &hclsyntax.Attribute{
-						Name: "origin",
-						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(tc.origin)},
-					},
-					"hostname": &hclsyntax.Attribute{
-						Name: "hostname",
-						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(tc.hostname)},
-					},
-					"proxy": &hclsyntax.Attribute{
-						Name: "proxy",
-						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin.Addr())},
-					},
-					"path": &hclsyntax.Attribute{
-						Name: "path",
-						Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("/anything")},
-					},
-				}},
-			}
+			backendBody := &hclsyntax.Body{Attributes: hclsyntax.Attributes{
+				"origin": &hclsyntax.Attribute{
+					Name: "origin",
+					Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(tc.origin)},
+				},
+				"hostname": &hclsyntax.Attribute{
+					Name: "hostname",
+					Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(tc.hostname)},
+				},
+				"proxy": &hclsyntax.Attribute{
+					Name: "proxy",
+					Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin.Addr())},
+				},
+				"path": &hclsyntax.Attribute{
+					Name: "path",
+					Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("/anything")},
+				},
+			}}
 
-			backend := transport.NewBackend(beConf.Remain, &transport.Config{}, &transport.BackendOptions{
+			backend := transport.NewBackend(backendBody, &transport.Config{}, &transport.BackendOptions{
 				OpenAPI: openAPI,
 			}, logger)
 
