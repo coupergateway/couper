@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -24,8 +26,11 @@ import (
 func TestConfig_Synced(t *testing.T) {
 	helper := test.New(t)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	log, _ := test.NewLogger()
-	logger := log.WithContext(context.Background())
+	logger := log.WithContext(ctx)
 
 	var origin *httptest.Server
 	origin = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -52,6 +57,7 @@ func TestConfig_Synced(t *testing.T) {
 
 	oconf := &config.OIDC{
 		ConfigurationURL: origin.URL + "/.well-known/openid-configuration",
+		ConfigurationTTL: "100ms",
 		Remain: hclbody.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
 			"redirect_uri":   {Name: "redirect_uri", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("")}},
 			"verifier_value": {Name: "verifier_value", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("")}},
@@ -68,8 +74,11 @@ func TestConfig_Synced(t *testing.T) {
 		backends[k] = transport.NewBackend(b, &transport.Config{}, nil, logger)
 	}
 
-	o, err := oidc.NewConfig(context.TODO(), oconf, backends)
+	o, err := oidc.NewConfig(ctx, oconf, backends)
 	helper.Must(err)
+
+	time.Sleep(time.Millisecond * 110) // init and first ttl fetch
+	n := runtime.NumGoroutine()
 
 	wg := sync.WaitGroup{}
 	wg.Add(10)
@@ -82,4 +91,11 @@ func TestConfig_Synced(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+
+	// wait for possible goroutine leaks from syncedJSON due to low ttl
+	time.Sleep(time.Second / 2)
+
+	if d := runtime.NumGoroutine(); n != d {
+		t.Errorf("Goroutine leak: want %d, got: %d", n, d)
+	}
 }
