@@ -94,11 +94,11 @@ definitions {
 	val, furr := hclCtx.Functions[lib.FnOAuthAuthorizationURL].Call([]cty.Value{cty.StringVal("auth-ref")})
 	helper.Must(furr)
 
-	authUrl := seetie.ValueToString(val)
-	authUrlObj, perr := url.Parse(authUrl)
+	authURL := seetie.ValueToString(val)
+	authURLObj, perr := url.Parse(authURL)
 	helper.Must(perr)
 
-	if value := authUrlObj.Query().Get(lib.RedirectURI); value != want {
+	if value := authURLObj.Query().Get(lib.RedirectURI); value != want {
 		t.Errorf("Want: %v; got: %v", want, value)
 	}
 }

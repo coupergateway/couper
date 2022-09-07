@@ -41,7 +41,7 @@ server "cty.NilVal" {
     }
     response {
       headers = {
-        X-Value = backend_responses.default.json_body.Json.list[1]
+        X-Value = backend_responses.default.json_body.JSON.list[1]
         Z-Value = "y"
       }
     }
@@ -53,7 +53,7 @@ server "cty.NilVal" {
     }
     response {
       headers = {
-        X-Value = backend_responses.default.json_body.Json.list[*]
+        X-Value = backend_responses.default.json_body.JSON.list[*]
         Z-Value = "y"
       }
     }
@@ -65,7 +65,7 @@ server "cty.NilVal" {
     }
     response {
       headers = {
-        X-Value = backend_responses.default.json_body.Json.list[21]
+        X-Value = backend_responses.default.json_body.JSON.list[21]
         Z-Value = "y"
       }
     }
@@ -77,7 +77,7 @@ server "cty.NilVal" {
     }
     response {
       headers = {
-        X-Value = backend_responses.default.json_body.Json.list[21][12]
+        X-Value = backend_responses.default.json_body.JSON.list[21][12]
         Z-Value = "y"
       }
     }
@@ -89,7 +89,7 @@ server "cty.NilVal" {
     }
     response {
       headers = {
-        X-Value = backend_responses.default.json_body.Json.list[21].obj[1]
+        X-Value = backend_responses.default.json_body.JSON.list[21].obj[1]
         Z-Value = "y"
       }
     }
@@ -125,7 +125,7 @@ server "cty.NilVal" {
     }
     response {
       headers = {
-        X-Value = [for i, v in backend_responses.default.json_body.Json.list: v if i < 1]
+        X-Value = [for i, v in backend_responses.default.json_body.JSON.list: v if i < 1]
         Z-Value = "y"
       }
     }

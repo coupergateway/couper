@@ -20,7 +20,7 @@ import (
 	"github.com/avenga/couper/internal/test"
 )
 
-func Test_SamlSsoUrl(t *testing.T) {
+func Test_SamlSsoURL(t *testing.T) {
 	tests := []struct {
 		name      string
 		hcl       string

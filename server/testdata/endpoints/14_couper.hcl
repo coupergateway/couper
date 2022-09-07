@@ -42,7 +42,7 @@ server { # error_handler
       response {
         headers = {
           x = backend_responses.default.status
-          y = backend_responses.default.json_body.Json.list[0]
+          y = backend_responses.default.json_body.JSON.list[0]
         }
         status = 418
       }
@@ -60,7 +60,7 @@ server { # error_handler
       response {
         headers = {
           x = backend_responses.default.status
-          y = backend_responses.default.json_body.Json.list[0]
+          y = backend_responses.default.json_body.JSON.list[0]
         }
         status = 418
       }

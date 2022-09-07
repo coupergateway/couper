@@ -180,8 +180,8 @@ server "logs" {
     }
 
     custom_log_fields = {
-      item-1 = backend_responses.resolve.json_body.Json.list[0]
-      item-2 = backend_responses.default.json_body.Json.list[0]
+      item-1 = backend_responses.resolve.json_body.JSON.list[0]
+      item-2 = backend_responses.default.json_body.JSON.list[0]
     }
   }
 
@@ -198,8 +198,8 @@ server "logs" {
     }
 
     custom_log_fields = {
-      seq-item-1 = backend_responses.resolve.json_body.Json.list[0]
-      seq-item-2 = backend_responses.default.json_body.Json.list[0]
+      seq-item-1 = backend_responses.resolve.json_body.JSON.list[0]
+      seq-item-2 = backend_responses.default.json_body.JSON.list[0]
     }
   }
 
