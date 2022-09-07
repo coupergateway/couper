@@ -180,23 +180,21 @@ func checkTokenRequestLabels(backendBody hcl.Body, unique map[string]struct{}) e
 	}
 
 	trbs := ic.Blocks.OfType(tokenRequest)
-	if len(trbs) > 0 {
-		for _, trb := range trbs {
-			label := defaultNameLabel
-			r := &trb.DefRange
-			if len(trb.Labels) > 0 {
-				label = trb.Labels[0]
-				r = &trb.LabelRanges[0]
-				if err := validLabel(label, r); err != nil {
-					return err
-				}
-			}
-
-			if err := uniqueLabelName("token request", unique, label, r); err != nil {
+	for _, trb := range trbs {
+		label := defaultNameLabel
+		r := &trb.DefRange
+		if len(trb.Labels) > 0 {
+			label = trb.Labels[0]
+			r = &trb.LabelRanges[0]
+			if err := validLabel(label, r); err != nil {
 				return err
 			}
-
 		}
+
+		if err := uniqueLabelName("token request", unique, label, r); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
