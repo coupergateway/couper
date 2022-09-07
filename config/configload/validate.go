@@ -286,8 +286,8 @@ func invalidOriginRefinement(reference, params hcl.Body) error {
 	refAttrs, _ := reference.JustAttributes()
 	paramAttrs, _ := params.JustAttributes()
 
-	refOrigin, _ := refAttrs[origin]
-	paramOrigin, _ := paramAttrs[origin]
+	refOrigin := refAttrs[origin]
+	paramOrigin := paramAttrs[origin]
 
 	if paramOrigin != nil && refOrigin != nil {
 		if paramOrigin.Expr != refOrigin.Expr {

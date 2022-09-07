@@ -628,7 +628,7 @@ func MapTokenResponse(evalCtx *hcl.EvalContext, name string) {
 	}
 
 	responses := evalCtx.Variables[BackendResponses].AsValueMap()
-	respValue, _ := responses[TokenRequestPrefix+name]
+	respValue := responses[TokenRequestPrefix+name]
 
 	evalCtx.Variables[TokenResponse] = respValue
 }

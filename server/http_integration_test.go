@@ -174,7 +174,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 			// ignore health-check startup errors
 			if req, ok := entry.Data["request"]; ok {
 				if reqFields, ok := req.(logging.Fields); ok {
-					n, _ := reqFields["name"]
+					n := reqFields["name"]
 					if hc, ok := n.(string); ok && hc == "health-check" {
 						continue
 					}
