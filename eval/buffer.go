@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/body"
 )
@@ -45,7 +46,7 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 		return result
 	}
 
-	var allExprs []hcl.Expression
+	var allExprs []hclsyntax.Expression
 	allAttributes := body.CollectAttributes(bodies...)
 	allBlockTypes := body.CollectBlockTypes(bodies...)
 
