@@ -9,20 +9,18 @@ func CollectAttributes(bodies ...hcl.Body) []*hcl.Attribute {
 	allAttributes := make([]*hcl.Attribute, 0)
 
 	for _, b := range bodies {
-		switch sb := b.(type) {
-		case *hclsyntax.Body:
-			for _, attr := range sb.Attributes {
-				allAttributes = append(allAttributes, &hcl.Attribute{
-					Name:      attr.Name,
-					Expr:      attr.Expr,
-					Range:     attr.SrcRange,
-					NameRange: attr.NameRange,
-				})
-			}
+		sb, _ := b.(*hclsyntax.Body)
+		for _, attr := range sb.Attributes {
+			allAttributes = append(allAttributes, &hcl.Attribute{
+				Name:      attr.Name,
+				Expr:      attr.Expr,
+				Range:     attr.SrcRange,
+				NameRange: attr.NameRange,
+			})
+		}
 
-			for _, block := range sb.Blocks {
-				allAttributes = append(allAttributes, CollectAttributes(block.Body)...)
-			}
+		for _, block := range sb.Blocks {
+			allAttributes = append(allAttributes, CollectAttributes(block.Body)...)
 		}
 	}
 
@@ -42,13 +40,10 @@ func CollectBlockTypes(bodies ...hcl.Body) []string {
 	}
 
 	for _, b := range bodies {
-		switch sb := b.(type) {
-		case *hclsyntax.Body:
-
-			for _, block := range sb.Blocks {
-				nested := append(append([]string{}, block.Type), CollectBlockTypes(block.Body)...)
-				addUniqueFn(nested...)
-			}
+		sb, _ := b.(*hclsyntax.Body)
+		for _, block := range sb.Blocks {
+			nested := append(append([]string{}, block.Type), CollectBlockTypes(block.Body)...)
+			addUniqueFn(nested...)
 		}
 	}
 
