@@ -23,20 +23,14 @@ func ValueFromBodyAttribute(ctx *hcl.EvalContext, body hcl.Body, name string) (c
 	if body == nil {
 		return cty.NilVal, nil
 	}
-	if hsb, ok := body.(*hclsyntax.Body); ok {
-		attr, ok := hsb.Attributes[name]
-		if !ok {
-			return cty.NilVal, nil
-		}
-		return Value(ctx, attr.Expr)
-	}
-	schema := &hcl.BodySchema{Attributes: []hcl.AttributeSchema{{Name: name}}}
-	content, _, _ := body.PartialContent(schema)
-	if content == nil || len(content.Attributes) == 0 {
+
+	hsb, _ := body.(*hclsyntax.Body)
+	attr, ok := hsb.Attributes[name]
+	if !ok {
 		return cty.NilVal, nil
 	}
 
-	return ValueFromAttribute(ctx, content, name)
+	return Value(ctx, attr.Expr)
 }
 
 // ValueFromAttribute lookups the given attribute name and returns cty.NilVal if the attribute is not present.
