@@ -77,12 +77,12 @@ func (o *OIDC) Inline() interface{} {
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier."`
 
 		AuthorizationBackend       *Backend `hcl:"authorization_backend,block"`
-		ConfigurationBackend       *Backend `hcl:"configuration_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
+		ConfigurationBackend       *Backend `hcl:"configuration_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
 		DeviceAuthorizationBackend *Backend `hcl:"device_authorization_backend,block"`
-		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
+		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
 		RevocationBackend          *Backend `hcl:"revocation_backend,block"`
-		TokenBackend               *Backend `hcl:"token_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
-		UserinfoBackend            *Backend `hcl:"userinfo_backend,block" docs:"Optional option to configure specific behaviour for a given oidc backend."`
+		TokenBackend               *Backend `hcl:"token_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
+		UserinfoBackend            *Backend `hcl:"userinfo_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
 	}
 
 	return &Inline{}

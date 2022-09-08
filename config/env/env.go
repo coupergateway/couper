@@ -77,13 +77,15 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 			continue
 		}
 
+		variableName := strings.ToUpper(PREFIX + envVal)
 		switch val.Field(i).Interface().(type) {
 		case bool:
 			val.Field(i).SetBool(mapVal == "true")
 		case int:
 			intVal, err := strconv.Atoi(mapVal)
 			if err != nil {
-				panic(err)
+				fmt.Fprintf(os.Stderr, "Invalid integer value for %q: %s\n", variableName, mapVal)
+				os.Exit(1)
 			}
 			val.Field(i).SetInt(int64(intVal))
 		case string:
@@ -96,9 +98,11 @@ func DecodeWithPrefix(conf interface{}, prefix string) {
 			val.Field(i).Set(reflect.ValueOf(slice))
 		case time.Duration:
 			parsedDuration, err := time.ParseDuration(mapVal)
-			if err == nil {
-				val.Field(i).Set(reflect.ValueOf(parsedDuration))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Invalid duration value for %q: %s\n", variableName, mapVal)
+				os.Exit(1)
 			}
+			val.Field(i).Set(reflect.ValueOf(parsedDuration))
 		default:
 			panic(fmt.Sprintf("env decode: type mapping not implemented: %v", reflect.TypeOf(val.Field(i).Interface())))
 		}
