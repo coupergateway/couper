@@ -394,7 +394,7 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 	return retry, nil
 }
 
-func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) error {
+func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hclContext *hclsyntax.Body) error {
 	if pathPrefix := b.getAttribute(evalCtx, "path_prefix", hclContext); pathPrefix != "" {
 		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
@@ -409,14 +409,14 @@ func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hc
 	return nil
 }
 
-func (b *Backend) withBasicAuth(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) {
+func (b *Backend) withBasicAuth(req *http.Request, evalCtx *hcl.EvalContext, hclContext *hclsyntax.Body) {
 	if creds := b.getAttribute(evalCtx, "basic_auth", hclContext); creds != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(creds))
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 }
 
-func (b *Backend) getAttribute(evalContext *hcl.EvalContext, name string, hclContext hcl.Body) string {
+func (b *Backend) getAttribute(evalContext *hcl.EvalContext, name string, hclContext *hclsyntax.Body) string {
 	attrVal, err := eval.ValueFromBodyAttribute(evalContext, hclContext, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))

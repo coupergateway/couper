@@ -7,7 +7,7 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config/request"
@@ -16,7 +16,7 @@ import (
 )
 
 type Proxy struct {
-	Content          hcl.Body
+	Content          *hclsyntax.Body
 	Name             string // label
 	PreviousSequence string
 	RoundTrip        http.RoundTripper

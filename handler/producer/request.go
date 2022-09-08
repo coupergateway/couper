@@ -8,11 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -22,7 +21,7 @@ import (
 // Request represents the producer <Request> object.
 type Request struct {
 	Backend          http.RoundTripper
-	Context          hcl.Body
+	Context          *hclsyntax.Body
 	Name             string // label
 	PreviousSequence string
 }
@@ -60,13 +59,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, or.PreviousSequence)
 		}
 
-		bodyContent, _, diags := or.Context.PartialContent(config.Request{Remain: or.Context}.Schema(true))
-		if diags.HasErrors() {
-			results <- &Result{Err: diags}
-			continue
-		}
-
-		methodVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "method")
+		methodVal, err := eval.ValueFromBodyAttribute(hclCtx, or.Context, "method")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
@@ -82,7 +75,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			continue
 		}
 
-		body, defaultContentType, err := eval.GetBody(hclCtx, bodyContent)
+		body, defaultContentType, err := eval.GetBody(hclCtx, or.Context)
 		if err != nil {
 			results <- &Result{Err: err}
 			continue
@@ -102,7 +95,7 @@ func (r Requests) Produce(req *http.Request, results chan<- *Result) {
 			continue
 		}
 
-		expStatusVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "expected_status")
+		expStatusVal, err := eval.ValueFromBodyAttribute(hclCtx, or.Context, "expected_status")
 		if err != nil {
 			results <- &Result{Err: err}
 			continue

@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -44,7 +46,7 @@ func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Reques
 	}
 
 	ctx := eval.ContextFromRequest(req).HCLContext()
-	verifierVal, err := eval.ValueFromBodyAttribute(ctx, a.acClientConf.HCLBody(), "verifier_value")
+	verifierVal, err := eval.ValueFromBodyAttribute(ctx, a.acClientConf.HCLBody().(*hclsyntax.Body), "verifier_value")
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
 	}

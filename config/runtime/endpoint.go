@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/cache"
@@ -107,7 +108,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	if endpointConf.Response != nil {
 		response = &producer.Response{
-			Context: endpointConf.Response.Remain,
+			Context: endpointConf.Response.HCLBody().(*hclsyntax.Body),
 		}
 		blockBodies = append(blockBodies, response.Context)
 	}
@@ -118,9 +119,9 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		if berr != nil {
 			return nil, berr
 		}
-		proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), log)
+		proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody().(*hclsyntax.Body), log)
 		p := &producer.Proxy{
-			Content:   proxyConf.HCLBody(),
+			Content:   proxyConf.HCLBody().(*hclsyntax.Body),
 			Name:      proxyConf.Name,
 			RoundTrip: proxyHandler,
 		}
@@ -138,7 +139,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 		pr := &producer.Request{
 			Backend: backend,
-			Context: requestConf.Remain,
+			Context: requestConf.HCLBody().(*hclsyntax.Body),
 			Name:    requestConf.Name,
 		}
 

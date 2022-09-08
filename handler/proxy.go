@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
@@ -31,11 +32,11 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 // and have control over the roundtrip configuration.
 type Proxy struct {
 	backend http.RoundTripper
-	context hcl.Body
+	context *hclsyntax.Body
 	logger  *logrus.Entry
 }
 
-func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx *hclsyntax.Body, logger *logrus.Entry) *Proxy {
 	proxy := &Proxy{
 		backend: backend,
 		context: ctx,

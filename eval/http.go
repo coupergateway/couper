@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -487,7 +488,7 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 	return nil
 }
 
-func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, error) {
+func GetBody(ctx *hcl.EvalContext, content *hclsyntax.Body) (string, string, error) {
 	attr, ok := content.Attributes["json_body"]
 	if ok {
 		val, err := Value(ctx, attr.Expr)

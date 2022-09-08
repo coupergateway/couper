@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -15,10 +14,10 @@ import (
 
 // Response represents the producer <Response> object.
 type Response struct {
-	Context hcl.Body
+	Context *hclsyntax.Body
 }
 
-func NewResponse(req *http.Request, resp hcl.Body, statusCode int) (*http.Response, error) {
+func NewResponse(req *http.Request, resp *hclsyntax.Body, statusCode int) (*http.Response, error) {
 	clientres := &http.Response{
 		Header:     make(http.Header),
 		Proto:      req.Proto,
@@ -29,12 +28,7 @@ func NewResponse(req *http.Request, resp hcl.Body, statusCode int) (*http.Respon
 
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
-	content, _, diags := resp.PartialContent(config.ResponseInlineSchema)
-	if diags.HasErrors() {
-		return nil, errors.Evaluation.With(diags)
-	}
-
-	if attr, ok := content.Attributes["status"]; ok {
+	if attr, ok := resp.Attributes["status"]; ok {
 		val, err := eval.Value(hclCtx, attr.Expr)
 		if err != nil {
 			return nil, err
@@ -45,7 +39,7 @@ func NewResponse(req *http.Request, resp hcl.Body, statusCode int) (*http.Respon
 	clientres.StatusCode = statusCode
 	clientres.Status = http.StatusText(clientres.StatusCode)
 
-	respBody, ct, bodyErr := eval.GetBody(hclCtx, content)
+	respBody, ct, bodyErr := eval.GetBody(hclCtx, resp)
 	if bodyErr != nil {
 		return nil, errors.Evaluation.With(bodyErr)
 	}
@@ -54,7 +48,7 @@ func NewResponse(req *http.Request, resp hcl.Body, statusCode int) (*http.Respon
 		clientres.Header.Set("Content-Type", ct)
 	}
 
-	if attr, ok := content.Attributes["headers"]; ok {
+	if attr, ok := resp.Attributes["headers"]; ok {
 		val, err := eval.Value(hclCtx, attr.Expr)
 		if err != nil {
 			return nil, err
