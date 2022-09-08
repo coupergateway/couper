@@ -141,7 +141,10 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 		OpenAPI: openAPI,
 	}, logger)
 
-	req := httptest.NewRequest(http.MethodGet, "https://httpbin.org/anything", nil)
+	origin := test.NewBackend()
+	defer origin.Close()
+
+	req := httptest.NewRequest(http.MethodGet, origin.Addr()+"/anything", nil)
 
 	hook.Reset()
 	_, err = backend.RoundTrip(req)
