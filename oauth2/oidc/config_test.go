@@ -93,7 +93,7 @@ func TestConfig_Synced(t *testing.T) {
 	wg.Wait()
 
 	// wait for possible goroutine leaks from syncedJSON due to low ttl
-	time.Sleep(time.Second / 2)
+	time.Sleep(time.Second)
 
 	if d := runtime.NumGoroutine(); n != d {
 		t.Errorf("Goroutine leak: want %d, got: %d", n, d)
