@@ -20,7 +20,6 @@ import (
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -169,7 +168,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 
 	pusher := controller.New(
 		processor.NewFactory(
-			simple.NewWithInexpensiveDistribution(),
+			selector.NewWithInexpensiveDistribution(),
 			metricExp,
 		),
 		controller.WithExporter(metricExp),
