@@ -90,7 +90,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
 				ErrorTemplate: errors.DefaultJSON,
-				Context:       remain.Inline,
+				Context:       remain.Inline.(*hclsyntax.Body),
 				ReqBodyLimit:  1024,
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},

@@ -179,7 +179,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	return &handler.EndpointOptions{
 		APIName:       apiName,
-		Context:       endpointConf.Remain,
+		Context:       endpointConf.HCLBody().(*hclsyntax.Body),
 		ErrorTemplate: errTpl,
 		LogPattern:    endpointConf.Pattern,
 		Proxies:       proxies,

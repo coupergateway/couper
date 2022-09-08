@@ -8,10 +8,10 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
@@ -33,7 +33,7 @@ type Endpoint struct {
 type EndpointOptions struct {
 	APIName        string
 	BufferOpts     eval.BufferOption
-	Context        hcl.Body
+	Context        *hclsyntax.Body
 	ErrorTemplate  *errors.Template
 	ErrorHandler   http.Handler
 	IsErrorHandler bool
@@ -289,10 +289,8 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, err er
 		return true
 	}
 
-	content, _, _ := e.opts.Context.PartialContent(config.Endpoint{}.Schema(true))
-
 	// modify response status code if set
-	if attr, ok := content.Attributes["set_response_status"]; e.opts.IsErrorHandler && ctxErr == err && ok {
+	if attr, ok := e.opts.Context.Attributes["set_response_status"]; e.opts.IsErrorHandler && ctxErr == err && ok {
 		if statusCode, applyErr := eval.
 			ApplyResponseStatus(eval.ContextFromRequest(req).HCLContextSync(), attr, nil); statusCode > 0 {
 			if serr, k := serveErr.(*errors.Error); k {
