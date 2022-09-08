@@ -7,7 +7,10 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &SAML{}
+var (
+	_ Body   = &SAML{}
+	_ Inline = &SAML{}
+)
 
 // SAML represents the <SAML> object.
 type SAML struct {

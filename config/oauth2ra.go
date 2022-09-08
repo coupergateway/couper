@@ -22,6 +22,7 @@ var OAuthBlockSchema = &hcl.BodySchema{
 
 var (
 	_ BackendReference = &OAuth2ReqAuth{}
+	_ Body             = &OAuth2ReqAuth{}
 	_ Inline           = &OAuth2ReqAuth{}
 	_ OAuth2Client     = &OAuth2ReqAuth{}
 	_ OAuth2AS         = &OAuth2ReqAuth{}
@@ -48,7 +49,7 @@ func (oa *OAuth2ReqAuth) Reference() string {
 	return oa.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (oa *OAuth2ReqAuth) HCLBody() hcl.Body {
 	return oa.Remain
 }

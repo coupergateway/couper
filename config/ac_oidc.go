@@ -11,6 +11,7 @@ import (
 var (
 	_ BackendReference      = &OIDC{}
 	_ BackendInitialization = &OIDC{}
+	_ Body                  = &OIDC{}
 	_ Inline                = &OIDC{}
 )
 
@@ -65,7 +66,7 @@ func (o *OIDC) Reference() string {
 	return o.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (o *OIDC) HCLBody() hcl.Body {
 	return o.Remain
 }

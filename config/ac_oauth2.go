@@ -48,7 +48,7 @@ func (oa *OAuth2AC) Reference() string {
 	return oa.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (oa *OAuth2AC) HCLBody() hcl.Body {
 	return oa.Remain
 }

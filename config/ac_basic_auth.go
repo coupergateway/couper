@@ -10,7 +10,10 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &BasicAuth{}
+var (
+	_ Body   = &BasicAuth{}
+	_ Inline = &BasicAuth{}
+)
 
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
@@ -23,7 +26,7 @@ type BasicAuth struct {
 	Remain hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface. Internally used for 'error_handler'.
+// HCLBody implements the <Body> interface. Internally used for 'error_handler'.
 func (b *BasicAuth) HCLBody() hcl.Body {
 	return b.Remain
 }

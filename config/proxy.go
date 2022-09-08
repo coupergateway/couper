@@ -10,6 +10,7 @@ import (
 
 var (
 	_ BackendReference = &Proxy{}
+	_ Body             = &Proxy{}
 	_ Inline           = &Proxy{}
 )
 
@@ -32,7 +33,7 @@ func (p Proxy) Reference() string {
 	return p.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (p Proxy) HCLBody() hcl.Body {
 	return p.Remain
 }

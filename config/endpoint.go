@@ -8,7 +8,10 @@ import (
 	"github.com/avenga/couper/config/sequence"
 )
 
-var _ Inline = &Endpoint{}
+var (
+	_ Body   = &Endpoint{}
+	_ Inline = &Endpoint{}
+)
 
 // Endpoint represents the <Endpoint> object.
 type Endpoint struct {
@@ -32,7 +35,7 @@ type Endpoint struct {
 // Endpoints represents a list of <Endpoint> objects.
 type Endpoints []*Endpoint
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (e Endpoint) HCLBody() hcl.Body {
 	return e.Remain
 }

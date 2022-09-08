@@ -8,6 +8,7 @@ import (
 
 var (
 	_ BackendReference = &TokenRequest{}
+	_ Body             = &TokenRequest{}
 	_ Inline           = &TokenRequest{}
 )
 
@@ -37,7 +38,7 @@ func (t *TokenRequest) Reference() string {
 	return t.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (t *TokenRequest) HCLBody() hcl.Body {
 	return t.Remain
 }

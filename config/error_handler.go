@@ -7,7 +7,10 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &ErrorHandler{}
+var (
+	_ Body   = &ErrorHandler{}
+	_ Inline = &ErrorHandler{}
+)
 
 // ErrorHandler represents a subset of Endpoint.
 type ErrorHandler struct {
@@ -24,7 +27,7 @@ type ErrorHandlerGetter interface {
 	DefaultErrorHandler() *ErrorHandler
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (e ErrorHandler) HCLBody() hcl.Body {
 	return e.Remain
 }

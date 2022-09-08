@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	_ Body   = &Response{}
 	_ Inline = &Response{}
 
 	ResponseInlineSchema = Response{}.Schema(true)
@@ -16,7 +17,7 @@ type Response struct {
 	Remain hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (r Response) HCLBody() hcl.Body {
 	return r.Remain
 }

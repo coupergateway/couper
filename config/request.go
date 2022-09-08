@@ -9,6 +9,7 @@ import (
 
 var (
 	_ BackendReference = &Request{}
+	_ Body             = &Request{}
 	_ Inline           = &Request{}
 )
 
@@ -30,7 +31,7 @@ func (r Request) Reference() string {
 	return r.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (r Request) HCLBody() hcl.Body {
 	return r.Remain
 }

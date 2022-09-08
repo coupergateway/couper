@@ -7,7 +7,10 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &Spa{}
+var (
+	_ Body   = &Spa{}
+	_ Inline = &Spa{}
+)
 
 type SPAs []*Spa
 
@@ -23,7 +26,7 @@ type Spa struct {
 	Remain               hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (s Spa) HCLBody() hcl.Body {
 	return s.Remain
 }

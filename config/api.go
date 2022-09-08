@@ -7,7 +7,10 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &API{}
+var (
+	_ Body   = &API{}
+	_ Inline = &API{}
+)
 
 // API represents the <API> object.
 type API struct {
@@ -30,7 +33,7 @@ type API struct {
 // APIs represents a list of <API> objects.
 type APIs []*API
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (a API) HCLBody() hcl.Body {
 	return a.Remain
 }

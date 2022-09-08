@@ -7,7 +7,7 @@ import (
 
 // Inline defines the <Inline> interface.
 type Inline interface {
-	Body
+	// Body
 	Inline() interface{}
 	Schema(inline bool) *hcl.BodySchema
 }

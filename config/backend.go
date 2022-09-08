@@ -9,6 +9,7 @@ import (
 
 var (
 	_ BackendReference = &Backend{}
+	_ Body             = &Backend{}
 	_ Inline           = &Backend{}
 
 	BackendInlineSchema = Backend{}.Schema(true)
@@ -32,7 +33,7 @@ func (b Backend) Reference() string {
 	return b.Name
 }
 
-// HCLBody implements the <Inline> interface.
+// HCLBody implements the <Body> interface.
 func (b Backend) HCLBody() hcl.Body {
 	return b.Remain
 }

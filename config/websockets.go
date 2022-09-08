@@ -17,11 +17,6 @@ type Websockets struct {
 	Remain hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface.
-func (w Websockets) HCLBody() hcl.Body {
-	return w.Remain
-}
-
 // Inline implements the <Inline> interface.
 func (w Websockets) Inline() interface{} {
 	type Inline struct {

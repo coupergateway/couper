@@ -11,8 +11,11 @@ import (
 	"github.com/avenga/couper/errors"
 )
 
-var _ BackendInitialization = &JWT{}
-var _ Inline = &JWT{}
+var (
+	_ BackendInitialization = &JWT{}
+	_ Body                  = &JWT{}
+	_ Inline                = &JWT{}
+)
 
 // Claims represents the <Claims> object.
 type Claims hcl.Expression
