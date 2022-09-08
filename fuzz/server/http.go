@@ -87,9 +87,10 @@ settings {
 	for _, s := range servers {
 		if err = s.Listen(); err != nil {
 			panic("init error: " + err.Error())
+		} else {
+			addr = s.Addr()
+			break // support just one server
 		}
-		addr = s.Addr()
-		break // support just one server
 	}
 
 	d := &net.Dialer{Timeout: time.Second}
