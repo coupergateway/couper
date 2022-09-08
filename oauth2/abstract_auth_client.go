@@ -44,7 +44,7 @@ func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Reques
 	}
 
 	ctx := eval.ContextFromRequest(req).HCLContext()
-	verifierVal, err := eval.ValueFromBodyAttribute(ctx, a.clientConfig.HCLBody(), "verifier_value")
+	verifierVal, err := eval.ValueFromBodyAttribute(ctx, a.acClientConf.HCLBody(), "verifier_value")
 	if err != nil {
 		return nil, errors.Oauth2.With(err)
 	}
