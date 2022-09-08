@@ -68,7 +68,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.4.0 // indirect
 	go.opentelemetry.io/otel/internal/metric v0.27.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.12.0 // indirect
-	go.uber.org/goleak v1.1.12 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
