@@ -112,7 +112,10 @@ func Fuzz(data []byte) int {
 	req.URL.Path += string(data)
 
 	req.Header.Set("X-Data", string(data))
-	req.URL.Query().Add("X-Data", string(data))
+
+	values := req.URL.Query()
+	values.Add("X-Data", string(data))
+	req.URL.RawQuery = values.Encode()
 
 	res, err := client.Do(req)
 	if err != nil {
