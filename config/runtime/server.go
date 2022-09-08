@@ -578,17 +578,9 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 }
 
 func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
-	var backend http.RoundTripper
-
-	if jwtConf.Backends != nil {
-		backendBody, ok := jwtConf.Backends["backend"]
-		if ok {
-			b, err := NewBackend(confContext, backendBody, log, conf, memStore)
-			if err != nil {
-				return nil, err
-			}
-			backend = b
-		}
+	backend, err := NewBackend(confContext, jwtConf.Backend, log, conf, memStore)
+	if err != nil {
+		return nil, err
 	}
 
 	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
