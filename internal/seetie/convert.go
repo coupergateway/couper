@@ -21,7 +21,7 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 		return result
 	}
 	var valMap map[string]cty.Value
-	if isTuple(val) {
+	if isListOrTuple(val) {
 		valMap = val.AsValueSlice()[0].AsValueMap()
 	} else {
 		valMap = val.AsValueMap()
@@ -50,7 +50,7 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 				result[k] = ValueToMap(v)
 				continue
 			}
-			if isTuple(v) {
+			if isListOrTuple(v) {
 				result[k] = ValueToStringSlice(v)
 				continue
 			}
@@ -281,8 +281,8 @@ func ValueToLogFields(val cty.Value) logrus.Fields {
 	fields := logrus.Fields{}
 
 	for k, v := range val.AsValueMap() {
-		if isTuple(v) {
-			fields[k] = ValueToLogFieldsFromTuple(v)
+		if isListOrTuple(v) {
+			fields[k] = valueToLogFieldsFromListOrTuple(v)
 		} else {
 			switch v.Type() {
 			case cty.Bool:
@@ -293,7 +293,7 @@ func ValueToLogFields(val cty.Value) logrus.Fields {
 				f, _ := v.AsBigFloat().Float64()
 				fields[k] = f
 			default:
-				if isObject(v) {
+				if isMapOrObject(v) {
 					fields[k] = ValueToLogFields(v)
 				}
 			}
@@ -303,15 +303,15 @@ func ValueToLogFields(val cty.Value) logrus.Fields {
 	return fields
 }
 
-func ValueToLogFieldsFromTuple(val cty.Value) []interface{} {
-	if !isTuple(val) {
+func valueToLogFieldsFromListOrTuple(val cty.Value) []interface{} {
+	if !isListOrTuple(val) {
 		return nil
 	}
 
 	var values []interface{}
 	for _, v := range val.AsValueSlice() {
-		if isTuple(v) {
-			values = append(values, ValueToLogFieldsFromTuple(v))
+		if isListOrTuple(v) {
+			values = append(values, valueToLogFieldsFromListOrTuple(v))
 		} else {
 			switch v.Type() {
 			case cty.Bool:
@@ -322,7 +322,7 @@ func ValueToLogFieldsFromTuple(val cty.Value) []interface{} {
 				f, _ := v.AsBigFloat().Float64()
 				values = append(values, f)
 			default:
-				if isObject(v) {
+				if isMapOrObject(v) {
 					values = append(values, ValueToLogFields(v))
 				}
 			}
@@ -364,18 +364,18 @@ func ToString(s interface{}) string {
 	}
 }
 
-// isObject checks by type name since object is not comparable by type.
-func isObject(v cty.Value) bool {
+func isMapOrObject(v cty.Value) bool {
 	if v.IsNull() {
 		return false
 	}
-	return v.Type().FriendlyNameForConstraint() == "object"
+	t := v.Type()
+	return t.IsMapType() || t.IsObjectType()
 }
 
-// isTuple checks by type name since tuple is not comparable by type.
-func isTuple(v cty.Value) bool {
+func isListOrTuple(v cty.Value) bool {
 	if v.IsNull() {
 		return false
 	}
-	return v.Type().FriendlyNameForConstraint() == "tuple"
+	t := v.Type()
+	return t.IsListType() || t.IsTupleType()
 }
