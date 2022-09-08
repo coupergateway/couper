@@ -2,8 +2,11 @@ package seetie
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -33,6 +36,39 @@ func Test_stringListToValue(t *testing.T) {
 				if sl[i].AsString() != v {
 					t.Errorf("Wrong item at position %d; want %q, got %q", i, v, sl[i])
 				}
+			}
+		})
+	}
+}
+
+func Test_ValueToLogFields(t *testing.T) {
+	type testCase struct {
+		name   string
+		val    cty.Value
+		expLog logrus.Fields
+	}
+	for _, tc := range []testCase{
+		{
+			name:   "form body",
+			val:    ValuesMapToValue(map[string][]string{"a": []string{"b"}}),
+			expLog: logrus.Fields{"v": logrus.Fields{"a": []interface{}{"b"}}},
+		},
+		{
+			name:   "cookies",
+			val:    CookiesToMapValue([]*http.Cookie{&http.Cookie{Name: "c", Value: "d"}}),
+			expLog: logrus.Fields{"v": logrus.Fields{"c": "d"}},
+		},
+		{
+			name:   "headers",
+			val:    HeaderToMapValue(http.Header{"c": []string{"d"}}),
+			expLog: logrus.Fields{"v": logrus.Fields{"c": "d"}},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			logs := cty.MapVal(map[string]cty.Value{"v": tc.val})
+			lf := ValueToLogFields(logs)
+			if !cmp.Equal(tc.expLog, lf) {
+				t.Errorf("Expected\n%#v, got:\n%#v", tc.expLog, lf)
 			}
 		})
 	}
