@@ -139,7 +139,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 		}
 
 		if endpoint.Response != nil {
-			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody()); err != nil {
+			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody().(*hclsyntax.Body)); err != nil {
 				return err
 			}
 		}
