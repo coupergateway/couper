@@ -13,8 +13,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Changed**
  * Starting will now fail if `environment` blocks are used without `COUPER_ENVIRONMENT` being set ([#546](https://github.com/avenga/couper/pull/546))
+ * Renamed `-debug` to `-pprof` and made debug port configurable via `-pprof-port`. Both [command line options](https://docs.couper.io/configuration/command-line#run-options) can also be specified via the respective [`settings`](https://docs.couper.io/configuration/block/settings). ([#577](https://github.com/avenga/couper/pull/577))
 
 * **Fixed**
+  * [`form_body`, `headers` and `cookies`](./docs/REFERENCE.md#request) can now be properly [custom-logged](./docs/LOGS.md#custom-logging) ([#535](https://github.com/avenga/couper/pull/535))
   * Disallow empty path parameters ([#526](https://github.com/avenga/couper/pull/526))
   * Basic Auth client authentication with OAuth2 (client ID and secret must be URL encoded) ([#537](https://github.com/avenga/couper/pull/537))
   * Config validation, e.g. label-uniqueness checks ([#563](https://github.com/avenga/couper/pull/563))
