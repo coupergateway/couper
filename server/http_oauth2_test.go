@@ -558,7 +558,7 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 	for _, tc := range []testCase{
 		{"null assertion", "17_couper.hcl", "backend error: be: request error: oauth2: assertion expression evaluates to null"},
 		{"non-string assertion", "18_couper.hcl", "backend error: be: request error: oauth2: assertion expression must evaluate to a string"},
-		{"token request failed", "19_couper.hcl", "backend error: be: request error: oauth2: token request failed"},
+		{"token request error", "19_couper.hcl", "backend error: be: request error: oauth2: token request failed"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
@@ -1618,7 +1618,7 @@ func TestTokenRequest_Runtime_Errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"token request failed, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr: token request failed"},
+		{"token request error, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr: token request failed"},
 		{"token expression evaluation error", "02_token_request_error.hcl", http.StatusBadGateway, "couper-bytes.hcl:23,15-31: Call to unknown function; There is no function named \"evaluation_error\"."},
 		{"null token", "03_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression evaluates to null"},
 		{"non-string token", "04_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression must evaluate to a string"},
