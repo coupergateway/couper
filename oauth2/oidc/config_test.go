@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -77,9 +76,6 @@ func TestConfig_Synced(t *testing.T) {
 	o, err := oidc.NewConfig(ctx, oconf, backends)
 	helper.Must(err)
 
-	time.Sleep(time.Millisecond * 110) // init and first ttl fetch
-	n := runtime.NumGoroutine()
-
 	wg := sync.WaitGroup{}
 	wg.Add(10)
 	for i := 0; i < 10; i++ {
@@ -93,9 +89,9 @@ func TestConfig_Synced(t *testing.T) {
 	wg.Wait()
 
 	// wait for possible goroutine leaks from syncedJSON due to low ttl
-	time.Sleep(time.Second)
+	time.Sleep(time.Second / 2)
 
-	if d := runtime.NumGoroutine(); n != d {
-		t.Errorf("Goroutine leak: want %d, got: %d", n, d)
+	if n := test.NumGoroutines("json.(*SyncedJSON).sync"); n != 2 {
+		t.Errorf("Expected two running routines, got: %d", n)
 	}
 }
