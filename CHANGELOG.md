@@ -13,6 +13,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Changed**
  * Starting will now fail if `environment` blocks are used without `COUPER_ENVIRONMENT` being set ([#546](https://github.com/avenga/couper/pull/546))
+ * Renamed `-debug` to `-pprof` and made debug port configurable via `-pprof-port`. Both [command line options](https://docs.couper.io/configuration/command-line#run-options) can also be specified via the respective [`settings`](https://docs.couper.io/configuration/block/settings). ([#577](https://github.com/avenga/couper/pull/577))
 
 * **Fixed**
   * Disallow empty path parameters ([#526](https://github.com/avenga/couper/pull/526))
