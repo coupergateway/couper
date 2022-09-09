@@ -3,9 +3,8 @@ package eval
 import (
 	"testing"
 
-	"github.com/hashicorp/hcl/v2/hclsyntax"
-
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 func TestMustBuffer(t *testing.T) {

@@ -6,14 +6,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload/collect"
-	"github.com/avenga/couper/config/meta"
-	"github.com/avenga/couper/internal/seetie"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload/collect"
+	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
