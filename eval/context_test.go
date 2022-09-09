@@ -237,9 +237,9 @@ func TestCouperVariables(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			bytes := []byte(tt.hcl)
-			hclBody, diags := parser.Load(bytes, "couper.hcl")
-			if diags.HasErrors() {
-				subT.Error(diags)
+			hclBody, err := parser.Load(bytes, "couper.hcl")
+			if err != nil {
+				subT.Error(err)
 				return
 			}
 

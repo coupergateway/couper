@@ -32,13 +32,8 @@ func newDiagErr(subject *hcl.Range, summary string) error {
 	}}
 }
 
-func validateBody(body hcl.Body, afterMerge bool) error {
-	hsBody, ok := body.(*hclsyntax.Body)
-	if !ok {
-		return fmt.Errorf("body must be hclsyntax.Body")
-	}
-
-	for _, outerBlock := range hsBody.Blocks {
+func validateBody(body *hclsyntax.Body, afterMerge bool) error {
+	for _, outerBlock := range body.Blocks {
 		if outerBlock.Type == definitions {
 			uniqueBackends := make(map[string]struct{})
 			uniqueACs := make(map[string]struct{})

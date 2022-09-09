@@ -243,12 +243,12 @@ func loadTestContents(tcs []testContent) (*config.Couper, error) {
 	)
 
 	for _, tc := range tcs {
-		hclBody, diags := parser.Load(tc.src, tc.filename)
-		if diags.HasErrors() {
-			return nil, diags
+		hclBody, err := parser.Load(tc.src, tc.filename)
+		if err != nil {
+			return nil, err
 		}
 
-		parsedBodies = append(parsedBodies, hclBody.(*hclsyntax.Body))
+		parsedBodies = append(parsedBodies, hclBody)
 		srcs = append(srcs, tc.src)
 	}
 
@@ -256,9 +256,9 @@ func loadTestContents(tcs []testContent) (*config.Couper, error) {
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
-	hclBody, diags := parser.Load(src, filename)
-	if diags.HasErrors() {
-		return nil, diags
+	hclBody, err := parser.Load(src, filename)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := validateBody(hclBody, false); err != nil {
@@ -268,7 +268,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 	return LoadConfig(hclBody, [][]byte{src}, "")
 }
 
-func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper, error) {
+func LoadConfig(body *hclsyntax.Body, src [][]byte, environment string) (*config.Couper, error) {
 	var err error
 
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
@@ -381,7 +381,7 @@ func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper
 		WithSAML(helper.config.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
-	for _, serverBlock := range hclbody.BlocksOfType(body.(*hclsyntax.Body), server) {
+	for _, serverBlock := range hclbody.BlocksOfType(body, server) {
 		serverConfig := &config.Server{}
 		if diags := gohcl.DecodeBody(serverBlock.Body, helper.context, serverConfig); diags.HasErrors() {
 			return nil, diags
