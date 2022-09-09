@@ -59,7 +59,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 
 		proxyRequestLabelRequired := len(endpoint.Proxies)+len(endpoint.Requests) > 1
 
-		names := map[string]hcl.Body{}
+		names := map[string]*hclsyntax.Body{}
 		unique := map[string]struct{}{}
 		subject := endpoint.Remain.MissingItemRange()
 
@@ -68,7 +68,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				proxyConfig.Name = defaultNameLabel
 			}
 
-			names[proxyConfig.Name] = proxyConfig.Remain
+			names[proxyConfig.Name] = proxyConfig.HCLBody()
 
 			if err = validLabel(proxyConfig.Name, &subject); err != nil {
 				return err
@@ -110,7 +110,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				reqConfig.Name = defaultNameLabel
 			}
 
-			names[reqConfig.Name] = reqConfig.Remain
+			names[reqConfig.Name] = reqConfig.HCLBody()
 
 			if err = validLabel(reqConfig.Name, &subject); err != nil {
 				return err
