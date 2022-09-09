@@ -137,25 +137,46 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 	return nil
 }
 
+func checkPathSegments(pathType, path string, r hcl.Range) error {
+	for _, segment := range strings.Split(path, "/") {
+		if segment == "." || segment == ".." {
+			return newDiagErr(&r, pathType+` must not contain "." or ".." segments`)
+		}
+	}
+	return nil
+}
+
 func getBasePath(bl *hclsyntax.Block) (string, error) {
 	basePath := ""
 	if bp, set := bl.Body.Attributes["base_path"]; set {
 		bpv, diags := bp.Expr.Value(nil)
+		r := bp.Expr.StartRange()
 		if diags.HasErrors() {
 			return "", diags
 		}
 		if bpv.Type() != cty.String {
-			sr := bp.Expr.StartRange()
-			return "", newDiagErr(&sr, "base_path must evaluate to string")
+			return "", newDiagErr(&r, "base_path must evaluate to string")
 		}
 		basePath = bpv.AsString()
+		if err := checkPathSegments("base_path", basePath, r); err != nil {
+			return "", err
+		}
 	}
 
 	return basePath, nil
 }
 
 func registerEndpointPattern(endpointPatterns map[string]struct{}, basePath string, bl *hclsyntax.Block) error {
-	pattern := utils.JoinOpenAPIPath(basePath, bl.Labels[0])
+	pattern := bl.Labels[0]
+	if !strings.HasPrefix(pattern, "/") {
+		return newDiagErr(&bl.LabelRanges[0], `endpoint path pattern must start with "/"`)
+	}
+
+	if err := checkPathSegments("endpoint path pattern", pattern, bl.LabelRanges[0]); err != nil {
+		return err
+	}
+
+	pattern = utils.JoinOpenAPIPath(basePath, pattern)
 	pattern = reCleanPattern.ReplaceAllString(pattern, "{}")
 	if _, set := endpointPatterns[pattern]; set {
 		return newDiagErr(&bl.LabelRanges[0], "duplicate endpoint")
