@@ -48,7 +48,7 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 		}
 
 		for k, h := range handlersPerKind {
-			contextBody := h.HCLBody().(*hclsyntax.Body)
+			contextBody := h.HCLBody()
 
 			epConf := &config.Endpoint{
 				Remain:    contextBody,

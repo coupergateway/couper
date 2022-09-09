@@ -91,7 +91,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 		var labelSuffix string
 		// anonymous backend based on a single attr, take the attr range instead
 		if attrName != "" && reference == "" {
-			labelRange, labelSuffix = refineAnonLabel(attrName, block.HCLBody().(*hclsyntax.Body))
+			labelRange, labelSuffix = refineAnonLabel(attrName, block.HCLBody())
 		}
 
 		anonLabel := newAnonLabel(block.HCLBody(), labelRange) + labelSuffix
@@ -131,7 +131,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 func getBackendReference(b config.Body) (string, *hclsyntax.Body, error) {
 	var reference string
 
-	backends := hclbody.BlocksOfType(b.HCLBody().(*hclsyntax.Body), backend)
+	backends := hclbody.BlocksOfType(b.HCLBody(), backend)
 	if len(backends) == 0 {
 		if beref, ok := b.(config.BackendReference); ok {
 			if beref.Reference() != "" {
@@ -252,7 +252,7 @@ func setName(nameValue string, backendBody *hclsyntax.Body) {
 	}
 }
 
-func newAnonLabel(body hcl.Body, labelRange *hcl.Range) string {
+func newAnonLabel(body *hclsyntax.Body, labelRange *hcl.Range) string {
 	const anon = "anonymous"
 	itemRange := labelRange
 	if itemRange == nil {

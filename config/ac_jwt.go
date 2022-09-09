@@ -70,8 +70,8 @@ func (j *JWT) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (j *JWT) HCLBody() hcl.Body {
-	return j.Remain
+func (j *JWT) HCLBody() *hclsyntax.Body {
+	return j.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

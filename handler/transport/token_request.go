@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/cache"
@@ -95,7 +94,7 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 	eval.MapTokenResponse(hclCtx, t.config.Name)
 
-	tokenRequestBody := t.config.Remain.(*hclsyntax.Body)
+	tokenRequestBody := t.config.HCLBody()
 	tokenVal, err := eval.ValueFromBodyAttribute(hclCtx, tokenRequestBody, "token")
 	if err != nil {
 		return "", 0, err

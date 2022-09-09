@@ -25,5 +25,5 @@ type BackendInitialization interface {
 
 // Body defines the <Body> interface.
 type Body interface {
-	HCLBody() hcl.Body
+	HCLBody() *hclsyntax.Body
 }

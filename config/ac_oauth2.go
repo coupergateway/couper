@@ -49,8 +49,8 @@ func (oa *OAuth2AC) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (oa *OAuth2AC) HCLBody() hcl.Body {
-	return oa.Remain
+func (oa *OAuth2AC) HCLBody() *hclsyntax.Body {
+	return oa.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -27,8 +28,8 @@ type SAML struct {
 }
 
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
-func (s *SAML) HCLBody() hcl.Body {
-	return s.Remain
+func (s *SAML) HCLBody() *hclsyntax.Body {
+	return s.Remain.(*hclsyntax.Body)
 }
 
 func (s *SAML) Inline() interface{} {

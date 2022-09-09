@@ -26,7 +26,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) 
 			continue
 		}
 
-		kinds, ehc, err := newErrorHandlerContent(body.HCLBody().(*hclsyntax.Body))
+		kinds, ehc, err := newErrorHandlerContent(body.HCLBody())
 		if err != nil {
 			return err
 		}

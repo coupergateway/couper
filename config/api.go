@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -34,8 +35,8 @@ type API struct {
 type APIs []*API
 
 // HCLBody implements the <Body> interface.
-func (a API) HCLBody() hcl.Body {
-	return a.Remain
+func (a API) HCLBody() *hclsyntax.Body {
+	return a.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

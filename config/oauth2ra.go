@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 const (
@@ -50,8 +51,8 @@ func (oa *OAuth2ReqAuth) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (oa *OAuth2ReqAuth) HCLBody() hcl.Body {
-	return oa.Remain
+func (oa *OAuth2ReqAuth) HCLBody() *hclsyntax.Body {
+	return oa.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

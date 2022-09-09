@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -39,8 +40,8 @@ func (t *TokenRequest) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (t *TokenRequest) HCLBody() hcl.Body {
-	return t.Remain
+func (t *TokenRequest) HCLBody() *hclsyntax.Body {
+	return t.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

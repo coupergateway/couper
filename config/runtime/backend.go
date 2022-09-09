@@ -175,7 +175,7 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 	case *config.TokenRequest:
 		reqs := producer.Requests{&producer.Request{
 			Backend: authorizerBackend,
-			Context: impl.HCLBody().(*hclsyntax.Body),
+			Context: impl.HCLBody(),
 			Name:    impl.Name,
 		}}
 		return transport.NewTokenRequest(impl, memStore, reqs)

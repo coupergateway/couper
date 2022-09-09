@@ -32,8 +32,8 @@ func (r Request) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (r Request) HCLBody() hcl.Body {
-	return r.Remain
+func (r Request) HCLBody() *hclsyntax.Body {
+	return r.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

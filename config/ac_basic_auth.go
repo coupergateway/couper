@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/internal/seetie"
@@ -27,8 +28,8 @@ type BasicAuth struct {
 }
 
 // HCLBody implements the <Body> interface. Internally used for 'error_handler'.
-func (b *BasicAuth) HCLBody() hcl.Body {
-	return b.Remain
+func (b *BasicAuth) HCLBody() *hclsyntax.Body {
+	return b.Remain.(*hclsyntax.Body)
 }
 
 func (b *BasicAuth) Inline() interface{} {

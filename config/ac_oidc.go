@@ -67,8 +67,8 @@ func (o *OIDC) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (o *OIDC) HCLBody() hcl.Body {
-	return o.Remain
+func (o *OIDC) HCLBody() *hclsyntax.Body {
+	return o.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

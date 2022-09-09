@@ -34,8 +34,8 @@ func (p Proxy) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (p Proxy) HCLBody() hcl.Body {
-	return p.Remain
+func (p Proxy) HCLBody() *hclsyntax.Body {
+	return p.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

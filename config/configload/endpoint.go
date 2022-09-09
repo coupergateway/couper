@@ -95,7 +95,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				}
 
 				if wsBody != nil {
-					proxyConfig.Remain = hclbody.MergeBodies(proxyConfig.Remain.(*hclsyntax.Body), wsBody, true)
+					proxyConfig.Remain = hclbody.MergeBodies(proxyConfig.HCLBody(), wsBody, true)
 				}
 			}
 
@@ -124,7 +124,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			}
 
 			// remap request specific names for headers and query to well known ones
-			reqBody := reqConfig.Remain.(*hclsyntax.Body)
+			reqBody := reqConfig.HCLBody()
 			if err = verifyBodyAttributes(request, reqBody); err != nil {
 				return err
 			}
@@ -139,7 +139,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 		}
 
 		if endpoint.Response != nil {
-			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody().(*hclsyntax.Body)); err != nil {
+			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody()); err != nil {
 				return err
 			}
 		}
@@ -162,7 +162,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 }
 
 func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, error) {
-	hasWebsocketBlocks := len(hclbody.BlocksOfType(proxyConfig.HCLBody().(*hclsyntax.Body), "websockets")) > 0
+	hasWebsocketBlocks := len(hclbody.BlocksOfType(proxyConfig.HCLBody(), "websockets")) > 0
 	if proxyConfig.Websockets != nil && hasWebsocketBlocks {
 		return false, nil, fmt.Errorf("either websockets attribute or block is allowed")
 	}

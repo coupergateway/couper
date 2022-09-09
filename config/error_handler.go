@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -28,8 +29,8 @@ type ErrorHandlerGetter interface {
 }
 
 // HCLBody implements the <Body> interface.
-func (e ErrorHandler) HCLBody() hcl.Body {
-	return e.Remain
+func (e ErrorHandler) HCLBody() *hclsyntax.Body {
+	return e.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
