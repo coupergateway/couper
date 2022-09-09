@@ -43,8 +43,7 @@ type JWT struct {
 	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}."`
 
 	// Internally used
-	BodyContent *hcl.BodyContent
-	Backend     hcl.Body
+	Backend hcl.Body
 }
 
 func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {
