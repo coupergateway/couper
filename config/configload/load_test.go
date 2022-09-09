@@ -192,6 +192,10 @@ func TestHealthCheck(t *testing.T) {
 			memStore := cache.New(log, closeCh)
 
 			if conf != nil {
+				ctx, cancel := context.WithCancel(conf.Context)
+				conf.Context = ctx
+				defer cancel()
+
 				_, err = runtime.NewServerConfiguration(conf, log, memStore)
 			}
 
@@ -257,6 +261,10 @@ func TestRateLimit(t *testing.T) {
 			memStore := cache.New(log, closeCh)
 
 			if conf != nil {
+				ctx, cancel := context.WithCancel(conf.Context)
+				conf.Context = ctx
+				defer cancel()
+
 				_, err = runtime.NewServerConfiguration(conf, log, memStore)
 			}
 

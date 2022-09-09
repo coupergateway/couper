@@ -52,6 +52,8 @@ type Context struct {
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
 	saml              []*config.SAML
 	syncedVariables   *SyncedVariables
+
+	cloneMu sync.RWMutex
 }
 
 func NewContext(srcBytes [][]byte, defaults *config.Defaults, environment string) *Context {
@@ -112,6 +114,9 @@ func (c *Context) Value(key interface{}) interface{} {
 
 func (c *Context) WithClientRequest(req *http.Request) *Context {
 	c.backendsFn.Do(func() {
+		c.cloneMu.Lock()
+		defer c.cloneMu.Unlock()
+
 		if c.memStore == nil {
 			return
 		}
@@ -124,17 +129,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		}
 	})
 
-	ctx := &Context{
-		backends:          c.backends,
-		eval:              c.cloneEvalContext(),
-		inner:             c.inner,
-		memStore:          c.memStore,
-		memorize:          make(map[string]interface{}),
-		oauth2:            c.oauth2,
-		jwtSigningConfigs: c.jwtSigningConfigs,
-		saml:              c.saml[:],
-		syncedVariables:   NewSyncedVariables(),
-	}
+	ctx := c.clone()
 
 	if rc := req.Context(); rc != nil {
 		rc = context.WithValue(rc, request.ContextVariablesSynced, ctx.syncedVariables)
@@ -195,17 +190,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 }
 
 func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
-	ctx := &Context{
-		backends:          c.backends,
-		eval:              c.cloneEvalContext(),
-		inner:             c.inner,
-		memStore:          c.memStore,
-		memorize:          c.memorize,
-		oauth2:            c.oauth2,
-		jwtSigningConfigs: c.jwtSigningConfigs,
-		saml:              c.saml[:],
-		syncedVariables:   c.syncedVariables,
-	}
+	ctx := c.clone()
 	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
 
 	resps := make(ContextMap)
@@ -232,6 +217,25 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 	ctx.updateFunctions()
 
 	return ctx
+}
+
+// clone returns a new copy of Context with possible field updates in mind.
+// Especially during startup some requests may be fired which use this cloned base Context.
+func (c *Context) clone() *Context {
+	c.cloneMu.RLock()
+	defer c.cloneMu.RUnlock()
+
+	return &Context{
+		backends:          c.backends,
+		eval:              c.cloneEvalContext(),
+		inner:             c.inner,
+		memStore:          c.memStore,
+		memorize:          make(map[string]interface{}),
+		oauth2:            c.oauth2,
+		jwtSigningConfigs: c.jwtSigningConfigs,
+		saml:              c.saml[:],
+		syncedVariables:   NewSyncedVariables(),
+	}
 }
 
 func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
@@ -296,7 +300,7 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 
 func (c *Context) syncBackendVariables() map[string]cty.Value {
 	backendsVariable := make(map[string]cty.Value)
-	for _, backend := range c.backends {
+	for _, backend := range c.backends[:] {
 		b, ok := backend.(seetie.Object)
 		if !ok {
 			continue
@@ -310,6 +314,9 @@ func (c *Context) syncBackendVariables() map[string]cty.Value {
 
 // WithJWTSigningConfigs initially sets up the lib.FnJWTSign function.
 func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig) *Context {
+	c.cloneMu.Lock()
+	defer c.cloneMu.Unlock()
+
 	c.jwtSigningConfigs = configs
 	if c.jwtSigningConfigs == nil {
 		c.jwtSigningConfigs = make(map[string]*lib.JWTSigningConfig)
@@ -320,6 +327,9 @@ func (c *Context) WithJWTSigningConfigs(configs map[string]*lib.JWTSigningConfig
 
 // WithOAuth2AC adds the OAuth2AC config structs.
 func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
+	c.cloneMu.Lock()
+	defer c.cloneMu.Unlock()
+
 	if c.oauth2 == nil {
 		c.oauth2 = make(map[string]config.OAuth2Authorization)
 	}
@@ -331,6 +341,9 @@ func (c *Context) WithOAuth2AC(os []*config.OAuth2AC) *Context {
 
 // WithOidcConfig adds the OidcConfig config structs.
 func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
+	c.cloneMu.Lock()
+	defer c.cloneMu.Unlock()
+
 	if c.oauth2 == nil {
 		c.oauth2 = make(map[string]config.OAuth2Authorization)
 	}
@@ -341,12 +354,18 @@ func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
 }
 
 func (c *Context) WithMemStore(store *cache.MemoryStore) *Context {
+	c.cloneMu.Lock()
+	defer c.cloneMu.Unlock()
+
 	c.memStore = store
 	return c
 }
 
 // WithSAML initially set up the saml configuration.
 func (c *Context) WithSAML(s []*config.SAML) *Context {
+	c.cloneMu.Lock()
+	defer c.cloneMu.Unlock()
+
 	c.saml = s
 	if c.saml == nil {
 		c.saml = make([]*config.SAML, 0)

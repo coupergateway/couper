@@ -1,6 +1,7 @@
 package json_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -43,7 +44,7 @@ func Test_LoadSynced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	syncedJSON, err := jsn.NewSyncedJSON("", "", origin.URL, http.DefaultTransport, "test", time.Second*2, time.Hour, &unmarshaller{})
+	syncedJSON, err := jsn.NewSyncedJSON(context.TODO(), "", "", origin.URL, http.DefaultTransport, "test", time.Second*2, time.Hour, &unmarshaller{})
 	helper.Must(err)
 
 	expectJSONValue := func(expectedValue int, shouldFail bool) {
