@@ -236,7 +236,7 @@ func realmain(ctx context.Context, arguments []string) int {
 
 			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), tmpMemStore)
 			close(tmpStoreCh)
-			cancelDry() // Canceles the context of cf
+			cancelDry() // Cancels the context of cf
 
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")

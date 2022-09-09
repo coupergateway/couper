@@ -72,7 +72,7 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 
 	init()
 
-	err := s.fetch(ctx) // initial fetch, provide any startup errors for first dataRequest's
+	err := s.fetch(ctx) // initial fetch, provide any startup errors for first dataRequests
 	if err != nil {
 		expired = time.After(0)
 	}

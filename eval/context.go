@@ -220,7 +220,7 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 }
 
 // clone returns a new copy of Context with possible field updates in mind.
-// Especially during startup some requests may be fired which uses this cloned base Context.
+// Especially during startup some requests may be fired which use this cloned base Context.
 func (c *Context) clone() *Context {
 	c.cloneMu.RLock()
 	defer c.cloneMu.RUnlock()
