@@ -14,6 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload/collect"
 	configfile "github.com/avenga/couper/config/configload/file"
 	"github.com/avenga/couper/config/parser"
@@ -380,7 +381,7 @@ func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper
 		WithSAML(helper.config.Definitions.SAML)
 
 	// Read per server block and merge backend settings which results in a final server configuration.
-	for _, serverBlock := range bodyToContent(body).Blocks.OfType(server) {
+	for _, serverBlock := range hclbody.BlocksOfType(body.(*hclsyntax.Body), server) {
 		serverConfig := &config.Server{}
 		if diags := gohcl.DecodeBody(serverBlock.Body, helper.context, serverConfig); diags.HasErrors() {
 			return nil, diags
@@ -393,15 +394,15 @@ func LoadConfig(body hcl.Body, src [][]byte, environment string) (*config.Couper
 
 		// Read api blocks and merge backends with server and definitions backends.
 		for _, apiConfig := range serverConfig.APIs {
-			apiContent := bodyToContent(apiConfig.Remain)
+			apiBody := apiConfig.HCLBody()
 
 			if apiConfig.AllowedMethods != nil && len(apiConfig.AllowedMethods) > 0 {
-				if err = validMethods(apiConfig.AllowedMethods, &apiContent.Attributes["allowed_methods"].Range); err != nil {
+				if err = validMethods(apiConfig.AllowedMethods, apiBody.Attributes["allowed_methods"]); err != nil {
 					return nil, err
 				}
 			}
 
-			rp := apiContent.Attributes["beta_required_permission"]
+			rp := apiBody.Attributes["beta_required_permission"]
 			if rp != nil {
 				apiConfig.RequiredPermission = rp.Expr
 			}

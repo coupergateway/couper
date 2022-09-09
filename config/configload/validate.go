@@ -317,10 +317,11 @@ func invalidOriginRefinement(reference, params *hclsyntax.Body) error {
 	return nil
 }
 
-func validMethods(methods []string, hr *hcl.Range) error {
+func validMethods(methods []string, attr *hclsyntax.Attribute) error {
 	for _, method := range methods {
 		if !methodRegExp.MatchString(method) {
-			return newDiagErr(hr, "method contains invalid character(s)")
+			r := attr.Range()
+			return newDiagErr(&r, "method contains invalid character(s)")
 		}
 	}
 

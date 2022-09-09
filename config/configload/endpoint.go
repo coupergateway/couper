@@ -38,21 +38,21 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			return newDiagErr(r, "endpoint: missing path pattern")
 		}
 
-		endpointContent := bodyToContent(endpoint.Remain)
-
-		rp := endpointContent.Attributes["beta_required_permission"]
+		endpointBody := endpoint.HCLBody()
+		rp := endpointBody.Attributes["beta_required_permission"]
 		if rp != nil {
 			endpoint.RequiredPermission = rp.Expr
 		}
 
 		if check && endpoint.AllowedMethods != nil && len(endpoint.AllowedMethods) > 0 {
-			if err = validMethods(endpoint.AllowedMethods, &endpointContent.Attributes["allowed_methods"].Range); err != nil {
+			if err = validMethods(endpoint.AllowedMethods, endpointBody.Attributes["allowed_methods"]); err != nil {
 				return err
 			}
 		}
 
 		if check && len(endpoint.Proxies)+len(endpoint.Requests) == 0 && endpoint.Response == nil {
-			return newDiagErr(&endpointContent.MissingItemRange,
+			r := endpointBody.MissingItemRange()
+			return newDiagErr(&r,
 				"missing 'default' proxy or request block, or a response definition",
 			)
 		}
