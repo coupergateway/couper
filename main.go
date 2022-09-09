@@ -231,12 +231,12 @@ func realmain(ctx context.Context, arguments []string) int {
 			tmpMemStore := cache.New(logger, tmpStoreCh)
 
 			dryCtx, cancelDry := context.
-				WithCancel(context.WithValue(context.Background(), request.ConfigDryRun, true))
+				WithCancel(context.WithValue(ctx, request.ConfigDryRun, true))
 			cf.Context = cf.Context.(*eval.Context).WithContext(dryCtx)
 
 			_, reloadErr = runtime.NewServerConfiguration(cf, logger.WithFields(fields), tmpMemStore)
 			close(tmpStoreCh)
-			cancelDry()
+			cancelDry() // Cancels the context of cf
 
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
@@ -244,7 +244,9 @@ func realmain(ctx context.Context, arguments []string) int {
 				continue
 			}
 
-			confFile = cf
+			// Create new config with non-canceled context.
+			confFile, _ = configload.LoadFiles(filesList.paths, flags.Environment)
+
 			restartSignal <- struct{}{}                              // shutdown running couper
 			<-errCh                                                  // drain current error due to cancel and ensure closed ports
 			execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair

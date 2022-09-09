@@ -905,6 +905,10 @@ func TestJwtConfig(t *testing.T) {
 				tmpStoreCh := make(chan struct{})
 				defer close(tmpStoreCh)
 
+				ctx, cancel := context.WithCancel(conf.Context)
+				conf.Context = ctx
+				defer cancel()
+
 				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}
 

@@ -447,7 +447,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				}
 			}
 
-			oidcConfig, err := oidc.NewConfig(oidcConf, backends)
+			oidcConfig, err := oidc.NewConfig(conf.Context, oidcConf, backends)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -583,7 +583,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 		return nil, err
 	}
 
-	return jwk.NewJWKS(jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
+	return jwk.NewJWKS(conf.Context, jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
 }
 
 type protectedOptions struct {

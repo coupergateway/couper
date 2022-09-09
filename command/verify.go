@@ -1,6 +1,8 @@
 package command
 
 import (
+	"context"
+
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
@@ -35,6 +37,10 @@ func (v Verify) Execute(args Args, conf *config.Couper, logger *logrus.Entry) er
 	defer close(tmpStoreCh)
 
 	tmpMemStore := cache.New(logger, tmpStoreCh)
+
+	ctx, cancel := context.WithCancel(cf.Context)
+	cf.Context = ctx
+	defer cancel()
 
 	_, err = runtime.NewServerConfiguration(cf, logger, tmpMemStore)
 	if err != nil {

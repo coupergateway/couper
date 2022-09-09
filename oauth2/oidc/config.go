@@ -1,7 +1,9 @@
 package oidc
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -38,15 +40,17 @@ var (
 // Config represents the configuration for an OIDC client
 type Config struct {
 	*config.OIDC
-	backends   map[string]http.RoundTripper
-	context    context.Context
-	syncedJSON *jsn.SyncedJSON
-	jwks       *jwk.JWKS
-	jmu        sync.RWMutex // jkws
+	backends     map[string]http.RoundTripper
+	context      context.Context
+	syncedJSON   *jsn.SyncedJSON
+	jwks         *jwk.JWKS
+	jwksCheckSum [32]byte
+	jwksCancel   func()
+	jmu          sync.RWMutex // jkws
 }
 
 // NewConfig creates a new configuration for an OIDC client
-func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Config, error) {
+func NewConfig(ctx context.Context, oidc *config.OIDC, backends map[string]http.RoundTripper) (*Config, error) {
 	ttl, err := config.ParseDuration("configuration_ttl", oidc.ConfigurationTTL, defaultTTL)
 	if err != nil {
 		return nil, err
@@ -56,14 +60,13 @@ func NewConfig(oidc *config.OIDC, backends map[string]http.RoundTripper) (*Confi
 		return nil, err
 	}
 
-	ctx := context.Background()
 	conf := &Config{
 		OIDC:     oidc,
 		backends: backends,
 		context:  ctx,
 	}
 
-	conf.syncedJSON, err = jsn.NewSyncedJSON("", "",
+	conf.syncedJSON, err = jsn.NewSyncedJSON(ctx, "", "",
 		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, maxStale, conf)
 	if err != nil {
 		return nil, err
@@ -167,6 +170,13 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 		return nil, err
 	}
 
+	checkSum := sha256.Sum256(rawJSON)
+	if bytes.Equal(checkSum[:], c.jwksCheckSum[:]) {
+		// return obtained (same) data here since Data() call will block
+		return jsonData, nil
+	}
+	c.jwksCheckSum = checkSum
+
 	if c.OIDC.VerifierMethod == "" {
 		if supportsS256(jsonData.CodeChallengeMethodsSupported) {
 			c.OIDC.VerifierMethod = config.CcmS256
@@ -180,11 +190,20 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 		c.backends["jwks_uri_backend"],
 	)
 
-	newJWKS, err := jwk.NewJWKS(jsonData.JwksURI, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
+	ctx, cancel := context.WithCancel(c.context)
+
+	newJWKS, err := jwk.NewJWKS(ctx, jsonData.JwksURI, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
 	if err != nil { // do not replace possible working jwks on err
+		cancel()
 		return jsonData, err
 	}
 
+	// free up inner syncedJSON goroutine
+	if c.jwksCancel != nil {
+		c.jwksCancel()
+	}
+	// update with newly created one
+	c.jwksCancel = cancel
 	c.jwks = newJWKS
 
 	return jsonData, nil

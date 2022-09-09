@@ -69,6 +69,10 @@ definitions {
 	defer close(quitCh)
 	memStore := cache.New(logger, quitCh)
 
+	ctx, cancel := context.WithCancel(couperConf.Context)
+	couperConf.Context = ctx
+	defer cancel()
+
 	_, err = runtime.NewServerConfiguration(couperConf, logger, memStore)
 	helper.Must(err)
 

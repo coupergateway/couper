@@ -239,7 +239,10 @@ func (o *OidcClient) getUserinfo(ctx context.Context, accessToken string) (map[s
 }
 
 func (o *OidcClient) requestUserinfo(userinfoReq *http.Request) ([]byte, error) {
-	userinfoRes, err := o.backends["userinfo_backend"].RoundTrip(userinfoReq)
+	ctx, cancel := context.WithCancel(userinfoReq.Context())
+	defer cancel()
+
+	userinfoRes, err := o.backends["userinfo_backend"].RoundTrip(userinfoReq.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
