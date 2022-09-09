@@ -33,7 +33,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 		if check && endpoint.Pattern == "" {
 			var r *hcl.Range
 			if endpoint.Remain != nil {
-				r = getRange(endpoint.Remain)
+				r = getRange(endpoint.HCLBody())
 			}
 			return newDiagErr(r, "endpoint: missing path pattern")
 		}

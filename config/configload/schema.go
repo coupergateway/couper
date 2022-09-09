@@ -290,15 +290,10 @@ func bodyToContent(b *hclsyntax.Body) *hcl.BodyContent {
 	return content
 }
 
-func getRange(body hcl.Body) *hcl.Range {
+func getRange(body *hclsyntax.Body) *hcl.Range {
 	if body == nil {
 		return &hcl.Range{}
 	}
 
-	if b, ok := body.(*hclsyntax.Body); ok {
-		return &b.SrcRange
-	}
-
-	r := body.MissingItemRange()
-	return &r
+	return &body.SrcRange
 }
