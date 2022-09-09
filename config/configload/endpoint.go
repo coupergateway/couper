@@ -162,14 +162,8 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 }
 
 func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, error) {
-	content, _, diags := proxyConfig.Remain.PartialContent(
-		&hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{{Type: "websockets"}}},
-	)
-	if diags.HasErrors() {
-		return false, nil, diags
-	}
-
-	if proxyConfig.Websockets != nil && len(content.Blocks.OfType("websockets")) > 0 {
+	hasWebsocketBlocks := len(hclbody.BlocksOfType(proxyConfig.HCLBody().(*hclsyntax.Body), "websockets")) > 0
+	if proxyConfig.Websockets != nil && hasWebsocketBlocks {
 		return false, nil, fmt.Errorf("either websockets attribute or block is allowed")
 	}
 
@@ -188,5 +182,5 @@ func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, erro
 		return *proxyConfig.Websockets, body, nil
 	}
 
-	return len(content.Blocks) > 0, nil, nil
+	return hasWebsocketBlocks, nil, nil
 }
