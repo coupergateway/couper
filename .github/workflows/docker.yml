@@ -109,7 +109,12 @@ jobs:
   oidc:
     needs:
       - build
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-    uses: avenga/couper-oidc-gateway/.github/workflows/release.yaml@master
-    with:
-      version: 'edge'
+    steps:
+      - run: |
+          curl -H "Accept: application/vnd.github.everest-preview+json" \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          --request POST \
+          --data '{"event_type": "edge-build"}' \
+          https://api.github.com/repos/avenga/couper-oidc-gateway/dispatches
