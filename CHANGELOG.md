@@ -43,7 +43,7 @@ As always the [Couper VSCode extension](https://marketplace.visualstudio.com/ite
  * Renamed `-debug` to `-pprof` and made debug port configurable via `-pprof-port`. Both [command line options](https://docs.couper.io/configuration/command-line#run-options) can also be specified via the respective [`settings`](https://docs.couper.io/configuration/block/settings). ([#577](https://github.com/avenga/couper/pull/577))
 
 * **Fixed**
-  * [`form_body`, `headers` and `cookies`](./docs/REFERENCE.md#request) can now be properly [custom-logged](./docs/LOGS.md#custom-logging) ([#535](https://github.com/avenga/couper/pull/535))
+  * [`form_body`, `headers` and `cookies`](https://docs.couper.io/configuration/block/request#attributes) can now be properly [custom-logged](https://docs.couper.io/observation/logging#custom-logging) ([#535](https://github.com/avenga/couper/pull/535))
   * Disallow empty path parameters ([#526](https://github.com/avenga/couper/pull/526))
   * Basic Auth client authentication with OAuth2 (client ID and secret must be URL encoded) ([#537](https://github.com/avenga/couper/pull/537))
   * Config validation, e.g. label-uniqueness checks ([#563](https://github.com/avenga/couper/pull/563))
@@ -58,11 +58,11 @@ As always the [Couper VSCode extension](https://marketplace.visualstudio.com/ite
 ## [1.9.2](https://github.com/avenga/couper/releases/tag/v1.9.2)
 
 * **Fixed**
-  * configuration related panic while loading backends with [`oauth2` block](./docs/REFERENCE.md#oauth2-cc-block) which depends on other defined backends ([#524](https://github.com/avenga/couper/pull/524))
-  * erroneous retries for [`oauth2`](./docs/REFERENCE.md#oauth2-cc-block) backend authorization ([#529](https://github.com/avenga/couper/pull/529))
+  * configuration related panic while loading backends with [`oauth2` block](https://docs.couper.io/configuration/block/oauth2_req_auth) which depends on other defined backends ([#524](https://github.com/avenga/couper/pull/524))
+  * erroneous retries for [`oauth2`](https://docs.couper.io/configuration/block/oauth2_req_auth) backend authorization ([#529](https://github.com/avenga/couper/pull/529))
     * with `retries = 0` ([#528](https://github.com/avenga/couper/pull/528))
     * with `retries` > `0` and related origin configuration ([#529](https://github.com/avenga/couper/pull/529))
-  * race condition resulting in empty [`backends.<label>.health.state` variable](docs/REFERENCE.md#backends) ([#530](https://github.com/avenga/couper/pull/530))
+  * race condition resulting in empty [`backends.<label>.health.state` variable](https://docs.couper.io/configuration/block/health) ([#530](https://github.com/avenga/couper/pull/530))
   * enabled json html escaping inherited from Go lib ([#531](https://github.com/avenga/couper/pull/531))
 
 ## [1.9.1](https://github.com/avenga/couper/releases/tag/v1.9.1)
@@ -80,14 +80,14 @@ As of release 1.9 it is possible to split a Couper configuration into multiple
 `.hcl`-files. You can now, for example, use different configuration files for
 your `api`, `files` and `definitions` blocks, or keep your development, testing
 and production setups separated. All the configuration files given at
-[startup](docs/CLI.md) will be [merged together](docs/MERGE.md).
+[startup](https://docs.couper.io/configuration/command-line) will be [merged together](https://docs.couper.io/configuration/multiple-files).
 
-The new block [`beta_health`](docs/REFERENCE.md#health-block) ([beta](docs/BETA.md))
+The new block [`beta_health`](https://docs.couper.io/configuration/block/health) ([beta](https://docs.couper.io/getting-started/beta-features))
 allows you to configure recurring health check requests for a backend.
 By default, Couper won't request backends considered unhealthy which might help
 them recover due to the reduced amount of requests.
 The current health state of a backend can be accessed by variable.
-Changes in healthiness will be [logged](docs/LOGS.md) and exported as [metrics](docs/METRICS.md).
+Changes in healthiness will be [logged](https://docs.couper.io/observation/logging) and exported as [metrics](https://docs.couper.io/observation/metrics).
 
 To make permission handling easier to grasp we've dropped the term `scope` and
 accordingly changed the names of the `beta_scope`, `beta_scope_claim` and `beta_scope_map`
