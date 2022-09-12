@@ -18,6 +18,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Fixed**
   * [`form_body`, `headers` and `cookies`](./docs/REFERENCE.md#request) can now be properly [custom-logged](./docs/LOGS.md#custom-logging) ([#535](https://github.com/avenga/couper/pull/535))
   * Disallow empty path parameters ([#526](https://github.com/avenga/couper/pull/526))
+  * Disallow endpoint path patterns not starting with `/`, endpoint path patterns and `base_path`s having `.` or `..` segments ([#584](https://github.com/avenga/couper/pull/584))
   * Basic Auth client authentication with OAuth2 (client ID and secret must be URL encoded) ([#537](https://github.com/avenga/couper/pull/537))
   * Config validation, e.g. label-uniqueness checks ([#563](https://github.com/avenga/couper/pull/563))
   * [OIDC](https://docs.couper.io/configuration/block/oidc) not using referenced backends, if only specific backends (`configuration_backend`, `jwks_uri_backend`, `token_backend`, `userinfo_backend`) were configured ([#570](https://github.com/avenga/couper/pull/570))

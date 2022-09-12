@@ -631,6 +631,212 @@ func Test_validateBody(t *testing.T) {
 			"",
 		},
 		{
+			"invalid server base_path pattern single dot 1",
+			`server {
+			   base_path = "./s"
+			 }`,
+			`couper.hcl:2,20-23: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid server base_path pattern single dot 2",
+			`server {
+			   base_path = "/./s"
+			 }`,
+			`couper.hcl:2,20-24: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid server base_path pattern single dot 3",
+			`server {
+			   base_path = "/s/./s"
+			 }`,
+			`couper.hcl:2,20-26: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid server base_path pattern single dot 4",
+			`server {
+			   base_path = "/s/."
+			 }`,
+			`couper.hcl:2,20-24: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid server base_path pattern double dot 1",
+			`server {
+			   base_path = "../s"
+			 }`,
+			`couper.hcl:2,20-24: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid server base_path pattern double dot 2",
+			`server {
+			   base_path = "/../s"
+			 }`,
+			`couper.hcl:2,20-25: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid server base_path pattern double dot 3",
+			`server {
+			   base_path = "/s/../s"
+			 }`,
+			`couper.hcl:2,20-27: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid server base_path pattern double dot 4",
+			`server {
+			   base_path = "/s/.."
+			 }`,
+			`couper.hcl:2,20-25: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern single dot 1",
+			`server {
+			   api {
+			     base_path = "./s"
+			   }
+			 }`,
+			`couper.hcl:3,22-25: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern single dot 2",
+			`server {
+			   api {
+			     base_path = "/./s"
+			   }
+			 }`,
+			`couper.hcl:3,22-26: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern single dot 3",
+			`server {
+			   api {
+			     base_path = "/s/./s"
+			   }
+			 }`,
+			`couper.hcl:3,22-28: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern single dot 4",
+			`server {
+			   api {
+			     base_path = "/s/."
+			   }
+			 }`,
+			`couper.hcl:3,22-26: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern double dot 1",
+			`server {
+			   api {
+			     base_path = "../s"
+			   }
+			 }`,
+			`couper.hcl:3,22-26: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern double dot 2",
+			`server {
+			   api {
+			     base_path = "/../s"
+			   }
+			 }`,
+			`couper.hcl:3,22-27: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern double dot 3",
+			`server {
+			   api {
+			     base_path = "/s/../s"
+			   }
+			 }`,
+			`couper.hcl:3,22-29: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid api base_path pattern double dot 4",
+			`server {
+			   api {
+			     base_path = "/s/.."
+			   }
+			 }`,
+			`couper.hcl:3,22-27: base_path must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid endpoint pattern single dot 1",
+			`server {
+			   api {
+			     endpoint "./foo" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			 }`,
+			`couper.hcl:3,18-25: endpoint path pattern must start with "/"; `,
+		},
+		{
+			"invalid endpoint pattern single dot 2",
+			`server {
+			   api {
+			     endpoint "/foo/./bar" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			 }`,
+			`couper.hcl:3,18-30: endpoint path pattern must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid endpoint pattern single dot 3",
+			`server {
+			   api {
+			     endpoint "/foo/." {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			 }`,
+			`couper.hcl:3,18-26: endpoint path pattern must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid endpoint pattern double dot 1",
+			`server {
+			   api {
+			     endpoint "../foo" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			 }`,
+			`couper.hcl:3,18-26: endpoint path pattern must start with "/"; `,
+		},
+		{
+			"invalid endpoint pattern double dot 2",
+			`server {
+			   api {
+			     endpoint "/foo/../bar" {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			 }`,
+			`couper.hcl:3,18-31: endpoint path pattern must not contain "." or ".." segments; `,
+		},
+		{
+			"invalid endpoint pattern double dot 3",
+			`server {
+			   api {
+			     endpoint "/foo/.." {
+			       response {
+			         body = "1"
+			       }
+			     }
+			   }
+			 }`,
+			`couper.hcl:3,18-27: endpoint path pattern must not contain "." or ".." segments; `,
+		},
+		{
 			"duplicate endpoint pattern 1",
 			`server {
 			   base_path = "/s"
