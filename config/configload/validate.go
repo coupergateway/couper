@@ -104,7 +104,7 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 			}
 		} else if outerBlock.Type == server {
 			uniqueEndpoints := make(map[string]struct{})
-			serverBasePath, err := getBasePath(outerBlock)
+			serverBasePath, err := getBasePath(outerBlock, afterMerge)
 			if err != nil {
 				return err
 			}
@@ -112,11 +112,11 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 			serverBasePath = path.Join("/", serverBasePath)
 			for _, innerBlock := range outerBlock.Body.Blocks {
 				if innerBlock.Type == endpoint {
-					if err = registerEndpointPattern(uniqueEndpoints, serverBasePath, innerBlock); err != nil {
+					if err = registerEndpointPattern(uniqueEndpoints, serverBasePath, innerBlock, afterMerge); err != nil {
 						return err
 					}
 				} else if innerBlock.Type == api {
-					apiBasePath, err := getBasePath(innerBlock)
+					apiBasePath, err := getBasePath(innerBlock, afterMerge)
 					if err != nil {
 						return err
 					}
@@ -124,7 +124,7 @@ func validateBody(body hcl.Body, afterMerge bool) error {
 					apiBasePath = path.Join(serverBasePath, apiBasePath)
 					for _, innerInnerBlock := range innerBlock.Body.Blocks {
 						if innerInnerBlock.Type == endpoint {
-							if err = registerEndpointPattern(uniqueEndpoints, apiBasePath, innerInnerBlock); err != nil {
+							if err = registerEndpointPattern(uniqueEndpoints, apiBasePath, innerInnerBlock, afterMerge); err != nil {
 								return err
 							}
 						}
@@ -146,34 +146,38 @@ func checkPathSegments(pathType, path string, r hcl.Range) error {
 	return nil
 }
 
-func getBasePath(bl *hclsyntax.Block) (string, error) {
+func getBasePath(bl *hclsyntax.Block, afterMerge bool) (string, error) {
 	basePath := ""
 	if bp, set := bl.Body.Attributes["base_path"]; set {
 		bpv, diags := bp.Expr.Value(nil)
-		r := bp.Expr.StartRange()
 		if diags.HasErrors() {
 			return "", diags
 		}
-		if bpv.Type() != cty.String {
+		r := bp.Expr.StartRange()
+		if !afterMerge && bpv.Type() != cty.String {
 			return "", newDiagErr(&r, "base_path must evaluate to string")
 		}
 		basePath = bpv.AsString()
-		if err := checkPathSegments("base_path", basePath, r); err != nil {
-			return "", err
+		if !afterMerge {
+			if err := checkPathSegments("base_path", basePath, r); err != nil {
+				return "", err
+			}
 		}
 	}
 
 	return basePath, nil
 }
 
-func registerEndpointPattern(endpointPatterns map[string]struct{}, basePath string, bl *hclsyntax.Block) error {
+func registerEndpointPattern(endpointPatterns map[string]struct{}, basePath string, bl *hclsyntax.Block, afterMerge bool) error {
 	pattern := bl.Labels[0]
-	if !strings.HasPrefix(pattern, "/") {
-		return newDiagErr(&bl.LabelRanges[0], `endpoint path pattern must start with "/"`)
-	}
+	if !afterMerge {
+		if !strings.HasPrefix(pattern, "/") {
+			return newDiagErr(&bl.LabelRanges[0], `endpoint path pattern must start with "/"`)
+		}
 
-	if err := checkPathSegments("endpoint path pattern", pattern, bl.LabelRanges[0]); err != nil {
-		return err
+		if err := checkPathSegments("endpoint path pattern", pattern, bl.LabelRanges[0]); err != nil {
+			return err
+		}
 	}
 
 	pattern = utils.JoinOpenAPIPath(basePath, pattern)
