@@ -786,11 +786,11 @@ func TestHTTPServer_RateLimiterFixed(t *testing.T) {
 		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
 			t.Fatal("Something is wrong")
 		} else if i < 2 && total > 500 {
-			t.Errorf("Request %d time has to be smaller as 0.5 seconds, was %fms", i, total)
+			t.Errorf("Request %d time has to be shorter than 0.5 seconds, was %fms", i, total)
 		} else if i == 2 && total < 1000 {
-			t.Errorf("Request %d time has to be longer as 1 second, was %fms", i, total)
+			t.Errorf("Request %d time has to be longer than 1 second, was %fms", i, total)
 		} else if i > 2 && total < 500 {
-			t.Errorf("Request %d time has to be longer as 0.5 seconds, was %fms", i, total)
+			t.Errorf("Request %d time has to be longer than 0.5 seconds, was %fms", i, total)
 		}
 	}
 }
@@ -837,11 +837,11 @@ func TestHTTPServer_RateLimiterSliding(t *testing.T) {
 		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
 			t.Fatal("Something is wrong")
 		} else if i < 2 && total > 500 {
-			t.Errorf("Request %d time has to be smaller as 0.5 seconds, was %fms", i, total)
+			t.Errorf("Request %d time has to be shorter than 0.5 seconds, was %fms", i, total)
 		} else if i == 2 && total < 1000 {
-			t.Errorf("Request %d time has to be longer as 1 second, was %fms", i, total)
+			t.Errorf("Request %d time has to be longer than 1 second, was %fms", i, total)
 		} else if i > 2 && total < 1500 {
-			t.Errorf("Request %d time has to be longer as 1.5 seconds, was %fms", i, total)
+			t.Errorf("Request %d time has to be longer than 1.5 seconds, was %fms", i, total)
 		}
 	}
 }
