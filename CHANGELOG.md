@@ -22,8 +22,7 @@ provide means for a leaner and less repetitive configuration.
 
 In case a backend request requires authorization,
 the new [`beta_token_request` block](https://docs.couper.io/configuration/block/token_request)
-can request the required token and make the response available via the [`beta_token_response` variable]
-(https://docs.couper.io/configuration/variables#beta_token_response).
+can request the required token and make the response available via the [`beta_token_response` variable](https://docs.couper.io/configuration/variables#beta_token_response).
 
 Finally, a stricter [`endpoint`](https://docs.couper.io/configuration/block/endpoint)
 path validation for a clearer and more consistent path matching is now applied.
