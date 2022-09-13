@@ -118,4 +118,4 @@ jobs:
           -H "Accept: application/vnd.github+json" \
           -H "Authorization: Bearer ${{ secrets.GH_COUPER_API_TOKEN }}" \
           https://api.github.com/repos/avenga/couper-oidc-gateway/dispatches \
-          -d '{"event_type": "edge-build"}'
+          -d '{"event_type": "edge-build", "client_payload": { "version": "edge" }}'
