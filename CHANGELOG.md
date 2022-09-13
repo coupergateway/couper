@@ -4,6 +4,8 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+---
+
 ## [1.10.0](https://github.com/avenga/couper/releases/tag/v1.10.0)
 
 Couper 1.10 is a feature release comprising new features for a more flexible and cleaner configuration. It also comes with some bug fixes and some smaller improvements. See below for a complete list of changes.
@@ -41,8 +43,6 @@ We have launched our [documentation website](https://docs.couper.io/) to find bl
 
 * **Removed**
   * Endpoint path normalization to better match OpenAPI behavior ([#526](https://github.com/avenga/couper/pull/526))
-
----
 
 ## [1.9.2](https://github.com/avenga/couper/releases/tag/v1.9.2)
 
