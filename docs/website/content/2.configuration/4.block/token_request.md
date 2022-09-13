@@ -20,19 +20,19 @@ values: [
     "name": "body",
     "type": "string",
     "default": "",
-    "description": "Creates implicit default <code>Content-Type: text/plain</code> header field"
+    "description": "Creates implicit default `Content-Type: text/plain` header field"
   },
   {
     "name": "expected_status",
     "type": "tuple (int)",
     "default": "[]",
-    "description": "If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a <code>beta_backend_token_request</code> error can be handled with an <code>error_handler</code>"
+    "description": "If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a `beta_backend_token_request` error can be handled with an `error_handler`"
   },
   {
     "name": "form_body",
     "type": "string",
     "default": "",
-    "description": "Creates implicit default <code>Content-Type: application/x-www-form-urlencoded</code> header field."
+    "description": "Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field."
   },
   {
     "name": "headers",
@@ -44,7 +44,7 @@ values: [
     "name": "json_body",
     "type": "null, bool, number, string, object, tuple",
     "default": "",
-    "description": "Creates implicit default <code>Content-Type: application/json</code> header field"
+    "description": "Creates implicit default `Content-Type: application/json` header field"
   },
   {
     "name": "query_params",
@@ -56,7 +56,7 @@ values: [
     "name": "token",
     "type": "string",
     "default": "",
-    "description": "The token to be stored in <code>backends.<backend_name>.tokens.<token_request_name></code>"
+    "description": "The token to be stored in `backends.<backend_name>.tokens.<token_request_name>`"
   },
   {
     "name": "ttl",
@@ -68,7 +68,7 @@ values: [
     "name": "url",
     "type": "string",
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the <code>origin</code> attribute of the <code>backend</code> block (if defined)."
+    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the `backend` block (if defined)."
   }
 ]
 

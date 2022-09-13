@@ -623,15 +623,16 @@ func addProxy(block *hclsyntax.Block, proxies map[string]*hclsyntax.Block) error
 			return err
 		}
 
-		if proxyBlock, ok := proxies[reference]; !ok {
+		proxyBlock, ok := proxies[reference]
+		if !ok {
 			sr := attr.Expr.StartRange()
 
 			return newDiagErr(&sr, "proxy reference is not defined")
-		} else {
-			delete(block.Body.Attributes, proxy)
-
-			block.Body.Blocks = append(block.Body.Blocks, proxyBlock)
 		}
+
+		delete(block.Body.Attributes, proxy)
+
+		block.Body.Blocks = append(block.Body.Blocks, proxyBlock)
 	}
 
 	return nil

@@ -175,7 +175,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		Path:      cty.StringVal(req.URL.Path),
 		Query:     seetie.ValuesMapToValue(req.URL.Query()),
 		Body:      body,
-		JsonBody:  jsonBody,
+		JSONBody:  jsonBody,
 		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
@@ -263,16 +263,16 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		Path:     cty.StringVal(bereq.URL.Path),
 		Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
 		Body:     body,
-		JsonBody: jsonBody,
+		JSONBody: jsonBody,
 		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
 	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
 
-	var respBody, respJsonBody cty.Value
+	var respBody, respJSONBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
 		if bOk && (bufferOption&BufferResponse) == BufferResponse {
-			respBody, respJsonBody = parseRespBody(beresp)
+			respBody, respJSONBody = parseRespBody(beresp)
 		}
 	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
 		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
@@ -287,8 +287,8 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	}
 
 	berespVal = cty.ObjectVal(ContextMap{
-		HttpStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
-		JsonBody:   respJsonBody,
+		HTTPStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
+		JSONBody:   respJSONBody,
 		Body:       respBody,
 	}.Merge(newVariable(ctx, beresp.Cookies(), beresp.Header)))
 
@@ -414,15 +414,15 @@ func (c *Context) updateFunctions() {
 // updateRequestRelatedFunctions re-creates the listed functions for the client request context.
 func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
 	if c.oauth2 != nil {
-		oauth2fn := lib.NewOAuthAuthorizationUrlFunction(c.eval, c.oauth2, c.getCodeVerifier, origin, Value)
-		c.eval.Functions[lib.FnOAuthAuthorizationUrl] = oauth2fn
+		oauth2fn := lib.NewOAuthAuthorizationURLFunction(c.eval, c.oauth2, c.getCodeVerifier, origin, Value)
+		c.eval.Functions[lib.FnOAuthAuthorizationURL] = oauth2fn
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
 
 	if c.saml != nil {
-		samlfn := lib.NewSamlSsoUrlFunction(c.saml, origin)
-		c.eval.Functions[lib.FnSamlSsoUrl] = samlfn
+		samlfn := lib.NewSamlSsoURLFunction(c.saml, origin)
+		c.eval.Functions[lib.FnSamlSsoURL] = samlfn
 	}
 }
 
@@ -644,7 +644,7 @@ func MapTokenResponse(evalCtx *hcl.EvalContext, name string) {
 	}
 
 	responses := evalCtx.Variables[BackendResponses].AsValueMap()
-	respValue, _ := responses[TokenRequestPrefix+name]
+	respValue := responses[TokenRequestPrefix+name]
 
 	evalCtx.Variables[TokenResponse] = respValue
 }
@@ -664,7 +664,7 @@ func newFunctionsMap() map[string]function.Function {
 		"length":           stdlib.LengthFunc,
 		"lookup":           stdlib.LookupFunc,
 		"merge":            lib.MergeFunc,
-		"relative_url":     lib.RelativeUrlFunc,
+		"relative_url":     lib.RelativeURLFunc,
 		"set_intersection": stdlib.SetIntersectionFunc,
 		"split":            stdlib.SplitFunc,
 		"substr":           stdlib.SubstrFunc,
@@ -672,7 +672,7 @@ func newFunctionsMap() map[string]function.Function {
 		"to_number":        stdlib.MakeToFunc(cty.Number),
 		"to_upper":         stdlib.UpperFunc,
 		"unixtime":         lib.UnixtimeFunc,
-		"url_encode":       lib.UrlEncodeFunc,
+		"url_encode":       lib.URLEncodeFunc,
 	}
 }
 

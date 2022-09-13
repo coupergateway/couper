@@ -14,12 +14,12 @@ import (
 
 const (
 	CodeVerifier                  = "code_verifier"
-	FnOAuthAuthorizationUrl       = "oauth2_authorization_url"
+	FnOAuthAuthorizationURL       = "oauth2_authorization_url"
 	FnOAuthVerifier               = "oauth2_verifier"
 	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
 )
 
-func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2s map[string]config.OAuth2Authorization,
+func NewOAuthAuthorizationURLFunction(ctx *hcl.EvalContext, oauth2s map[string]config.OAuth2Authorization,
 	verifier func() (*pkce.CodeVerifier, error), origin *url.URL,
 	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, error)) function.Function {
 
@@ -45,7 +45,7 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2s map[string]c
 				return emptyStringVal, err
 			}
 
-			oauthAuthorizationUrl, err := url.Parse(authorizationEndpoint)
+			oauthAuthorizationURL, err := url.Parse(authorizationEndpoint)
 			if err != nil {
 				return emptyStringVal, err
 			}
@@ -55,15 +55,15 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2s map[string]c
 				return emptyStringVal, fmt.Errorf("redirect_uri is required")
 			}
 
-			absRedirectUri, err := AbsoluteURL(redirectURI, origin)
+			absRedirectURI, err := AbsoluteURL(redirectURI, origin)
 			if err != nil {
 				return emptyStringVal, err
 			}
 
-			query := oauthAuthorizationUrl.Query()
+			query := oauthAuthorizationURL.Query()
 			query.Set("response_type", "code")
 			query.Set("client_id", oauth2.GetClientID())
-			query.Set("redirect_uri", absRedirectUri)
+			query.Set("redirect_uri", absRedirectURI)
 			if scope := oauth2.GetScope(); scope != "" {
 				query.Set("scope", scope)
 			}
@@ -89,9 +89,9 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2s map[string]c
 
 				query.Set(verifierMethod, hashedVerifier)
 			}
-			oauthAuthorizationUrl.RawQuery = query.Encode()
+			oauthAuthorizationURL.RawQuery = query.Encode()
 
-			return cty.StringVal(oauthAuthorizationUrl.String()), nil
+			return cty.StringVal(oauthAuthorizationURL.String()), nil
 		},
 	})
 }

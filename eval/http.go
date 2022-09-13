@@ -283,20 +283,19 @@ func evalPathAttr(req *http.Request, pathAttr *hcl.Attribute, httpCtx *hcl.EvalC
 	if pathAttr == nil {
 		return nil
 	}
-	path := req.URL.Path
+
 	pathValue, err := Value(httpCtx, pathAttr.Expr)
 	if err != nil {
 		return err
 	}
-	if str := seetie.ValueToString(pathValue); str != "" {
-		// TODO: Check for a valid absolute path
-		if i := strings.Index(str, "#"); i >= 0 {
-			return errors.Configuration.Label("path attribute").Messagef("invalid fragment found in %q", str)
-		} else if i = strings.Index(str, "?"); i >= 0 {
-			return errors.Configuration.Label("path attribute").Messagef("invalid query string found in %q", str)
-		}
 
-		path = str
+	if path := seetie.ValueToString(pathValue); path != "" {
+		// TODO: Check for a valid absolute path
+		if i := strings.Index(path, "#"); i >= 0 {
+			return errors.Configuration.Label("path attribute").Messagef("invalid fragment found in %q", path)
+		} else if i = strings.Index(path, "?"); i >= 0 {
+			return errors.Configuration.Label("path attribute").Messagef("invalid query string found in %q", path)
+		}
 
 		if pathMatch, isWildcard := req.Context().
 			Value(request.Wildcard).(string); isWildcard && strings.HasSuffix(path, "/**") {

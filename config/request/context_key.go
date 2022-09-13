@@ -9,7 +9,6 @@ const (
 	BackendBytes
 	BackendName
 	BackendParams
-	BackendTokenRequest
 	BetaGrantedPermissions
 	BetaRequiredPermission
 	BufferOptions

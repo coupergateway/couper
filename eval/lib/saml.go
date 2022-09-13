@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	FnSamlSsoUrl            = "saml_sso_url"
-	NameIdFormatUnspecified = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+	FnSamlSsoURL            = "saml_sso_url"
+	NameIDFormatUnspecified = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
 )
 
-func NewSamlSsoUrlFunction(configs []*config.SAML, origin *url.URL) function.Function {
+func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Function {
 	type entity struct {
 		config     *config.SAML
 		descriptor *types.EntityDescriptor
@@ -52,45 +52,45 @@ func NewSamlSsoUrlFunction(configs []*config.SAML, origin *url.URL) function.Fun
 			}
 
 			metadata := ent.descriptor
-			var ssoUrl string
+			var ssoURL string
 			for _, ssoService := range metadata.IDPSSODescriptor.SingleSignOnServices {
 				if ssoService.Binding == "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" {
-					ssoUrl = ssoService.Location
+					ssoURL = ssoService.Location
 					continue
 				}
 			}
 
 			nameIDFormat := getNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats)
 
-			absAcsUrl, err := AbsoluteURL(ent.config.SpAcsUrl, origin)
+			absAcsURL, err := AbsoluteURL(ent.config.SpAcsURL, origin)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
 
 			sp := &saml2.SAMLServiceProvider{
-				AssertionConsumerServiceURL: absAcsUrl,
-				IdentityProviderSSOURL:      ssoUrl,
-				ServiceProviderIssuer:       ent.config.SpEntityId,
+				AssertionConsumerServiceURL: absAcsURL,
+				IdentityProviderSSOURL:      ssoURL,
+				ServiceProviderIssuer:       ent.config.SpEntityID,
 				SignAuthnRequests:           false,
 			}
 			if nameIDFormat != "" {
 				sp.NameIdFormat = nameIDFormat
 			}
 
-			samlSsoUrl, err := sp.BuildAuthURL("")
+			samlSsoURL, err := sp.BuildAuthURL("")
 			if err != nil {
 				return cty.StringVal(""), err
 			}
 
-			return cty.StringVal(samlSsoUrl), nil
+			return cty.StringVal(samlSsoURL), nil
 		},
 	})
 }
 
 func getNameIDFormat(supportedNameIDFormats []types.NameIDFormat) string {
 	nameIDFormat := ""
-	if isSupportedNameIDFormat(supportedNameIDFormats, NameIdFormatUnspecified) {
-		nameIDFormat = NameIdFormatUnspecified
+	if isSupportedNameIDFormat(supportedNameIDFormats, NameIDFormatUnspecified) {
+		nameIDFormat = NameIDFormatUnspecified
 	} else if len(supportedNameIDFormats) > 0 {
 		nameIDFormat = supportedNameIDFormats[0].Value
 	}

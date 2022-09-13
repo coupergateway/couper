@@ -125,7 +125,7 @@ func (h *helper) resolveBackendDeps() (uniqueItems []string, err error) {
 	var defs sequence.List
 	for parent, ref := range refs {
 		for _, r := range ref {
-			p, _ := refPtr[parent]
+			p := refPtr[parent]
 			if be, exist := refPtr[r]; exist {
 				p.Add(be)
 			} else {
@@ -203,7 +203,6 @@ func (h *helper) collectFromBlocks(authorizerBlocks hcl.Blocks, name string, ref
 				switch subBlock.Type {
 				case oauth2, tokenRequest:
 					h.collectBackendDeps(refs)
-					break
 				}
 			}
 		}

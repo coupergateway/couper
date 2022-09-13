@@ -174,7 +174,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 			// ignore health-check startup errors
 			if req, ok := entry.Data["request"]; ok {
 				if reqFields, ok := req.(logging.Fields); ok {
-					n, _ := reqFields["name"]
+					n := reqFields["name"]
 					if hc, ok := n.(string); ok && hc == "health-check" {
 						continue
 					}
@@ -1956,7 +1956,7 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 		Headers  test.Header `json:"headers"`
 		Method   string      `json:"method"`
 		Query    url.Values  `json:"query"`
-		Url      string      `json:"url"`
+		URL      string      `json:"url"`
 	}
 
 	var jsonResult Expectation
@@ -1979,7 +1979,7 @@ func TestHTTPServer_Endpoint_Response_FormQuery_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "http://example.com:8080/req?foo=bar",
+		URL: "http://example.com:8080/req?foo=bar",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -2013,7 +2013,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 		Headers  test.Header            `json:"headers"`
 		Method   string                 `json:"method"`
 		Query    url.Values             `json:"query"`
-		Url      string                 `json:"url"`
+		URL      string                 `json:"url"`
 	}
 
 	var jsonResult Expectation
@@ -2036,7 +2036,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "http://example.com:8080/req?foo=bar",
+		URL: "http://example.com:8080/req?foo=bar",
 	}
 	if !reflect.DeepEqual(jsonResult, exp) {
 		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
@@ -2072,7 +2072,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 		Headers  test.Header `json:"headers"`
 		Method   string      `json:"method"`
 		Query    url.Values  `json:"query"`
-		Url      string      `json:"url"`
+		URL      string      `json:"url"`
 	}
 
 	var jsonResult Expectation
@@ -2099,7 +2099,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 		Query: map[string][]string{
 			"foo": {"bar"},
 		},
-		Url: "http://example.com:8080/req?foo=bar",
+		URL: "http://example.com:8080/req?foo=bar",
 	}
 
 	if fmt.Sprint(jsonResult) != fmt.Sprint(exp) {
@@ -2107,7 +2107,7 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Array_Evaluation(t *testing.T) {
 	}
 }
 
-func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
+func TestHTTPServer_AcceptingForwardedURL(t *testing.T) {
 	client := newClient()
 
 	confPath := path.Join("testdata/settings/05_couper.hcl")
@@ -2119,14 +2119,14 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 		Host     string `json:"host"`
 		Port     int    `json:"port"`
 		Origin   string `json:"origin"`
-		Url      string `json:"url"`
+		URL      string `json:"url"`
 	}
 
 	type testCase struct {
 		name             string
 		header           http.Header
 		exp              expectation
-		wantAccessLogUrl string
+		wantAccessLogURL string
 	}
 
 	for _, tc := range []testCase{
@@ -2138,7 +2138,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     8080,
 				Origin:   "http://localhost:8080",
-				Url:      "http://localhost:8080/path",
+				URL:      "http://localhost:8080/path",
 			},
 			"http://localhost:8080/path",
 		},
@@ -2152,7 +2152,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     8081,
 				Origin:   "http://localhost:8081",
-				Url:      "http://localhost:8081/path",
+				URL:      "http://localhost:8081/path",
 			},
 			"http://localhost:8081/path",
 		},
@@ -2166,7 +2166,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     443,
 				Origin:   "https://localhost",
-				Url:      "https://localhost/path",
+				URL:      "https://localhost/path",
 			},
 			"https://localhost/path",
 		},
@@ -2181,7 +2181,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     443,
 				Origin:   "https://www.example.com",
-				Url:      "https://www.example.com/path",
+				URL:      "https://www.example.com/path",
 			},
 			"https://www.example.com/path",
 		},
@@ -2196,7 +2196,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8443,
 				Origin:   "https://www.example.com:8443",
-				Url:      "https://www.example.com:8443/path",
+				URL:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com:8443/path",
 		},
@@ -2211,7 +2211,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     8443,
 				Origin:   "https://localhost:8443",
-				Url:      "https://localhost:8443/path",
+				URL:      "https://localhost:8443/path",
 			},
 			"https://localhost:8443/path",
 		},
@@ -2226,7 +2226,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8081,
 				Origin:   "http://www.example.com:8081",
-				Url:      "http://www.example.com:8081/path",
+				URL:      "http://www.example.com:8081/path",
 			},
 			"http://www.example.com:8081/path",
 		},
@@ -2241,7 +2241,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8081,
 				Origin:   "http://www.example.com:8081",
-				Url:      "http://www.example.com:8081/path",
+				URL:      "http://www.example.com:8081/path",
 			},
 			"http://www.example.com:8081/path",
 		},
@@ -2256,7 +2256,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8082,
 				Origin:   "http://www.example.com:8082",
-				Url:      "http://www.example.com:8082/path",
+				URL:      "http://www.example.com:8082/path",
 			},
 			"http://www.example.com:8082/path",
 		},
@@ -2270,7 +2270,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8080,
 				Origin:   "http://www.example.com:8080",
-				Url:      "http://www.example.com:8080/path",
+				URL:      "http://www.example.com:8080/path",
 			},
 			"http://www.example.com:8080/path",
 		},
@@ -2284,7 +2284,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8081,
 				Origin:   "http://www.example.com:8081",
-				Url:      "http://www.example.com:8081/path",
+				URL:      "http://www.example.com:8081/path",
 			},
 			"http://www.example.com:8081/path",
 		},
@@ -2300,7 +2300,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8443,
 				Origin:   "https://www.example.com:8443",
-				Url:      "https://www.example.com:8443/path",
+				URL:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com:8443/path",
 		},
@@ -2316,7 +2316,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8443,
 				Origin:   "https://www.example.com:8443",
-				Url:      "https://www.example.com:8443/path",
+				URL:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com:8443/path",
 		},
@@ -2332,7 +2332,7 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     9443,
 				Origin:   "https://www.example.com:9443",
-				Url:      "https://www.example.com:9443/path",
+				URL:      "https://www.example.com:9443/path",
 			},
 			"https://www.example.com:9443/path",
 		},
@@ -2364,15 +2364,15 @@ func TestHTTPServer_AcceptingForwardedUrl(t *testing.T) {
 				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			logUrl := getAccessLogUrl(hook)
-			if logUrl != tc.wantAccessLogUrl {
-				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
+			logURL := getAccessLogURL(hook)
+			if logURL != tc.wantAccessLogURL {
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogURL, logURL)
 			}
 		})
 	}
 }
 
-func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
+func TestHTTPServer_XFH_AcceptingForwardedURL(t *testing.T) {
 	client := newClient()
 
 	confPath := path.Join("testdata/settings/06_couper.hcl")
@@ -2384,14 +2384,14 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 		Host     string `json:"host"`
 		Port     int    `json:"port"`
 		Origin   string `json:"origin"`
-		Url      string `json:"url"`
+		URL      string `json:"url"`
 	}
 
 	type testCase struct {
 		name             string
 		header           http.Header
 		exp              expectation
-		wantAccessLogUrl string
+		wantAccessLogURL string
 	}
 
 	for _, tc := range []testCase{
@@ -2403,7 +2403,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     8080,
 				Origin:   "http://localhost:8080",
-				Url:      "http://localhost:8080/path",
+				URL:      "http://localhost:8080/path",
 			},
 			"http://localhost:8080/path",
 		},
@@ -2417,7 +2417,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     8081,
 				Origin:   "http://localhost:8081",
-				Url:      "http://localhost:8081/path",
+				URL:      "http://localhost:8081/path",
 			},
 			"http://localhost:8081/path",
 		},
@@ -2431,7 +2431,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     443,
 				Origin:   "https://localhost",
-				Url:      "https://localhost/path",
+				URL:      "https://localhost/path",
 			},
 			"https://localhost/path",
 		},
@@ -2446,7 +2446,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     443,
 				Origin:   "https://www.example.com",
-				Url:      "https://www.example.com/path",
+				URL:      "https://www.example.com/path",
 			},
 			"https://www.example.com/path",
 		},
@@ -2461,7 +2461,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     443,
 				Origin:   "https://www.example.com",
-				Url:      "https://www.example.com/path",
+				URL:      "https://www.example.com/path",
 			},
 			"https://www.example.com/path",
 		},
@@ -2476,7 +2476,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "localhost",
 				Port:     8443,
 				Origin:   "https://localhost:8443",
-				Url:      "https://localhost:8443/path",
+				URL:      "https://localhost:8443/path",
 			},
 			"https://localhost:8443/path",
 		},
@@ -2491,7 +2491,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8081,
 				Origin:   "http://www.example.com:8081",
-				Url:      "http://www.example.com:8081/path",
+				URL:      "http://www.example.com:8081/path",
 			},
 			"http://www.example.com:8081/path",
 		},
@@ -2506,7 +2506,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8081,
 				Origin:   "http://www.example.com:8081",
-				Url:      "http://www.example.com:8081/path",
+				URL:      "http://www.example.com:8081/path",
 			},
 			"http://www.example.com:8081/path",
 		},
@@ -2521,7 +2521,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8082,
 				Origin:   "http://www.example.com:8082",
-				Url:      "http://www.example.com:8082/path",
+				URL:      "http://www.example.com:8082/path",
 			},
 			"http://www.example.com:8082/path",
 		},
@@ -2535,7 +2535,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8080,
 				Origin:   "http://www.example.com:8080",
-				Url:      "http://www.example.com:8080/path",
+				URL:      "http://www.example.com:8080/path",
 			},
 			"http://www.example.com:8080/path",
 		},
@@ -2549,7 +2549,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8080,
 				Origin:   "http://www.example.com:8080",
-				Url:      "http://www.example.com:8080/path",
+				URL:      "http://www.example.com:8080/path",
 			},
 			"http://www.example.com:8080/path",
 		},
@@ -2565,7 +2565,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8443,
 				Origin:   "https://www.example.com:8443",
-				Url:      "https://www.example.com:8443/path",
+				URL:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com:8443/path",
 		},
@@ -2581,7 +2581,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     8443,
 				Origin:   "https://www.example.com:8443",
-				Url:      "https://www.example.com:8443/path",
+				URL:      "https://www.example.com:8443/path",
 			},
 			"https://www.example.com:8443/path",
 		},
@@ -2597,7 +2597,7 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				Host:     "www.example.com",
 				Port:     9443,
 				Origin:   "https://www.example.com:9443",
-				Url:      "https://www.example.com:9443/path",
+				URL:      "https://www.example.com:9443/path",
 			},
 			"https://www.example.com:9443/path",
 		},
@@ -2629,9 +2629,9 @@ func TestHTTPServer_XFH_AcceptingForwardedUrl(t *testing.T) {
 				subT.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", tc.exp, jsonResult, string(resBytes))
 			}
 
-			logUrl := getAccessLogUrl(hook)
-			if logUrl != tc.wantAccessLogUrl {
-				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogUrl, logUrl)
+			logURL := getAccessLogURL(hook)
+			if logURL != tc.wantAccessLogURL {
+				subT.Errorf("Expected URL: %q, actual: %q", tc.wantAccessLogURL, logURL)
 			}
 		})
 	}
@@ -2781,15 +2781,15 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 		Path     string                 `json:"path"`
 		Query    map[string][]string    `json:"query"`
 		Origin   string                 `json:"origin"`
-		Url      string                 `json:"url"`
+		URL      string                 `json:"url"`
 		Body     string                 `json:"body"`
-		JsonBody map[string]interface{} `json:"json_body"`
+		JSONBody map[string]interface{} `json:"json_body"`
 		FormBody map[string][]string    `json:"form_body"`
 	}
 
 	type testCase struct {
 		name   string
-		relUrl string
+		relURL string
 		header http.Header
 		body   io.Reader
 		exp    expectation
@@ -2815,9 +2815,9 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Path:     "/resource",
 				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   ResourceOrigin.URL,
-				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				URL:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     "abcd1234",
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2834,9 +2834,9 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Path:     "/resource",
 				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   ResourceOrigin.URL,
-				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				URL:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     `{"s":"abcd1234"}`,
-				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				JSONBody: map[string]interface{}{"s": "abcd1234"},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2853,9 +2853,9 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 				Path:     "/resource",
 				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   ResourceOrigin.URL,
-				Url:      ResourceOrigin.URL + "/resource?foo=bar",
+				URL:      ResourceOrigin.URL + "/resource?foo=bar",
 				Body:     `s=abcd1234`,
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{"s": {"abcd1234"}},
 			},
 		},
@@ -2864,7 +2864,7 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 			h := test.New(subT)
 			hook.Reset()
 
-			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
+			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relURL, tc.body)
 			h.Must(err)
 
 			for k, v := range tc.header {
@@ -2906,15 +2906,15 @@ func TestHTTPServer_request_variables(t *testing.T) {
 		Path     string                 `json:"path"`
 		Query    map[string][]string    `json:"query"`
 		Origin   string                 `json:"origin"`
-		Url      string                 `json:"url"`
+		URL      string                 `json:"url"`
 		Body     string                 `json:"body"`
-		JsonBody map[string]interface{} `json:"json_body"`
+		JSONBody map[string]interface{} `json:"json_body"`
 		FormBody map[string][]string    `json:"form_body"`
 	}
 
 	type testCase struct {
 		name   string
-		relUrl string
+		relURL string
 		header http.Header
 		body   io.Reader
 		exp    expectation
@@ -2934,9 +2934,9 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Path:     "/body",
 				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   "http://localhost:8080",
-				Url:      "http://localhost:8080/body?foo=bar",
+				URL:      "http://localhost:8080/body?foo=bar",
 				Body:     "abcd1234",
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2953,9 +2953,9 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Path:     "/json_body",
 				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   "http://localhost:8080",
-				Url:      "http://localhost:8080/json_body?foo=bar",
+				URL:      "http://localhost:8080/json_body?foo=bar",
 				Body:     `{"s":"abcd1234"}`,
-				JsonBody: map[string]interface{}{"s": "abcd1234"},
+				JSONBody: map[string]interface{}{"s": "abcd1234"},
 				FormBody: map[string][]string{},
 			},
 		},
@@ -2972,9 +2972,9 @@ func TestHTTPServer_request_variables(t *testing.T) {
 				Path:     "/form_body",
 				Query:    map[string][]string{"foo": {"bar"}},
 				Origin:   "http://localhost:8080",
-				Url:      "http://localhost:8080/form_body?foo=bar",
+				URL:      "http://localhost:8080/form_body?foo=bar",
 				Body:     `s=abcd1234`,
-				JsonBody: map[string]interface{}{},
+				JSONBody: map[string]interface{}{},
 				FormBody: map[string][]string{"s": {"abcd1234"}},
 			},
 		},
@@ -2983,7 +2983,7 @@ func TestHTTPServer_request_variables(t *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
-			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relUrl, tc.body)
+			req, err := http.NewRequest(http.MethodPost, "http://localhost:8080"+tc.relURL, tc.body)
 			helper.Must(err)
 
 			for k, v := range tc.header {
@@ -3785,7 +3785,7 @@ func Test_Permissions(t *testing.T) {
 	}
 }
 
-func getAccessLogUrl(hook *logrustest.Hook) string {
+func getAccessLogURL(hook *logrustest.Hook) string {
 	for _, entry := range hook.AllEntries() {
 		if entry.Data["type"] == "couper_access" && entry.Data["url"] != "" {
 			if u, ok := entry.Data["url"].(string); ok {

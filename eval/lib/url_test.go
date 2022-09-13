@@ -12,7 +12,7 @@ import (
 	"github.com/avenga/couper/internal/test"
 )
 
-func TestUrlEncode(t *testing.T) {
+func TestURLEncode(t *testing.T) {
 	helper := test.New(t)
 
 	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
@@ -35,14 +35,14 @@ func TestUrlEncode(t *testing.T) {
 	}
 }
 
-func TestRelativeUrl(t *testing.T) {
+func TestRelativeURL(t *testing.T) {
 	helper := test.New(t)
 
 	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
 	helper.Must(err)
 
 	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
-	relativeUrlFunc := hclContext.Functions["relative_url"]
+	relativeURLFunc := hclContext.Functions["relative_url"]
 
 	type testCase struct {
 		url    string
@@ -86,7 +86,7 @@ func TestRelativeUrl(t *testing.T) {
 		{"//abc.def:8443/path?q#f", "/path?q#f", ``},
 	} {
 		t.Run(tc.url, func(subT *testing.T) {
-			got, err := relativeUrlFunc.Call([]cty.Value{cty.StringVal(tc.url)})
+			got, err := relativeURLFunc.Call([]cty.Value{cty.StringVal(tc.url)})
 
 			if tc.expURL != "" && got.AsString() != tc.expURL {
 				t.Errorf("'%#v': expected %q, got %q", tc.url, tc.expURL, got.AsString())

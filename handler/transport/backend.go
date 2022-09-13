@@ -339,16 +339,9 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 		return nil, nil
 	}
 
-	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
-	if trValue != "" { // prevent loop
-		// TODO this prevents an oauth2 to send token request to (oauth2 or beta_token_request) authorized backend
-		// return nil, nil
-	}
-
-	ctx := context.WithValue(req.Context(), request.BackendTokenRequest, "tr")
 	// Reset for upstream transport; prevent mixing values.
 	// requestAuthorizer will have their own backend configuration.
-	ctx = context.WithValue(ctx, request.BackendParams, nil)
+	ctx := context.WithValue(req.Context(), request.BackendParams, nil)
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
@@ -384,12 +377,6 @@ func (b *Backend) withTokenRequest(req *http.Request) (*http.Request, error) {
 func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (bool, error) {
 	if len(b.requestAuthorizer) == 0 {
 		return false, nil
-	}
-
-	trValue, _ := req.Context().Value(request.BackendTokenRequest).(string)
-	if trValue != "" { // prevent loop
-		// TODO this prevents an oauth2 to send token request to (oauth2 or beta_token_request) authorized backend
-		// return false, nil
 	}
 
 	var retry bool

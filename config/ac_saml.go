@@ -16,8 +16,8 @@ type SAML struct {
 	IdpMetadataFile string   `hcl:"idp_metadata_file" docs:"File reference to the Identity Provider metadata XML file."`
 	Name            string   `hcl:"name,label"`
 	Remain          hcl.Body `hcl:",remain"`
-	SpAcsUrl        string   `hcl:"sp_acs_url" docs:"The URL of the Service Provider's ACS endpoint. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}([settings](settings)) attribute if Couper is running behind a proxy."`
-	SpEntityId      string   `hcl:"sp_entity_id" docs:"The Service Provider's entity ID."`
+	SpAcsURL        string   `hcl:"sp_acs_url" docs:"The URL of the Service Provider's ACS endpoint. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}([settings](settings)) attribute if Couper is running behind a proxy."`
+	SpEntityID      string   `hcl:"sp_entity_id" docs:"The Service Provider's entity ID."`
 
 	// internally used
 	MetadataBytes []byte

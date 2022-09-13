@@ -66,7 +66,6 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	result := make(chan *Result, l)
 
 	var lastResult *Result
-	var lastBeresps []*http.Response
 	var moreEntries bool
 	for _, seq := range s {
 		outCtx := ctx
@@ -91,8 +90,6 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 			results <- lastResult
 			return
 		}
-
-		lastBeresps = append(lastBeresps, lastResult.Beresp)
 	}
 
 	if lastResult == nil {

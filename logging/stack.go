@@ -24,7 +24,9 @@ type Stack struct {
 	mu      sync.Mutex
 }
 
-const logStack = "logStack"
+type ctxKey uint8
+
+const logStack ctxKey = iota
 
 func NewStack(ctx context.Context) (context.Context, *Stack) {
 	s := &Stack{}

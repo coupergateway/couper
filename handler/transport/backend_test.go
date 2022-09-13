@@ -295,8 +295,7 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 
 			_, err = backend.RoundTrip(req)
 			if err != nil && tt.expectedErr == "" {
-				subT.Error(err)
-				return
+				subT.Fatal(err)
 			}
 
 			if tt.expectedErr != "" && (err == nil || err.Error() != tt.expectedErr) {
@@ -307,20 +306,25 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			entry := hook.LastEntry()
 			if tt.expectedLogMessage != "" {
 				if data, ok := entry.Data["validation"]; ok {
+					var found bool
+
 					for _, errStr := range data.([]string) {
 						if errStr != tt.expectedLogMessage {
-							subT.Errorf("\nwant:\t%s\ngot:\t%v", tt.expectedLogMessage, errStr)
-							return
+							subT.Fatalf("\nwant:\t%s\ngot:\t%v", tt.expectedLogMessage, errStr)
+						} else {
+							found = true
+							break
 						}
-						return
 					}
-					for _, errStr := range data.([]string) {
-						subT.Log(errStr)
+
+					if !found {
+						for _, errStr := range data.([]string) {
+							subT.Log(errStr)
+						}
+						subT.Errorf("expected matching validation error logs:\n\t%s\n\tgot: nothing", tt.expectedLogMessage)
 					}
 				}
-				subT.Errorf("expected matching validation error logs:\n\t%s\n\tgot: nothing", tt.expectedLogMessage)
 			}
-
 		})
 	}
 }

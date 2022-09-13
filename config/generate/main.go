@@ -26,7 +26,7 @@ type entry struct {
 	ID          string `json:"objectID"`
 	Name        string `json:"name"`
 	Type        string `json:"type"`
-	Url         string `json:"url"`
+	URL         string `json:"url"`
 }
 
 type attr struct {
@@ -98,10 +98,10 @@ func main() {
 		fileName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
 		result := entry{
 			Name: name,
-			Url:  strings.ToLower(basePath + fileName),
+			URL:  strings.ToLower(basePath + fileName),
 			Type: "block",
 		}
-		result.ID = result.Url
+		result.ID = result.URL
 
 		var fields []reflect.StructField
 		for i := 0; i < t.NumField(); i++ {
@@ -265,7 +265,7 @@ values: %s
 				ID:          urlPath,
 				Name:        string(bytes.ToLower(matches[1])),
 				Type:        "block",
-				Url:         urlPath,
+				URL:         urlPath,
 			}
 
 			_, err = index.SaveObjects(result)
