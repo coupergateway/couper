@@ -1,35 +1,24 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.9.2...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.10.0...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
 ## [1.10.0](https://github.com/avenga/couper/releases/tag/v1.10.0)
 
-Couper 1.10 is a feature release comprising new features for a more flexible and
-cleaner configuration. It also comes with some bug fixes and some smaller improvements.
-See below for a complete list of changes.
+Couper 1.10 is a feature release comprising new features for a more flexible and cleaner configuration. It also comes with some bug fixes and some smaller improvements. See below for a complete list of changes.
 
-The new [`environment` block](https://docs.couper.io/configuration/block/environment)
-along with its corresponding [setting](https://docs.couper.io/configuration/block/settings)
-and the [`-e` command line option](https://docs.couper.io/configuration/command-line#global-options)
-allows for a cleaner and safer configuration if Couper
-is to be deployed in different environments. Read more about that feature in our
-[example](https://github.com/avenga/couper-examples/tree/master/environment).
+The new [`environment` block](https://docs.couper.io/configuration/block/environment) along with its corresponding [setting](https://docs.couper.io/configuration/block/settings) and the [`-e` command line option](https://docs.couper.io/configuration/command-line#global-options) allows for a cleaner and safer configuration if Couper is to be deployed in different environments. Read more about that feature in our [example](https://github.com/avenga/couper-examples/tree/master/environment).
 
-Labeled, reusable [`proxy` blocks](https://docs.couper.io/configuration/block/proxy)
-provide means for a leaner and less repetitive configuration.
+Labeled, reusable [`proxy` blocks](https://docs.couper.io/configuration/block/proxy) provide means for a leaner and less repetitive configuration.
 
-In case a backend request requires authorization,
-the new [`beta_token_request` block](https://docs.couper.io/configuration/block/token_request)
-can request the required token and make the response available via the [`beta_token_response` variable](https://docs.couper.io/configuration/variables#beta_token_response).
+In case a backend request requires authorization, the new [`beta_token_request` block](https://docs.couper.io/configuration/block/token_request) can request the required token and make the response available via the [`beta_token_response` variable](https://docs.couper.io/configuration/variables#beta_token_response).
 
-Finally, a stricter [`endpoint`](https://docs.couper.io/configuration/block/endpoint)
-path validation for a clearer and more consistent path matching is now applied.
-Some characters or character sequences like `?`, `#`, and `/../` are no longer allowed;
-empty path parameters won't match anymore.
+Finally, a stricter [`endpoint`](https://docs.couper.io/configuration/block/endpoint) path validation for a clearer and more consistent path matching is now applied. Some characters or character sequences like `?`, `#`, and `/../` are no longer allowed; empty path parameters won't match anymore.
 
 As always the [Couper VSCode extension](https://marketplace.visualstudio.com/items?itemName=AvengaGermanyGmbH.couper) has been updated to support all new features.
+
+We have launched our [documentation website](https://docs.couper.io/) to find blocks and attributes more easily.
 
 * **Added**
   * [`environment` block](https://docs.couper.io/configuration/block/environment), [setting](https://docs.couper.io/configuration/block/settings) and [`couper.environment` variable](https://docs.couper.io/configuration/variables#couper) ([#521](https://github.com/avenga/couper/pull/521), ([#534](https://github.com/avenga/couper/pull/534), [#545](https://github.com/avenga/couper/pull/545)), ([#546](https://github.com/avenga/couper/pull/546))
