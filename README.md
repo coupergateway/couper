@@ -12,7 +12,7 @@
 
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
   * or via [homebrew](https://brew.sh/): `brew tap avenga/couper && brew install couper`
-* The [documentation](https://github.com/avenga/couper/tree/master/docs) gives an introduction to Couper.
+* The [documentation](https://docs.couper.io/) gives an introduction to Couper.
 * Check out the [example repository](https://github.com/avenga/couper-examples) to learn about Couper's features in detail.
 * Dive into the [Configuration Reference](docs/REFERENCE.md)
 * Use-cases can be found on [couper.io](https://couper.io).

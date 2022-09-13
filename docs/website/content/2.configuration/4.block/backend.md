@@ -187,6 +187,14 @@ values: [
   }
 ]
 
+---
+::
+
+::duration
+---
+---
+::
+
 ## Refining a referenced backend
 
 Referenced backends may be "refined" by using a labeled `backend` block in places where an unlabeled `backend` block would also be allowed, e.g. in a `proxy` block:
@@ -218,8 +226,3 @@ If an attribute is set in both the _referenced_ and the _refining_ block, the va
 * `disable_connection_reuse`,
 * `http2` and
 * `max_connections`.
-
----
-::
-
-::duration
