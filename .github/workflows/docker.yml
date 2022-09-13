@@ -107,6 +107,7 @@ jobs:
         password: '${{ secrets.DOCKER_PASSWORD }}'
         repository: avenga/couper
   oidc:
+    name: trigger couper-oidc-gateway edge build
     needs:
       - build
     runs-on: ubuntu-latest
