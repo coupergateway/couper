@@ -59,8 +59,8 @@ server {
           x-from-requests-json-body = backend_requests.default.json_body.a
           x-from-response-header = backend_response.headers.content-type
           x-from-responses-header = backend_responses.default.headers.content-type
-          x-from-response-json-body = backend_response.json_body.Url
-          x-from-responses-json-body = backend_responses.default.json_body.Url
+          x-from-response-json-body = backend_response.json_body.URL
+          x-from-responses-json-body = backend_responses.default.json_body.URL
         }
         custom_log_fields = {
           x-from-request-header = backend_request.headers.x-foo
@@ -69,8 +69,8 @@ server {
           x-from-requests-json-body = backend_requests.default.json_body.a
           x-from-response-header = backend_response.headers.content-type
           x-from-responses-header = backend_responses.default.headers.content-type
-          x-from-response-json-body = backend_response.json_body.Url
-          x-from-responses-json-body = backend_responses.default.json_body.Url
+          x-from-response-json-body = backend_response.json_body.URL
+          x-from-responses-json-body = backend_responses.default.json_body.URL
         }
 
         oauth2 {

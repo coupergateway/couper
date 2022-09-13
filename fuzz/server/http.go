@@ -87,9 +87,10 @@ settings {
 	for _, s := range servers {
 		if err = s.Listen(); err != nil {
 			panic("init error: " + err.Error())
+		} else {
+			addr = s.Addr()
+			break // support just one server
 		}
-		addr = s.Addr()
-		break // support just one server
 	}
 
 	d := &net.Dialer{Timeout: time.Second}
@@ -111,7 +112,10 @@ func Fuzz(data []byte) int {
 	req.URL.Path += string(data)
 
 	req.Header.Set("X-Data", string(data))
-	req.URL.Query().Add("X-Data", string(data))
+
+	values := req.URL.Query()
+	values.Add("X-Data", string(data))
+	req.URL.RawQuery = values.Encode()
 
 	res, err := client.Do(req)
 	if err != nil {

@@ -39,7 +39,7 @@ func TestConfig_Synced(t *testing.T) {
 				AuthorizationEndpoint:         origin.URL + "/auth",
 				CodeChallengeMethodsSupported: []string{config.CcmS256},
 				Issuer:                        "thatsme",
-				JwksUri:                       origin.URL + "/jwks",
+				JwksURI:                       origin.URL + "/jwks",
 				TokenEndpoint:                 origin.URL + "/token",
 				UserinfoEndpoint:              origin.URL + "/userinfo",
 			}

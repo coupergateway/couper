@@ -364,8 +364,7 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 		}
 	})
 
-	var methodAllowed methodAllowedFunc
-	methodAllowed = func(method string) bool {
+	methodAllowed := func(method string) bool {
 		return method == http.MethodPost
 	}
 

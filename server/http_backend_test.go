@@ -384,6 +384,7 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 	}
 
 	b, err := io.ReadAll(res.Body)
+	helper.Must(err)
 	helper.Must(res.Body.Close())
 
 	r := &result{}

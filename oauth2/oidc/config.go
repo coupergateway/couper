@@ -22,7 +22,7 @@ type OpenidConfiguration struct {
 	AuthorizationEndpoint         string   `json:"authorization_endpoint"`
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 	Issuer                        string   `json:"issuer"`
-	JwksUri                       string   `json:"jwks_uri"`
+	JwksURI                       string   `json:"jwks_uri"`
 	TokenEndpoint                 string   `json:"token_endpoint"`
 	UserinfoEndpoint              string   `json:"userinfo_endpoint"`
 }
@@ -46,7 +46,6 @@ type Config struct {
 	jwks         *jwk.JWKS
 	jwksCheckSum [32]byte
 	jwksCancel   func()
-	cmu          sync.RWMutex // conf
 	jmu          sync.RWMutex // jkws
 }
 
@@ -187,13 +186,13 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 	}
 
 	jwksBackend := backend.NewContext(hclbody.
-		New(hclbody.NewContentWithAttrName("_backend_url", jsonData.JwksUri)),
+		New(hclbody.NewContentWithAttrName("_backend_url", jsonData.JwksURI)),
 		c.backends["jwks_uri_backend"],
 	)
 
 	ctx, cancel := context.WithCancel(c.context)
 
-	newJWKS, err := jwk.NewJWKS(ctx, jsonData.JwksUri, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
+	newJWKS, err := jwk.NewJWKS(ctx, jsonData.JwksURI, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
 	if err != nil { // do not replace possible working jwks on err
 		cancel()
 		return jsonData, err

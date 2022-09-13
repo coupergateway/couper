@@ -3,7 +3,6 @@ package assets
 import (
 	"bytes"
 	"errors"
-	"html/template"
 	"io"
 )
 
@@ -12,7 +11,6 @@ var _ io.WriterTo = &AssetFile{}
 type AssetFile struct {
 	bytes []byte
 	size  string
-	tpl   *template.Template
 }
 
 type Box struct {

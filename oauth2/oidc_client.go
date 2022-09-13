@@ -115,7 +115,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 			return err
 		}
 
-		idtc, userinfo, err := o.validateIdTokenClaims(ctx, idToken.Claims, hashedVerifierValue, verifierValue, accessToken)
+		idtc, userinfo, err := o.validateIDTokenClaims(ctx, idToken.Claims, hashedVerifierValue, verifierValue, accessToken)
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func (o *OidcClient) Keyfunc(token *jwt.Token) (interface{}, error) {
 		GetSigKeyForToken(token)
 }
 
-func (o *OidcClient) validateIdTokenClaims(ctx context.Context, claims jwt.Claims, hashedVerifierValue, verifierValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
+func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claims, hashedVerifierValue, verifierValue string, accessToken string) (map[string]interface{}, map[string]interface{}, error) {
 	var idTokenClaims jwt.MapClaims
 	if tc, ok := claims.(jwt.MapClaims); ok {
 		idTokenClaims = tc
@@ -231,6 +231,9 @@ func (o *OidcClient) getUserinfo(ctx context.Context, accessToken string) (map[s
 	}
 
 	userinfoResponse, err := o.requestUserinfo(userinfoReq)
+	if err != nil {
+		return nil, "", err
+	}
 
 	return parseUserinfoResponse(userinfoResponse)
 }

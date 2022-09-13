@@ -18,9 +18,9 @@ import (
 )
 
 var supportedGrantTypes = map[string]struct{}{
-	config.ClientCredentials: struct{}{},
-	config.JwtBearer:         struct{}{},
-	config.Password:          struct{}{},
+	config.ClientCredentials: {},
+	config.JwtBearer:         {},
+	config.Password:          {},
 }
 
 var (

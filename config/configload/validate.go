@@ -243,9 +243,9 @@ func uniqueLabelName(scopeOfUniqueness string, unique map[string]struct{}, name 
 func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
 	_, existsBody := content.Attributes["body"]
 	_, existsFormBody := content.Attributes["form_body"]
-	_, existsJsonBody := content.Attributes["json_body"]
+	_, existsJSONBody := content.Attributes["json_body"]
 
-	if existsBody && existsFormBody || existsBody && existsJsonBody || existsFormBody && existsJsonBody {
+	if existsBody && existsFormBody || existsBody && existsJSONBody || existsFormBody && existsJSONBody {
 		rangeAttr := "body"
 		if !existsBody {
 			rangeAttr = "form_body"
@@ -261,8 +261,8 @@ func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
 func verifyResponseBodyAttrs(b hcl.Body) error {
 	content, _, _ := b.PartialContent(config.ResponseInlineSchema)
 	_, existsBody := content.Attributes["body"]
-	_, existsJsonBody := content.Attributes["json_body"]
-	if existsBody && existsJsonBody {
+	_, existsJSONBody := content.Attributes["json_body"]
+	if existsBody && existsJSONBody {
 		return newDiagErr(&content.Attributes["body"].Range, "response can only have one of body or json_body attributes")
 	}
 	return nil
@@ -311,8 +311,8 @@ func invalidOriginRefinement(reference, params hcl.Body) error {
 	refAttrs, _ := reference.JustAttributes()
 	paramAttrs, _ := params.JustAttributes()
 
-	refOrigin, _ := refAttrs[origin]
-	paramOrigin, _ := paramAttrs[origin]
+	refOrigin := refAttrs[origin]
+	paramOrigin := paramAttrs[origin]
 
 	if paramOrigin != nil && refOrigin != nil {
 		if paramOrigin.Expr != refOrigin.Expr {

@@ -418,14 +418,14 @@ func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []st
 			vals = append(vals, r)
 		}
 		return vals
-	} else {
-		rolesString, ok := rolesClaimValue.(string)
-		if !ok {
-			log.Warn(fmt.Sprintf(warnInvalidValueMsg, "roles", rolesClaimValue))
-			return roleValues
-		}
-		return strings.Split(rolesString, " ")
 	}
+
+	rolesString, ok := rolesClaimValue.(string)
+	if !ok {
+		log.Warn(fmt.Sprintf(warnInvalidValueMsg, "roles", rolesClaimValue))
+		return roleValues
+	}
+	return strings.Split(rolesString, " ")
 }
 
 func (j *JWT) addPermissionsFromRoles(tokenClaims map[string]interface{}, permissions []string, log *logrus.Entry) []string {

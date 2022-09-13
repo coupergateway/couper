@@ -71,9 +71,9 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !u.config.NoProxyFromEnv {
-		proxyUrl, perr := http.ProxyFromEnvironment(req)
-		if perr == nil && proxyUrl != nil {
-			fields["proxy"] = proxyUrl.Host
+		proxyURL, perr := http.ProxyFromEnvironment(req)
+		if perr == nil && proxyURL != nil {
+			fields["proxy"] = proxyURL.Host
 		}
 	}
 
