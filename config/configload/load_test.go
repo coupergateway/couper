@@ -289,21 +289,16 @@ func TestEndpointPaths(t *testing.T) {
 		expected   string
 	}{
 		{"only /", "", "", "/", "/"},
-		{"missing /", "", "", "path", "/path"},
 		{"simple path", "", "", "/pa/th", "/pa/th"},
 		{"trailing /", "", "", "/pa/th/", "/pa/th/"},
 		{"double /", "", "", "//", "//"},
 		{"double /", "", "", "//path", "//path"},
 		{"double /", "", "", "/pa//th", "/pa//th"},
-		{"/./", "", "", "/./", "/./"},
-		{"/../", "", "", "/../", "/../"},
 
 		{"param", "", "", "/{param}", "/{param}"},
 
 		{"server base_path /", "/", "", "/", "/"},
 		{"server base_path /", "/", "", "/path", "/path"},
-		{"server base_path /", "/", "", "pa/th", "/pa/th"},
-		{"server base_path /", "/", "", "pa/th/", "/pa/th/"},
 		{"server base_path", "/server", "", "/path", "/server/path"},
 		{"server base_path with / endpoint", "/server", "", "/", "/server"},
 		{"server base_path missing /", "server", "", "/path", "/server/path"},
@@ -313,8 +308,6 @@ func TestEndpointPaths(t *testing.T) {
 
 		{"api base_path /", "", "/", "/", "/"},
 		{"api base_path /", "", "/", "/path", "/path"},
-		{"api base_path /", "", "/", "pa/th", "/pa/th"},
-		{"api base_path /", "", "/", "pa/th/", "/pa/th/"},
 		{"api base_path", "", "/api", "/path", "/api/path"},
 		{"api base_path with / endpoint", "", "/api", "/", "/api"},
 		{"api base_path missing /", "", "api", "/path", "/api/path"},

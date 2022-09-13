@@ -106,3 +106,17 @@ jobs:
         username: '${{ secrets.DOCKER_USERNAME }}'
         password: '${{ secrets.DOCKER_PASSWORD }}'
         repository: avenga/couper
+  oidc:
+    name: trigger couper-oidc-gateway edge build
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    steps:
+      - run: |
+          curl \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.GH_COUPER_API_TOKEN }}" \
+          https://api.github.com/repos/avenga/couper-oidc-gateway/dispatches \
+          -d '{"event_type": "edge-build", "client_payload": { "version": "edge" }}'
