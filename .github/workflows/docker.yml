@@ -113,8 +113,9 @@ jobs:
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     steps:
       - run: |
-          curl -H "Accept: application/vnd.github.everest-preview+json" \
-          -H "Authorization: token ${{ secrets.GH_COUPER_API_TOKEN }}" \
-          --request POST \
-          --data '{"event_type": "edge-build"}' \
-          https://api.github.com/repos/avenga/couper-oidc-gateway/dispatches
+          curl \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.GH_COUPER_API_TOKEN }}" \
+          https://api.github.com/repos/avenga/couper-oidc-gateway/dispatches \
+          -d '{"event_type": "edge-build"}'
