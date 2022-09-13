@@ -26,6 +26,7 @@ type OAuth2AC struct {
 	ClientSecret            string   `hcl:"client_secret" docs:"The client password."`
 	GrantType               string   `hcl:"grant_type" docs:"The grant type. Required, to be set to: {authorization_code}"`
 	Name                    string   `hcl:"name,label"`
+	RedirectURI             string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}([settings](settings)) attribute if Couper is running behind a proxy."`
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   *string  `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
 	TokenEndpoint           string   `hcl:"token_endpoint" docs:"The authorization server endpoint URL used for requesting the token."`
@@ -56,7 +57,6 @@ func (oa *OAuth2AC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
 		Backend       *Backend `hcl:"backend,block"`
-		RedirectURI   string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}([settings](settings)) attribute if Couper is running behind a proxy."`
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier. E.g. using cookie value created with {oauth2_verifier()} function](../functions)"`
 	}
 
@@ -94,6 +94,10 @@ func (oa *OAuth2AC) GetClientSecret() string {
 
 func (oa *OAuth2AC) GetGrantType() string {
 	return oa.GrantType
+}
+
+func (oa *OAuth2AC) GetRedirectURI() string {
+	return oa.RedirectURI
 }
 
 func (oa *OAuth2AC) GetScope() string {

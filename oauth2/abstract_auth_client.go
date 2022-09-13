@@ -28,16 +28,9 @@ func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Reques
 		return nil, errors.Oauth2.Messagef("missing code query parameter; query=%q", callbackURL.RawQuery)
 	}
 
-	ctx := eval.ContextFromRequest(req).HCLContext()
-
-	redirectURIVal, err := eval.ValueFromBodyAttribute(ctx, a.clientConfig.HCLBody(), lib.RedirectURI)
-	if err != nil {
-		return nil, errors.Oauth2.With(err)
-	}
-
-	redirectURI := seetie.ValueToString(redirectURIVal)
+	redirectURI := a.acClientConf.GetRedirectURI()
 	if redirectURI == "" {
-		return nil, errors.Oauth2.With(err).Messagef("%s is required", lib.RedirectURI)
+		return nil, errors.Oauth2.Messagef("redirect_uri is required")
 	}
 
 	absoluteURL, err := lib.AbsoluteURL(redirectURI, eval.NewRawOrigin(callbackURL))
@@ -50,6 +43,7 @@ func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Reques
 		"redirect_uri": {absoluteURL},
 	}
 
+	ctx := eval.ContextFromRequest(req).HCLContext()
 	verifierVal, err := eval.ValueFromBodyAttribute(ctx, a.clientConfig.HCLBody(), "verifier_value")
 	if err != nil {
 		return nil, errors.Oauth2.With(err)

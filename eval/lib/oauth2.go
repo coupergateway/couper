@@ -10,11 +10,9 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
-	RedirectURI                   = "redirect_uri"
 	CodeVerifier                  = "code_verifier"
 	FnOAuthAuthorizationUrl       = "oauth2_authorization_url"
 	FnOAuthVerifier               = "oauth2_verifier"
@@ -52,23 +50,9 @@ func NewOAuthAuthorizationUrlFunction(ctx *hcl.EvalContext, oauth2s map[string]c
 				return emptyStringVal, err
 			}
 
-			body := oauth2.HCLBody()
-			bodyContent, _, diags := body.PartialContent(oauth2.Schema(true))
-			if diags.HasErrors() {
-				return emptyStringVal, diags
-			}
-
-			var redirectURI string
-			if attr, ok := bodyContent.Attributes[RedirectURI]; ok {
-				val, verr := evalFn(ctx, attr.Expr)
-				if verr != nil {
-					return emptyStringVal, verr
-				}
-				redirectURI = seetie.ValueToString(val)
-			}
-
+			redirectURI := oauth2.GetRedirectURI()
 			if redirectURI == "" {
-				return emptyStringVal, fmt.Errorf("%s is required", RedirectURI)
+				return emptyStringVal, fmt.Errorf("redirect_uri is required")
 			}
 
 			absRedirectUri, err := AbsoluteURL(redirectURI, origin)
