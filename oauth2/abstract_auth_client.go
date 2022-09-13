@@ -30,7 +30,7 @@ func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Reques
 
 	redirectURI := a.acClientConf.GetRedirectURI()
 	if redirectURI == "" {
-		return nil, errors.Oauth2.Messagef("redirect_uri is required")
+		return nil, errors.Oauth2.Message("redirect_uri is required")
 	}
 
 	absoluteURL, err := lib.AbsoluteURL(redirectURI, eval.NewRawOrigin(callbackURL))
@@ -51,7 +51,7 @@ func (a AbstractAuthCodeClient) ExchangeCodeAndGetTokenResponse(req *http.Reques
 
 	verifierValue := strings.TrimSpace(seetie.ValueToString(verifierVal))
 	if verifierValue == "" {
-		return nil, errors.Oauth2.With(err).Messagef("Empty verifier_value")
+		return nil, errors.Oauth2.With(err).Message("Empty verifier_value")
 	}
 
 	verifierMethod, err := a.acClientConf.GetVerifierMethod()
