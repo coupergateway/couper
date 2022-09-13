@@ -106,3 +106,10 @@ jobs:
         username: '${{ secrets.DOCKER_USERNAME }}'
         password: '${{ secrets.DOCKER_PASSWORD }}'
         repository: avenga/couper
+  oidc:
+    needs:
+      - build
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    uses: avenga/couper-oidc-gateway/.github/workflows/release.yaml@master
+    with:
+      version: 'edge'

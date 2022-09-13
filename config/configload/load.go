@@ -173,7 +173,7 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 		Blocks: configBlocks,
 	}
 
-	if err = validateBody(configBody, true); err != nil {
+	if err = validateBody(configBody, len(parsedBodies) > 1); err != nil {
 		return nil, err
 	}
 
