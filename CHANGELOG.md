@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Fixed**
+  * Aligned the evaluation of `beta_oauth2`/`oidc` `redirect_uri` to `saml` `sp_acs_url` ([#589](https://github.com/avenga/couper/pull/589))
+
 ---
 
 ## [1.10.0](https://github.com/avenga/couper/releases/tag/v1.10.0)
