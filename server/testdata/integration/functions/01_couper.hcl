@@ -146,7 +146,7 @@ server "api" {
         headers = {
           x-join-1 = join("-",[0, 1],["a","b"],[3,"c"],[1.234],[true,false])
           x-join-2 = "|${join("-",[])}|"
-          x-join-3 = join("-", split(",", "0,1,2,3,4"))
+          x-join-3 = join("-", regexp_split("\\s*,\\s*", "0 , 1\t,\t2 \t,3,4"))
         }
       }
     }

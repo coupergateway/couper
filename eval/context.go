@@ -664,6 +664,7 @@ func newFunctionsMap() map[string]function.Function {
 		"length":           stdlib.LengthFunc,
 		"lookup":           stdlib.LookupFunc,
 		"merge":            lib.MergeFunc,
+		"regexp_split":     lib.RegexpSplitFunc,
 		"relative_url":     lib.RelativeURLFunc,
 		"set_intersection": stdlib.SetIntersectionFunc,
 		"split":            stdlib.SplitFunc,
