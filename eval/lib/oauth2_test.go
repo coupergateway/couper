@@ -53,8 +53,13 @@ definitions {
  	client_id = "test-id"
 	client_secret = "test-s3cr3t"
     configuration_url = "` + u + `"
-	redirect_uri = "${request.headers.x-want},${backend_requests.default.headers.x-want},${backend_responses.default.headers.x-want}"
+	redirect_uri = split(" ", env.REDIR_URIS)[0]
 	verifier_value = "asdf"
+  }
+}
+defaults {
+  environment_variables = {
+    REDIR_URIS = "/cb /cb2"
   }
 }
 `
@@ -76,23 +81,12 @@ definitions {
 	_, err = runtime.NewServerConfiguration(couperConf, logger, memStore)
 	helper.Must(err)
 
-	// redirect_uri = "${request.headers.x-want},${backend_requests.default.headers.x-want},${backend_responses.default.headers.x-want}"
-	want := "https://couper.io/cb,https://couper.io/cb,https://couper.io/cb"
-
 	req, rerr := http.NewRequest(http.MethodGet, "https://couper.io/", nil)
 	helper.Must(rerr)
 	req = req.Clone(context.Background())
-	req.Header.Set("x-want", "https://couper.io/cb")
-
-	res := &http.Response{
-		Header:     http.Header{"x-want": []string{"https://couper.io/cb"}},
-		Request:    req,
-		StatusCode: http.StatusNoContent,
-	}
 
 	hclCtx := couperConf.Context.(*eval.Context).
 		WithClientRequest(req).
-		WithBeresp(res, false).
 		HCLContext()
 
 	val, furr := hclCtx.Functions[lib.FnOAuthAuthorizationURL].Call([]cty.Value{cty.StringVal("auth-ref")})
@@ -102,7 +96,8 @@ definitions {
 	authURLObj, perr := url.Parse(authURL)
 	helper.Must(perr)
 
-	if value := authURLObj.Query().Get(lib.RedirectURI); value != want {
+	want := "https://couper.io/cb"
+	if value := authURLObj.Query().Get("redirect_uri"); value != want {
 		t.Errorf("Want: %v; got: %v", want, value)
 	}
 }

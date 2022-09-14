@@ -211,9 +211,6 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 	mergeBackendVariables(ctx.eval, BackendRequests, bereqs)
 	mergeBackendVariables(ctx.eval, BackendResponses, resps)
 
-	clientOrigin, _ := seetie.ValueToMap(ctx.eval.Variables[ClientRequest])[Origin].(string)
-	originURL, _ := url.Parse(clientOrigin)
-	ctx.updateRequestRelatedFunctions(originURL)
 	ctx.updateFunctions()
 
 	return ctx
