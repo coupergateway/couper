@@ -53,13 +53,13 @@ definitions {
  	client_id = "test-id"
 	client_secret = "test-s3cr3t"
     configuration_url = "` + u + `"
-	redirect_uri = env.REDIR_URI
+	redirect_uri = split(" ", env.REDIR_URIS)[0]
 	verifier_value = "asdf"
   }
 }
 defaults {
   environment_variables = {
-    REDIR_URI = "/cb"
+    REDIR_URIS = "/cb /cb2"
   }
 }
 `
