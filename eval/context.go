@@ -672,6 +672,7 @@ func newFunctionsMap() map[string]function.Function {
 		"to_lower":         stdlib.LowerFunc,
 		"to_number":        stdlib.MakeToFunc(cty.Number),
 		"to_upper":         stdlib.UpperFunc,
+		"trim_space":       stdlib.TrimSpaceFunc,
 		"unixtime":         lib.UnixtimeFunc,
 		"url_encode":       lib.URLEncodeFunc,
 	}

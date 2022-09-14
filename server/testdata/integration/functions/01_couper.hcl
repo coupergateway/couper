@@ -201,6 +201,14 @@ server "api" {
         }
       }
     }
+
+    endpoint "/trim_space" {
+      response {
+        headers = {
+          x-trim-space = trim_space(" \tfoo \tbar \t")
+        }
+      }
+    }
   }
 }
 
