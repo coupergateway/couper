@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
@@ -28,7 +30,7 @@ type OAuth2AC struct {
 	Name                    string   `hcl:"name,label"`
 	RedirectURI             string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}([settings](settings)) attribute if Couper is running behind a proxy."`
 	Remain                  hcl.Body `hcl:",remain"`
-	Scope                   *string  `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
+	Scope                   string   `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
 	TokenEndpoint           string   `hcl:"token_endpoint" docs:"The authorization server endpoint URL used for requesting the token."`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional" default:"client_secret_basic" docs:"Defines the method to authenticate the client at the token endpoint. If set to {client_secret_post}, the client credentials are transported in the request body. If set to {client_secret_basic}, the client credentials are transported via Basic Authentication."`
 	VerifierMethod          string   `hcl:"verifier_method" docs:"The method to verify the integrity of the authorization code flow. Available values: {ccm_s256} ({code_challenge} parameter with {code_challenge_method} {S256}), {state} ({state} parameter)"`
@@ -101,10 +103,7 @@ func (oa *OAuth2AC) GetRedirectURI() string {
 }
 
 func (oa *OAuth2AC) GetScope() string {
-	if oa.Scope == nil {
-		return ""
-	}
-	return *oa.Scope
+	return strings.TrimSpace(oa.Scope)
 }
 
 func (oa *OAuth2AC) GetAuthorizationEndpoint() (string, error) {
