@@ -10,7 +10,7 @@ import (
 var RegexpSplitFunc = function.New(&function.Spec{
 	Params: []function.Parameter{
 		{
-			Name: "pattern",
+			Name: "expr",
 			Type: cty.String,
 		},
 		{
@@ -20,8 +20,8 @@ var RegexpSplitFunc = function.New(&function.Spec{
 	},
 	Type: function.StaticReturnType(cty.List(cty.String)),
 	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-		pattern := args[0].AsString()
-		re, err := regexp.Compile(pattern)
+		expr := args[0].AsString()
+		re, err := regexp.Compile(expr)
 		if err != nil {
 			return cty.UnknownVal(retType), err
 		}
