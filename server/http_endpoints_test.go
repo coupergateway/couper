@@ -760,8 +760,8 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 		helper.Must(err)
 	}
 
-	if res.StatusCode != http.StatusGatewayTimeout {
-		t.Fatalf("Expected status 504, got: %d", res.StatusCode)
+	if res.StatusCode != http.StatusBadGateway {
+		t.Fatalf("Expected status 502, got: %d", res.StatusCode)
 	}
 
 	time.Sleep(time.Second / 4)
