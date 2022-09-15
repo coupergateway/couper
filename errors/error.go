@@ -66,15 +66,13 @@ func (e *Error) Kind(name string) *Error {
 // most specific one gets evaluated first.
 func (e *Error) Kinds() []string {
 	var reversed []string
-	for i := len(e.kinds); i > 0; i-- {
-		reversed = append(reversed, e.kinds[i-1])
-	}
-
 	if eer, ok := e.inner.(*Error); ok {
 		k := eer.Kinds()
-		if len(k) > 0 {
-			reversed = append(reversed, k[0])
-		}
+		reversed = append(reversed, k...)
+	}
+
+	for i := len(e.kinds); i > 0; i-- {
+		reversed = append(reversed, e.kinds[i-1])
 	}
 
 	return reversed
