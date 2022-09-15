@@ -21,8 +21,12 @@ var RegexpSplitFunc = function.New(&function.Spec{
 	Type: function.StaticReturnType(cty.List(cty.String)),
 	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 		pattern := args[0].AsString()
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return cty.UnknownVal(retType), err
+		}
 		str := args[1].AsString()
-		elems := regexp.MustCompile(pattern).Split(str, -1)
+		elems := re.Split(str, -1)
 		elemVals := make([]cty.Value, len(elems))
 		for i, s := range elems {
 			elemVals[i] = cty.StringVal(s)
