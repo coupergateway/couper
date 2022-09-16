@@ -28,7 +28,10 @@ type Client struct {
 
 func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
 	if teAuthMethod := clientConfig.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
-		if *teAuthMethod != clientSecretBasic && *teAuthMethod != clientSecretPost {
+		switch *teAuthMethod {
+		case clientSecretBasic, clientSecretPost:
+			// supported
+		default:
 			return nil, fmt.Errorf("token_endpoint_auth_method %q not supported", *teAuthMethod)
 		}
 	}
