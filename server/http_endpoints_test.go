@@ -849,6 +849,24 @@ func TestEndpointErrorHandler(t *testing.T) {
 		{"error_handler triggered with beresp body", "/not-ok", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot, "unexpected_status"},
 		{"error_handler triggered with beresp body handled by endpoint", "/not-ok-endpoint", test.Header{"x": "200", "y": "item1"}, http.StatusTeapot, "unexpected_status"},
 		{"error_handler triggered with beresp body - sequence", "/not-ok-sequence", test.Header{"x": "application/json"}, http.StatusTeapot, "unexpected_status"},
+
+		{"unexpected status; handlers for unexpected_status, sequence, endpoint", "/1.1", test.Header{"handled-by": "unexpected_status"}, http.StatusOK, "unexpected_status"},
+		{"unexpected status; handlers for sequence, endpoint", "/1.2", test.Header{"handled-by": "endpoint"}, http.StatusOK, "unexpected_status"},
+		{"unexpected status; handler for sequence", "/1.3", test.Header{"handled-by": "sequence"}, http.StatusOK, "unexpected_status"},
+		{"unexpected status; handler for endpoint", "/1.4", test.Header{"handled-by": "endpoint"}, http.StatusOK, "unexpected_status"},
+		{"unexpected status; no handlers", "/1.5", test.Header{"couper-error": "endpoint error"}, http.StatusBadGateway, "unexpected_status"},
+
+		{"backend timeout; handlers for backend_timeout, backend, sequence, endpoint", "/2.1", test.Header{"handled-by": "backend_timeout"}, http.StatusOK, "backend_timeout"},
+		{"backend timeout; handlers for backend, sequence, endpoint", "/2.2", test.Header{"handled-by": "backend"}, http.StatusOK, "backend_timeout"},
+		{"backend timeout; handlers for sequence, endpoint", "/2.3", test.Header{"handled-by": "sequence"}, http.StatusOK, "backend_timeout"},
+		{"backend timeout; handler for endpoint", "/2.4", test.Header{"handled-by": "endpoint"}, http.StatusOK, "backend_timeout"},
+		{"backend timeout; no handler", "/2.5", test.Header{"couper-error": "endpoint error"}, http.StatusBadGateway, "backend_timeout"},
+
+		{"backend openapi validation; handlers for backend_openapi_validation, backend, sequence, endpoint", "/3.1", test.Header{"handled-by": "backend_openapi_validation"}, http.StatusOK, "backend_openapi_validation"},
+		{"backend openapi validation; handlers for backend, sequence, endpoint", "/3.2", test.Header{"handled-by": "backend"}, http.StatusOK, "backend_openapi_validation"},
+		{"backend openapi validation; handlers for sequence, endpoint", "/3.3", test.Header{"handled-by": "sequence"}, http.StatusOK, "backend_openapi_validation"},
+		{"backend openapi validation; handler for endpoint", "/3.4", test.Header{"handled-by": "endpoint"}, http.StatusOK, "backend_openapi_validation"},
+		{"backend openapi validation; no handler", "/3.5", test.Header{"couper-error": "endpoint error"}, http.StatusBadGateway, "backend_openapi_validation"},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()
