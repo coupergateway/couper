@@ -24,16 +24,22 @@ type Client struct {
 	asConfig     config.OAuth2AS
 	clientConfig config.OAuth2Client
 	grantType    string
+	authnMethod  string
 }
 
 func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
-	if teAuthMethod := clientConfig.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
-		switch *teAuthMethod {
-		case clientSecretBasic, clientSecretPost:
-			// supported
-		default:
-			return nil, fmt.Errorf("token_endpoint_auth_method %q not supported", *teAuthMethod)
-		}
+	var authnMethod string
+	teAuthMethod := clientConfig.GetTokenEndpointAuthMethod()
+	if teAuthMethod == nil {
+		authnMethod = clientSecretBasic
+	} else {
+		authnMethod = *teAuthMethod
+	}
+	switch authnMethod {
+	case clientSecretBasic, clientSecretPost:
+		// supported
+	default:
+		return nil, fmt.Errorf("token_endpoint_auth_method %q not supported", *teAuthMethod)
 	}
 
 	return &Client{
@@ -41,6 +47,7 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 		asConfig,
 		clientConfig,
 		grantType,
+		authnMethod,
 	}, nil
 }
 
@@ -78,7 +85,7 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 
 	formParams.Set("grant_type", c.grantType)
 
-	authenticateClient(c.clientConfig, &formParams, outreq)
+	c.authenticateClient(&formParams, outreq)
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
@@ -87,18 +94,21 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 	return outreq.WithContext(outCtx), nil
 }
 
-func authenticateClient(clientConfig config.OAuth2Client, formParams *url.Values, tokenReq *http.Request) {
-	if !clientConfig.ClientAuthenticationRequired() {
+func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Request) {
+	if !c.clientConfig.ClientAuthenticationRequired() {
 		return
 	}
 
-	clientID := clientConfig.GetClientID()
-	clientSecret := clientConfig.GetClientSecret()
-	if authMethod := clientConfig.GetTokenEndpointAuthMethod(); authMethod == nil || *authMethod == clientSecretBasic {
+	clientID := c.clientConfig.GetClientID()
+	clientSecret := c.clientConfig.GetClientSecret()
+	switch c.authnMethod {
+	case clientSecretBasic:
 		tokenReq.SetBasicAuth(url.QueryEscape(clientID), url.QueryEscape(clientSecret))
-	} else if *authMethod == clientSecretPost {
+	case clientSecretPost:
 		formParams.Set("client_id", clientID)
 		formParams.Set("client_secret", clientSecret)
+	default:
+		// already handled with error
 	}
 }
 
