@@ -13,6 +13,11 @@ import (
 	"github.com/avenga/couper/eval"
 )
 
+const (
+	clientSecretBasic = "client_secret_basic"
+	clientSecretPost  = "client_secret_post"
+)
+
 // Client represents an OAuth2 client.
 type Client struct {
 	backend      http.RoundTripper
@@ -23,7 +28,7 @@ type Client struct {
 
 func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
 	if teAuthMethod := clientConfig.GetTokenEndpointAuthMethod(); teAuthMethod != nil {
-		if *teAuthMethod != "client_secret_basic" && *teAuthMethod != "client_secret_post" {
+		if *teAuthMethod != clientSecretBasic && *teAuthMethod != clientSecretPost {
 			return nil, fmt.Errorf("token_endpoint_auth_method %q not supported", *teAuthMethod)
 		}
 	}
@@ -86,9 +91,9 @@ func authenticateClient(clientConfig config.OAuth2Client, formParams *url.Values
 
 	clientID := clientConfig.GetClientID()
 	clientSecret := clientConfig.GetClientSecret()
-	if authMethod := clientConfig.GetTokenEndpointAuthMethod(); authMethod == nil || *authMethod == "client_secret_basic" {
+	if authMethod := clientConfig.GetTokenEndpointAuthMethod(); authMethod == nil || *authMethod == clientSecretBasic {
 		tokenReq.SetBasicAuth(url.QueryEscape(clientID), url.QueryEscape(clientSecret))
-	} else if *authMethod == "client_secret_post" {
+	} else if *authMethod == clientSecretPost {
 		formParams.Set("client_id", clientID)
 		formParams.Set("client_secret", clientSecret)
 	}
