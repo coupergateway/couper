@@ -41,7 +41,7 @@ type OAuth2ReqAuth struct {
 	Retries                 *uint8         `hcl:"retries,optional" default:"1" docs:"The number of retries to get the token and resource, if the resource-request responds with {401 Unauthorized} HTTP status code."`
 	Scope                   string         `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
 	TokenEndpoint           string         `hcl:"token_endpoint,optional" docs:"URL of the token endpoint at the authorization server."`
-	TokenEndpointAuthMethod *string        `hcl:"token_endpoint_auth_method,optional" docs:"Defines the method to authenticate the client at the token endpoint. If set to {\"client_secret_post\"}, the client credentials are transported in the request body. If set to {\"client_secret_basic\"}, the client credentials are transported via Basic Authentication." default:"client_secret_basic"`
+	TokenEndpointAuthMethod *string        `hcl:"token_endpoint_auth_method,optional" docs:"Defines the method to authenticate the client at the token endpoint. If set to {\"client_secret_post\"}, the client credentials are transported in the request body. If set to {\"client_secret_basic\"}, the client credentials are transported via Basic Authentication. If set to {\"client_secret_jwt\"}, the client is authenticated via a JWT signed with the {client_secret}. If set to {\"private_key_jwt\"}, the client is authenticated via a JWT signed with its private key." default:"client_secret_basic"`
 	Username                string         `hcl:"username,optional" docs:"The (service account's) username (for password flow). Required if grant_type is {password}."`
 }
 
