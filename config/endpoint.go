@@ -19,6 +19,7 @@ type Endpoint struct {
 	ErrorFile            string    `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Pattern              string    `hcl:"pattern,label"`
 	Proxies              Proxies   `hcl:"proxy,block"`
+	Proxy                string    `hcl:"proxy,optional" docs:"{proxy} block reference."`
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional" docs:"Configures the maximum buffer size while accessing {request.form_body} or {request.json_body} content. Valid units are: {KiB}, {MiB}, {GiB}" default:"64MiB"`
 	Requests             Requests  `hcl:"request,block"`
