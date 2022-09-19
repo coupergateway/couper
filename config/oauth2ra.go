@@ -32,6 +32,11 @@ var (
 // OAuth2ReqAuth represents the oauth2 block in a backend block.
 type OAuth2ReqAuth struct {
 	AssertionExpr           hcl.Expression `hcl:"assertion,optional" docs:"The assertion (JWT for jwt-bearer flow). Required if {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}." type:"string"`
+	AuthnAudClaim           string         `hcl:"authn_aud_claim,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The {aud} claim value. Default: The value of {token_endpoint}."`
+	AuthnKey                string         `hcl:"authn_key,optional" docs:"For {token_endpoint_auth_method} value {\"private_key_jwt\"}: The private key to sign the token."`
+	AuthnKeyFile            string         `hcl:"authn_key_file,optional" docs:"For {token_endpoint_auth_method} value {\"private_key_jwt\"}: Optional file reference instead of {authn_key} usage."`
+	AuthnSignatureAlgotithm string         `hcl:"authn_signature_algorithm,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The algorithm to use for signing the token: {\"HS256\"}, {\"HS384\"} or {\"HS512\"} for {\"client_secret_jwt\"}, {\"RS256\"}, {\"RS384\"}, {\"RS512\"}, {\"ES256\"}, {\"ES384\"} or {\"ES512\"} for {\"private_key_jwt\"}."`
+	AuthnTTL                string         `hcl:"authn_ttl,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The token's time-to-live (creates the {exp} claim)." type:"duration"`
 	BackendName             string         `hcl:"backend,optional" docs:"[{backend} block](backend) reference."`
 	ClientID                string         `hcl:"client_id,optional" docs:"The client identifier. Required unless the {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}."`
 	ClientSecret            string         `hcl:"client_secret,optional" docs:"The client password. Required unless the {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}."`
@@ -41,7 +46,7 @@ type OAuth2ReqAuth struct {
 	Retries                 *uint8         `hcl:"retries,optional" default:"1" docs:"The number of retries to get the token and resource, if the resource-request responds with {401 Unauthorized} HTTP status code."`
 	Scope                   string         `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
 	TokenEndpoint           string         `hcl:"token_endpoint,optional" docs:"URL of the token endpoint at the authorization server."`
-	TokenEndpointAuthMethod *string        `hcl:"token_endpoint_auth_method,optional" docs:"Defines the method to authenticate the client at the token endpoint. If set to {\"client_secret_post\"}, the client credentials are transported in the request body. If set to {\"client_secret_basic\"}, the client credentials are transported via Basic Authentication. If set to {\"client_secret_jwt\"}, the client is authenticated via a JWT signed with the {client_secret}. If set to {\"private_key_jwt\"}, the client is authenticated via a JWT signed with its private key." default:"client_secret_basic"`
+	TokenEndpointAuthMethod *string        `hcl:"token_endpoint_auth_method,optional" docs:"Defines the method to authenticate the client at the token endpoint. If set to {\"client_secret_post\"}, the client credentials are transported in the request body. If set to {\"client_secret_basic\"}, the client credentials are transported via Basic Authentication. If set to {\"client_secret_jwt\"}, the client is authenticated via a JWT signed with the {client_secret}. If set to {\"private_key_jwt\"}, the client is authenticated via a JWT signed with its private key (see {authn_key} or {authn_key_file})." default:"client_secret_basic"`
 	Username                string         `hcl:"username,optional" docs:"The (service account's) username (for password flow). Required if grant_type is {password}."`
 }
 
