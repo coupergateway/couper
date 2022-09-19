@@ -15,7 +15,9 @@ import (
 
 const (
 	clientSecretBasic = "client_secret_basic"
+	clientSecretJwt   = "client_secret_jwt"
 	clientSecretPost  = "client_secret_post"
+	privateKeyJwt     = "private_key_jwt"
 )
 
 // Client represents an OAuth2 client.
@@ -36,7 +38,7 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 		authnMethod = *teAuthMethod
 	}
 	switch authnMethod {
-	case clientSecretBasic, clientSecretPost:
+	case clientSecretBasic, clientSecretJwt, clientSecretPost, privateKeyJwt:
 		// supported
 	default:
 		return nil, fmt.Errorf("token_endpoint_auth_method %q not supported", *teAuthMethod)
