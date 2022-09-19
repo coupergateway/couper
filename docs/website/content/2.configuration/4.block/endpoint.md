@@ -41,130 +41,130 @@ beta_required_permission = default(request.path_params.p, "not_set")
 ---
 values: [
   {
+    "default": "[]",
+    "description": "Sets predefined access control for this block context.",
     "name": "access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "Sets predefined access control for this block context."
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "key/value pairs to add form parameters to the upstream request body",
     "name": "add_form_params",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to add form parameters to the upstream request body"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "key/value pairs to add query parameters to the upstream request URL",
     "name": "add_query_params",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to add query parameters to the upstream request URL"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "key/value pairs to add as request headers in the upstream request",
     "name": "add_request_headers",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to add as request headers in the upstream request"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response",
     "name": "add_response_headers",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to add as response headers in the client response"
+    "type": "object"
   },
   {
-    "name": "allowed_methods",
-    "type": "tuple (string)",
     "default": "*",
-    "description": "Sets allowed methods overriding a default set in the containing `api` block. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status."
+    "description": "Sets allowed methods overriding a default set in the containing `api` block. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status.",
+    "name": "allowed_methods",
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`).",
     "name": "beta_required_permission",
-    "type": "string or object (string)",
-    "default": "",
-    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
+    "type": "string or object (string)"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
+    "default": "[]",
+    "description": "Disables access controls by name.",
     "name": "disable_access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "Disables access controls by name."
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "Location of the error file template.",
     "name": "error_file",
-    "type": "string",
-    "default": "",
-    "description": "Location of the error file template."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "`proxy` block reference.",
     "name": "proxy",
-    "type": "string",
-    "default": "",
-    "description": "`proxy` block reference."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "list of names to remove form parameters from the upstream request body",
     "name": "remove_form_params",
-    "type": "object",
-    "default": "",
-    "description": "list of names to remove form parameters from the upstream request body"
+    "type": "object"
   },
   {
+    "default": "[]",
+    "description": "list of names to remove query parameters from the upstream request URL",
     "name": "remove_query_params",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "list of names to remove query parameters from the upstream request URL"
+    "type": "tuple (string)"
   },
   {
+    "default": "[]",
+    "description": "list of names to remove headers from the upstream request",
     "name": "remove_request_headers",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "list of names to remove headers from the upstream request"
+    "type": "tuple (string)"
   },
   {
+    "default": "[]",
+    "description": "list of names to remove headers from the client response",
     "name": "remove_response_headers",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "list of names to remove headers from the client response"
+    "type": "tuple (string)"
   },
   {
-    "name": "request_body_limit",
-    "type": "string",
     "default": "\"64MiB\"",
-    "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`"
+    "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`",
+    "name": "request_body_limit",
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "key/value pairs to set query parameters in the upstream request URL",
     "name": "set_form_params",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to set query parameters in the upstream request URL"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "key/value pairs to set query parameters in the upstream request URL",
     "name": "set_query_params",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to set query parameters in the upstream request URL"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "key/value pairs to set as request headers in the upstream request",
     "name": "set_request_headers",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to set as request headers in the upstream request"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "key/value pairs to set as response headers in the client response",
     "name": "set_response_headers",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to set as response headers in the client response"
+    "type": "object"
   },
   {
-    "name": "set_response_status",
-    "type": "number",
     "default": "",
-    "description": "Modifies the response status code."
+    "description": "Modifies the response status code.",
+    "name": "set_response_status",
+    "type": "number"
   }
 ]
 

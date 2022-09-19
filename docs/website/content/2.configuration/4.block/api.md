@@ -35,64 +35,64 @@ beta_required_permission = default(request.path_params.p, "not_set")
 ---
 values: [
   {
+    "default": "[]",
+    "description": "Sets predefined [access control](../access-control) for this block.",
     "name": "access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "Sets predefined [access control](../access-control) for this block."
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response",
     "name": "add_response_headers",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to add as response headers in the client response"
+    "type": "object"
   },
   {
-    "name": "allowed_methods",
-    "type": "tuple (string)",
     "default": "*",
-    "description": "Sets allowed methods as _default_ for all contained endpoints. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status."
+    "description": "Sets allowed methods as _default_ for all contained endpoints. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status.",
+    "name": "allowed_methods",
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "Configures the path prefix for all requests.",
     "name": "base_path",
-    "type": "string",
-    "default": "",
-    "description": "Configures the path prefix for all requests."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`).",
     "name": "beta_required_permission",
-    "type": "string or object (string)",
-    "default": "",
-    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
+    "type": "string or object (string)"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
+    "default": "[]",
+    "description": "Disables access controls by name.",
     "name": "disable_access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "Disables access controls by name."
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "Location of the error file template.",
     "name": "error_file",
-    "type": "string",
-    "default": "",
-    "description": "Location of the error file template."
+    "type": "string"
   },
   {
-    "name": "remove_response_headers",
-    "type": "tuple (string)",
     "default": "[]",
-    "description": "list of names to remove headers from the client response"
+    "description": "list of names to remove headers from the client response",
+    "name": "remove_response_headers",
+    "type": "tuple (string)"
   },
   {
-    "name": "set_response_headers",
-    "type": "object",
     "default": "",
-    "description": "key/value pairs to set as response headers in the client response"
+    "description": "key/value pairs to set as response headers in the client response",
+    "name": "set_response_headers",
+    "type": "object"
   }
 ]
 

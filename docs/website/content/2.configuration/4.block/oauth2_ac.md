@@ -12,76 +12,76 @@ Like all [access control](../access-control) types, the `beta_oauth2` block is d
 ---
 values: [
   {
+    "default": "",
+    "description": "The authorization server endpoint URL used for authorization.",
     "name": "authorization_endpoint",
-    "type": "string",
-    "default": "",
-    "description": "The authorization server endpoint URL used for authorization."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "[`backend` block](backend) reference.",
     "name": "backend",
-    "type": "string",
-    "default": "",
-    "description": "[`backend` block](backend) reference."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The client identifier.",
     "name": "client_id",
-    "type": "string",
-    "default": "",
-    "description": "The client identifier."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The client password.",
     "name": "client_secret",
-    "type": "string",
-    "default": "",
-    "description": "The client password."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "The grant type. Required, to be set to: `authorization_code`",
     "name": "grant_type",
-    "type": "string",
-    "default": "",
-    "description": "The grant type. Required, to be set to: `authorization_code`"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`([settings](settings)) attribute if Couper is running behind a proxy.",
     "name": "redirect_uri",
-    "type": "string",
-    "default": "",
-    "description": "The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`([settings](settings)) attribute if Couper is running behind a proxy."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "A space separated list of requested scope values for the access token.",
     "name": "scope",
-    "type": "string",
-    "default": "",
-    "description": "A space separated list of requested scope values for the access token."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The authorization server endpoint URL used for requesting the token.",
     "name": "token_endpoint",
-    "type": "string",
-    "default": "",
-    "description": "The authorization server endpoint URL used for requesting the token."
+    "type": "string"
   },
   {
-    "name": "token_endpoint_auth_method",
-    "type": "string",
     "default": "\"client_secret_basic\"",
-    "description": "Defines the method to authenticate the client at the token endpoint. If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication."
+    "description": "Defines the method to authenticate the client at the token endpoint. If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.",
+    "name": "token_endpoint_auth_method",
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The method to verify the integrity of the authorization code flow. Available values: `ccm_s256` (`code_challenge` parameter with `code_challenge_method` `S256`), `state` (`state` parameter)",
     "name": "verifier_method",
-    "type": "string",
-    "default": "",
-    "description": "The method to verify the integrity of the authorization code flow. Available values: `ccm_s256` (`code_challenge` parameter with `code_challenge_method` `S256`), `state` (`state` parameter)"
+    "type": "string"
   },
   {
-    "name": "verifier_value",
-    "type": "string",
     "default": "",
-    "description": "The value of the (unhashed) verifier. E.g. using cookie value created with `oauth2_verifier()` function](../functions)"
+    "description": "The value of the (unhashed) verifier. E.g. using cookie value created with `oauth2_verifier()` function](../functions)",
+    "name": "verifier_value",
+    "type": "string"
   }
 ]
 

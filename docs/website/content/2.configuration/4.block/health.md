@@ -12,46 +12,46 @@ via `headers` attribute. An unhealthy backend will return with a [`backend_unhea
 ---
 values: [
   {
-    "name": "expected_status",
-    "type": "tuple (int)",
     "default": "[200, 204, 301]",
-    "description": "one of wanted response status code"
+    "description": "one of wanted response status code",
+    "name": "expected_status",
+    "type": "tuple (int)"
   },
   {
+    "default": "",
+    "description": "text which the response body must contain",
     "name": "expected_text",
-    "type": "string",
-    "default": "",
-    "description": "text which the response body must contain"
+    "type": "string"
   },
   {
-    "name": "failure_threshold",
-    "type": "number",
     "default": "2",
-    "description": "failed checks needed to consider backend unhealthy"
+    "description": "failed checks needed to consider backend unhealthy",
+    "name": "failure_threshold",
+    "type": "number"
   },
   {
+    "default": "",
+    "description": "request headers",
     "name": "headers",
-    "type": "object",
-    "default": "",
-    "description": "request headers"
+    "type": "object"
   },
   {
+    "default": "\"1s\"",
+    "description": "time interval for recheck",
     "name": "interval",
-    "type": "string",
-    "default": "\"1s\"",
-    "description": "time interval for recheck"
+    "type": "string"
   },
   {
-    "name": "path",
-    "type": "string",
     "default": "",
-    "description": "URL path with query on backend host"
+    "description": "URL path with query on backend host",
+    "name": "path",
+    "type": "string"
   },
   {
-    "name": "timeout",
-    "type": "string",
     "default": "\"1s\"",
-    "description": "maximum allowed time limit which is\tbounded by `interval`"
+    "description": "maximum allowed time limit which is\tbounded by `interval`",
+    "name": "timeout",
+    "type": "string"
   }
 ]
 
