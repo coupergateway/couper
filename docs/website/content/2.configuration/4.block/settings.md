@@ -85,6 +85,18 @@ values: [
     "description": "disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy)"
   },
   {
+    "name": "pprof",
+    "type": "bool",
+    "default": "false",
+    "description": "enables profiling (https://github.com/google/pprof/blob/main/doc/README.md#pprof)"
+  },
+  {
+    "name": "pprof_port",
+    "type": "number",
+    "default": "6060",
+    "description": "Port for profiling interface"
+  },
+  {
     "name": "request_id_accept_from_header",
     "type": "string",
     "default": "",

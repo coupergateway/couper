@@ -13,7 +13,7 @@ The `oauth2` block in the [Backend Block](backend) context configures an OAuth2 
 values: [
   {
     "name": "assertion",
-    "type": "object",
+    "type": "string",
     "default": "",
     "description": "The assertion (JWT for jwt-bearer flow). Required if `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer`."
   },

@@ -35,7 +35,7 @@ values: [
     "name": "configuration_backend",
     "type": "object",
     "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "description": "Optional option to configure specific behavior for a given OIDC backend."
   },
   {
     "name": "configuration_max_stale",
@@ -77,7 +77,7 @@ values: [
     "name": "jwks_uri_backend",
     "type": "object",
     "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "description": "Optional option to configure specific behavior for a given OIDC backend."
   },
   {
     "name": "redirect_uri",
@@ -95,7 +95,7 @@ values: [
     "name": "token_backend",
     "type": "object",
     "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "description": "Optional option to configure specific behavior for a given OIDC backend."
   },
   {
     "name": "token_endpoint_auth_method",
@@ -107,7 +107,7 @@ values: [
     "name": "userinfo_backend",
     "type": "object",
     "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "description": "Optional option to configure specific behavior for a given OIDC backend."
   },
   {
     "name": "verifier_method",

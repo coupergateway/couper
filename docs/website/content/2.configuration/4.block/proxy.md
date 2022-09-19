@@ -52,7 +52,7 @@ values: [
   {
     "name": "name",
     "type": "string",
-    "default": "default",
+    "default": "\"default\"",
     "description": "Defines the proxy request name. Allowed only in the [Definitions Block](definitions)."
   },
   {

@@ -60,7 +60,7 @@ values: [
   },
   {
     "name": "beta_required_permission",
-    "type": "object",
+    "type": "string or object (string)",
     "default": "",
     "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
   },

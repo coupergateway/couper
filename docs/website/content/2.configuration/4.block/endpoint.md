@@ -78,9 +78,9 @@ values: [
   },
   {
     "name": "beta_required_permission",
-    "type": "object",
+    "type": "string or object (string)",
     "default": "",
-    "description": "expression evaluating to string or object (string)"
+    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`)."
   },
   {
     "name": "custom_log_fields",
@@ -104,7 +104,7 @@ values: [
     "name": "proxy",
     "type": "string",
     "default": "",
-    "description": "proxy block reference"
+    "description": "`proxy` block reference."
   },
   {
     "name": "remove_form_params",

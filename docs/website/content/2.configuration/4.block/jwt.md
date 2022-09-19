@@ -136,7 +136,7 @@ values: [
   },
   {
     "name": "token_value",
-    "type": "object",
+    "type": "string",
     "default": "",
     "description": "Expression to obtain the token. Cannot be used together with `cookie` or `header`."
   }
