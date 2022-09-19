@@ -33,7 +33,7 @@ type OAuth2AC struct {
 	Remain                  hcl.Body `hcl:",remain"`
 	Scope                   string   `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
 	TokenEndpoint           string   `hcl:"token_endpoint" docs:"The authorization server endpoint URL used for requesting the token."`
-	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional" default:"client_secret_basic" docs:"Defines the method to authenticate the client at the token endpoint. If set to {client_secret_post}, the client credentials are transported in the request body. If set to {client_secret_basic}, the client credentials are transported via Basic Authentication."`
+	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional" docs:"Defines the method to authenticate the client at the token endpoint. If set to {\"client_secret_post\"}, the client credentials are transported in the request body. If set to {\"client_secret_basic\"}, the client credentials are transported via Basic Authentication." default:"client_secret_basic"`
 	VerifierMethod          string   `hcl:"verifier_method" docs:"The method to verify the integrity of the authorization code flow. Available values: {ccm_s256} ({code_challenge} parameter with {code_challenge_method} {S256}), {state} ({state} parameter)"`
 
 	// internally used
