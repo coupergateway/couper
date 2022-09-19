@@ -23,7 +23,7 @@ The default value `"*"` can be combined with additional methods. Methods are mat
 allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]
 ```
 
-## Attribute `beta_required_permission`
+### Attribute `beta_required_permission`
 
 Overrides `beta_required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `beta_required_permission` set or b) either `beta_required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown.
 
