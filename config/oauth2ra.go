@@ -37,6 +37,7 @@ type OAuth2ReqAuth struct {
 	AuthnKeyFile            string         `hcl:"authn_key_file,optional" docs:"For {token_endpoint_auth_method} value {\"private_key_jwt\"}: Optional file reference instead of {authn_key} usage."`
 	AuthnSignatureAlgotithm string         `hcl:"authn_signature_algorithm,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The algorithm to use for signing the token: {\"HS256\"}, {\"HS384\"} or {\"HS512\"} for {\"client_secret_jwt\"}, {\"RS256\"}, {\"RS384\"}, {\"RS512\"}, {\"ES256\"}, {\"ES384\"} or {\"ES512\"} for {\"private_key_jwt\"}."`
 	AuthnTTL                string         `hcl:"authn_ttl,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The token's time-to-live (creates the {exp} claim)." type:"duration"`
+	AuthnX5tHeader          string         `hcl:"authn_x5t_header,optional" docs:"For {token_endpoint_auth_method} values {\"private_key_jwt\"}: The {x5t} header value."`
 	BackendName             string         `hcl:"backend,optional" docs:"[{backend} block](backend) reference."`
 	ClientID                string         `hcl:"client_id,optional" docs:"The client identifier. Required unless the {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}."`
 	ClientSecret            string         `hcl:"client_secret,optional" docs:"The client password. Required unless the {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}."`
@@ -103,6 +104,10 @@ func (oa *OAuth2ReqAuth) GetAuthnSignatureAlgotithm() string {
 
 func (oa *OAuth2ReqAuth) GetAuthnTTL() string {
 	return oa.AuthnTTL
+}
+
+func (oa *OAuth2ReqAuth) GetAuthnX5tHeader() string {
+	return oa.AuthnX5tHeader
 }
 
 func (oa *OAuth2ReqAuth) GetClientID() string {

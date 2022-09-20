@@ -27,11 +27,12 @@ type OAuth2AC struct {
 	AuthnKeyFile            string `hcl:"authn_key_file,optional" docs:"For {token_endpoint_auth_method} value {\"private_key_jwt\"}: Optional file reference instead of {authn_key} usage."`
 	AuthnSignatureAlgotithm string `hcl:"authn_signature_algorithm,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The algorithm to use for signing the token: {\"HS256\"}, {\"HS384\"} or {\"HS512\"} for {\"client_secret_jwt\"}, {\"RS256\"}, {\"RS384\"}, {\"RS512\"}, {\"ES256\"}, {\"ES384\"} or {\"ES512\"} for {\"private_key_jwt\"}."`
 	AuthnTTL                string `hcl:"authn_ttl,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The token's time-to-live (creates the {exp} claim)." type:"duration"`
+	AuthnX5tHeader          string `hcl:"authn_x5t_header,optional" docs:"For {token_endpoint_auth_method} values {\"private_key_jwt\"}: The {x5t} header value."`
 	// AuthorizationEndpoint is used for lib.FnOAuthAuthorizationURL
 	AuthorizationEndpoint   string   `hcl:"authorization_endpoint" docs:"The authorization server endpoint URL used for authorization."`
 	BackendName             string   `hcl:"backend,optional" docs:"[{backend} block](backend) reference."`
 	ClientID                string   `hcl:"client_id" docs:"The client identifier."`
-	ClientSecret            string   `hcl:"client_secret" docs:"The client password."`
+	ClientSecret            string   `hcl:"client_secret,optional" docs:"The client password."`
 	GrantType               string   `hcl:"grant_type" docs:"The grant type. Required, to be set to: {authorization_code}"`
 	Name                    string   `hcl:"name,label"`
 	RedirectURI             string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [{accept_forwarded_url} attribute](settings) if Couper is running behind a proxy."`
@@ -105,6 +106,10 @@ func (oa *OAuth2AC) GetAuthnSignatureAlgotithm() string {
 
 func (oa *OAuth2AC) GetAuthnTTL() string {
 	return oa.AuthnTTL
+}
+
+func (oa *OAuth2AC) GetAuthnX5tHeader() string {
+	return oa.AuthnX5tHeader
 }
 
 func (oa *OAuth2AC) GetClientID() string {

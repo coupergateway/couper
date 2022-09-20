@@ -27,9 +27,10 @@ type OIDC struct {
 	AuthnKeyFile            string   `hcl:"authn_key_file,optional" docs:"For {token_endpoint_auth_method} value {\"private_key_jwt\"}: Optional file reference instead of {authn_key} usage."`
 	AuthnSignatureAlgotithm string   `hcl:"authn_signature_algorithm,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The algorithm to use for signing the token: {\"HS256\"}, {\"HS384\"} or {\"HS512\"} for {\"client_secret_jwt\"}, {\"RS256\"}, {\"RS384\"}, {\"RS512\"}, {\"ES256\"}, {\"ES384\"} or {\"ES512\"} for {\"private_key_jwt\"}."`
 	AuthnTTL                string   `hcl:"authn_ttl,optional" docs:"For {token_endpoint_auth_method} values {\"client_secret_jwt\"} or {\"private_key_jwt\"}: The token's time-to-live (creates the {exp} claim)." type:"duration"`
+	AuthnX5tHeader          string   `hcl:"authn_x5t_header,optional" docs:"For {token_endpoint_auth_method} values {\"private_key_jwt\"}: The {x5t} header value."`
 	BackendName             string   `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Default for OpenID configuration, JWKS, token and userinfo requests."`
 	ClientID                string   `hcl:"client_id" docs:"The client identifier."`
-	ClientSecret            string   `hcl:"client_secret" docs:"The client password."`
+	ClientSecret            string   `hcl:"client_secret,optional" docs:"The client password."`
 	ConfigurationURL        string   `hcl:"configuration_url" docs:"The OpenID configuration URL."`
 	JWKsTTL                 string   `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
 	JWKsMaxStale            string   `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
@@ -131,6 +132,10 @@ func (o *OIDC) GetAuthnSignatureAlgotithm() string {
 
 func (o *OIDC) GetAuthnTTL() string {
 	return o.AuthnTTL
+}
+
+func (o *OIDC) GetAuthnX5tHeader() string {
+	return o.AuthnX5tHeader
 }
 
 func (o *OIDC) GetClientID() string {

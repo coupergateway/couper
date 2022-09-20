@@ -17,6 +17,7 @@ type OAuth2Client interface {
 	GetAuthnKeyFile() string
 	GetAuthnSignatureAlgotithm() string
 	GetAuthnTTL() string
+	GetAuthnX5tHeader() string
 	GetClientID() string
 	GetClientSecret() string
 	GetTokenEndpointAuthMethod() *string

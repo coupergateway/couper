@@ -196,7 +196,13 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 			"exp": now + c.authnTTL,
 			"jti": identifier.String(),
 		}
-		jwt, err := lib.CreateJWT(c.clientConfig.GetAuthnSignatureAlgotithm(), c.authnKey, claims, nil)
+		var headers map[string]interface{}
+		if x5t := c.clientConfig.GetAuthnX5tHeader(); x5t != "" {
+			headers = map[string]interface{}{
+				"x5t": x5t,
+			}
+		}
+		jwt, err := lib.CreateJWT(c.clientConfig.GetAuthnSignatureAlgotithm(), c.authnKey, claims, headers)
 		if err != nil {
 			return err
 		}
