@@ -64,31 +64,51 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 			return nil, fmt.Errorf("client_id must not be empty")
 		}
 
-		switch authnMethod {
-		case clientSecretBasic, clientSecretJwt, clientSecretPost:
-			if clientConfig.GetClientSecret() == "" {
-				return nil, fmt.Errorf("client_secret must not be empty")
-			}
-		default:
-			// client_secret not needed
-		}
+		clientSecret := clientConfig.GetClientSecret()
+		keyVal := clientConfig.GetAuthnKey()
+		keyFileVal := clientConfig.GetAuthnKeyFile()
 
 		switch authnMethod {
+		case clientSecretBasic, clientSecretJwt, clientSecretPost:
+			if clientSecret == "" {
+				return nil, fmt.Errorf("client_secret must not be empty with %s", authnMethod)
+			}
+			if keyVal != "" {
+				return nil, fmt.Errorf("authn_key must not be set with %s", authnMethod)
+			}
+			if keyFileVal != "" {
+				return nil, fmt.Errorf("authn_key_file must not be set with %s", authnMethod)
+			}
+		default: // privateKeyJwt
+			if clientSecret != "" {
+				return nil, fmt.Errorf("client_secret must not be set with %s", authnMethod)
+			}
+			if keyVal == "" && keyFileVal == "" {
+				return nil, fmt.Errorf("authn_key and authn_key_file must not both be empty with %s", authnMethod)
+			}
+		}
+
+		signatureAlgorithmVal := clientConfig.GetAuthnSignatureAlgotithm()
+		ttlVal := clientConfig.GetAuthnTTL()
+		switch authnMethod {
 		case clientSecretJwt, privateKeyJwt:
-			dur, _, err := lib.CheckData(clientConfig.GetAuthnTTL(), clientConfig.GetAuthnSignatureAlgotithm())
+			dur, algo, err := lib.CheckData(ttlVal, signatureAlgorithmVal)
 			if err != nil {
 				return nil, err
+			}
+			if authnMethod == clientSecretJwt && !algo.IsHMAC() || authnMethod == privateKeyJwt && algo.IsHMAC() {
+				return nil, fmt.Errorf("inappropriate signature algorithm with %s", authnMethod)
 			}
 
 			ttl = int64(dur.Seconds())
 			var keyBytes []byte
 			if authnMethod == privateKeyJwt {
-				keyBytes, err = reader.ReadFromAttrFile("client authentication key", clientConfig.GetAuthnKey(), clientConfig.GetAuthnKeyFile())
+				keyBytes, err = reader.ReadFromAttrFile("client authentication key", keyVal, keyFileVal)
 				if err != nil {
 					return nil, err
 				}
 			} else { // clientSecretJwt
-				keyBytes = []byte(clientConfig.GetClientSecret())
+				keyBytes = []byte(clientSecret)
 			}
 
 			key, err = lib.GetKey(keyBytes, clientConfig.GetAuthnSignatureAlgotithm())
@@ -103,7 +123,12 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 				}
 			}
 		default:
-			// no key involved
+			if signatureAlgorithmVal != "" {
+				return nil, fmt.Errorf("authn_signature_algorithm must not be set with %s", authnMethod)
+			}
+			if ttlVal != "" {
+				return nil, fmt.Errorf("authn_ttl must not be set with %s", authnMethod)
+			}
 		}
 	}
 

@@ -307,21 +307,6 @@ definitions {
 			"configuration error: be: client_id must not be empty",
 		},
 		{
-			"grant_type client_credentials without client_secret",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      grant_type     = "client_credentials"
-    }
-  }
-}
-`,
-			"configuration error: be: client_secret must not be empty",
-		},
-		{
 			"grant_type password without client_id",
 			`server {}
 definitions {
@@ -337,23 +322,6 @@ definitions {
 }
 `,
 			"configuration error: be: client_id must not be empty",
-		},
-		{
-			"grant_type password without client_secret",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      grant_type     = "password"
-      username       = "my_user"
-      password       = "my_password"
-    }
-  }
-}
-`,
-			"configuration error: be: client_secret must not be empty",
 		},
 		{
 			"username with grant_type client_credentials",
@@ -502,6 +470,412 @@ definitions {
 `,
 			"configuration error: be: missing assertion with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
+
+		{
+			"unsupported token_endpoint_auth_method",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "unknown"
+    }
+  }
+}
+`,
+			`configuration error: be: token_endpoint_auth_method "unknown" not supported`,
+		},
+
+		{
+			"missing client_secret with client_secret_basic",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty with client_secret_basic",
+		},
+		{
+			"missing client_secret with client_secret_post",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_post"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty with client_secret_post",
+		},
+		{
+			"missing client_secret with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty with client_secret_jwt",
+		},
+		{
+			"client_secret with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be set with private_key_jwt",
+		},
+
+		{
+			"authn algorithm with client_secret_basic",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_basic"
+      authn_signature_algorithm = "RS256"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_signature_algorithm must not be set with client_secret_basic",
+		},
+		{
+			"authn algorithm with client_secret_post",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_post"
+      authn_signature_algorithm = "RS256"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_signature_algorithm must not be set with client_secret_post",
+		},
+		{
+			"inappropriate authn algorithm with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      authn_signature_algorithm = "RS256"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: inappropriate signature algorithm with client_secret_jwt",
+		},
+		{
+			"inappropriate authn algorithm with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      authn_key = "a key"
+      authn_signature_algorithm = "HS256"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: inappropriate signature algorithm with private_key_jwt",
+		},
+
+		{
+			"authn ttl with client_secret_basic",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_basic"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_ttl must not be set with client_secret_basic",
+		},
+		{
+			"authn ttl with client_secret_post",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_post"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_ttl must not be set with client_secret_post",
+		},
+		{
+			"invalid authn ttl with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      authn_signature_algorithm = "HS256"
+      authn_ttl = "10"
+    }
+  }
+}
+`,
+			`configuration error: be: time: missing unit in duration "10"`,
+		},
+		{
+			"invalid authn ttl with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      authn_key = "a key"
+      authn_signature_algorithm = "RS256"
+      authn_ttl = "10"
+    }
+  }
+}
+`,
+			`configuration error: be: time: missing unit in duration "10"`,
+		},
+
+		{
+			"authn_key with client_secret_basic",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      authn_key = "a key"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_key must not be set with client_secret_basic",
+		},
+		{
+			"authn_key with client_secret_post",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_post"
+      authn_key = "a key"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_key must not be set with client_secret_post",
+		},
+		{
+			"authn_key with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      authn_key = "a key"
+      authn_signature_algorithm = "HS256"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_key must not be set with client_secret_jwt",
+		},
+		{
+			"authn_key value not being a valid key",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      authn_signature_algorithm = "RS256"
+      authn_ttl = "10s"
+      authn_key = "not an RSA private key"
+    }
+  }
+}
+`,
+			"configuration error: be: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
+		},
+
+		{
+			"authn_key_file with client_secret_basic",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      authn_key_file = "a_key_file"
+      authn_signature_algorithm = "HS256"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_key_file must not be set with client_secret_basic",
+		},
+		{
+			"authn_key_file with client_secret_post",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_post"
+      authn_key_file = "a_key_file"
+      authn_signature_algorithm = "HS256"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_key_file must not be set with client_secret_post",
+		},
+		{
+			"authn_key_file with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      authn_key_file = "a_key_file"
+      authn_signature_algorithm = "HS256"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_key_file must not be set with client_secret_jwt",
+		},
+		{
+			"missing authn_key/authn_key_file with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      authn_signature_algorithm = "RS256"
+      authn_ttl = "10s"
+    }
+  }
+}
+`,
+			"configuration error: be: authn_key and authn_key_file must not both be empty with private_key_jwt",
+		},
+		{
+			"authn_key_file referencing non-existing file",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      authn_signature_algorithm = "RS256"
+      authn_ttl = "10s"
+      authn_key_file = "unknown"
+    }
+  }
+}
+`,
+			"configuration error: be: client authentication key: read error: open ",
+		},
+
 	} {
 		var errMsg string
 		conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
