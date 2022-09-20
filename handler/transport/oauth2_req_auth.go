@@ -76,15 +76,6 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		}
 	}
 
-	if conf.ClientAuthenticationRequired() {
-		if conf.ClientID == "" {
-			return nil, fmt.Errorf("client_id must not be empty")
-		}
-		if conf.ClientSecret == "" {
-			return nil, fmt.Errorf("client_secret must not be empty")
-		}
-	}
-
 	oauth2Client, err := oauth2.NewClient(conf.GrantType, conf, conf, asBackend)
 	if err != nil {
 		return nil, err

@@ -87,6 +87,26 @@ func (oa *OAuth2AC) ClientAuthenticationRequired() bool {
 	return true
 }
 
+func (oa *OAuth2AC) GetAuthnAudClaim() string {
+	return oa.AuthnAudClaim
+}
+
+func (oa *OAuth2AC) GetAuthnKey() string {
+	return oa.AuthnKey
+}
+
+func (oa *OAuth2AC) GetAuthnKeyFile() string {
+	return oa.AuthnKeyFile
+}
+
+func (oa *OAuth2AC) GetAuthnSignatureAlgotithm() string {
+	return oa.AuthnSignatureAlgotithm
+}
+
+func (oa *OAuth2AC) GetAuthnTTL() string {
+	return oa.AuthnTTL
+}
+
 func (oa *OAuth2AC) GetClientID() string {
 	return oa.ClientID
 }

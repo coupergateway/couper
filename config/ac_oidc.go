@@ -113,6 +113,26 @@ func (o *OIDC) ClientAuthenticationRequired() bool {
 	return true
 }
 
+func (o *OIDC) GetAuthnAudClaim() string {
+	return o.AuthnAudClaim
+}
+
+func (o *OIDC) GetAuthnKey() string {
+	return o.AuthnKey
+}
+
+func (o *OIDC) GetAuthnKeyFile() string {
+	return o.AuthnKeyFile
+}
+
+func (o *OIDC) GetAuthnSignatureAlgotithm() string {
+	return o.AuthnSignatureAlgotithm
+}
+
+func (o *OIDC) GetAuthnTTL() string {
+	return o.AuthnTTL
+}
+
 func (o *OIDC) GetClientID() string {
 	return o.ClientID
 }

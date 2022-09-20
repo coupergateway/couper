@@ -85,6 +85,26 @@ func (oa *OAuth2ReqAuth) ClientAuthenticationRequired() bool {
 	return oa.GrantType != JwtBearer
 }
 
+func (oa *OAuth2ReqAuth) GetAuthnAudClaim() string {
+	return oa.AuthnAudClaim
+}
+
+func (oa *OAuth2ReqAuth) GetAuthnKey() string {
+	return oa.AuthnKey
+}
+
+func (oa *OAuth2ReqAuth) GetAuthnKeyFile() string {
+	return oa.AuthnKeyFile
+}
+
+func (oa *OAuth2ReqAuth) GetAuthnSignatureAlgotithm() string {
+	return oa.AuthnSignatureAlgotithm
+}
+
+func (oa *OAuth2ReqAuth) GetAuthnTTL() string {
+	return oa.AuthnTTL
+}
+
 func (oa *OAuth2ReqAuth) GetClientID() string {
 	return oa.ClientID
 }

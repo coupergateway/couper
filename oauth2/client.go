@@ -7,10 +7,16 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/dgrijalva/jwt-go/v4"
+	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/lib"
 )
 
 const (
@@ -27,6 +33,9 @@ type Client struct {
 	clientConfig config.OAuth2Client
 	grantType    string
 	authnMethod  string
+	authnAud     string
+	authnKey     interface{}
+	authnTTL     int64
 }
 
 func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
@@ -37,11 +46,65 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 	} else {
 		authnMethod = *teAuthMethod
 	}
+
+	var (
+		aud string
+		key interface{}
+		ttl int64
+	)
 	switch authnMethod {
 	case clientSecretBasic, clientSecretJwt, clientSecretPost, privateKeyJwt:
 		// supported
 	default:
 		return nil, fmt.Errorf("token_endpoint_auth_method %q not supported", *teAuthMethod)
+	}
+
+	if clientConfig.ClientAuthenticationRequired() {
+		if clientConfig.GetClientID() == "" {
+			return nil, fmt.Errorf("client_id must not be empty")
+		}
+
+		switch authnMethod {
+		case clientSecretBasic, clientSecretJwt, clientSecretPost:
+			if clientConfig.GetClientSecret() == "" {
+				return nil, fmt.Errorf("client_secret must not be empty")
+			}
+		default:
+			// client_secret not needed
+		}
+
+		switch authnMethod {
+		case clientSecretJwt, privateKeyJwt:
+			dur, _, err := lib.CheckData(clientConfig.GetAuthnTTL(), clientConfig.GetAuthnSignatureAlgotithm())
+			if err != nil {
+				return nil, err
+			}
+
+			ttl = int64(dur.Seconds())
+			var keyBytes []byte
+			if authnMethod == privateKeyJwt {
+				keyBytes, err = reader.ReadFromAttrFile("client authentication key", clientConfig.GetAuthnKey(), clientConfig.GetAuthnKeyFile())
+				if err != nil {
+					return nil, err
+				}
+			} else { // clientSecretJwt
+				keyBytes = []byte(clientConfig.GetClientSecret())
+			}
+
+			key, err = lib.GetKey(keyBytes, clientConfig.GetAuthnSignatureAlgotithm())
+			if err != nil {
+				return nil, err
+			}
+
+			if aud = clientConfig.GetAuthnAudClaim(); aud == "" {
+				aud, err = asConfig.GetTokenEndpoint()
+				if err != nil {
+					return nil, err
+				}
+			}
+		default:
+			// no key involved
+		}
 	}
 
 	return &Client{
@@ -50,6 +113,9 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 		clientConfig,
 		grantType,
 		authnMethod,
+		aud,
+		key,
+		ttl,
 	}, nil
 }
 
@@ -87,7 +153,10 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 
 	formParams.Set("grant_type", c.grantType)
 
-	c.authenticateClient(&formParams, outreq)
+	err = c.authenticateClient(&formParams, outreq)
+	if err != nil {
+		return nil, err
+	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
 
@@ -96,9 +165,9 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 	return outreq.WithContext(outCtx), nil
 }
 
-func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Request) {
+func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Request) error {
 	if !c.clientConfig.ClientAuthenticationRequired() {
-		return
+		return nil
 	}
 
 	clientID := c.clientConfig.GetClientID()
@@ -109,9 +178,35 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 	case clientSecretPost:
 		formParams.Set("client_id", clientID)
 		formParams.Set("client_secret", clientSecret)
+	case clientSecretJwt, privateKeyJwt:
+		// Although this is unrelated to PKCE, it is used to create an identifier as per RFC 7519 section 4.1.7:
+		// The identifier value MUST be assigned in a manner that ensures that
+		// there is a negligible probability that the same value will be
+		// accidentally assigned to a different data object
+		identifier, err := pkce.CreateCodeVerifier()
+		if err != nil {
+			return err
+		}
+		now := time.Now().Unix()
+		claims := jwt.MapClaims{
+			"iss": c.clientConfig.GetClientID(),
+			"sub": c.clientConfig.GetClientID(),
+			"aud": c.authnAud,
+			"iat": now,
+			"exp": now + c.authnTTL,
+			"jti": identifier.String(),
+		}
+		jwt, err := lib.CreateJWT(c.clientConfig.GetAuthnSignatureAlgotithm(), c.authnKey, claims, nil)
+		if err != nil {
+			return err
+		}
+		formParams.Set("client_id", clientID)
+		formParams.Set("client_assertion", jwt)
+		formParams.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 	default:
 		// already handled with error
 	}
+	return nil
 }
 
 func (c *Client) GetTokenResponse(ctx context.Context, formParams url.Values) (map[string]interface{}, string, error) {

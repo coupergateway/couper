@@ -12,6 +12,11 @@ type OAuth2AS interface {
 // OAuth2Client represents the client configuration for OAuth2 clients.
 type OAuth2Client interface {
 	ClientAuthenticationRequired() bool
+	GetAuthnAudClaim() string
+	GetAuthnKey() string
+	GetAuthnKeyFile() string
+	GetAuthnSignatureAlgotithm() string
+	GetAuthnTTL() string
 	GetClientID() string
 	GetClientSecret() string
 	GetTokenEndpointAuthMethod() *string
