@@ -1,0 +1,12 @@
+openapi: '3'
+info:
+  title: 'test'
+  version: '1.0'
+servers:
+  - url: "/"
+paths:
+  /anything:
+    get:
+      responses:
+        201:
+          description: OK
