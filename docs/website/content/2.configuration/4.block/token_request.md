@@ -11,64 +11,64 @@ The `beta_token_request` block in the [Backend Block](backend) context configure
 ---
 values: [
   {
+    "default": "",
+    "description": "backend block reference is required if no backend block is defined",
     "name": "backend",
-    "type": "string",
-    "default": "",
-    "description": "backend block reference is required if no backend block is defined"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Creates implicit default `Content-Type: text/plain` header field",
     "name": "body",
-    "type": "string",
-    "default": "",
-    "description": "Creates implicit default `Content-Type: text/plain` header field"
+    "type": "string"
   },
   {
-    "name": "expected_status",
-    "type": "tuple (int)",
     "default": "[]",
-    "description": "If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a `beta_backend_token_request` error can be handled with an `error_handler`"
+    "description": "If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a `beta_backend_token_request` error can be handled with an `error_handler`",
+    "name": "expected_status",
+    "type": "tuple (int)"
   },
   {
+    "default": "",
+    "description": "Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field.",
     "name": "form_body",
-    "type": "string",
-    "default": "",
-    "description": "Creates implicit default `Content-Type: application/x-www-form-urlencoded` header field."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "sets the given request headers",
     "name": "headers",
-    "type": "object",
-    "default": "",
-    "description": "sets the given request headers"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "Creates implicit default `Content-Type: application/json` header field",
     "name": "json_body",
-    "type": "null, bool, number, string, object, tuple",
-    "default": "",
-    "description": "Creates implicit default `Content-Type: application/json` header field"
+    "type": "null, bool, number, string, object, tuple"
   },
   {
+    "default": "",
+    "description": "sets the url query parameters",
     "name": "query_params",
-    "type": "object",
-    "default": "",
-    "description": "sets the url query parameters"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "The token to be stored in `backends.<backend_name>.tokens.<token_request_name>`",
     "name": "token",
-    "type": "string",
-    "default": "",
-    "description": "The token to be stored in `backends.<backend_name>.tokens.<token_request_name>`"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The time span for which the token is to be stored.",
     "name": "ttl",
-    "type": "string",
-    "default": "",
-    "description": "The time span for which the token is to be stored."
+    "type": "string"
   },
   {
-    "name": "url",
-    "type": "string",
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the `backend` block (if defined)."
+    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the `backend` block (if defined).",
+    "name": "url",
+    "type": "string"
   }
 ]
 

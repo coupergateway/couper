@@ -14,112 +14,112 @@ Like all [access control](../access-control) types, the `oidc` block is defined 
 ---
 values: [
   {
+    "default": "",
+    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `configuration_url` is defined within.",
     "name": "backend",
-    "type": "string",
-    "default": "",
-    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `configuration_url` is defined within."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The client identifier.",
     "name": "client_id",
-    "type": "string",
-    "default": "",
-    "description": "The client identifier."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The client password.",
     "name": "client_secret",
-    "type": "string",
-    "default": "",
-    "description": "The client password."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Optional option to configure specific behavior for a given OIDC backend.",
     "name": "configuration_backend",
-    "type": "object",
-    "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "type": "object"
   },
   {
+    "default": "\"1h\"",
+    "description": "Duration a cached OpenID configuration stays valid after its TTL has passed.",
     "name": "configuration_max_stale",
-    "type": "duration",
-    "default": "\"1h\"",
-    "description": "Duration a cached OpenID configuration stays valid after its TTL has passed."
+    "type": "duration"
   },
   {
+    "default": "\"1h\"",
+    "description": "The duration to cache the OpenID configuration located at `configuration_url`.",
     "name": "configuration_ttl",
-    "type": "duration",
-    "default": "\"1h\"",
-    "description": "The duration to cache the OpenID configuration located at `configuration_url`."
+    "type": "duration"
   },
   {
+    "default": "",
+    "description": "The OpenID configuration URL.",
     "name": "configuration_url",
-    "type": "string",
-    "default": "",
-    "description": "The OpenID configuration URL."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
+    "default": "\"1h\"",
+    "description": "Time period the cached JWK set stays valid after its TTL has passed.",
     "name": "jwks_max_stale",
-    "type": "duration",
-    "default": "\"1h\"",
-    "description": "Time period the cached JWK set stays valid after its TTL has passed."
+    "type": "duration"
   },
   {
+    "default": "\"1h\"",
+    "description": "Time period the JWK set stays valid and may be cached.",
     "name": "jwks_ttl",
-    "type": "duration",
-    "default": "\"1h\"",
-    "description": "Time period the JWK set stays valid and may be cached."
+    "type": "duration"
   },
   {
+    "default": "",
+    "description": "Optional option to configure specific behavior for a given OIDC backend.",
     "name": "jwks_uri_backend",
-    "type": "object",
-    "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`(`settings` block) attribute if Couper is running behind a proxy.",
     "name": "redirect_uri",
-    "type": "string",
-    "default": "",
-    "description": "The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`(`settings` block) attribute if Couper is running behind a proxy."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "A space separated list of requested scope values for the access token.",
     "name": "scope",
-    "type": "string",
-    "default": "",
-    "description": "A space separated list of requested scope values for the access token."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Optional option to configure specific behavior for a given OIDC backend.",
     "name": "token_backend",
-    "type": "object",
-    "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "type": "object"
   },
   {
-    "name": "token_endpoint_auth_method",
-    "type": "string",
     "default": "\"client_secret_basic\"",
-    "description": "Defines the method to authenticate the client at the token endpoint. If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication."
+    "description": "Defines the method to authenticate the client at the token endpoint. If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.",
+    "name": "token_endpoint_auth_method",
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Optional option to configure specific behavior for a given OIDC backend.",
     "name": "userinfo_backend",
-    "type": "object",
-    "default": "",
-    "description": "Optional option to configure specific behaviour for a given oidc backend."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "The method to verify the integrity of the authorization code flow.",
     "name": "verifier_method",
-    "type": "string",
-    "default": "",
-    "description": "The method to verify the integrity of the authorization code flow."
+    "type": "string"
   },
   {
-    "name": "verifier_value",
-    "type": "string",
     "default": "",
-    "description": "The value of the (unhashed) verifier."
+    "description": "The value of the (unhashed) verifier.",
+    "name": "verifier_value",
+    "type": "string"
   }
 ]
 
