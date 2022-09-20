@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * [`trim()` function](https://docs.couper.io/configuration/functions) ([#605](https://github.com/avenga/couper/pull/605))
+  * OAuth2 client authentication methods (`token_endpoint_auth_method` values) `client_secret_jwt` and `private_key_jwt` for [`oauth2`](https://docs.couper.io/configuration/block/oauth2_req_auth), [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac) and [`oidc`](https://docs.couper.io/configuration/block/oidc) blocks including new attributes `authn_aud_claim`, `authn_key`, `authn_key_file`, `authn_signature_algorithm`, `authn_ttl`, `authn_x5t_header` ([#599](https://github.com/avenga/couper/pull/599))
 
 * **Fixed**
   * Aligned the evaluation of [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `redirect_uri` to `saml` `sp_acs_url` ([#589](https://github.com/avenga/couper/pull/589))
