@@ -79,7 +79,7 @@ func GetHostPort(hostPort string) (string, int, error) {
 
 // NewServerConfiguration sets http handler specific defaults and validates the given gateway configuration.
 // Wire up all endpoints and maps them within the returned Server.
-func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *cache.MemoryStore) (ServerConfiguration, error) {
+func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore cache.Storage) (ServerConfiguration, error) {
 	evalContext := conf.Context.Value(request.ContextType).(*eval.Context) // usually environment vars
 	confCtx := evalContext.HCLContext()
 
@@ -433,7 +433,7 @@ func whichCORS(parent *config.Server, this interface{}) *config.CORS {
 	return corsData
 }
 
-func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore *cache.MemoryStore) (oidc.Configs, error) {
+func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry, memStore cache.Storage) (oidc.Configs, error) {
 	oidcConfigs := make(oidc.Configs)
 	if conf.Definitions != nil {
 		for _, oidcConf := range conf.Definitions.OIDC {
@@ -460,7 +460,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 }
 
 func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,
-	memStore *cache.MemoryStore, oidcConfigs oidc.Configs) (ACDefinitions, error) {
+	memStore cache.Storage, oidcConfigs oidc.Configs) (ACDefinitions, error) {
 
 	accessControls := make(ACDefinitions)
 
@@ -536,7 +536,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 }
 
 func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
-	log *logrus.Entry, memStore *cache.MemoryStore) (*ac.JWT, error) {
+	log *logrus.Entry, memStore cache.Storage) (*ac.JWT, error) {
 	jwtOptions := &ac.JWTOptions{
 		Claims:                jwtConf.Claims,
 		ClaimsRequired:        jwtConf.ClaimsRequired,
@@ -577,7 +577,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	return jwt, nil
 }
 
-func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
+func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore cache.Storage) (*jwk.JWKS, error) {
 	backend, err := NewBackend(confContext, jwtConf.Backend, log, conf, memStore)
 	if err != nil {
 		return nil, err
@@ -589,7 +589,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 type protectedOptions struct {
 	epOpts   *handler.EndpointOptions
 	handler  http.Handler
-	memStore *cache.MemoryStore
+	memStore cache.Storage
 	srvOpts  *server.Options
 }
 

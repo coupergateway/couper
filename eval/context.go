@@ -46,7 +46,7 @@ type Context struct {
 	backendsFn        sync.Once
 	eval              *hcl.EvalContext
 	inner             context.Context
-	memStore          *cache.MemoryStore
+	memStore          cache.Storage
 	memorize          map[string]interface{}
 	oauth2            map[string]config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
@@ -350,7 +350,7 @@ func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
 	return c
 }
 
-func (c *Context) WithMemStore(store *cache.MemoryStore) *Context {
+func (c *Context) WithMemStore(store cache.Storage) *Context {
 	c.cloneMu.Lock()
 	defer c.cloneMu.Unlock()
 

@@ -84,7 +84,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 }
 
 func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint, apiConf *config.API,
-	serverOptions *server.Options, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
+	serverOptions *server.Options, log *logrus.Entry, conf *config.Couper, memStore cache.Storage) (*handler.EndpointOptions, error) {
 	var errTpl *errors.Template
 
 	if endpointConf.ErrorFile != "" {

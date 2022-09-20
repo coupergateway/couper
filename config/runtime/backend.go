@@ -23,7 +23,7 @@ import (
 )
 
 func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
-	conf *config.Couper, store *cache.MemoryStore) (http.RoundTripper, error) {
+	conf *config.Couper, store cache.Storage) (http.RoundTripper, error) {
 	const prefix = "backend_"
 	name, err := getBackendName(ctx, body)
 
@@ -50,7 +50,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	conf *config.Couper, memStore *cache.MemoryStore) (http.RoundTripper, error) {
+	conf *config.Couper, memStore cache.Storage) (http.RoundTripper, error) {
 	beConf := &config.Backend{}
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, beConf); diags.HasErrors() {
 		return nil, diags
@@ -137,7 +137,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 }
 
 func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
-	log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
+	log *logrus.Entry, conf *config.Couper, memStore cache.Storage) (transport.RequestAuthorizer, error) {
 	var authorizerConfig interface{}
 	switch block.Type {
 	case config.OAuthBlockSchema.Blocks[0].Type:

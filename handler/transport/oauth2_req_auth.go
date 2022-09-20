@@ -31,14 +31,14 @@ var (
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
 	mu           sync.Mutex
-	memStore     *cache.MemoryStore
+	memStore     cache.Storage
 	oauth2Client *oauth2.Client
 	storageKey   string
 }
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
-func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memStore *cache.MemoryStore,
+func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memStore cache.Storage,
 	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
 	if _, supported := supportedGrantTypes[conf.GrantType]; !supported {

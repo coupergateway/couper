@@ -23,12 +23,12 @@ var (
 type TokenRequest struct {
 	config      *config.TokenRequest
 	mu          sync.Mutex
-	memStore    *cache.MemoryStore
+	memStore    cache.Storage
 	reqProducer producer.Roundtrip
 	storageKey  string
 }
 
-func NewTokenRequest(conf *config.TokenRequest, memStore *cache.MemoryStore, reqProducer producer.Roundtrip) (RequestAuthorizer, error) {
+func NewTokenRequest(conf *config.TokenRequest, memStore cache.Storage, reqProducer producer.Roundtrip) (RequestAuthorizer, error) {
 	tr := &TokenRequest{
 		config:      conf,
 		memStore:    memStore,
