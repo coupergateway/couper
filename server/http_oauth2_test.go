@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -875,7 +877,6 @@ definitions {
 `,
 			"configuration error: be: client authentication key: read error: open ",
 		},
-
 	} {
 		var errMsg string
 		conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
@@ -904,6 +905,98 @@ definitions {
 			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
 		}
 	}
+}
+
+func TestOAuth2_AuthnJWT(t *testing.T) {
+	helper := test.New(t)
+	jtiRE, err := regexp.Compile("^[a-zA-Z0-9]{43}$")
+	helper.Must(err)
+
+	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		authz := req.Header.Get("Authorization")
+		if !strings.HasPrefix(authz, "Bearer ") {
+			helper.Must(fmt.Errorf("wrong authz: %q", authz))
+		}
+		token := strings.TrimPrefix(authz, "Bearer ")
+		parts := strings.Split(token, " ")
+		if len(parts) != 3 {
+			helper.Must(fmt.Errorf("wrong token: %q", token))
+		}
+		exp, err := strconv.Atoi(parts[1])
+		helper.Must(err)
+		iat, err := strconv.Atoi(parts[0])
+		helper.Must(err)
+		if exp-iat != 10 {
+			helper.Must(fmt.Errorf("wrong token: %q", token))
+		}
+		if !jtiRE.MatchString(parts[2]) {
+			helper.Must(fmt.Errorf("wrong jti: %q", parts[2]))
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer rsOrigin.Close()
+
+	type testCase struct {
+		name       string
+		path       string
+		wantStatus int
+		wantErrLog string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"client_secret_jwt",
+			"/csj",
+			http.StatusNoContent,
+			"",
+		},
+		{
+			"client_secret_jwt error",
+			"/csj_error",
+			http.StatusBadGateway,
+			"access control error: csj_error: token signature is invalid",
+		},
+		{
+			"private_key_jwt",
+			"/pkj",
+			http.StatusNoContent,
+			"",
+		},
+		{
+			"private_key_jwt error",
+			"/pkj_error",
+			http.StatusBadGateway,
+			"access control error: pkj_error: token is unverifiable: signing method RS256 is invalid",
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/20_couper.hcl", h, map[string]interface{}{"rsOrigin": rsOrigin.URL})
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			h.Must(err)
+
+			hook.Reset()
+
+			res, err := newClient().Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.wantStatus {
+				t.Errorf("expected status %d, got: %d", tc.wantStatus, res.StatusCode)
+			}
+
+			message := getFirstAccessLogMessage(hook)
+			if message != tc.wantErrLog {
+				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+			}
+
+			shutdown()
+		})
+	}
+
+	rsOrigin.Close()
 }
 
 func TestOAuth2_Runtime_Errors(t *testing.T) {
@@ -953,7 +1046,7 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != http.StatusBadGateway {
-				t.Errorf("expected status NoContent, got: %d", res.StatusCode)
+				t.Errorf("expected status StatusBadGateway, got: %d", res.StatusCode)
 			}
 
 			message := getFirstAccessLogMessage(hook)
