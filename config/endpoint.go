@@ -19,6 +19,7 @@ type Endpoint struct {
 	ErrorFile            string    `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Pattern              string    `hcl:"pattern,label"`
 	Proxies              Proxies   `hcl:"proxy,block"`
+	Proxy                string    `hcl:"proxy,optional" docs:"{proxy} block reference."`
 	Remain               hcl.Body  `hcl:",remain"`
 	RequestBodyLimit     string    `hcl:"request_body_limit,optional" docs:"Configures the maximum buffer size while accessing {request.form_body} or {request.json_body} content. Valid units are: {KiB}, {MiB}, {GiB}" default:"64MiB"`
 	Requests             Requests  `hcl:"request,block"`
@@ -46,7 +47,7 @@ func (e Endpoint) Inline() interface{} {
 		meta.QueryParamsAttributes
 		meta.LogFieldsAttribute
 		ResponseStatus     *uint8         `hcl:"set_response_status,optional" docs:"Modifies the response status code."`
-		RequiredPermission hcl.Expression `hcl:"beta_required_permission,optional" docs:"expression evaluating to string or object (string)"`
+		RequiredPermission hcl.Expression `hcl:"beta_required_permission,optional" docs:"Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) {beta_insufficient_permissions})." type:"string or object (string)"`
 	}
 
 	return &Inline{}

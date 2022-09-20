@@ -29,7 +29,7 @@ var (
 
 // OAuth2ReqAuth represents the oauth2 block in a backend block.
 type OAuth2ReqAuth struct {
-	AssertionExpr           hcl.Expression `hcl:"assertion,optional" docs:"The assertion (JWT for jwt-bearer flow). Required if {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}."`
+	AssertionExpr           hcl.Expression `hcl:"assertion,optional" docs:"The assertion (JWT for jwt-bearer flow). Required if {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}." type:"string"`
 	BackendName             string         `hcl:"backend,optional" docs:"[{backend} block](backend) reference."`
 	ClientID                string         `hcl:"client_id,optional" docs:"The client identifier. Required unless the {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}."`
 	ClientSecret            string         `hcl:"client_secret,optional" docs:"The client password. Required unless the {grant_type} is {urn:ietf:params:oauth:grant-type:jwt-bearer}."`

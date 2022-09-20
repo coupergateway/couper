@@ -10,52 +10,52 @@ The `server` block is one of the root configuration blocks of Couper's configura
 ---
 values: [
   {
+    "default": "[]",
+    "description": "[access controls](../access-control) to protect the server. Inherited by nested blocks.",
     "name": "access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "[access controls](../access-control) to protect the server. Inherited by nested blocks."
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response",
     "name": "add_response_headers",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to add as response headers in the client response"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "the path prefix for all requests",
     "name": "base_path",
-    "type": "string",
-    "default": "",
-    "description": "the path prefix for all requests"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
+    "default": "[]",
+    "description": "disables access controls by name",
     "name": "disable_access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "disables access controls by name"
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "location of the error file template",
     "name": "error_file",
-    "type": "string",
-    "default": "",
-    "description": "location of the error file template"
+    "type": "string"
   },
   {
-    "name": "remove_response_headers",
-    "type": "tuple (string)",
     "default": "[]",
-    "description": "list of names to remove headers from the client response"
+    "description": "list of names to remove headers from the client response",
+    "name": "remove_response_headers",
+    "type": "tuple (string)"
   },
   {
-    "name": "set_response_headers",
-    "type": "object",
     "default": "",
-    "description": "key/value pairs to set as response headers in the client response"
+    "description": "key/value pairs to set as response headers in the client response",
+    "name": "set_response_headers",
+    "type": "object"
   }
 ]
 
