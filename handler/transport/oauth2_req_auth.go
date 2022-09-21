@@ -31,14 +31,14 @@ var (
 type OAuth2ReqAuth struct {
 	config       *config.OAuth2ReqAuth
 	mu           sync.Mutex
-	memStore     cache.Storage
+	store        cache.Storage
 	oauth2Client *oauth2.Client
 	storageKey   string
 }
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
 // to retrieve a valid token before passing the initial out request.
-func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memStore cache.Storage,
+func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, store cache.Storage,
 	asBackend http.RoundTripper) (RequestAuthorizer, error) {
 
 	if _, supported := supportedGrantTypes[conf.GrantType]; !supported {
@@ -93,7 +93,7 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 	reqAuth := &OAuth2ReqAuth{
 		config:       conf,
 		oauth2Client: oauth2Client,
-		memStore:     memStore,
+		store:        store,
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
 	return reqAuth, nil
@@ -157,7 +157,7 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 		return false, nil
 	}
 
-	oa.memStore.Del(oa.storageKey)
+	oa.store.Del(oa.storageKey)
 
 	ctx := req.Context()
 	if retries, ok := ctx.Value(request.TokenRequestRetries).(*uint8); !ok || *retries < *oa.config.Retries {
@@ -170,7 +170,7 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 }
 
 func (oa *OAuth2ReqAuth) readAccessToken() string {
-	if data, _ := oa.memStore.Get(oa.storageKey); data != nil {
+	if data, _ := oa.store.Get(oa.storageKey); data != nil {
 		return data.(string)
 	}
 
@@ -178,13 +178,13 @@ func (oa *OAuth2ReqAuth) readAccessToken() string {
 }
 
 func (oa *OAuth2ReqAuth) updateAccessToken(token string, jData map[string]interface{}) {
-	if oa.memStore != nil {
+	if oa.store != nil {
 		var ttl int64
 		if t, ok := jData["expires_in"].(float64); ok {
 			ttl = (int64)(t * 0.9)
 		}
 
-		oa.memStore.Set(oa.storageKey, token, ttl)
+		oa.store.Set(oa.storageKey, token, ttl)
 	}
 }
 

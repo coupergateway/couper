@@ -46,7 +46,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
-	conf *config.Couper, memStore cache.Storage) (http.RoundTripper, error) {
+	conf *config.Couper, store cache.Storage) (http.RoundTripper, error) {
 	beConf := &config.Backend{}
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, beConf); diags.HasErrors() {
 		return nil, diags
@@ -120,7 +120,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 
 		blocks := content.Blocks.OfType(schema.Blocks[0].Type)
 		for _, block := range blocks {
-			requestAuthorizer, err := newRequestAuthorizer(evalCtx, block, log, conf, memStore)
+			requestAuthorizer, err := newRequestAuthorizer(evalCtx, block, log, conf, store)
 			if err != nil {
 				return nil, err
 			}
@@ -133,7 +133,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 }
 
 func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
-	log *logrus.Entry, conf *config.Couper, memStore cache.Storage) (transport.RequestAuthorizer, error) {
+	log *logrus.Entry, conf *config.Couper, store cache.Storage) (transport.RequestAuthorizer, error) {
 	var authorizerConfig interface{}
 	switch block.Type {
 	case config.OAuthBlockSchema.Blocks[0].Type:
@@ -172,21 +172,21 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
 	}
 
 	innerBackend := backendBlocks[0] // backend block is set by configload package
-	authorizerBackend, err := NewBackend(evalCtx, innerBackend.Body, log, conf, memStore)
+	authorizerBackend, err := NewBackend(evalCtx, innerBackend.Body, log, conf, store)
 	if err != nil {
 		return nil, err
 	}
 
 	switch impl := authorizerConfig.(type) {
 	case *config.OAuth2ReqAuth:
-		return transport.NewOAuth2ReqAuth(evalCtx, impl, memStore, authorizerBackend)
+		return transport.NewOAuth2ReqAuth(evalCtx, impl, store, authorizerBackend)
 	case *config.TokenRequest:
 		reqs := producer.Requests{&producer.Request{
 			Backend: authorizerBackend,
 			Context: impl.HCLBody(),
 			Name:    impl.Name,
 		}}
-		return transport.NewTokenRequest(impl, memStore, reqs)
+		return transport.NewTokenRequest(impl, store, reqs)
 	default:
 		return nil, errors.Configuration.Message("unknown authorizer type")
 	}

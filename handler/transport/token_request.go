@@ -23,15 +23,15 @@ var (
 type TokenRequest struct {
 	config      *config.TokenRequest
 	mu          sync.Mutex
-	memStore    cache.Storage
+	store       cache.Storage
 	reqProducer producer.Roundtrip
 	storageKey  string
 }
 
-func NewTokenRequest(conf *config.TokenRequest, memStore cache.Storage, reqProducer producer.Roundtrip) (RequestAuthorizer, error) {
+func NewTokenRequest(conf *config.TokenRequest, store cache.Storage, reqProducer producer.Roundtrip) (RequestAuthorizer, error) {
 	tr := &TokenRequest{
 		config:      conf,
-		memStore:    memStore,
+		store:       store,
 		reqProducer: reqProducer,
 	}
 	tr.storageKey = fmt.Sprintf("TokenRequest-%p", tr)
@@ -62,7 +62,7 @@ func (t *TokenRequest) GetToken(req *http.Request) error {
 		return errors.Request.Label(t.config.Name).With(err)
 	}
 
-	t.memStore.Set(t.storageKey, token, ttl)
+	t.store.Set(t.storageKey, token, ttl)
 	return nil
 }
 
@@ -71,7 +71,7 @@ func (t *TokenRequest) RetryWithToken(_ *http.Request, _ *http.Response) (bool, 
 }
 
 func (t *TokenRequest) readToken() string {
-	if data, _ := t.memStore.Get(t.storageKey); data != nil {
+	if data, _ := t.store.Get(t.storageKey); data != nil {
 		return data.(string)
 	}
 
