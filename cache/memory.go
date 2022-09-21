@@ -2,7 +2,6 @@ package cache
 
 import (
 	"runtime/debug"
-	"strings"
 	"sync"
 	"time"
 
@@ -47,35 +46,18 @@ func (ms *MemoryStore) Del(k string) {
 }
 
 // Get return the value by the key if the ttl is not expired from the <MemoryStore>.
-func (ms *MemoryStore) Get(k string) interface{} {
+func (ms *MemoryStore) Get(k string) (interface{}, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
 	if v, ok := ms.db[k]; ok {
 		if time.Now().Unix() >= v.expAt {
-			return nil
+			return nil, nil
 		}
-		return v.value
+		return v.value, nil
 	}
 
-	return nil
-}
-
-func (ms *MemoryStore) GetAllWithPrefix(prefix string) []interface{} {
-	var list []interface{}
-
-	ms.mu.RLock()
-	defer ms.mu.RUnlock()
-
-	for k, v := range ms.db {
-		if time.Now().Unix() >= v.expAt || !strings.HasPrefix(k, prefix) {
-			continue
-		}
-
-		list = append(list, v.value)
-	}
-
-	return list
+	return nil, nil
 }
 
 // Set stores a key/value pair for <ttl> second(s) into the <MemoryStore>.

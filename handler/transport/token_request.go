@@ -71,7 +71,7 @@ func (t *TokenRequest) RetryWithToken(_ *http.Request, _ *http.Response) (bool, 
 }
 
 func (t *TokenRequest) readToken() string {
-	if data := t.memStore.Get(t.storageKey); data != nil {
+	if data, _ := t.memStore.Get(t.storageKey); data != nil {
 		return data.(string)
 	}
 

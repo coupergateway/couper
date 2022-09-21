@@ -17,7 +17,7 @@ func TestCache_All(t *testing.T) {
 	defer close(quitCh)
 	ms := cache.New(logger, quitCh)
 
-	if v := ms.Get("key"); v != nil {
+	if v, _ := ms.Get("key"); v != nil {
 		t.Errorf("Nil expected, given %q", v)
 	}
 
@@ -29,19 +29,19 @@ func TestCache_All(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	if v := ms.Get("key"); v != "val" {
+	if v, _ := ms.Get("key"); v != "val" {
 		t.Errorf("Expected 'val', given %q", v)
 	}
-	if v := ms.Get("del"); v != "del" {
+	if v, _ := ms.Get("del"); v != "del" {
 		t.Errorf("Expected 'del', given %q", v)
 	}
 
 	time.Sleep(1700 * time.Millisecond)
 
-	if v := ms.Get("key"); v != nil {
+	if v, _ := ms.Get("key"); v != nil {
 		t.Errorf("Nil expected, given %q", v)
 	}
-	if v := ms.Get("del"); v != "del" {
+	if v, _ := ms.Get("del"); v != "del" {
 		t.Errorf("Expected 'del', given %q", v)
 	}
 }

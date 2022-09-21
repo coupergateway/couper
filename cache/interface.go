@@ -2,7 +2,6 @@ package cache
 
 type Storage interface {
 	Del(string)
-	Get(string) interface{}
-	GetAllWithPrefix(string) []interface{}
+	Get(string) (interface{}, error)
 	Set(string, interface{}, int64)
 }

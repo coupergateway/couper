@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -11,28 +12,28 @@ type RedisStore struct {
 	ctx    context.Context
 }
 
-// func NewRedis(ctx context.Context, configURL string) (Storage, error) {
-// 	opts, err := redis.ParseURL(configURL)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func NewRedis(ctx context.Context, configURL string) (Storage, error) {
+	opts, err := redis.ParseURL(configURL)
+	if err != nil {
+		return nil, err
+	}
 
-// 	client := redis.NewClient(opts)
+	client := redis.NewClient(opts)
 
-// 	return &RedisStore{
-// 		client: client,
-// 		ctx:    ctx,
-// 	}, nil
-// }
+	return &RedisStore{
+		client: client,
+		ctx:    ctx,
+	}, nil
+}
 
-// func (r *RedisStore) Del(key string) {
-// 	r.client.Del(r.ctx, key)
-// }
+func (r *RedisStore) Del(key string) {
+	r.client.Del(r.ctx, key)
+}
 
-// func (r *RedisStore) Get(key string) (interface{}, error) {
-// 	return r.client.Get(r.ctx, key).Result()
-// }
+func (r *RedisStore) Get(key string) (interface{}, error) {
+	return r.client.Get(r.ctx, key).Result()
+}
 
-// func (r *RedisStore) Set(key string, val interface{}, ttl int64) {
-// 	r.client.Set(r.ctx, key, val, time.Duration(ttl*int64(time.Second)))
-// }
+func (r *RedisStore) Set(key string, val interface{}, ttl int64) {
+	r.client.Set(r.ctx, key, val, time.Duration(ttl*int64(time.Second)))
+}

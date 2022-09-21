@@ -170,7 +170,7 @@ func (oa *OAuth2ReqAuth) RetryWithToken(req *http.Request, res *http.Response) (
 }
 
 func (oa *OAuth2ReqAuth) readAccessToken() string {
-	if data := oa.memStore.Get(oa.storageKey); data != nil {
+	if data, _ := oa.memStore.Get(oa.storageKey); data != nil {
 		return data.(string)
 	}
 
