@@ -62,7 +62,7 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 				epConf.Response = &config.Response{Remain: emptyBody}
 			}
 
-			epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, conf, opts.memStore)
+			epOpts, err := newEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, conf, opts.store)
 			if err != nil {
 				return nil, err
 			}

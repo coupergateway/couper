@@ -334,13 +334,13 @@ definitions {
 
 			quitCh := make(chan struct{}, 1)
 			defer close(quitCh)
-			memStore := cache.New(logger, quitCh)
+			store := cache.New(logger, quitCh)
 
 			ctx, cancel := context.WithCancel(couperConf.Context)
 			couperConf.Context = ctx
 			defer cancel()
 
-			_, err = runtime.NewServerConfiguration(couperConf, logger, memStore)
+			_, err = runtime.NewServerConfiguration(couperConf, logger, store)
 			helper.Must(err)
 
 			req, rerr := http.NewRequest(http.MethodGet, "https://couper.io/", nil)

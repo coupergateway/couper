@@ -13,7 +13,7 @@ import (
 	"github.com/avenga/couper/telemetry/provider"
 )
 
-func newBackendsObserver(memStore cache.Storage) {
+func newBackendsObserver(store cache.Storage) {
 	bs := cache.StaticBackends.GetAll()
 	var backends []interface{ Value() cty.Value }
 	for _, b := range bs {

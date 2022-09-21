@@ -42,7 +42,7 @@ const (
 const otlpExporterEnvKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
 
 // InitExporter initialises configured metrics and/or trace exporter.
-func InitExporter(ctx context.Context, opts *Options, memStore cache.Storage, logEntry *logrus.Entry) {
+func InitExporter(ctx context.Context, opts *Options, store cache.Storage, logEntry *logrus.Entry) {
 	log := logEntry.WithField("type", "couper_telemetry")
 	otel.SetErrorHandler(ErrorHandleFunc(func(e error) { // configure otel to use our logger for error handling
 		if e != nil {
@@ -55,7 +55,7 @@ func InitExporter(ctx context.Context, opts *Options, memStore cache.Storage, lo
 		wg.Add(1)
 		otel.Handle(initMetricExporter(ctx, opts, log, wg))
 
-		newBackendsObserver(memStore)
+		newBackendsObserver(store)
 	}
 
 	if opts.Traces {

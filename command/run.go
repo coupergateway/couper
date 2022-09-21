@@ -142,9 +142,9 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	cache.StaticBackends.Reset()
 
-	memStore := cache.New(logEntry, r.context.Done())
+	store := cache.New(logEntry, r.context.Done())
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
-	srvConf, err := runtime.NewServerConfiguration(config, logEntry, memStore)
+	srvConf, err := runtime.NewServerConfiguration(config, logEntry, store)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		ServiceName:          r.settings.TelemetryServiceName,
 		Traces:               r.settings.TelemetryTraces,
 		TracesEndpoint:       r.settings.TelemetryTracesEndpoint,
-	}, memStore, logEntry)
+	}, store, logEntry)
 
 	if limitFn != nil {
 		limitFn(logEntry)

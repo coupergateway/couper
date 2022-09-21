@@ -46,7 +46,7 @@ type Context struct {
 	backendsFn        sync.Once
 	eval              *hcl.EvalContext
 	inner             context.Context
-	memStore          cache.Storage
+	store             cache.Storage
 	memorize          map[string]interface{}
 	oauth2            map[string]config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
@@ -117,7 +117,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		c.cloneMu.Lock()
 		defer c.cloneMu.Unlock()
 
-		if c.memStore == nil {
+		if c.store == nil {
 			return
 		}
 
@@ -221,7 +221,7 @@ func (c *Context) clone() *Context {
 		backends:          c.backends,
 		eval:              c.cloneEvalContext(),
 		inner:             c.inner,
-		memStore:          c.memStore,
+		store:             c.store,
 		memorize:          make(map[string]interface{}),
 		oauth2:            c.oauth2,
 		jwtSigningConfigs: c.jwtSigningConfigs,
@@ -345,11 +345,11 @@ func (c *Context) WithOidcConfig(confs oidc.Configs) *Context {
 	return c
 }
 
-func (c *Context) WithMemStore(store cache.Storage) *Context {
+func (c *Context) WithStore(store cache.Storage) *Context {
 	c.cloneMu.Lock()
 	defer c.cloneMu.Unlock()
 
-	c.memStore = store
+	c.store = store
 	return c
 }
 
