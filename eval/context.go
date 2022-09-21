@@ -121,12 +121,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 			return
 		}
 
-		const prefix = "backend_"
-		for _, b := range c.memStore.GetAllWithPrefix(prefix) {
-			if rt, ok := b.(http.RoundTripper); ok {
-				c.backends = append(c.backends, rt)
-			}
-		}
+		c.backends = append(c.backends, cache.StaticBackends.GetAll()...)
 	})
 
 	ctx := c.clone()

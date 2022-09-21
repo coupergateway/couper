@@ -36,6 +36,8 @@ func (v Verify) Execute(args Args, conf *config.Couper, logger *logrus.Entry) er
 	tmpStoreCh := make(chan struct{})
 	defer close(tmpStoreCh)
 
+	cache.StaticBackends.Reset()
+
 	tmpMemStore := cache.New(logger, tmpStoreCh)
 
 	ctx, cancel := context.WithCancel(cf.Context)

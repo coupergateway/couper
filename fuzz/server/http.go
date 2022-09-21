@@ -76,6 +76,8 @@ settings {
 	logger.Out = w
 	log := logger.WithField("fuzz", "server/http")
 
+	cache.StaticBackends.Reset()
+
 	cmdCtx := command.ContextWithSignal(context.Background())
 	config, err := couperruntime.NewServerConfiguration(configFile, log, cache.New(log, cmdCtx.Done()))
 	if err != nil {

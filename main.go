@@ -230,6 +230,8 @@ func realmain(ctx context.Context, arguments []string) int {
 			tmpStoreCh := make(chan struct{})
 			tmpMemStore := cache.New(logger, tmpStoreCh)
 
+			cache.StaticBackends.Reset()
+
 			dryCtx, cancelDry := context.
 				WithCancel(context.WithValue(ctx, request.ConfigDryRun, true))
 			cf.Context = cf.Context.(*eval.Context).WithContext(dryCtx)

@@ -140,6 +140,8 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
 	}
 
+	cache.StaticBackends.Reset()
+
 	memStore := cache.New(logEntry, r.context.Done())
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
 	srvConf, err := runtime.NewServerConfiguration(config, logEntry, memStore)

@@ -14,7 +14,7 @@ import (
 )
 
 func newBackendsObserver(memStore cache.Storage) {
-	bs := memStore.GetAllWithPrefix("backend_")
+	bs := cache.StaticBackends.GetAll()
 	var backends []interface{ Value() cty.Value }
 	for _, b := range bs {
 		if backend, ok := b.(interface{ Value() cty.Value }); ok {

@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
 
@@ -31,11 +30,9 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 		return nil, err
 	}
 
-	// Making use of the store here since a global variable leads to extra efforts for integration tests.
-	// The store is newly created per run.
-	b := store.Get(prefix + name)
+	b := cache.StaticBackends.Get(prefix + name)
 	if b != nil {
-		return backend.NewContext(body, b.(http.RoundTripper)), nil
+		return backend.NewContext(body, b), nil
 	}
 
 	b, err = newBackend(ctx, body, log, conf, store)
@@ -43,10 +40,9 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 		return nil, errors.Configuration.Label(name).With(err)
 	}
 
-	// to prevent weird debug sessions; max to set the internal memStore ttl limit.
-	store.Set(prefix+name, b, math.MaxInt64)
+	cache.StaticBackends.Set(prefix+name, b)
 
-	return b.(http.RoundTripper), nil
+	return b, nil
 }
 
 func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
