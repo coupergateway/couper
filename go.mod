@@ -42,6 +42,7 @@ require (
 
 require (
 	github.com/algolia/algoliasearch-client-go/v3 v3.26.0
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/go-cmp v0.5.7
 )
 
@@ -50,6 +51,7 @@ require (
 	github.com/beevik/etree v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

@@ -31,6 +31,9 @@ github.com/cespare/xxhash/v2
 # github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 ## explicit; go 1.12
 github.com/dgrijalva/jwt-go/v4
+# github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
+## explicit
+github.com/dgryski/go-rendezvous
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
@@ -61,6 +64,16 @@ github.com/go-openapi/jsonpointer
 # github.com/go-openapi/swag v0.19.15
 ## explicit; go 1.11
 github.com/go-openapi/swag
+# github.com/go-redis/redis/v8 v8.11.5
+## explicit; go 1.17
+github.com/go-redis/redis/v8
+github.com/go-redis/redis/v8/internal
+github.com/go-redis/redis/v8/internal/hashtag
+github.com/go-redis/redis/v8/internal/hscan
+github.com/go-redis/redis/v8/internal/pool
+github.com/go-redis/redis/v8/internal/proto
+github.com/go-redis/redis/v8/internal/rand
+github.com/go-redis/redis/v8/internal/util
 # github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
 github.com/golang/protobuf/descriptor
