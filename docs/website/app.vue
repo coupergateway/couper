@@ -19,6 +19,15 @@ onMounted(async () => {
 		}
 	}
 	}, 1000)
+
+	document.addEventListener('keyup', e => {
+		if (e.key === "Escape") {
+			const reset = document.querySelector("button.ais-SearchBox-reset")
+			if (reset) {
+				reset.click()
+			}
+		}
+	})
 })
 </script>
 
