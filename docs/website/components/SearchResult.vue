@@ -1,5 +1,5 @@
 <template>
-    <ais-hits :escapeHTML="false" ref="searchHits">
+    <ais-hits :escapeHTML="false" ref="searchHits" :transform-items="transform">
       <template v-slot="{ items }">
         <ol v-for="item in filter(items)" :key="item.url" class="bg-white border-4 border-gray-200 rounded-lg w-full mt-2">
           <NuxtLink :to="item.url.toLowerCase()" class="text-sky-600" @click="reset()">
@@ -36,6 +36,27 @@ export default {
 
       filteredItems.sort((left, right) => left.__position > right.__position ? 1 : 0)
       return filteredItems
+    },
+    transform(items) {
+      for (const i in items) {
+        const item = items[i]
+        for (const j in item._highlightResult.attributes) {
+          const attribute = item._highlightResult.attributes[j]
+          if (attribute.transformed) {
+            continue
+          }
+          let description = attribute.description.value
+          // do not mark markdown _highlights_ as search hits
+          description = description.replace(/\b_(.*?)_\b/g, "$1")
+          // drop link markdown
+          description = description.replace(/\[(.*?)\]\(.*?\)/g, "$1")
+          // render code markdown
+          description = description.replace(/`(.*?)`/g, "<code>$1</code>")
+          attribute.description.value = description
+          attribute.transformed = true
+        }
+      }
+      return items
     },
     reset() {
       document
