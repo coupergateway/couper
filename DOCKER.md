@@ -47,6 +47,7 @@ $ docker run avenga/couper run -watch -p 8081
 | COUPER_NO_PROXY_FROM_ENV             | `false` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |
 | COUPER_SECURE_COOKIES                | `""`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |
 | COUPER_WATCH                         | `false` | Set to `true` to watch for configuration file changes. |
+| COUPER_STORAGE                       | `""`    | Defines the key/value storage. Currently, can contain a Redis config URL, e.g. `redis://<user>:<password>@<host>:<port>/<db_number>[?<other-options>]`, or be empty (default) and use internal memory store. |
 | COUPER_WATCH_RETRIES                 | `5`     | Maximal retry count for configuration reloads which could not bind the configured port. |
 | COUPER_WATCH_RETRY_DELAY             | `500ms` | Delay duration before next attempt if an error occurs. |
 | COUPER_XFH                           | `false` | Global configurations which uses the `Forwarded-Host` header instead of the request host. |

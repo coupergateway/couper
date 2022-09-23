@@ -66,6 +66,7 @@ func realmain(ctx context.Context, arguments []string) int {
 		LogFormat           string        `env:"log_format"`
 		LogLevel            string        `env:"log_level"`
 		LogPretty           bool          `env:"log_pretty"`
+		Storage             string        `env:"storage"`
 	}
 	var flags globalFlags
 
@@ -81,6 +82,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	set.StringVar(&flags.LogFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=json")
 	set.StringVar(&flags.LogLevel, "log-level", config.DefaultSettings.LogLevel, "-log-level info")
 	set.BoolVar(&flags.LogPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
+	set.StringVar(&flags.Storage, "storage", "", "-storage=redis://localhost:6379/1")
 
 	if len(args) == 0 || command.NewCommand(ctx, args[0]) == nil {
 		command.Synopsis()
