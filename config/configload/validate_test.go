@@ -211,7 +211,7 @@ func TestLabels(t *testing.T) {
 				conf.Context = ctx
 				defer cancel()
 
-				_, err = runtime.NewServerConfiguration(conf, log, cache.New(log, tmpStoreCh))
+				_, err = runtime.NewServerConfiguration(conf, log, cache.NewMemory(log, tmpStoreCh))
 			}
 
 			var errMsg string

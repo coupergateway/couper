@@ -79,7 +79,7 @@ settings {
 	cache.StaticBackends.Reset()
 
 	cmdCtx := command.ContextWithSignal(context.Background())
-	config, err := couperruntime.NewServerConfiguration(configFile, log, cache.New(log, cmdCtx.Done()))
+	config, err := couperruntime.NewServerConfiguration(configFile, log, cache.NewMemory(log, cmdCtx.Done()))
 	if err != nil {
 		panic("init error: " + err.Error())
 	}

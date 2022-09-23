@@ -189,7 +189,7 @@ func TestHealthCheck(t *testing.T) {
 
 			closeCh := make(chan struct{})
 			defer close(closeCh)
-			store := cache.New(log, closeCh)
+			store := cache.NewMemory(log, closeCh)
 
 			if conf != nil {
 				ctx, cancel := context.WithCancel(conf.Context)
@@ -258,7 +258,7 @@ func TestRateLimit(t *testing.T) {
 
 			closeCh := make(chan struct{})
 			defer close(closeCh)
-			store := cache.New(log, closeCh)
+			store := cache.NewMemory(log, closeCh)
 
 			if conf != nil {
 				ctx, cancel := context.WithCancel(conf.Context)
@@ -342,7 +342,7 @@ func TestEndpointPaths(t *testing.T) {
 
 			closeCh := make(chan struct{})
 			defer close(closeCh)
-			store := cache.New(log, closeCh)
+			store := cache.NewMemory(log, closeCh)
 
 			var serverConfig runtime.ServerConfiguration
 			if err == nil {

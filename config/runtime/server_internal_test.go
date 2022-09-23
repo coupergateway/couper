@@ -187,7 +187,7 @@ func TestServer_validatePortHosts(t *testing.T) {
 			quitCh := make(chan struct{})
 			defer close(quitCh)
 
-			store := cache.New(log, quitCh)
+			store := cache.NewMemory(log, quitCh)
 
 			if _, err := NewServerConfiguration(tt.args.conf, log, store); (err != nil) != tt.wantErr {
 				subT.Errorf("validatePortHosts() error = %v, wantErr %v", err, tt.wantErr)

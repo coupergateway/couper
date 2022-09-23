@@ -23,8 +23,8 @@ type MemoryStore struct {
 	quitCh <-chan struct{}
 }
 
-// New creates a new <MemoryStore> object.
-func New(log *logrus.Entry, quitCh <-chan struct{}) Storage {
+// NewMemory creates a new <MemoryStore> object.
+func NewMemory(log *logrus.Entry, quitCh <-chan struct{}) Storage {
 	store := &MemoryStore{
 		db:     make(map[string]*entry),
 		log:    log,

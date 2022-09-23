@@ -515,7 +515,7 @@ definitions {
 			conf.Context = ctx
 			defer cancel()
 
-			_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
+			_, err = runtime.NewServerConfiguration(conf, logger, cache.NewMemory(logger, tmpStoreCh))
 		}
 
 		if err != nil {

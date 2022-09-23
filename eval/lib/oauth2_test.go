@@ -334,7 +334,7 @@ definitions {
 
 			quitCh := make(chan struct{}, 1)
 			defer close(quitCh)
-			store := cache.New(logger, quitCh)
+			store := cache.NewMemory(logger, quitCh)
 
 			ctx, cancel := context.WithCancel(couperConf.Context)
 			couperConf.Context = ctx

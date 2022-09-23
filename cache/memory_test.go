@@ -15,7 +15,7 @@ func TestCache_All(t *testing.T) {
 
 	quitCh := make(chan struct{})
 	defer close(quitCh)
-	ms := cache.New(logger, quitCh)
+	ms := cache.NewMemory(logger, quitCh)
 
 	if v, _ := ms.Get("key"); v != nil {
 		t.Errorf("Nil expected, given %q", v)

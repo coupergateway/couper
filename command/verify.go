@@ -38,7 +38,7 @@ func (v Verify) Execute(args Args, conf *config.Couper, logger *logrus.Entry) er
 
 	cache.StaticBackends.Reset()
 
-	tmpMemStore := cache.New(logger, tmpStoreCh)
+	tmpMemStore := cache.NewMemory(logger, tmpStoreCh)
 
 	ctx, cancel := context.WithCancel(cf.Context)
 	cf.Context = ctx

@@ -230,7 +230,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			}
 			// dry run configuration
 			tmpStoreCh := make(chan struct{})
-			tmpMemStore := cache.New(logger, tmpStoreCh)
+			tmpMemStore := cache.NewMemory(logger, tmpStoreCh)
 
 			cache.StaticBackends.Reset()
 

@@ -229,7 +229,7 @@ func TestDuplicateEndpoint(t *testing.T) {
 			conf.Context = ctx
 			defer cancel()
 
-			server, err := runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
+			server, err := runtime.NewServerConfiguration(conf, logger, cache.NewMemory(logger, tmpStoreCh))
 
 			if err != nil {
 				subT.Error("expected no error, got:", err)

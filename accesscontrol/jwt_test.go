@@ -909,7 +909,7 @@ func TestJwtConfig(t *testing.T) {
 				conf.Context = ctx
 				defer cancel()
 
-				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
+				_, err = runtime.NewServerConfiguration(conf, logger, cache.NewMemory(logger, tmpStoreCh))
 			}
 
 			var errMsg, expectedError string

@@ -142,7 +142,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	cache.StaticBackends.Reset()
 
-	store := cache.New(logEntry, r.context.Done())
+	store := cache.NewMemory(logEntry, r.context.Done())
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
 	srvConf, err := runtime.NewServerConfiguration(config, logEntry, store)
 	if err != nil {
