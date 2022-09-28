@@ -57,15 +57,15 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	for path, h := range opts.EndpointRoutes {
 		// TODO: handle method option per endpoint configuration
-		mux.mustAddRoute(mux.endpointRoot, path, h, true)
+		mux.mustAddRoute(mux.endpointRoot, path, h)
 	}
 
 	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), h, false)
+		mux.mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), h)
 	}
 
 	for path, h := range opts.SPARoutes {
-		mux.mustAddRoute(mux.spaRoot, path, h, false)
+		mux.mustAddRoute(mux.spaRoot, path, h)
 	}
 
 	return mux
@@ -76,16 +76,10 @@ var noDefaultMethods []string
 func (m *Mux) registerHandler(root *pathpattern.Node, methods []string, path string, handler http.Handler) {
 	notAllowedMethodsHandler := errors.DefaultJSON.WithError(errors.MethodNotAllowed)
 	allowedMethodsHandler := middleware.NewAllowedMethodsHandler(methods, noDefaultMethods, handler, notAllowedMethodsHandler)
-	m.mustAddRoute(root, path, allowedMethodsHandler, true)
+	m.mustAddRoute(root, path, allowedMethodsHandler)
 }
 
-func (m *Mux) mustAddRoute(root *pathpattern.Node, path string, handler http.Handler, forEndpoint bool) {
-	if forEndpoint && strings.HasSuffix(path, wildcardSearch) {
-		route := mustCreateNode(root, handler, "", path)
-		m.handler[route] = handler
-		return
-	}
-
+func (m *Mux) mustAddRoute(root *pathpattern.Node, path string, handler http.Handler) {
 	// EndpointRoutes allowed methods are handled by handler
 	route := mustCreateNode(root, handler, "", path)
 	m.handler[route] = handler
