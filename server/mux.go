@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -35,7 +36,10 @@ const (
 	wildcardVariable    = "_couper_wildcardMatch"
 	wildcardReplacement = "/{" + wildcardVariable + "*}"
 	wildcardSearch      = "/**"
+	pathParamPattern    = `/{$1|.+}`
 )
+
+var pathParamSegmentRegexp = regexp.MustCompile(`/{(\w+)}`)
 
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
@@ -88,12 +92,11 @@ func (m *Mux) mustAddRoute(root *pathpattern.Node, path string, handler http.Han
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
-	var route *routers.Route
-
 	node, paramValues := m.matchWithMethod(m.endpointRoot, req)
 	if node == nil {
 		node, paramValues = m.matchWithoutMethod(m.endpointRoot, req)
 	}
+
 	if node == nil {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
@@ -119,13 +122,12 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		}
 	}
 
-	route, _ = node.Value.(*routers.Route)
+	route, _ := node.Value.(*routers.Route)
 
 	pathParams := make(request.PathParameter, len(paramValues))
 	paramKeys := node.VariableNames
 	for i, value := range paramValues {
-		key := paramKeys[i]
-		key = strings.TrimSuffix(key, "*")
+		key := strings.TrimSuffix(strings.TrimSuffix(paramKeys[i], "*"), "|.+")
 		pathParams[key] = value
 	}
 
@@ -145,21 +147,33 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 func (m *Mux) matchWithMethod(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
 	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
 
-	return m.match(root, req.Method+" "+req.URL.Path)
+	return m.match(root, req.Method+" ", req.URL.Path)
 }
 
 func (m *Mux) matchWithoutMethod(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
 	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
 
-	return m.match(root, req.URL.Path)
+	return m.match(root, "", req.URL.Path)
 }
 
-func (m *Mux) match(root *pathpattern.Node, requestLine string) (*pathpattern.Node, []string) {
-	node, values := root.Match(requestLine)
-	for i, value := range values {
-		if value == "" && node.VariableNames[i] != wildcardVariable+"*" {
-			// Path params must not be empty.
-			return nil, nil
+func (m *Mux) match(root *pathpattern.Node, methodPrefix, path string) (*pathpattern.Node, []string) {
+	node, values := root.Match(methodPrefix + path)
+	if node != nil {
+		route, _ := node.Value.(*routers.Route)
+		if !strings.HasSuffix(route.Path, wildcardReplacement) {
+			// Allow one single trailing / on request path and/or endpoint path
+			if path != "/" {
+				path = strings.TrimSuffix(path, "/")
+			}
+			routePath := route.Path
+			if routePath != "/" {
+				routePath = strings.TrimSuffix(routePath, "/")
+			}
+			expectedSegments := strings.Split(path, "/")
+			matchedSegments := strings.Split(routePath, "/")
+			if len(expectedSegments) != len(matchedSegments) {
+				node = nil
+			}
 		}
 	}
 	return node, values
@@ -218,13 +232,16 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API
 }
 
 func mustCreateNode(root *pathpattern.Node, handler http.Handler, method, path string) *routers.Route {
-	pathOptions := &pathpattern.Options{}
+	pathOptions := &pathpattern.Options{
+		SupportRegExp:   true,
+		SupportWildcard: true,
+	}
 
 	if strings.HasSuffix(path, wildcardSearch) {
-		pathOptions.SupportWildcard = true
 		path = path[:len(path)-len(wildcardSearch)] + wildcardReplacement
 	}
 
+	path = pathParamSegmentRegexp.ReplaceAllString(path, pathParamPattern)
 	nodePath := path
 	if method != "" {
 		nodePath = method + " " + path

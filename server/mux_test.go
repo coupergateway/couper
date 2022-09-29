@@ -90,9 +90,15 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"param": "my-param",
 		}, ""},
 		{" w/o path param, w/ wildcard", newReq("/w/c//wild/card"), http.NotFoundHandler(), nil, ""},
-		{" w/o path param, w/o wildcard", newReq("/w/c"), http.NotFoundHandler(), nil, ""},
-		{" w/o path param, w/o wildcard", newReq("/w/c/"), http.NotFoundHandler(), nil, ""},
-		{" w/o path param, w/o wildcard", newReq("/w/c//"), http.NotFoundHandler(), nil, ""},
+		{" w/o path param, w/o wildcard", newReq("/w/c"), noContent, request.PathParameter{
+			"section": "w",
+			"project": "c",
+		}, ""},
+		{" w/o path param, w/o wildcard", newReq("/w/c/"), noContent, request.PathParameter{
+			"section": "w",
+			"project": "c",
+		}, ""},
+		{" w/o path param, w/o wildcard, double /", newReq("/w/c//"), http.NotFoundHandler(), nil, ""},
 		{" w/o path param, w/o wildcard", newReq("/w/c///"), http.NotFoundHandler(), nil, ""},
 	}
 	for _, tt := range tests {
