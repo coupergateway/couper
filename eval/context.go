@@ -117,6 +117,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		c.cloneMu.Lock()
 		defer c.cloneMu.Unlock()
 
+		// TODO: Do we need this check?
 		if c.store == nil {
 			return
 		}
