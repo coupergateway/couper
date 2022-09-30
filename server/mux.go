@@ -81,7 +81,7 @@ func (m *Mux) registerHandler(root *pathpattern.Node, methods []string, path str
 
 func (m *Mux) mustAddRoute(root *pathpattern.Node, path string, handler http.Handler) {
 	// EndpointRoutes allowed methods are handled by handler
-	route := mustCreateNode(root, handler, "", path)
+	route := mustCreateNode(root, handler, path)
 	m.handler[route] = handler
 }
 
@@ -225,7 +225,7 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API
 	return nil, nil
 }
 
-func mustCreateNode(root *pathpattern.Node, handler http.Handler, method, path string) *routers.Route {
+func mustCreateNode(root *pathpattern.Node, handler http.Handler, path string) *routers.Route {
 	pathOptions := &pathpattern.Options{
 		SupportRegExp:   true,
 		SupportWildcard: true,
@@ -236,14 +236,9 @@ func mustCreateNode(root *pathpattern.Node, handler http.Handler, method, path s
 	}
 
 	path = pathParamSegmentRegexp.ReplaceAllString(path, pathParamPattern)
-	nodePath := path
-	if method != "" {
-		nodePath = method + " " + path
-	}
-
-	node, err := root.CreateNode(nodePath, pathOptions)
+	node, err := root.CreateNode(path, pathOptions)
 	if err != nil {
-		panic(fmt.Errorf("create path node failed: %s %q: %v", method, path, err))
+		panic(fmt.Errorf("create path node failed: %q: %v", path, err))
 	}
 
 	var serverOpts *server.Options
@@ -252,8 +247,7 @@ func mustCreateNode(root *pathpattern.Node, handler http.Handler, method, path s
 	}
 
 	node.Value = &routers.Route{
-		Method: method,
-		Path:   path,
+		Path: path,
 		Server: &openapi3.Server{Variables: map[string]*openapi3.ServerVariable{
 			serverOptionsKey: {Default: fmt.Sprintf("%#v", serverOpts)},
 		}},
