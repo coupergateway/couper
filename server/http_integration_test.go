@@ -5523,3 +5523,61 @@ func TestEnvironmentSetting(t *testing.T) {
 		})
 	}
 }
+
+func TestWildcardVsEmptyPathParams(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/url/08_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path     string
+		expected string
+	}
+
+	for _, tc := range []testCase{
+		{"/foo", "/**"},
+		{"/p1/A/B/C", "/**"},
+		{"/p1/A/B/", "/p1/{x}/{y}"},
+		{"/p1/A//", "/**"},
+		{"/p1///", "/**"},
+		{"/p1//", "/**"},
+		{"/p1/A/B", "/p1/{x}/{y}"},
+		{"/p1/A/", "/**"},
+		{"/p1/A", "/**"},
+		{"/p1/", "/**"},
+		{"/p1", "/**"},
+		{"/p2/A/B/C", "/p2/**"},
+		{"/p2/A/B/", "/p2/{x}/{y}"},
+		{"/p2/A/B", "/p2/{x}/{y}"},
+		{"/p2/A/", "/p2/**"},
+		{"/p2/A", "/p2/**"},
+		{"/p2/", "/p2/**"},
+		{"/p2", "/p2/**"},
+		{"/p3/A/B/C", "/p3/**"},
+		{"/p3/A/B/", "/p3/{x}/{y}"},
+		{"/p3/A/B", "/p3/{x}/{y}"},
+		{"/p3/A/", "/p3/{x}"},
+		{"/p3/A", "/p3/{x}"},
+		{"/p3/", "/p3/**"},
+		{"/p3", "/p3/**"},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				subT.Errorf("Unexpected status: want: 200, got %d", res.StatusCode)
+			}
+
+			match := res.Header.Get("Match")
+			if match != tc.expected {
+				subT.Errorf("Unexpected match for %s: want %s, got %s", tc.path, tc.expected, match)
+			}
+		})
+	}
+}
