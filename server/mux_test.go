@@ -99,7 +99,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"project": "c",
 		}, ""},
 		{" w/o path param, w/o wildcard, double /", newReq("/w/c//"), http.NotFoundHandler(), nil, ""},
-		{" w/o path param, w/o wildcard", newReq("/w/c///"), http.NotFoundHandler(), nil, ""},
+		{" w/o path param, w/o wildcard, triple /", newReq("/w/c///"), http.NotFoundHandler(), nil, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
