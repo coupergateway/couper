@@ -94,7 +94,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"section": "w",
 			"project": "c",
 		}, ""},
-		{" w/o path param, w/o wildcard", newReq("/w/c/"), noContent, request.PathParameter{
+		{" w/o path param, w/o wildcard, single /", newReq("/w/c/"), noContent, request.PathParameter{
 			"section": "w",
 			"project": "c",
 		}, ""},
