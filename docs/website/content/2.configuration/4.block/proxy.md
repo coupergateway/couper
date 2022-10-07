@@ -51,7 +51,7 @@ values: [
   },
   {
     "default": "\"default\"",
-    "description": "Defines the proxy request name. Allowed only in the [Definitions Block](definitions).",
+    "description": "Defines the proxy request name. Allowed only in the [`definitions` block](definitions).",
     "name": "name",
     "type": "string"
   },

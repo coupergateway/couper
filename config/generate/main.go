@@ -63,6 +63,11 @@ func main() {
 		"LogFieldsAttribute":        newFields(&meta.LogFieldsAttribute{}),
 	}
 
+	blockNamesMap := map[string]string{
+		"oauth2_ac":       "beta_oauth2",
+		"oauth2_req_auth": "oauth2",
+	}
+
 	processedFiles := make(map[string]struct{})
 
 	for _, impl := range []interface{}{
@@ -95,10 +100,14 @@ func main() {
 		t := reflect.TypeOf(impl).Elem()
 		name := reflect.TypeOf(impl).String()
 		name = strings.TrimPrefix(name, "*config.")
-		fileName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
+		blockName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
+
+		if _, exists := blockNamesMap[blockName]; exists {
+			blockName = blockNamesMap[blockName]
+		}
 		result := entry{
-			Name: name,
-			URL:  strings.ToLower(basePath + fileName),
+			Name: blockName,
+			URL:  strings.ToLower(basePath + blockName),
 			Type: "block",
 		}
 		result.ID = result.URL
@@ -171,7 +180,7 @@ func main() {
 		}
 
 		// TODO: write func
-		file, err := os.OpenFile(filepath.Join(docsBlockPath, fileName+".md"), os.O_RDWR|os.O_CREATE, 0666)
+		file, err := os.OpenFile(filepath.Join(docsBlockPath, blockName+".md"), os.O_RDWR|os.O_CREATE, 0666)
 		if err != nil {
 			panic(err)
 		}
@@ -226,7 +235,7 @@ values: %s
 		}
 
 		processedFiles[file.Name()] = struct{}{}
-		println("Attributes written: " + fileName)
+		println("Attributes written: "+blockName+":\r\t\t\t\t\t", file.Name())
 
 		if os.Getenv(searchClientKey) != "" {
 			_, err = index.SaveObjects(result) //, opt.AutoGenerateObjectIDIfNotExist(true))
