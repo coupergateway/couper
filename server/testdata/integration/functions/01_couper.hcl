@@ -201,6 +201,14 @@ server "api" {
         }
       }
     }
+
+    endpoint "/trim" {
+      response {
+        headers = {
+          x-trim = trim(" \tfoo \tbar \t")
+        }
+      }
+    }
   }
 }
 
