@@ -4163,6 +4163,9 @@ func TestFunctions(t *testing.T) {
 			"X-Lookup-3": "Go-http-client/1.1",
 			"X-Lookup-4": "default",
 		}, http.StatusOK},
+		{"trim", "/v1/trim", map[string]string{
+			"X-Trim": "foo \tbar",
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
