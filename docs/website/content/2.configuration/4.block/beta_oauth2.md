@@ -49,7 +49,7 @@ values: [
   },
   {
     "default": "",
-    "description": "The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`([settings](settings)) attribute if Couper is running behind a proxy.",
+    "description": "The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url` attribute](settings) if Couper is running behind a proxy.",
     "name": "redirect_uri",
     "type": "string"
   },

@@ -72,8 +72,25 @@ export default {
   background: rgb(101, 179, 46);
 }
 
+.result {
+  max-width: 95%
+}
+
 .result >>> em {
   background-color: rgb(245 158 11 / var(--tw-text-opacity));
   font-style: normal;
+}
+
+.result >>> code {
+  font-weight: normal;
+  background: #eee
+}
+
+.result table {
+  table-layout: fixed
+}
+
+.result table >>> td:first-child {
+  width: 35%
 }
 </style>

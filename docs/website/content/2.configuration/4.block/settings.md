@@ -86,7 +86,7 @@ values: [
   },
   {
     "default": "false",
-    "description": "enables profiling (https://github.com/google/pprof/blob/main/doc/README.md#pprof)",
+    "description": "enables [profiling](https://github.com/google/pprof/blob/main/doc/README.md#pprof)",
     "name": "pprof",
     "type": "bool"
   },
