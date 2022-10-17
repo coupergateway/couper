@@ -31,7 +31,7 @@ var DefaultFunc = function.New(&function.Spec{
 		}
 		retType, _ := convert.UnifyUnsafe(argTypes)
 		if retType == cty.NilType {
-			return cty.NilType, fmt.Errorf("all non-NilVal arguments must have the same type")
+			return cty.NilType, fmt.Errorf("all defined arguments must have the same type")
 		}
 		return retType, nil
 	},

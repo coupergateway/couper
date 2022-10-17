@@ -32,7 +32,7 @@ func TestDefaultErrors(t *testing.T) {
 					"a": cty.NumberIntVal(1),
 				}),
 			},
-			"all non-NilVal arguments must have the same type",
+			"all defined arguments must have the same type",
 		},
 	}
 
