@@ -17,11 +17,23 @@ var DefaultFunc = function.New(&function.Spec{
 		AllowNull:        true,
 	},
 	Type: func(args []cty.Value) (cty.Type, error) {
-		if len(args) < 2 {
-			return cty.NilType, fmt.Errorf("not enough arguments")
+		var argTypes []cty.Type
+		for _, val := range args {
+			// ignore NilType values when determining the unsafe-unified return type
+			if val.Type() == cty.NilType {
+				continue
+			}
+			argTypes = append(argTypes, val.Type())
 		}
-		// last argument defines the impl return type
-		return args[len(args)-1].Type(), nil
+		if len(argTypes) == 0 {
+			// no non-NilVal arguments
+			return cty.NilType, nil
+		}
+		retType, _ := convert.UnifyUnsafe(argTypes)
+		if retType == cty.NilType {
+			return cty.NilType, fmt.Errorf("all defined arguments must have the same type")
+		}
+		return retType, nil
 	},
 	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 		for _, argVal := range args {

@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * [endpoint `/**` path wildcards](https://docs.couper.io/configuration/block/endpoint) sometimes not matching ([#603](https://github.com/avenga/couper/pull/603))
+  * Some errors in the [`default()` function](https://docs.couper.io/configuration/functions) ([#596](https://github.com/avenga/couper/pull/596))
 
 
 ---

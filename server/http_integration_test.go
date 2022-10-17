@@ -4110,6 +4110,9 @@ func TestFunctions(t *testing.T) {
 			"X-Default-10": "",
 			"X-Default-11": "0",
 			"X-Default-12": "",
+			"X-Default-13": `{"a":1}`,
+			"X-Default-14": `{"a":1}`,
+			"X-Default-15": `[1,2]`,
 		}, http.StatusOK},
 		{"contains", "/v1/contains", map[string]string{
 			"X-Contains-1":  "yes",
@@ -4233,10 +4236,10 @@ func TestFunction_to_number_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"string", "/v1/to_number/string", wd + `/01_couper.hcl:62,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
-		{"bool", "/v1/to_number/bool", wd + `/01_couper.hcl:70,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
-		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:78,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
-		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:86,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
+		{"string", "/v1/to_number/string", wd + `/01_couper.hcl:65,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
+		{"bool", "/v1/to_number/bool", wd + `/01_couper.hcl:73,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
+		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:81,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
+		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:89,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4277,9 +4280,9 @@ func TestFunction_length_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"object", "/v1/length/object", wd + `/01_couper.hcl:123,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
-		{"string", "/v1/length/string", wd + `/01_couper.hcl:131,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
-		{"null", "/v1/length/null", wd + `/01_couper.hcl:139,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
+		{"object", "/v1/length/object", wd + `/01_couper.hcl:126,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"string", "/v1/length/string", wd + `/01_couper.hcl:134,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"null", "/v1/length/null", wd + `/01_couper.hcl:142,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4320,7 +4323,7 @@ func TestFunction_lookup_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"null inputMap", "/v1/lookup/inputMap-null", wd + `/01_couper.hcl:200,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
+		{"null inputMap", "/v1/lookup/inputMap-null", wd + `/01_couper.hcl:203,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
