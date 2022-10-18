@@ -44,7 +44,7 @@ type JWT struct {
 	SigningKey            string              `hcl:"signing_key,optional" docs:"Private key (in PEM format) for {RS*} and {ES*} variants."`
 	SigningKeyFile        string              `hcl:"signing_key_file,optional" docs:"Optional file reference instead of {signing_key} usage."`
 	SigningTTL            string              `hcl:"signing_ttl,optional" docs:"The token's time-to-live (creates the {exp} claim)." type:"duration"`
-	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}."`
+	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}." type:"string"`
 
 	// Internally used
 	Backend *hclsyntax.Body

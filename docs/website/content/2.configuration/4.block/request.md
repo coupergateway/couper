@@ -14,58 +14,58 @@ The `request` block creates and executes a request to a backend service.
 ---
 values: [
   {
+    "default": "",
+    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `url` is defined within.",
     "name": "backend",
-    "type": "string",
-    "default": "",
-    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `url` is defined within."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "plain text request body, implicitly sets `Content-Type: text/plain` header field.",
     "name": "body",
-    "type": "string",
-    "default": "",
-    "description": "plain text request body, implicitly sets `Content-Type: text/plain` header field."
+    "type": "string"
   },
   {
-    "name": "expected_status",
-    "type": "tuple (int)",
     "default": "[]",
-    "description": "If defined, the response status code will be verified against this list of codes. If the status code is not included in this list an [`unexpected_status` error](../error-handling#endpoint-error-types) will be thrown which can be handled with an [`error_handler`](../error-handling#endpoint-related-error_handler)."
+    "description": "If defined, the response status code will be verified against this list of codes. If the status code is not included in this list an [`unexpected_status` error](../error-handling#endpoint-error-types) will be thrown which can be handled with an [`error_handler`](../error-handling#endpoint-related-error_handler).",
+    "name": "expected_status",
+    "type": "tuple (int)"
   },
   {
+    "default": "",
+    "description": "form request body, implicitly sets `Content-Type: application/x-www-form-urlencoded` header field.",
     "name": "form_body",
-    "type": "string",
-    "default": "",
-    "description": "form request body, implicitly sets `Content-Type: application/x-www-form-urlencoded` header field."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "request headers",
     "name": "headers",
-    "type": "object",
-    "default": "",
-    "description": "request headers"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "JSON request body, implicitly sets `Content-Type: application/json` header field.",
     "name": "json_body",
-    "type": "string",
-    "default": "",
-    "description": "JSON request body, implicitly sets `Content-Type: application/json` header field."
+    "type": "string"
   },
   {
-    "name": "method",
-    "type": "string",
     "default": "\"GET\"",
-    "description": "the request method"
+    "description": "the request method",
+    "name": "method",
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Key/value pairs to set query parameters for this request",
     "name": "query_params",
-    "type": "object",
-    "default": "",
-    "description": "Key/value pairs to set query parameters for this request"
+    "type": "object"
   },
   {
-    "name": "url",
-    "type": "string",
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the used backend."
+    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the used backend.",
+    "name": "url",
+    "type": "string"
   }
 ]
 

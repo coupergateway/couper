@@ -28,34 +28,34 @@ saml "SSO" {
 ---
 values: [
   {
-    "name": "array_attributes",
-    "type": "tuple (string)",
     "default": "[]",
-    "description": "A list of assertion attributes that may have several values. Results in at least an empty array in `request.context.<label>.attributes.<name>`"
+    "description": "A list of assertion attributes that may have several values. Results in at least an empty array in `request.context.<label>.attributes.<name>`",
+    "name": "array_attributes",
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "File reference to the Identity Provider metadata XML file.",
     "name": "idp_metadata_file",
-    "type": "string",
-    "default": "",
-    "description": "File reference to the Identity Provider metadata XML file."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The URL of the Service Provider's ACS endpoint. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [`accept_forwarded_url` attribute](settings) if Couper is running behind a proxy.",
     "name": "sp_acs_url",
-    "type": "string",
-    "default": "",
-    "description": "The URL of the Service Provider's ACS endpoint. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the `accept_forwarded_url`([settings](settings)) attribute if Couper is running behind a proxy."
+    "type": "string"
   },
   {
-    "name": "sp_entity_id",
-    "type": "string",
     "default": "",
-    "description": "The Service Provider's entity ID."
+    "description": "The Service Provider's entity ID.",
+    "name": "sp_entity_id",
+    "type": "string"
   }
 ]
 

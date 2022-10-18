@@ -3,8 +3,6 @@ import Logo from "@/components/content/Logo";
 import GithubIcon from "@/components/content/GithubIcon";
 import SearchBar from "@/components/SearchBar";
 import SideNavbar from "@/components/SideNavbar";
-
-const { toc } = useContent();
 </script>
 
 <template>
@@ -28,23 +26,7 @@ const { toc } = useContent();
         prose prose-slate prose-lg prose-code:bg-sky-100 prose-code:text-sky-900 prose-code:p-1 prose-code:rounded-md prose-code:text-sm prose-blockquote:bg-purple-100 prose-blockquote:rounded-md prose-a:text-sky-600 hover:prose-a:text-amber-500">
         <slot />
       </main>
-      <nav v-if="toc && toc.links" class="w-1/5 grow-0 p-2">
-        <h2 class="text-amber-500">On this Page</h2>
-        <ul v-if="toc && toc.links">
-          <li v-for="link in toc.links" :key="link.text">
-            <NuxtLink :href="`#${link.id}`">
-              {{ link.text }}
-            </NuxtLink>
-            <ul v-if="link.children">
-              <li v-for="child in link.children" :key="child.id">
-                <NuxtLink class="pl-2" :href="`#${child.id}`">
-                  {{ child.text }}
-                </NuxtLink>
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </nav>
+      <PageToc/>
     </div>
     <footer class="col-span-3 text-sm leading-6 m-10"><p>Copyright couper.io</p></footer>
   </div>

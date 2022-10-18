@@ -19,6 +19,7 @@ type Proxy struct {
 	BackendName string   `hcl:"backend,optional" docs:"backend block reference"`
 	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
+	ReqName     string   `hcl:"name,optional" docs:"Defines the proxy request name. Allowed only in the [{definitions} block](definitions)." default:"default"`
 	Websockets  *bool    `hcl:"websockets,optional" docs:"Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other {proxy} blocks, {request} blocks or {response} blocks are not allowed within the current {endpoint} block."`
 
 	// internally used

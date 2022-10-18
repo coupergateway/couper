@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -28,8 +30,8 @@ type OIDC struct {
 	JWKsMaxStale            string   `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
 	Name                    string   `hcl:"name,label"`
 	Remain                  hcl.Body `hcl:",remain"`
-	RedirectURI             string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the {accept_forwarded_url}({settings} block) attribute if Couper is running behind a proxy."`
-	Scope                   *string  `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
+	RedirectURI             string   `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [{accept_forwarded_url} attribute](settings) if Couper is running behind a proxy."`
+	Scope                   string   `hcl:"scope,optional" docs:"A space separated list of requested scope values for the access token."`
 	TokenEndpointAuthMethod *string  `hcl:"token_endpoint_auth_method,optional" docs:"Defines the method to authenticate the client at the token endpoint. If set to {client_secret_post}, the client credentials are transported in the request body. If set to {client_secret_basic}, the client credentials are transported via Basic Authentication." default:"client_secret_basic"`
 	ConfigurationTTL        string   `hcl:"configuration_ttl,optional" docs:"The duration to cache the OpenID configuration located at {configuration_url}." type:"duration" default:"1h"`
 	ConfigurationMaxStale   string   `hcl:"configuration_max_stale,optional" docs:"Duration a cached OpenID configuration stays valid after its TTL has passed." type:"duration" default:"1h"`
@@ -128,10 +130,12 @@ func (o *OIDC) GetRedirectURI() string {
 }
 
 func (o *OIDC) GetScope() string {
-	if o.Scope == nil {
+	scope := strings.TrimSpace(o.Scope)
+	if scope == "" {
 		return "openid"
 	}
-	return "openid " + *o.Scope
+
+	return "openid " + scope
 }
 
 func (o *OIDC) GetTokenEndpointAuthMethod() *string {

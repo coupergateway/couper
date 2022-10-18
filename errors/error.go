@@ -58,26 +58,20 @@ func (e *Error) Kind(name string) *Error {
 	err := e.clone()
 	e.isParent = true
 	err.isParent = false
-	err.kinds = append(err.kinds, name)
+	err.kinds = append([]string{name}, err.kinds...)
 	return err
 }
 
-// Kinds returns all configured kinds in reversed order so the
+// Kinds returns all configured kinds, the
 // most specific one gets evaluated first.
 func (e *Error) Kinds() []string {
-	var reversed []string
-	for i := len(e.kinds); i > 0; i-- {
-		reversed = append(reversed, e.kinds[i-1])
-	}
+	var kinds []string
 
 	if eer, ok := e.inner.(*Error); ok {
-		k := eer.Kinds()
-		if len(k) > 0 {
-			reversed = append(reversed, k[0])
-		}
+		kinds = eer.Kinds()[:]
 	}
 
-	return reversed
+	return append(kinds, e.kinds...)
 }
 
 // Context appends the given context block type to the existing ones.
