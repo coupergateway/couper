@@ -38,6 +38,9 @@ server "api" {
           x-default-10 = default(request.cookies.undef, request.cookies.undef)
           x-default-11 = default(request.cookies.undef, 0)
           x-default-12 = default(request.cookies.undef, false)
+          x-default-13 = json_encode(default({a = 1}, {}))
+          x-default-14 = json_encode(default({a = 1}, {b = 2}))
+          x-default-15 = json_encode(default([1, 2], []))
         }
       }
     }
