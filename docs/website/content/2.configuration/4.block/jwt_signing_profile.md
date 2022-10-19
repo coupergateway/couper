@@ -13,40 +13,40 @@ by its required _label_.
 ---
 values: [
   {
+    "default": "",
+    "description": "claims for the JWT payload, claim values are evaluated per request",
     "name": "claims",
-    "type": "object",
-    "default": "",
-    "description": "claims for the JWT payload, claim values are evaluated per request"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "additional header fields for the JWT, `alg` and `typ` cannot be set",
     "name": "headers",
-    "type": "object",
-    "default": "",
-    "description": "additional header fields for the JWT, `alg` and `typ` cannot be set"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithms",
     "name": "key",
-    "type": "string",
-    "default": "",
-    "description": "private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithms"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "optional file reference instead of `key` usage",
     "name": "key_file",
-    "type": "string",
-    "default": "",
-    "description": "optional file reference instead of `key` usage"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "algorithm used for signing: `\"RS256\"`, `\"RS384\"`, `\"RS512\"`, `\"HS256\"`, `\"HS384\"`, `\"HS512\"`, `\"ES256\"`, `\"ES384\"`, `\"ES512\"`",
     "name": "signature_algorithm",
-    "type": "string",
-    "default": "",
-    "description": "algorithm used for signing: `\"RS256\"`, `\"RS384\"`, `\"RS512\"`, `\"HS256\"`, `\"HS384\"`, `\"HS512\"`, `\"ES256\"`, `\"ES384\"`, `\"ES512\"`"
+    "type": "string"
   },
   {
-    "name": "ttl",
-    "type": "string",
     "default": "",
-    "description": "The token's time-to-live, creates the `exp` claim"
+    "description": "The token's time-to-live, creates the `exp` claim",
+    "name": "ttl",
+    "type": "string"
   }
 ]
 

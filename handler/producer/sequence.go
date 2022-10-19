@@ -84,7 +84,9 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 		}
 
 		if lastResult.Err != nil {
-			if _, ok := lastResult.Err.(*errors.Error); !ok {
+			// only wrap if lastResult.Err is not already an errors.Sequence
+			cErr, ok := lastResult.Err.(*errors.Error)
+			if !ok || !hasSequenceKind(cErr) {
 				lastResult.Err = errors.Sequence.With(lastResult.Err)
 			}
 			results <- lastResult
@@ -97,6 +99,15 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 	}
 
 	results <- lastResult
+}
+
+func hasSequenceKind(cerr *errors.Error) bool {
+	for _, kind := range cerr.Kinds() {
+		if kind == "sequence" {
+			return true
+		}
+	}
+	return false
 }
 
 func (s Sequence) Len() int {

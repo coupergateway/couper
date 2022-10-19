@@ -19,22 +19,22 @@ In this case the response validation will fail if not ignored, too.
 ---
 values: [
   {
-    "name": "file",
-    "type": "string",
     "default": "",
-    "description": "OpenAPI YAML definition file"
+    "description": "OpenAPI YAML definition file",
+    "name": "file",
+    "type": "string"
   },
   {
+    "default": "false",
+    "description": "logs request validation results, skips error handling",
     "name": "ignore_request_violations",
-    "type": "bool",
-    "default": "false",
-    "description": "logs request validation results, skips error handling"
+    "type": "bool"
   },
   {
-    "name": "ignore_response_violations",
-    "type": "bool",
     "default": "false",
-    "description": "logs response validation results, skips error handling"
+    "description": "logs response validation results, skips error handling",
+    "name": "ignore_response_violations",
+    "type": "bool"
   }
 ]
 

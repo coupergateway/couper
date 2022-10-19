@@ -18,64 +18,64 @@ spa {
 ---
 values: [
   {
+    "default": "[]",
+    "description": "Sets predefined [access control](../access-control) for `spa` block context.",
     "name": "access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "Sets predefined [access control](../access-control) for `spa` block context."
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "key/value pairs to add as response headers in the client response",
     "name": "add_response_headers",
-    "type": "object",
-    "default": "",
-    "description": "key/value pairs to add as response headers in the client response"
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "Configures the path prefix for all requests.",
     "name": "base_path",
-    "type": "string",
-    "default": "",
-    "description": "Configures the path prefix for all requests."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Location of the bootstrap file.",
     "name": "bootstrap_file",
-    "type": "string",
-    "default": "",
-    "description": "Location of the bootstrap file."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Configure [CORS](cors) settings.",
     "name": "cors",
-    "type": "object",
-    "default": "",
-    "description": "Configure [CORS](cors) settings."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
+    "default": "[]",
+    "description": "Disables access controls by name.",
     "name": "disable_access_control",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "Disables access controls by name."
+    "type": "tuple (string)"
   },
   {
+    "default": "[]",
+    "description": "List of SPA paths that need the bootstrap file.",
     "name": "paths",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "List of SPA paths that need the bootstrap file."
+    "type": "tuple (string)"
   },
   {
+    "default": "[]",
+    "description": "list of names to remove headers from the client response",
     "name": "remove_response_headers",
-    "type": "tuple (string)",
-    "default": "[]",
-    "description": "list of names to remove headers from the client response"
+    "type": "tuple (string)"
   },
   {
-    "name": "set_response_headers",
-    "type": "object",
     "default": "",
-    "description": "key/value pairs to set as response headers in the client response"
+    "description": "key/value pairs to set as response headers in the client response",
+    "name": "set_response_headers",
+    "type": "object"
   }
 ]
 

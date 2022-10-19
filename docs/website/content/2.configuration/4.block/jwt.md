@@ -15,130 +15,130 @@ Since responses from endpoints protected by JWT access controls are not publicly
 ---
 values: [
   {
+    "default": "",
+    "description": "[`backend` block](backend) reference for enhancing JWKS requests.",
     "name": "backend",
-    "type": "string",
-    "default": "",
-    "description": "[`backend` block](backend) reference for enhancing JWKS requests."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions.",
     "name": "beta_permissions_claim",
-    "type": "string",
-    "default": "",
-    "description": "Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively.",
     "name": "beta_permissions_map",
-    "type": "object",
-    "default": "",
-    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values.",
     "name": "beta_roles_claim",
-    "type": "string",
-    "default": "",
-    "description": "Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions.",
     "name": "beta_roles_map",
-    "type": "object",
-    "default": "",
-    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request.",
     "name": "claims",
-    "type": "object",
-    "default": "",
-    "description": "Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request."
+    "type": "object"
   },
   {
+    "default": "",
+    "description": "Read token value from a cookie. Cannot be used together with `header` or `token_value`",
     "name": "cookie",
-    "type": "string",
-    "default": "",
-    "description": "Read token value from a cookie. Cannot be used together with `header` or `token_value`"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
-    "type": "object",
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks."
+    "type": "object"
   },
   {
-    "name": "disable_private_caching",
-    "type": "bool",
     "default": "false",
-    "description": "If set to `true`, Couper does not add the `private` directive to the `Cache-Control` HTTP header field value."
+    "description": "If set to `true`, Couper does not add the `private` directive to the `Cache-Control` HTTP header field value.",
+    "name": "disable_private_caching",
+    "type": "bool"
   },
   {
+    "default": "",
+    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.",
     "name": "header",
-    "type": "string",
-    "default": "",
-    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`."
+    "type": "string"
   },
   {
+    "default": "\"1h\"",
+    "description": "Time period the cached JWK set stays valid after its TTL has passed.",
     "name": "jwks_max_stale",
-    "type": "duration",
-    "default": "\"1h\"",
-    "description": "Time period the cached JWK set stays valid after its TTL has passed."
+    "type": "duration"
   },
   {
+    "default": "\"1h\"",
+    "description": "Time period the JWK set stays valid and may be cached.",
     "name": "jwks_ttl",
-    "type": "duration",
-    "default": "\"1h\"",
-    "description": "Time period the JWK set stays valid and may be cached."
+    "type": "duration"
   },
   {
+    "default": "",
+    "description": "URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)",
     "name": "jwks_url",
-    "type": "string",
-    "default": "",
-    "description": "URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.",
     "name": "key",
-    "type": "string",
-    "default": "",
-    "description": "Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Optional file reference instead of `key` usage.",
     "name": "key_file",
-    "type": "string",
-    "default": "",
-    "description": "Optional file reference instead of `key` usage."
+    "type": "string"
   },
   {
-    "name": "required_claims",
-    "type": "tuple (string)",
     "default": "[]",
-    "description": "List of claim names that must be given for a valid token."
+    "description": "List of claim names that must be given for a valid token.",
+    "name": "required_claims",
+    "type": "tuple (string)"
   },
   {
+    "default": "",
+    "description": "Valid values: `RS256`, `RS384`, `RS512`, `HS256`, `HS384`, `HS512`, `ES256`, `ES384`, `ES512`",
     "name": "signature_algorithm",
-    "type": "string",
-    "default": "",
-    "description": "Valid values: `RS256`, `RS384`, `RS512`, `HS256`, `HS384`, `HS512`, `ES256`, `ES384`, `ES512`"
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Private key (in PEM format) for `RS*` and `ES*` variants.",
     "name": "signing_key",
-    "type": "string",
-    "default": "",
-    "description": "Private key (in PEM format) for `RS*` and `ES*` variants."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "Optional file reference instead of `signing_key` usage.",
     "name": "signing_key_file",
-    "type": "string",
-    "default": "",
-    "description": "Optional file reference instead of `signing_key` usage."
+    "type": "string"
   },
   {
+    "default": "",
+    "description": "The token's time-to-live (creates the `exp` claim).",
     "name": "signing_ttl",
-    "type": "duration",
-    "default": "",
-    "description": "The token's time-to-live (creates the `exp` claim)."
+    "type": "duration"
   },
   {
-    "name": "token_value",
-    "type": "object",
     "default": "",
-    "description": "Expression to obtain the token. Cannot be used together with `cookie` or `header`."
+    "description": "Expression to obtain the token. Cannot be used together with `cookie` or `header`.",
+    "name": "token_value",
+    "type": "string"
   }
 ]
 
