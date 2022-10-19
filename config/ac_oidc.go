@@ -20,7 +20,7 @@ var (
 // the url with the backend origin definition.
 type OIDC struct {
 	ErrorHandlerSetter
-	BackendName             string   `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Required, if no [{backend} block](backend) or {configuration_url} is defined within."`
+	BackendName             string   `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Default for OpenID configuration, JWKS, token and userinfo requests."`
 	ClientID                string   `hcl:"client_id" docs:"The client identifier."`
 	ClientSecret            string   `hcl:"client_secret" docs:"The client password."`
 	ConfigurationURL        string   `hcl:"configuration_url" docs:"The OpenID configuration URL."`
@@ -36,10 +36,10 @@ type OIDC struct {
 	VerifierMethod          string   `hcl:"verifier_method,optional" docs:"The method to verify the integrity of the authorization code flow."`
 
 	// configuration related backends
-	ConfigurationBackendName string `hcl:"configuration_backend,optional"`
-	JWKSBackendName          string `hcl:"jwks_uri_backend,optional"`
-	TokenBackendName         string `hcl:"token_backend,optional"`
-	UserinfoBackendName      string `hcl:"userinfo_backend,optional"`
+	ConfigurationBackendName string `hcl:"configuration_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the OpenID configuration from."`
+	JWKSBackendName          string `hcl:"jwks_uri_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the JWKS from."`
+	TokenBackendName         string `hcl:"token_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the token from."`
+	UserinfoBackendName      string `hcl:"userinfo_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the userinfo from."`
 
 	// internally used
 	Backends map[string]hcl.Body
@@ -79,12 +79,12 @@ func (o *OIDC) Inline() interface{} {
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier."`
 
 		AuthorizationBackend       *Backend `hcl:"authorization_backend,block"`
-		ConfigurationBackend       *Backend `hcl:"configuration_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
+		ConfigurationBackend       *Backend `hcl:"configuration_backend,block"`
 		DeviceAuthorizationBackend *Backend `hcl:"device_authorization_backend,block"`
-		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
+		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block"`
 		RevocationBackend          *Backend `hcl:"revocation_backend,block"`
-		TokenBackend               *Backend `hcl:"token_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
-		UserinfoBackend            *Backend `hcl:"userinfo_backend,block" docs:"Optional option to configure specific behavior for a given OIDC backend."`
+		TokenBackend               *Backend `hcl:"token_backend,block"`
+		UserinfoBackend            *Backend `hcl:"userinfo_backend,block"`
 	}
 
 	return &Inline{}
