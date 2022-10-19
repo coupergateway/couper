@@ -226,6 +226,7 @@ func realmain(ctx context.Context, arguments []string) int {
 				time.Sleep(flags.FileWatchRetryDelay)
 				continue
 			}
+
 			// dry run configuration
 			tmpStoreCh := make(chan struct{})
 			tmpMemStore := cache.New(logger, tmpStoreCh)
@@ -245,7 +246,12 @@ func realmain(ctx context.Context, arguments []string) int {
 			}
 
 			// Create new config with non-canceled context.
-			confFile, _ = configload.LoadFiles(filesList.paths, flags.Environment)
+			confFile, reloadErr = configload.LoadFiles(filesList.paths, flags.Environment)
+			if reloadErr != nil {
+				logger.WithError(reloadErr).Error("reload failed")
+				time.Sleep(flags.FileWatchRetryDelay)
+				continue
+			}
 
 			restartSignal <- struct{}{}                              // shutdown running couper
 			<-errCh                                                  // drain current error due to cancel and ensure closed ports
