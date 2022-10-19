@@ -12,12 +12,12 @@ const (
 	Password          = "password"
 )
 
-var OAuthBlockHeaderSchema = hcl.BlockHeaderSchema{
+var oauthBlockHeaderSchema = hcl.BlockHeaderSchema{
 	Type: "oauth2",
 }
 var OAuthBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
-		OAuthBlockHeaderSchema,
+		oauthBlockHeaderSchema,
 	},
 }
 

@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/utils"
 )
@@ -265,21 +264,6 @@ func verifyResponseBodyAttrs(b *hclsyntax.Body) error {
 }
 
 var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections"}
-var forbiddenInRefinedBackendBlockSchema = &hcl.BodySchema{
-	Blocks: []hcl.BlockHeaderSchema{
-		{
-			Type: "openapi",
-		},
-		config.OAuthBlockHeaderSchema,
-		{
-			Type: "beta_health",
-		},
-		config.TokenRequestBlockHeaderSchema,
-		{
-			Type: "beta_rate_limit",
-		},
-	},
-}
 
 func invalidRefinement(body *hclsyntax.Body) error {
 	const message = "backend reference: refinement for %q is not permitted"
