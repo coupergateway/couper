@@ -100,7 +100,6 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 			backendBody = newDefaultBackend()
 		} else {
 			switch labelSuffix {
-			// TODO do we also have to add _configuration_backend?
 			case "_jwks_uri_backend", "_token_backend", "_userinfo_backend":
 				copied := *backendBody
 				// create new Attributes to allow different name later
@@ -110,6 +109,7 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 				}
 				backendBody = hclbody.MergeBodies(&copied, newDefaultBackend(), false)
 			default:
+				// with OIDC this is used for _configuration_backend
 				backendBody = hclbody.MergeBodies(backendBody, newDefaultBackend(), false)
 			}
 		}
