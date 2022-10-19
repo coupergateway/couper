@@ -4110,6 +4110,9 @@ func TestFunctions(t *testing.T) {
 			"X-Default-10": "",
 			"X-Default-11": "0",
 			"X-Default-12": "",
+			"X-Default-13": `{"a":1}`,
+			"X-Default-14": `{"a":1}`,
+			"X-Default-15": `[1,2]`,
 		}, http.StatusOK},
 		{"contains", "/v1/contains", map[string]string{
 			"X-Contains-1":  "yes",
@@ -4236,10 +4239,10 @@ func TestFunction_to_number_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"string", "/v1/to_number/string", wd + `/01_couper.hcl:62,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
-		{"bool", "/v1/to_number/bool", wd + `/01_couper.hcl:70,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
-		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:78,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
-		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:86,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
+		{"string", "/v1/to_number/string", wd + `/01_couper.hcl:65,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
+		{"bool", "/v1/to_number/bool", wd + `/01_couper.hcl:73,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
+		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:81,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
+		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:89,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4280,9 +4283,9 @@ func TestFunction_length_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"object", "/v1/length/object", wd + `/01_couper.hcl:123,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
-		{"string", "/v1/length/string", wd + `/01_couper.hcl:131,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
-		{"null", "/v1/length/null", wd + `/01_couper.hcl:139,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
+		{"object", "/v1/length/object", wd + `/01_couper.hcl:126,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"string", "/v1/length/string", wd + `/01_couper.hcl:134,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
+		{"null", "/v1/length/null", wd + `/01_couper.hcl:142,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -4323,7 +4326,7 @@ func TestFunction_lookup_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"null inputMap", "/v1/lookup/inputMap-null", wd + `/01_couper.hcl:200,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
+		{"null inputMap", "/v1/lookup/inputMap-null", wd + `/01_couper.hcl:203,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
@@ -5522,6 +5525,64 @@ func TestEnvironmentSetting(t *testing.T) {
 
 			if header := res.Header.Get("X-Env"); header != tt.env {
 				subT.Errorf("Unexpected header:\n\tWant: %q\n\tGot:  %q", tt.env, header)
+			}
+		})
+	}
+}
+
+func TestWildcardVsEmptyPathParams(t *testing.T) {
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/integration/url/08_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		path     string
+		expected string
+	}
+
+	for _, tc := range []testCase{
+		{"/foo", "/**"},
+		{"/p1/A/B/C", "/**"},
+		{"/p1/A/B/", "/p1/{x}/{y}"},
+		{"/p1/A//", "/**"},
+		{"/p1///", "/**"},
+		{"/p1//", "/**"},
+		{"/p1/A/B", "/p1/{x}/{y}"},
+		{"/p1/A/", "/**"},
+		{"/p1/A", "/**"},
+		{"/p1/", "/**"},
+		{"/p1", "/**"},
+		{"/p2/A/B/C", "/p2/**"},
+		{"/p2/A/B/", "/p2/{x}/{y}"},
+		{"/p2/A/B", "/p2/{x}/{y}"},
+		{"/p2/A/", "/p2/**"},
+		{"/p2/A", "/p2/**"},
+		{"/p2/", "/p2/**"},
+		{"/p2", "/p2/**"},
+		{"/p3/A/B/C", "/p3/**"},
+		{"/p3/A/B/", "/p3/{x}/{y}"},
+		{"/p3/A/B", "/p3/{x}/{y}"},
+		{"/p3/A/", "/p3/{x}"},
+		{"/p3/A", "/p3/{x}"},
+		{"/p3/", "/p3/**"},
+		{"/p3", "/p3/**"},
+	} {
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusOK {
+				subT.Errorf("Unexpected status: want: 200, got %d", res.StatusCode)
+			}
+
+			match := res.Header.Get("Match")
+			if match != tc.expected {
+				subT.Errorf("Unexpected match for %s: want %s, got %s", tc.path, tc.expected, match)
 			}
 		})
 	}
