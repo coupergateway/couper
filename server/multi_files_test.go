@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"io"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -181,21 +182,22 @@ func TestMultiFiles_Definitions(t *testing.T) {
 func TestMultiFiles_MultipleBackends(t *testing.T) {
 	type testCase struct {
 		config string
+		blType string
 	}
 
 	for _, tc := range []testCase{
-		{"testdata/multi/backends/errors/jwt.hcl"},
-		{"testdata/multi/backends/errors/beta_oauth2.hcl"},
-		{"testdata/multi/backends/errors/oidc.hcl"},
-		{"testdata/multi/backends/errors/ac_eh.hcl"},
-		{"testdata/multi/backends/errors/ep_proxy.hcl"},
-		{"testdata/multi/backends/errors/ep_request.hcl"},
-		{"testdata/multi/backends/errors/api_ep.hcl"},
+		{"testdata/multi/backends/errors/jwt.hcl", "jwt"},
+		{"testdata/multi/backends/errors/beta_oauth2.hcl", "beta_oauth2"},
+		{"testdata/multi/backends/errors/oidc.hcl", "oidc"},
+		{"testdata/multi/backends/errors/ac_eh.hcl", "error_handler"},
+		{"testdata/multi/backends/errors/ep_proxy.hcl", "endpoint"},
+		{"testdata/multi/backends/errors/ep_request.hcl", "endpoint"},
+		{"testdata/multi/backends/errors/api_ep.hcl", "endpoint"},
 	} {
 		t.Run(tc.config, func(st *testing.T) {
 			_, err := configload.LoadFile(filepath.Join(testWorkingDir, tc.config), "")
 
-			if !strings.Contains(err.Error(), "Multiple definitions of backend are not allowed.") {
+			if !strings.HasSuffix(err.Error(), fmt.Sprintf(": Multiple definitions of backend are not allowed in %s.; ", tc.blType)) {
 				st.Errorf("Unexpected error: %s", err.Error())
 			}
 		})

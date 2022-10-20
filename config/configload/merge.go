@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	errMultipleBackends = "Multiple definitions of backend are not allowed."
+	errMultipleBackends = "Multiple definitions of backend are not allowed in %s."
 	errUniqueLabels     = "All %s blocks must have unique labels."
 )
 
