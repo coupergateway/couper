@@ -1,10 +1,10 @@
 server {
   endpoint "/" {
-    proxy {
+    request {
       backend {
         origin = "https:/example.com"
       }
       backend = "BE"
-	}
+    }
   }
 }

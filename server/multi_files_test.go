@@ -184,9 +184,12 @@ func TestMultiFiles_MultipleBackends(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"testdata/multi/backends/errors/ac.hcl"},
+		{"testdata/multi/backends/errors/jwt.hcl"},
+		{"testdata/multi/backends/errors/beta_oauth2.hcl"},
+		{"testdata/multi/backends/errors/oidc.hcl"},
 		{"testdata/multi/backends/errors/ac_eh.hcl"},
-		{"testdata/multi/backends/errors/ep.hcl"},
+		{"testdata/multi/backends/errors/ep_proxy.hcl"},
+		{"testdata/multi/backends/errors/ep_request.hcl"},
 		{"testdata/multi/backends/errors/api_ep.hcl"},
 	} {
 		t.Run(tc.config, func(st *testing.T) {
