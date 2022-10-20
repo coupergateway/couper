@@ -107,7 +107,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	if endpointConf.Response != nil {
 		response = &producer.Response{
-			Context: endpointConf.Response.Remain,
+			Context: endpointConf.Response.HCLBody(),
 		}
 		blockBodies = append(blockBodies, response.Context)
 	}
@@ -138,7 +138,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 		pr := &producer.Request{
 			Backend: backend,
-			Context: requestConf.Remain,
+			Context: requestConf.HCLBody(),
 			Name:    requestConf.Name,
 		}
 
@@ -178,7 +178,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	return &handler.EndpointOptions{
 		APIName:       apiName,
-		Context:       endpointConf.Remain,
+		Context:       endpointConf.HCLBody(),
 		ErrorTemplate: errTpl,
 		LogPattern:    endpointConf.Pattern,
 		Proxies:       proxies,

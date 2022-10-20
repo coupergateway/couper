@@ -13,8 +13,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -83,12 +85,12 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 			helper.Must(err)
 
 			backend := transport.NewBackend(
-				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				hclbody.NewHCLSyntaxBodyWithStringAttr("origin", "http://"+origin.Listener.Addr().String()),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
 				ErrorTemplate: errors.DefaultJSON,
-				Context:       remain.Inline,
+				Context:       remain.Inline.(*hclsyntax.Body),
 				ReqBodyLimit:  1024,
 				Proxies: producer.Proxies{
 					&producer.Proxy{Name: "default", RoundTrip: backend},
@@ -212,7 +214,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
 					ErrorTemplate: errors.DefaultJSON,
-					Context:       hcl.EmptyBody(),
+					Context:       &hclsyntax.Body{},
 					ReqBodyLimit:  1024,
 					Proxies: producer.Proxies{
 						&producer.Proxy{Name: "default", RoundTrip: backend},
@@ -327,7 +329,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			h := test.New(subT)
 
 			backend := transport.NewBackend(
-				test.NewRemainContext("origin", "http://"+origin.Listener.Addr().String()),
+				hclbody.NewHCLSyntaxBodyWithStringAttr("origin", "http://"+origin.Listener.Addr().String()),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 			bufOpts := eval.MustBuffer(helper.NewInlineContext(tc.remain))
@@ -420,13 +422,13 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	defer origin.Close()
 
 	rt := transport.NewBackend(
-		test.NewRemainContext("origin", origin.URL), &transport.Config{},
+		hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL), &transport.Config{},
 		&transport.BackendOptions{}, log.WithContext(context.Background()))
 
 	mockProducer := &mockProducerResult{rt}
 
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
-		Context:       hcl.EmptyBody(),
+		Context:       &hclsyntax.Body{},
 		ErrorTemplate: errors.DefaultJSON,
 		Proxies:       &mockProducerResult{},
 		Requests:      mockProducer,
@@ -473,13 +475,13 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	ctx = context.WithValue(ctx, request.StartTime, time.Now())
 
 	rt := transport.NewBackend(
-		test.NewRemainContext("origin", slowOrigin.URL), &transport.Config{},
+		hclbody.NewHCLSyntaxBodyWithStringAttr("origin", slowOrigin.URL), &transport.Config{},
 		&transport.BackendOptions{}, log.WithContext(context.Background()))
 
 	mockProducer := &mockProducerResult{rt}
 
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
-		Context:       hcl.EmptyBody(),
+		Context:       &hclsyntax.Body{},
 		ErrorTemplate: errors.DefaultJSON,
 		Proxies:       &mockProducerResult{},
 		Requests:      mockProducer,

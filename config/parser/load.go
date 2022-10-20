@@ -1,26 +1,23 @@
 package parser
 
 import (
-	"strings"
+	"fmt"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
-func Load(src []byte, name string) (hcl.Body, hcl.Diagnostics) {
+func Load(src []byte, name string) (*hclsyntax.Body, error) {
 	parser := hclparse.NewParser()
 
-	var file *hcl.File
-	var diags hcl.Diagnostics
-
-	if strings.HasSuffix(name, ".json") {
-		file, diags = parser.ParseJSON(src, name)
-	} else {
-		file, diags = parser.ParseHCL(src, name)
-	}
-
+	file, diags := parser.ParseHCL(src, name)
 	if file == nil || file.Body == nil {
-		return hcl.EmptyBody(), diags
+		return nil, diags
 	}
-	return file.Body, diags
+
+	hsbody, ok := file.Body.(*hclsyntax.Body)
+	if !ok {
+		return nil, fmt.Errorf("couper configuration must be in native HCL syntax")
+	}
+	return hsbody, nil
 }

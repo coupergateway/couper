@@ -6,14 +6,16 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/errors"
 )
 
 type kindContent struct {
-	body  hcl.Body
+	body  *hclsyntax.Body
 	kinds []string
 }
 
@@ -24,7 +26,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) 
 			continue
 		}
 
-		kinds, ehc, err := newErrorHandlerContent(bodyToContent(body.HCLBody()))
+		kinds, ehc, err := newErrorHandlerContent(body.HCLBody())
 		if err != nil {
 			return err
 		}
@@ -60,7 +62,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) 
 
 // newErrorHandlerContent reads given error_handler block contents and maps them by unique
 // error kind declaration.
-func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []kindContent, error) {
+func newErrorHandlerContent(content *hclsyntax.Body) (map[string]struct{}, []kindContent, error) {
 	if content == nil {
 		return nil, nil, fmt.Errorf("empty hcl content")
 	}
@@ -68,14 +70,14 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 	configuredKinds := make(map[string]struct{})
 	var kindContents []kindContent
 
-	for _, block := range content.Blocks.OfType(errorHandler) {
+	for _, block := range hclbody.BlocksOfType(content, errorHandler) {
 		kinds, err := newKindsFromLabels(block)
 		if err != nil {
 			return nil, nil, err
 		}
 		for _, k := range kinds {
 			if _, exist := configuredKinds[k]; exist {
-				subjRange := block.DefRange
+				subjRange := block.DefRange()
 				if len(block.LabelRanges) > 0 {
 					subjRange = block.LabelRanges[0]
 				}
@@ -88,7 +90,7 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 			}
 
 			if k != errors.Wildcard && !errors.IsKnown(k) {
-				subjRange := block.DefRange
+				subjRange := block.DefRange()
 				if len(block.LabelRanges) > 0 {
 					subjRange = block.LabelRanges[0]
 				}
@@ -114,7 +116,7 @@ func newErrorHandlerContent(content *hcl.BodyContent) (map[string]struct{}, []ki
 const errorHandlerLabelSep = " "
 
 // newKindsFromLabels reads two possible kind formats and returns them per slice entry.
-func newKindsFromLabels(block *hcl.Block) ([]string, error) {
+func newKindsFromLabels(block *hclsyntax.Block) ([]string, error) {
 	var allKinds []string
 	for _, kinds := range block.Labels {
 		all := strings.Split(kinds, errorHandlerLabelSep)

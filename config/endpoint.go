@@ -3,12 +3,16 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/sequence"
 )
 
-var _ Inline = &Endpoint{}
+var (
+	_ Body   = &Endpoint{}
+	_ Inline = &Endpoint{}
+)
 
 // Endpoint represents the <Endpoint> object.
 type Endpoint struct {
@@ -33,9 +37,9 @@ type Endpoint struct {
 // Endpoints represents a list of <Endpoint> objects.
 type Endpoints []*Endpoint
 
-// HCLBody implements the <Inline> interface.
-func (e Endpoint) HCLBody() hcl.Body {
-	return e.Remain
+// HCLBody implements the <Body> interface.
+func (e Endpoint) HCLBody() *hclsyntax.Body {
+	return e.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

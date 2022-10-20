@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/request"
@@ -14,7 +15,7 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-func NewURLFromAttribute(hclCtx *hcl.EvalContext, content hcl.Body, attrName string, req *http.Request) (*url.URL, error) {
+func NewURLFromAttribute(hclCtx *hcl.EvalContext, content *hclsyntax.Body, attrName string, req *http.Request) (*url.URL, error) {
 	urlVal, err := eval.ValueFromBodyAttribute(hclCtx, content, attrName)
 	if err != nil {
 		return nil, err

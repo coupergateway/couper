@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 func TestErrorHandler_newKindsFromLabels(t *testing.T) {
-	b := &hcl.Block{
+	b := &hclsyntax.Block{
 		Labels: []string{""},
 		LabelRanges: []hcl.Range{
 			{

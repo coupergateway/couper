@@ -11,7 +11,6 @@ type OAuth2AS interface {
 
 // OAuth2Client represents the client configuration for OAuth2 clients.
 type OAuth2Client interface {
-	Inline
 	ClientAuthenticationRequired() bool
 	GetClientID() string
 	GetClientSecret() string
@@ -20,6 +19,7 @@ type OAuth2Client interface {
 
 // OAuth2AcClient represents the client configuration for OAuth2 clients using the authorization code flow.
 type OAuth2AcClient interface {
+	Body
 	OAuth2Client
 	GetGrantType() string
 	GetRedirectURI() string
@@ -29,7 +29,6 @@ type OAuth2AcClient interface {
 
 // OAuth2Authorization represents the configuration for the OAuth2 authorization URL function
 type OAuth2Authorization interface {
-	Inline
 	GetAuthorizationEndpoint() (string, error)
 	GetClientID() string
 	GetRedirectURI() string

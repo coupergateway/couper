@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -31,11 +31,11 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 // and have control over the roundtrip configuration.
 type Proxy struct {
 	backend http.RoundTripper
-	context hcl.Body
+	context *hclsyntax.Body
 	logger  *logrus.Entry
 }
 
-func NewProxy(backend http.RoundTripper, ctx hcl.Body, logger *logrus.Entry) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx *hclsyntax.Body, logger *logrus.Entry) *Proxy {
 	proxy := &Proxy{
 		backend: backend,
 		context: ctx,
@@ -154,20 +154,12 @@ func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
 		return nil
 	}
 
-	wsBody, err := p.getWebsocketsBody()
-	if err != nil {
-		return err
-	}
-
-	bodyContent, _, diags := wsBody.PartialContent(config.WebsocketsInlineSchema)
-	if diags.HasErrors() {
-		return diags
-	}
+	wsBody := p.getWebsocketsBody()
 	if err := eval.ApplyRequestContext(hclCtx, wsBody, req); err != nil {
 		return err
 	}
 
-	attr, ok := bodyContent.Attributes["timeout"]
+	attr, ok := wsBody.Attributes["timeout"]
 	if !ok {
 		return nil
 	}
@@ -201,11 +193,7 @@ func (p *Proxy) registerWebsocketsResponse(req *http.Request) error {
 		return nil
 	}
 
-	wsBody, err := p.getWebsocketsBody()
-	if err != nil {
-		return err
-	}
-
+	wsBody := p.getWebsocketsBody()
 	evalCtx := eval.ContextFromRequest(req)
 
 	if rw, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
@@ -215,18 +203,13 @@ func (p *Proxy) registerWebsocketsResponse(req *http.Request) error {
 	return nil
 }
 
-func (p *Proxy) getWebsocketsBody() (hcl.Body, error) {
-	bodyContent, _, diags := p.context.PartialContent(config.Proxy{Remain: p.context}.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	wss := bodyContent.Blocks.OfType("websockets")
+func (p *Proxy) getWebsocketsBody() *hclsyntax.Body {
+	wss := hclbody.BlocksOfType(p.context, "websockets")
 	if len(wss) != 1 {
-		return nil, nil
+		return nil
 	}
 
-	return wss[0].Body, nil
+	return wss[0].Body
 }
 
 func (p *Proxy) handleUpgradeResponse(req *http.Request, res *http.Response) error {

@@ -3,22 +3,24 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
 var (
 	_ BackendReference = &TokenRequest{}
+	_ Body             = &TokenRequest{}
 	_ Inline           = &TokenRequest{}
 )
 
-var TokenRequestBlockHeaderSchema = hcl.BlockHeaderSchema{
+var tokenRequestBlockHeaderSchema = hcl.BlockHeaderSchema{
 	Type:          "beta_token_request",
 	LabelNames:    []string{"name"},
 	LabelOptional: true,
 }
 var TokenRequestBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
-		TokenRequestBlockHeaderSchema,
+		tokenRequestBlockHeaderSchema,
 	},
 }
 
@@ -37,9 +39,9 @@ func (t *TokenRequest) Reference() string {
 	return t.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
-func (t *TokenRequest) HCLBody() hcl.Body {
-	return t.Remain
+// HCLBody implements the <Body> interface.
+func (t *TokenRequest) HCLBody() *hclsyntax.Body {
+	return t.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
@@ -68,11 +70,6 @@ func (t *TokenRequest) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(t.Inline())
-
-	// A backend reference is defined, backend block is not allowed.
-	if t.BackendName != "" {
-		schema.Blocks = nil
-	}
 
 	return schema
 }

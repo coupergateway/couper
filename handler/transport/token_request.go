@@ -90,17 +90,12 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 		return "", 0, fmt.Errorf("token request failed") // don't propagate token request roundtrip error
 	}
 
-	trConf := &config.TokenRequest{Remain: t.config.Remain}
-	bodyContent, _, diags := t.config.Remain.PartialContent(trConf.Schema(true))
-	if diags.HasErrors() {
-		return "", 0, diags
-	}
-
 	// obtain synced and already read beresp value; map to context variables
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 	eval.MapTokenResponse(hclCtx, t.config.Name)
 
-	tokenVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "token")
+	tokenRequestBody := t.config.HCLBody()
+	tokenVal, err := eval.ValueFromBodyAttribute(hclCtx, tokenRequestBody, "token")
 	if err != nil {
 		return "", 0, err
 	}
@@ -111,7 +106,7 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 		return "", 0, fmt.Errorf("token expression must evaluate to a string")
 	}
 
-	ttlVal, err := eval.ValueFromAttribute(hclCtx, bodyContent, "ttl")
+	ttlVal, err := eval.ValueFromBodyAttribute(hclCtx, tokenRequestBody, "ttl")
 	if err != nil {
 		return "", 0, err
 	}

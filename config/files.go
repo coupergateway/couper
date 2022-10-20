@@ -23,11 +23,6 @@ type Files struct {
 	Remain               hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface.
-func (f Files) HCLBody() hcl.Body {
-	return f.Remain
-}
-
 // Inline implements the <Inline> interface.
 func (f Files) Inline() interface{} {
 	type Inline struct {

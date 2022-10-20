@@ -3,11 +3,13 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
 var (
 	_ BackendReference = &Request{}
+	_ Body             = &Request{}
 	_ Inline           = &Request{}
 )
 
@@ -18,7 +20,7 @@ type Request struct {
 	Remain      hcl.Body `hcl:",remain"`
 
 	// Internally used
-	Backend hcl.Body
+	Backend *hclsyntax.Body
 }
 
 // Requests represents a list of <Requests> objects.
@@ -29,9 +31,9 @@ func (r Request) Reference() string {
 	return r.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
-func (r Request) HCLBody() hcl.Body {
-	return r.Remain
+// HCLBody implements the <Body> interface.
+func (r Request) HCLBody() *hclsyntax.Body {
+	return r.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
@@ -59,11 +61,6 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(r.Inline())
-
-	// A backend reference is defined, backend block is not allowed.
-	if r.BackendName != "" {
-		schema.Blocks = nil
-	}
 
 	return schema
 }

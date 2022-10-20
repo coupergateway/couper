@@ -25,7 +25,7 @@ func Test_JWKS(t *testing.T) {
 
 	log, _ := test.NewLogger()
 
-	backend := transport.NewBackend(body.New(body.NewContentWithAttrName("origin", origin.Addr())),
+	backend := transport.NewBackend(body.NewHCLSyntaxBodyWithStringAttr("origin", origin.Addr()),
 		&transport.Config{}, nil, log.WithContext(context.Background()))
 
 	tests := []struct {

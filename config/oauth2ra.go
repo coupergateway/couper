@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 const (
@@ -11,17 +12,18 @@ const (
 	Password          = "password"
 )
 
-var OAuthBlockHeaderSchema = hcl.BlockHeaderSchema{
+var oauthBlockHeaderSchema = hcl.BlockHeaderSchema{
 	Type: "oauth2",
 }
 var OAuthBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
-		OAuthBlockHeaderSchema,
+		oauthBlockHeaderSchema,
 	},
 }
 
 var (
 	_ BackendReference = &OAuth2ReqAuth{}
+	_ Body             = &OAuth2ReqAuth{}
 	_ Inline           = &OAuth2ReqAuth{}
 	_ OAuth2Client     = &OAuth2ReqAuth{}
 	_ OAuth2AS         = &OAuth2ReqAuth{}
@@ -48,9 +50,9 @@ func (oa *OAuth2ReqAuth) Reference() string {
 	return oa.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
-func (oa *OAuth2ReqAuth) HCLBody() hcl.Body {
-	return oa.Remain
+// HCLBody implements the <Body> interface.
+func (oa *OAuth2ReqAuth) HCLBody() *hclsyntax.Body {
+	return oa.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
@@ -70,11 +72,6 @@ func (oa *OAuth2ReqAuth) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(oa.Inline())
-
-	// A backend reference is defined, backend block is not allowed.
-	if oa.BackendName != "" {
-		schema.Blocks = nil
-	}
 
 	return schema
 }

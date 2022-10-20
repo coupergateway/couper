@@ -462,3 +462,83 @@ func TestEnvironmentBlocksWithoutEnvironment(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"websockets attribute and block",
+			`proxy {
+		      backend = "foo"
+		      websockets = true
+		      websockets {}
+		    }`,
+			"couper.hcl:6,9-26: either websockets attribute or block is allowed; ",
+		},
+		{
+			"unlabeled proxy and request",
+			`proxy {
+		      backend {}
+		    }
+		    request {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+		},
+		{
+			"unlabeled proxy and default labeled request",
+			`proxy {
+		      backend {}
+		    }
+		    request "default" {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+		},
+		{
+			"default labeled proxy and unlabeled request",
+			`proxy "default" {
+		      backend {}
+		    }
+		    request {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+		},
+		{
+			"labeled proxy and request",
+			`proxy "foo" {
+		      backend {}
+		    }
+		    request "foo" {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "foo"; `,
+		},
+	}
+
+	template := `
+		server {
+		  endpoint "/" {
+		    %%
+		  }
+		}`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := configload.LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
+
+			errorMsg := err.Error()
+			if tt.error != errorMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
+			}
+		})
+	}
+}

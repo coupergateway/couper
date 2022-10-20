@@ -13,7 +13,6 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/avenga/couper/accesscontrol"
@@ -187,7 +186,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				err = setRoutesFromHosts(serverConfiguration, portsHosts,
 					path.Join(serverOptions.SrvBasePath, spaConf.BasePath, spaPath), spaHandler, spa)
 				if err != nil {
-					sbody := spaConf.HCLBody().(*hclsyntax.Body)
+					sbody := spaConf.HCLBody()
 					return nil, hcl.Diagnostics{&hcl.Diagnostic{
 						Subject: &sbody.Attributes["paths"].SrcRange,
 						Summary: err.Error(),

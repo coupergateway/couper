@@ -10,11 +10,11 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -100,28 +100,16 @@ func SetBody(req *http.Request, body []byte) {
 	parseForm(req)
 }
 
-func getPathAttribute(body hcl.Body) (*hcl.Attribute, error) {
-	bodyContent, _, diags := body.PartialContent(config.BackendInlineSchema)
-	if diags.HasErrors() {
-		return nil, errors.Evaluation.With(diags)
-	}
-	return bodyContent.Attributes[attrPath], nil
-}
-
-func ApplyRequestContext(httpCtx *hcl.EvalContext, body hcl.Body, req *http.Request) error {
+func ApplyRequestContext(httpCtx *hcl.EvalContext, body *hclsyntax.Body, req *http.Request) error {
 	if req == nil {
 		return nil
 	}
 
 	headerCtx := req.Header
 
-	pathAttr, err := getPathAttribute(body)
-	if err != nil {
-		return err
-	}
-
+	pathAttr := body.Attributes[attrPath]
 	if pathAttr != nil {
-		if err = evalPathAttr(req, pathAttr, httpCtx); err != nil {
+		if err := evalPathAttr(req, pathAttr, httpCtx); err != nil {
 			return err
 		}
 	}
@@ -279,7 +267,7 @@ func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hc
 	return nil
 }
 
-func evalPathAttr(req *http.Request, pathAttr *hcl.Attribute, httpCtx *hcl.EvalContext) error {
+func evalPathAttr(req *http.Request, pathAttr *hclsyntax.Attribute, httpCtx *hcl.EvalContext) error {
 	if pathAttr == nil {
 		return nil
 	}
@@ -377,7 +365,7 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 	return seetie.ValueToLogFields(val)
 }
 
-func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, beresp *http.Response) error {
+func ApplyResponseContext(ctx *hcl.EvalContext, body *hclsyntax.Body, beresp *http.Response) error {
 	if beresp == nil {
 		return nil
 	}
@@ -390,8 +378,7 @@ func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, beresp *http.Resp
 		return nil
 	}
 
-	bodyContent, _, _ := body.PartialContent(config.BackendInlineSchema)
-	if attr, ok := bodyContent.Attributes["set_response_status"]; ok {
+	if attr, ok := body.Attributes["set_response_status"]; ok {
 		_, err := ApplyResponseStatus(ctx, attr, beresp)
 		return err
 	}
@@ -399,7 +386,7 @@ func ApplyResponseContext(ctx *hcl.EvalContext, body hcl.Body, beresp *http.Resp
 	return nil
 }
 
-func ApplyResponseStatus(httpCtx *hcl.EvalContext, attr *hcl.Attribute, beresp *http.Response) (int, error) {
+func ApplyResponseStatus(httpCtx *hcl.EvalContext, attr *hclsyntax.Attribute, beresp *http.Response) (int, error) {
 	statusValue, err := Value(httpCtx, attr.Expr)
 	if err != nil {
 		return 0, err
@@ -487,7 +474,7 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 	return nil
 }
 
-func GetBody(ctx *hcl.EvalContext, content *hcl.BodyContent) (string, string, error) {
+func GetBody(ctx *hcl.EvalContext, content *hclsyntax.Body) (string, string, error) {
 	attr, ok := content.Attributes["json_body"]
 	if ok {
 		val, err := Value(ctx, attr.Expr)

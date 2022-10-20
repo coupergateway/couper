@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
@@ -44,7 +45,7 @@ var (
 )
 
 type Backend struct {
-	context             hcl.Body
+	context             *hclsyntax.Body
 	healthInfo          *HealthInfo
 	healthyMu           sync.RWMutex
 	logEntry            *logrus.Entry
@@ -59,7 +60,7 @@ type Backend struct {
 }
 
 // NewBackend creates a new <*Backend> object by the given <*Config>.
-func NewBackend(ctx hcl.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
+func NewBackend(ctx *hclsyntax.Body, tc *Config, opts *BackendOptions, log *logrus.Entry) http.RoundTripper {
 	var (
 		healthCheck       *config.HealthCheck
 		openAPI           *validation.OpenAPI
@@ -112,11 +113,11 @@ func (b *Backend) initOnce(conf *Config) {
 
 // RoundTrip implements the <http.RoundTripper> interface.
 func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctxBody, _ := req.Context().Value(request.BackendParams).(hcl.Body)
+	ctxBody, _ := req.Context().Value(request.BackendParams).(*hclsyntax.Body)
 	if ctxBody == nil {
 		ctxBody = b.context
 	} else {
-		ctxBody = hclbody.MergeBodies(b.context, ctxBody)
+		ctxBody = hclbody.MergeBodies(ctxBody, b.context, false)
 	}
 
 	// originalReq for token-request retry purposes
@@ -393,7 +394,7 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 	return retry, nil
 }
 
-func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) error {
+func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hclContext *hclsyntax.Body) error {
 	if pathPrefix := b.getAttribute(evalCtx, "path_prefix", hclContext); pathPrefix != "" {
 		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
@@ -408,14 +409,14 @@ func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hc
 	return nil
 }
 
-func (b *Backend) withBasicAuth(req *http.Request, evalCtx *hcl.EvalContext, hclContext hcl.Body) {
+func (b *Backend) withBasicAuth(req *http.Request, evalCtx *hcl.EvalContext, hclContext *hclsyntax.Body) {
 	if creds := b.getAttribute(evalCtx, "basic_auth", hclContext); creds != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(creds))
 		req.Header.Set("Authorization", "Basic "+auth)
 	}
 }
 
-func (b *Backend) getAttribute(evalContext *hcl.EvalContext, name string, hclContext hcl.Body) string {
+func (b *Backend) getAttribute(evalContext *hcl.EvalContext, name string, hclContext *hclsyntax.Body) string {
 	attrVal, err := eval.ValueFromBodyAttribute(evalContext, hclContext, name)
 	if err != nil {
 		b.upstreamLog.LogEntry().WithError(errors.Evaluation.Label(b.name).With(err))
@@ -500,13 +501,8 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 	return errCh
 }
 
-func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *http.Request) (*Config, error) {
+func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params *hclsyntax.Body, req *http.Request) (*Config, error) {
 	log := b.upstreamLog.LogEntry()
-
-	bodyContent, _, diags := params.PartialContent(config.BackendInlineSchema)
-	if diags.HasErrors() {
-		return nil, errors.Evaluation.Label(b.name).With(diags)
-	}
 
 	var origin, hostname, proxyURL string
 	var connectTimeout, ttfbTimeout, timeout string
@@ -523,7 +519,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		{"ttfb_timeout", &ttfbTimeout},
 		{"timeout", &timeout},
 	} {
-		if v, err := eval.ValueFromAttribute(httpCtx, bodyContent, p.attrName); err != nil {
+		if v, err := eval.ValueFromBodyAttribute(httpCtx, params, p.attrName); err != nil {
 			log.WithError(errors.Evaluation.Label(b.name).With(err)).Error()
 		} else if v != cty.NilVal {
 			*p.target = seetie.ValueToString(v)
@@ -554,12 +550,8 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params hcl.Body, req *
 		WithTimings(connectTimeout, ttfbTimeout, timeout, log), nil
 }
 
-func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params hcl.Body) error {
-	paramsContent, _, diags := params.PartialContent(config.BackendInlineSchema)
-	if diags.HasErrors() {
-		return diags
-	}
-	val, err := eval.ValueFromAttribute(ctx, paramsContent, "use_when_unhealthy")
+func (b *Backend) isUnhealthy(ctx *hcl.EvalContext, params *hclsyntax.Body) error {
+	val, err := eval.ValueFromBodyAttribute(ctx, params, "use_when_unhealthy")
 	if err != nil {
 		return err
 	}

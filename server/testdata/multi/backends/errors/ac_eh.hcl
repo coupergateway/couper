@@ -6,7 +6,7 @@ definitions {
           origin = "https:/example.com"
         }
         backend = "BE"
-	  }
+      }
     }
   }
 }

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	errMultipleBackends = "Multiple definitions of backend are not allowed."
+	errMultipleBackends = "Multiple definitions of backend are not allowed in %s."
 	errUniqueLabels     = "All %s blocks must have unique labels."
 )
 
@@ -143,7 +143,7 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 				uniqueAPILabels, uniqueSPALabels, uniqueFilesLabels := make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 
 				if block.Type == endpoint {
-					if err := absInBackends(block); err != nil { // Backend block inside a free endpoint block
+					if err := checkForMultipleBackends(block); err != nil { // Backend block inside a free endpoint block
 						return nil, err
 					}
 
@@ -194,7 +194,7 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 
 					for _, subBlock := range block.Body.Blocks {
 						if subBlock.Type == endpoint {
-							if err := absInBackends(subBlock); err != nil {
+							if err := checkForMultipleBackends(subBlock); err != nil {
 								return nil, err
 							}
 
@@ -208,7 +208,7 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 
 							results[serverKey].apis[apiKey].endpoints[subBlock.Labels[0]] = subBlock
 						} else if subBlock.Type == errorHandler {
-							if err := absInBackends(subBlock); err != nil {
+							if err := checkForMultipleBackends(subBlock); err != nil {
 								return nil, err
 							}
 
@@ -424,6 +424,12 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 						definitionsBlock[innerBlock.Type] = make(data)
 					}
 
+					if innerBlock.Type == backend {
+						if err := checkForMultipleBackendsInBackend(innerBlock); err != nil {
+							return nil, nil, err
+						}
+					}
+
 					// Count the "backend" blocks and "backend" attributes to
 					// forbid multiple backend definitions.
 
@@ -431,11 +437,14 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 					for _, block := range innerBlock.Body.Blocks {
 						if block.Type == errorHandler {
-							if err := absInBackends(block); err != nil {
+							if err := checkForMultipleBackends(block); err != nil {
 								return nil, nil, err
 							}
 						} else if block.Type == backend {
 							backends++
+							if err := checkForMultipleBackendsInBackend(block); err != nil {
+								return nil, nil, err
+							}
 						}
 					}
 
@@ -583,13 +592,13 @@ func absPath(attr *hclsyntax.Attribute) hclsyntax.Expression {
 	}
 }
 
-// absInBackends searches for "backend" blocks inside a proxy or request block to
+// checkForMultipleBackends searches for "backend" blocks inside a proxy or request block to
 // count the "backend"
 // blocks and "backend" attributes to forbid multiple backend definitions.
-func absInBackends(block *hclsyntax.Block) error {
+func checkForMultipleBackends(block *hclsyntax.Block) error {
 	for _, subBlock := range block.Body.Blocks {
 		if subBlock.Type == errorHandler {
-			return absInBackends(subBlock) // Recursive call
+			return checkForMultipleBackends(subBlock) // Recursive call
 		}
 
 		if subBlock.Type != proxy && subBlock.Type != request {
@@ -601,6 +610,9 @@ func absInBackends(block *hclsyntax.Block) error {
 		for _, subSubBlock := range subBlock.Body.Blocks {
 			if subSubBlock.Type == backend {
 				backends++
+				if err := checkForMultipleBackendsInBackend(subSubBlock); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -609,7 +621,36 @@ func absInBackends(block *hclsyntax.Block) error {
 		}
 
 		if backends > 1 {
-			return newMergeError(errMultipleBackends, block)
+			return newMergeError(errMultipleBackends, subBlock)
+		}
+	}
+
+	return nil
+}
+
+func checkForMultipleBackendsInBackend(block *hclsyntax.Block) error {
+	for _, subBlock := range block.Body.Blocks {
+		if subBlock.Type != oauth2 && subBlock.Type != tokenRequest {
+			continue
+		}
+
+		var backends int
+
+		for _, subSubBlock := range subBlock.Body.Blocks {
+			if subSubBlock.Type == backend {
+				backends++
+				if err := checkForMultipleBackendsInBackend(subSubBlock); err != nil { // Recursive call
+					return err
+				}
+			}
+		}
+
+		if _, ok := subBlock.Body.Attributes[backend]; ok {
+			backends++
+		}
+
+		if backends > 1 {
+			return newMergeError(errMultipleBackends, subBlock)
 		}
 	}
 

@@ -28,11 +28,6 @@ type Server struct {
 // Servers represents a list of <Server> objects.
 type Servers []*Server
 
-// HCLBody implements the <Inline> interface.
-func (s Server) HCLBody() hcl.Body {
-	return s.Remain
-}
-
 // Inline implements the <Inline> interface.
 func (s Server) Inline() interface{} {
 	type Inline struct {

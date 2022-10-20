@@ -13,9 +13,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/hashicorp/hcl/v2/hcltest"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
@@ -39,25 +37,25 @@ func TestBackend_RoundTrip_Timings(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	withTimingsFn := func(base hcl.Body, connect, ttfb, timeout string) hcl.Body {
-		content := &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+	withTimingsFn := func(base *hclsyntax.Body, connect, ttfb, timeout string) *hclsyntax.Body {
+		content := &hclsyntax.Body{Attributes: hclsyntax.Attributes{
 			"connect_timeout": {Name: "connect_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(connect)}},
 			"ttfb_timeout":    {Name: "ttfb_timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(ttfb)}},
 			"timeout":         {Name: "timeout", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(timeout)}},
 		}}
-		return hclbody.MergeBodies(base, hclbody.New(content))
+		return hclbody.MergeBodies(base, content, true)
 	}
 
 	tests := []struct {
 		name        string
-		context     hcl.Body
+		context     *hclsyntax.Body
 		req         *http.Request
 		expectedErr string
 	}{
-		{"with zero timings", test.NewRemainContext("origin", origin.URL), httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
-		{"with overall timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "1m", "30s", "500ms"), httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
-		{"with connect timeout", withTimingsFn(test.NewRemainContext("origin", "http://blackhole.webpagetest.org"), "750ms", "500ms", "1m"), httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
-		{"with ttfb timeout", withTimingsFn(test.NewRemainContext("origin", origin.URL), "10s", "1s", "1m"), httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
+		{"with zero timings", hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL), httptest.NewRequest(http.MethodGet, "http://1.2.3.4/", nil), ""},
+		{"with overall timeout", withTimingsFn(hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL), "1m", "30s", "500ms"), httptest.NewRequest(http.MethodHead, "http://1.2.3.5/", nil), "deadline exceeded"},
+		{"with connect timeout", withTimingsFn(hclbody.NewHCLSyntaxBodyWithStringAttr("origin", "http://blackhole.webpagetest.org"), "750ms", "500ms", "1m"), httptest.NewRequest(http.MethodGet, "http://1.2.3.6/", nil), "i/o timeout"},
+		{"with ttfb timeout", withTimingsFn(hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL), "10s", "1s", "1m"), httptest.NewRequest(http.MethodHead, "http://1.2.3.7/", nil), "timeout awaiting response headers"},
 	}
 
 	logger, hook := logrustest.NewNullLogger()
@@ -99,12 +97,7 @@ func TestBackend_Compression_Disabled(t *testing.T) {
 	logger, _ := logrustest.NewNullLogger()
 	log := logger.WithContext(context.Background())
 
-	u := seetie.GoToValue(origin.URL)
-	hclBody := hcltest.MockBody(&hcl.BodyContent{
-		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
-			"origin": hcltest.MockExprLiteral(u),
-		}),
-	})
+	hclBody := hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL)
 	backend := transport.NewBackend(hclBody, &transport.Config{}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
@@ -139,12 +132,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	logger, _ := logrustest.NewNullLogger()
 	log := logger.WithContext(context.Background())
 
-	u := seetie.GoToValue(origin.URL)
-	hclBody := hcltest.MockBody(&hcl.BodyContent{
-		Attributes: hcltest.MockAttrs(map[string]hcl.Expression{
-			"origin": hcltest.MockExprLiteral(u),
-		}),
-	})
+	hclBody := hclbody.NewHCLSyntaxBodyWithStringAttr("origin", origin.URL)
 
 	backend := transport.NewBackend(hclBody, &transport.Config{
 		Origin: origin.URL,
@@ -371,7 +359,8 @@ func TestBackend_director(t *testing.T) {
 			hclContext := helper.NewInlineContext(tt.inlineCtx)
 
 			backend := transport.NewBackend(hclbody.MergeBodies(hclContext,
-				hclbody.New(hclbody.NewContentWithAttrName("timeout", "1s")),
+				hclbody.NewHCLSyntaxBodyWithStringAttr("timeout", "1s"),
+				true,
 			), &transport.Config{}, nil, nullLog)
 
 			req := httptest.NewRequest(http.MethodGet, "https://example.com"+tt.path, nil)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -12,6 +13,7 @@ import (
 var (
 	_ BackendReference      = &OIDC{}
 	_ BackendInitialization = &OIDC{}
+	_ Body                  = &OIDC{}
 	_ Inline                = &OIDC{}
 )
 
@@ -42,12 +44,12 @@ type OIDC struct {
 	UserinfoBackendName      string `hcl:"userinfo_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the userinfo from."`
 
 	// internally used
-	Backends map[string]hcl.Body
+	Backends map[string]*hclsyntax.Body
 }
 
 func (o *OIDC) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if o.Backends == nil {
-		o.Backends = make(map[string]hcl.Body)
+		o.Backends = make(map[string]*hclsyntax.Body)
 	}
 
 	fields := BackendAttrFields(o)
@@ -66,9 +68,9 @@ func (o *OIDC) Reference() string {
 	return o.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
-func (o *OIDC) HCLBody() hcl.Body {
-	return o.Remain
+// HCLBody implements the <Body> interface.
+func (o *OIDC) HCLBody() *hclsyntax.Body {
+	return o.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
@@ -98,11 +100,6 @@ func (o *OIDC) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(o.Inline())
-
-	// A backend reference is defined, backend block is not allowed.
-	if o.BackendName != "" {
-		schema.Blocks = nil
-	}
 
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }

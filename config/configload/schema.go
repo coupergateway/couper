@@ -6,14 +6,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload/collect"
-	"github.com/avenga/couper/config/meta"
-	"github.com/avenga/couper/internal/seetie"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/configload/collect"
+	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -179,7 +180,7 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema,
 	for _, diag := range diags {
 		// TODO: How to implement this block automatically?
 		if diag.Detail == noLabelForErrorHandler {
-			bodyContent := bodyToContent(body)
+			bodyContent := bodyToContent(body.(*hclsyntax.Body))
 
 			for _, block := range bodyContent.Blocks {
 				if block.Type == errorHandler {
@@ -259,13 +260,9 @@ func uniqueErrors(errors hcl.Diagnostics) hcl.Diagnostics {
 	return unique
 }
 
-func bodyToContent(body hcl.Body) *hcl.BodyContent {
+func bodyToContent(b *hclsyntax.Body) *hcl.BodyContent {
 	content := &hcl.BodyContent{
-		MissingItemRange: *getRange(body),
-	}
-	b, ok := body.(*hclsyntax.Body)
-	if !ok {
-		return content
+		MissingItemRange: *getRange(b),
 	}
 
 	if len(b.Attributes) > 0 {
@@ -294,15 +291,10 @@ func bodyToContent(body hcl.Body) *hcl.BodyContent {
 	return content
 }
 
-func getRange(body hcl.Body) *hcl.Range {
+func getRange(body *hclsyntax.Body) *hcl.Range {
 	if body == nil {
 		return &hcl.Range{}
 	}
 
-	if b, ok := body.(*hclsyntax.Body); ok {
-		return &b.SrcRange
-	}
-
-	r := body.MissingItemRange()
-	return &r
+	return &body.SrcRange
 }

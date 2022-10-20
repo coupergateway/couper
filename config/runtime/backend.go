@@ -8,12 +8,14 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/backend"
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
@@ -22,7 +24,7 @@ import (
 	"github.com/avenga/couper/handler/validation"
 )
 
-func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
+func NewBackend(ctx *hcl.EvalContext, body *hclsyntax.Body, log *logrus.Entry,
 	conf *config.Couper, store *cache.MemoryStore) (http.RoundTripper, error) {
 	const prefix = "backend_"
 	name, err := getBackendName(ctx, body)
@@ -49,7 +51,7 @@ func NewBackend(ctx *hcl.EvalContext, body hcl.Body, log *logrus.Entry,
 	return b.(http.RoundTripper), nil
 }
 
-func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry,
+func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logrus.Entry,
 	conf *config.Couper, memStore *cache.MemoryStore) (http.RoundTripper, error) {
 	beConf := &config.Backend{}
 	if diags := gohcl.DecodeBody(backendCtx, evalCtx, beConf); diags.HasErrors() {
@@ -113,16 +115,11 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 		}
 	}
 
-	for _, schema := range []*hcl.BodySchema{
-		config.OAuthBlockSchema,
-		config.TokenRequestBlockSchema,
+	for _, blockType := range []string{
+		config.OAuthBlockSchema.Blocks[0].Type,
+		config.TokenRequestBlockSchema.Blocks[0].Type,
 	} {
-		content, _, _ := backendCtx.PartialContent(schema)
-		if content == nil || len(schema.Blocks) == 0 {
-			continue
-		}
-
-		blocks := content.Blocks.OfType(schema.Blocks[0].Type)
+		blocks := hclbody.BlocksOfType(backendCtx, blockType)
 		for _, block := range blocks {
 			requestAuthorizer, err := newRequestAuthorizer(evalCtx, block, log, conf, memStore)
 			if err != nil {
@@ -136,7 +133,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx hcl.Body, log *logrus.Entry
 	return b, nil
 }
 
-func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
+func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 	log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (transport.RequestAuthorizer, error) {
 	var authorizerConfig interface{}
 	switch block.Type {
@@ -146,11 +143,8 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
 			Retries: &one,
 		}
 	case config.TokenRequestBlockSchema.Blocks[0].Type:
-		label := "default"
-		if len(block.Labels) > 0 {
-			label = block.Labels[0]
-		}
-		authorizerConfig = &config.TokenRequest{Name: label}
+		// block is guaranteed to have a label ("default" being added at configload)
+		authorizerConfig = &config.TokenRequest{Name: block.Labels[0]}
 	default:
 		return nil, errors.Configuration.Messagef("request authorizer not implemented: %s", block.Type)
 	}
@@ -159,15 +153,9 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
 		return nil, diags
 	}
 
-	inlineSchema, _ := authorizerConfig.(config.Inline)
-	innerContent, _, diags := inlineSchema.HCLBody().PartialContent(inlineSchema.Schema(true))
-	if diags.HasErrors() {
-		return nil, diags
-	}
-
-	backendBlocks := innerContent.Blocks.OfType("backend")
+	backendBlocks := hclbody.BlocksOfType(block.Body, "backend")
 	if len(backendBlocks) == 0 {
-		r := inlineSchema.HCLBody().MissingItemRange()
+		r := block.Body.MissingItemRange()
 		diag := &hcl.Diagnostics{&hcl.Diagnostic{
 			Subject: &r,
 			Summary: "missing backend initialization",
@@ -196,20 +184,14 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hcl.Block,
 	}
 }
 
-func getBackendName(evalCtx *hcl.EvalContext, backendCtx hcl.Body) (string, error) {
-	content, _, _ := backendCtx.PartialContent(&hcl.BodySchema{Attributes: []hcl.AttributeSchema{
-		{Name: "name"}},
-	})
-
-	if content != nil && len(content.Attributes) > 0 {
-		if n, exist := content.Attributes["name"]; exist {
-			v, err := eval.Value(evalCtx, n.Expr)
-			if err != nil {
-				return "", err
-			}
-
-			return v.AsString(), nil
+func getBackendName(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body) (string, error) {
+	if n, exist := backendCtx.Attributes["name"]; exist {
+		v, err := eval.Value(evalCtx, n.Expr)
+		if err != nil {
+			return "", err
 		}
+
+		return v.AsString(), nil
 	}
 
 	return "", nil

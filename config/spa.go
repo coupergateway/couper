@@ -3,11 +3,15 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &Spa{}
+var (
+	_ Body   = &Spa{}
+	_ Inline = &Spa{}
+)
 
 type SPAs []*Spa
 
@@ -23,9 +27,9 @@ type Spa struct {
 	Remain               hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface.
-func (s Spa) HCLBody() hcl.Body {
-	return s.Remain
+// HCLBody implements the <Body> interface.
+func (s Spa) HCLBody() *hclsyntax.Body {
+	return s.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

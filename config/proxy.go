@@ -3,12 +3,14 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
 
 var (
 	_ BackendReference = &Proxy{}
+	_ Body             = &Proxy{}
 	_ Inline           = &Proxy{}
 )
 
@@ -21,7 +23,7 @@ type Proxy struct {
 	Websockets  *bool    `hcl:"websockets,optional" docs:"Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other {proxy} blocks, {request} blocks or {response} blocks are not allowed within the current {endpoint} block."`
 
 	// internally used
-	Backend hcl.Body
+	Backend *hclsyntax.Body
 }
 
 // Proxies represents a list of <Proxy> objects.
@@ -32,9 +34,9 @@ func (p Proxy) Reference() string {
 	return p.BackendName
 }
 
-// HCLBody implements the <Inline> interface.
-func (p Proxy) HCLBody() hcl.Body {
-	return p.Remain
+// HCLBody implements the <Body> interface.
+func (p Proxy) HCLBody() *hclsyntax.Body {
+	return p.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
@@ -61,29 +63,6 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(p.Inline())
-	backup := schema.Blocks[:]
-	schema.Blocks = nil
-
-	if p.BackendName == "" {
-		var blocks []hcl.BlockHeaderSchema
-
-		for _, block := range backup {
-			if block.Type == "backend" {
-				blocks = append(blocks, block)
-			}
-		}
-
-		schema.Blocks = blocks
-	}
-
-	if p.Websockets == nil {
-		for _, block := range backup {
-			if block.Type == "websockets" {
-				// No websockets flag is set, websocket block is allowed.
-				schema.Blocks = append(schema.Blocks, block)
-			}
-		}
-	}
 
 	return meta.MergeSchemas(schema, meta.ModifierAttributesSchema)
 }

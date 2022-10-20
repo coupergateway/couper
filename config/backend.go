@@ -3,12 +3,14 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
 
 var (
 	_ BackendReference = &Backend{}
+	_ Body             = &Backend{}
 	_ Inline           = &Backend{}
 
 	BackendInlineSchema = Backend{}.Schema(true)
@@ -32,9 +34,9 @@ func (b Backend) Reference() string {
 	return b.Name
 }
 
-// HCLBody implements the <Inline> interface.
-func (b Backend) HCLBody() hcl.Body {
-	return b.Remain
+// HCLBody implements the <Body> interface.
+func (b Backend) HCLBody() *hclsyntax.Body {
+	return b.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

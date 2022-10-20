@@ -7,11 +7,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -34,7 +32,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 	logger, _ := test.NewLogger()
 	logEntry := logger.WithContext(context.Background())
 
-	backend := transport.NewBackend(hcl.EmptyBody(), &transport.Config{Origin: origin.URL}, nil, logEntry)
+	backend := transport.NewBackend(&hclsyntax.Body{}, &transport.Config{Origin: origin.URL}, nil, logEntry)
 
 	clientRequest, _ := http.NewRequest(http.MethodGet, "http://couper.local", nil)
 
@@ -48,18 +46,18 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		attr          *hcl.Attribute
+		attr          *hclsyntax.Attribute
 		reflectStatus int // send via header, reflected by origin as http status-code
 		expectedErr   error
 	}{
 		{"/wo status", nil, http.StatusNoContent, nil},
-		{"/w status /w unexpected response", &hcl.Attribute{
+		{"/w status /w unexpected response", &hclsyntax.Attribute{
 			Name: "expected_status",
 			Expr: &hclsyntax.LiteralValueExpr{Val: toListVal(200, 304)}},
 			http.StatusNotAcceptable,
 			errors.UnexpectedStatus,
 		},
-		{"/w status /w expected response", &hcl.Attribute{
+		{"/w status /w expected response", &hclsyntax.Attribute{
 			Name: "expected_status",
 			Expr: &hclsyntax.LiteralValueExpr{Val: toListVal(200, 304)}},
 			http.StatusNotModified,
@@ -68,7 +66,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		content := &hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
+		content := &hclsyntax.Body{Attributes: map[string]*hclsyntax.Attribute{
 			"url": {Name: "url", Expr: &hclsyntax.LiteralValueExpr{Val: cty.StringVal(origin.URL)}},
 			// Since request will not proxy our dynamic client-request header value, we will add a headers attr here.
 			// There is no validation, so this also applies to proxy (unused)
@@ -87,14 +85,14 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 
 		requests := producer.Requests{&producer.Request{
 			Backend: backend,
-			Context: hclbody.New(content),
+			Context: content,
 			Name:    "request",
 		}}
 
 		proxies := producer.Proxies{&producer.Proxy{
-			Content:   hclbody.New(content),
+			Content:   content,
 			Name:      "proxy",
-			RoundTrip: handler.NewProxy(backend, hclbody.New(content), logEntry),
+			RoundTrip: handler.NewProxy(backend, content, logEntry),
 		}}
 
 		testNames := []string{"request", "proxy"}

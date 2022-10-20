@@ -5,13 +5,17 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/errors"
 )
 
-var _ BackendInitialization = &JWT{}
-var _ Inline = &JWT{}
+var (
+	_ BackendInitialization = &JWT{}
+	_ Body                  = &JWT{}
+	_ Inline                = &JWT{}
+)
 
 // Claims represents the <Claims> object.
 type Claims hcl.Expression
@@ -43,7 +47,7 @@ type JWT struct {
 	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}." type:"string"`
 
 	// Internally used
-	Backend hcl.Body
+	Backend *hclsyntax.Body
 }
 
 func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {
@@ -66,8 +70,8 @@ func (j *JWT) Reference() string {
 }
 
 // HCLBody implements the <Body> interface.
-func (j *JWT) HCLBody() hcl.Body {
-	return j.Remain
+func (j *JWT) HCLBody() *hclsyntax.Body {
+	return j.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
@@ -88,11 +92,6 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(j.Inline())
-
-	// A backend reference is defined, backend block is not allowed.
-	if j.BackendName != "" {
-		schema.Blocks = nil
-	}
 
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }

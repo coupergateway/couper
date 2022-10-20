@@ -3,9 +3,11 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 var (
+	_ Body   = &Response{}
 	_ Inline = &Response{}
 
 	ResponseInlineSchema = Response{}.Schema(true)
@@ -16,9 +18,9 @@ type Response struct {
 	Remain hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface.
-func (r Response) HCLBody() hcl.Body {
-	return r.Remain
+// HCLBody implements the <Body> interface.
+func (r Response) HCLBody() *hclsyntax.Body {
+	return r.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

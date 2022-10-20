@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/internal/seetie"
@@ -10,7 +11,10 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &BasicAuth{}
+var (
+	_ Body   = &BasicAuth{}
+	_ Inline = &BasicAuth{}
+)
 
 // BasicAuth represents the "basic_auth" config block
 type BasicAuth struct {
@@ -23,9 +27,9 @@ type BasicAuth struct {
 	Remain hcl.Body `hcl:",remain"`
 }
 
-// HCLBody implements the <Inline> interface. Internally used for 'error_handler'.
-func (b *BasicAuth) HCLBody() hcl.Body {
-	return b.Remain
+// HCLBody implements the <Body> interface. Internally used for 'error_handler'.
+func (b *BasicAuth) HCLBody() *hclsyntax.Body {
+	return b.Remain.(*hclsyntax.Body)
 }
 
 func (b *BasicAuth) Inline() interface{} {
@@ -54,9 +58,8 @@ func (b *BasicAuth) DefaultErrorHandler() *ErrorHandler {
 	}
 	return &ErrorHandler{
 		Kinds: []string{"basic_auth"},
-		Remain: body.New(&hcl.BodyContent{Attributes: map[string]*hcl.Attribute{
-			"set_response_headers": {Name: "set_response_headers", Expr: hcl.StaticExpr(seetie.MapToValue(map[string]interface{}{
-				"Www-Authenticate": wwwAuthenticateValue,
-			}), hcl.Range{Filename: "default_basic_auth_error_handler"})}}}),
+		Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+			"Www-Authenticate": wwwAuthenticateValue,
+		}), hcl.Range{Filename: "default_basic_auth_error_handler"}),
 	}
 }

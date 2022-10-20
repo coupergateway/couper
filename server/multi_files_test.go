@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -181,18 +182,30 @@ func TestMultiFiles_Definitions(t *testing.T) {
 func TestMultiFiles_MultipleBackends(t *testing.T) {
 	type testCase struct {
 		config string
+		blType string
 	}
 
 	for _, tc := range []testCase{
-		{"testdata/multi/backends/errors/ac.hcl"},
-		{"testdata/multi/backends/errors/ac_eh.hcl"},
-		{"testdata/multi/backends/errors/ep.hcl"},
-		{"testdata/multi/backends/errors/api_ep.hcl"},
+		{"testdata/multi/backends/errors/jwt.hcl", "jwt"},
+		{"testdata/multi/backends/errors/beta_oauth2.hcl", "beta_oauth2"},
+		{"testdata/multi/backends/errors/oidc.hcl", "oidc"},
+		{"testdata/multi/backends/errors/ac_eh.hcl", "proxy"},
+		{"testdata/multi/backends/errors/ep_proxy.hcl", "proxy"},
+		{"testdata/multi/backends/errors/ep_request.hcl", "request"},
+		{"testdata/multi/backends/errors/api_ep.hcl", "proxy"},
+		{"testdata/multi/backends/errors/defined_backend_oauth2.hcl", "oauth2"},
+		{"testdata/multi/backends/errors/defined_backend_token_request.hcl", "beta_token_request"},
+		{"testdata/multi/backends/errors/anonymous_backend_oauth2.hcl", "oauth2"},
+		{"testdata/multi/backends/errors/anonymous_backend_token_request.hcl", "beta_token_request"},
 	} {
 		t.Run(tc.config, func(st *testing.T) {
 			_, err := configload.LoadFile(filepath.Join(testWorkingDir, tc.config), "")
 
-			if !strings.Contains(err.Error(), "Multiple definitions of backend are not allowed.") {
+			if !strings.Contains(err.Error(), tc.config+":") {
+				st.Errorf("Missing config file path: %s", err.Error())
+			}
+
+			if !strings.HasSuffix(err.Error(), fmt.Sprintf(": Multiple definitions of backend are not allowed in %s.; ", tc.blType)) {
 				st.Errorf("Unexpected error: %s", err.Error())
 			}
 		})

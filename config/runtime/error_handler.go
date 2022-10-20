@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
@@ -57,7 +58,7 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 				Response:  h.Response,
 			}
 
-			emptyBody := hcl.EmptyBody()
+			emptyBody := &hclsyntax.Body{}
 			if epConf.Response == nil { // Set dummy resp to skip related requirement checks, allowed for error_handler.
 				epConf.Response = &config.Response{Remain: emptyBody}
 			}

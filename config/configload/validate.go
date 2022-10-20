@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/utils"
 )
@@ -32,13 +31,8 @@ func newDiagErr(subject *hcl.Range, summary string) error {
 	}}
 }
 
-func validateBody(body hcl.Body, afterMerge bool) error {
-	hsBody, ok := body.(*hclsyntax.Body)
-	if !ok {
-		return fmt.Errorf("body must be hclsyntax.Body")
-	}
-
-	for _, outerBlock := range hsBody.Blocks {
+func validateBody(body *hclsyntax.Body, afterMerge bool) error {
+	for _, outerBlock := range body.Blocks {
 		if outerBlock.Type == definitions {
 			uniqueBackends := make(map[string]struct{})
 			uniqueACs := make(map[string]struct{})
@@ -240,10 +234,10 @@ func uniqueLabelName(scopeOfUniqueness string, unique map[string]struct{}, name 
 	return nil
 }
 
-func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
-	_, existsBody := content.Attributes["body"]
-	_, existsFormBody := content.Attributes["form_body"]
-	_, existsJSONBody := content.Attributes["json_body"]
+func verifyBodyAttributes(blockName string, body *hclsyntax.Body) error {
+	_, existsBody := body.Attributes["body"]
+	_, existsFormBody := body.Attributes["form_body"]
+	_, existsJSONBody := body.Attributes["json_body"]
 
 	if existsBody && existsFormBody || existsBody && existsJSONBody || existsFormBody && existsJSONBody {
 		rangeAttr := "body"
@@ -251,81 +245,62 @@ func verifyBodyAttributes(blockName string, content *hcl.BodyContent) error {
 			rangeAttr = "form_body"
 		}
 
-		return newDiagErr(&content.Attributes[rangeAttr].Range,
+		r := body.Attributes[rangeAttr].Range()
+		return newDiagErr(&r,
 			blockName+" can only have one of body, form_body or json_body attributes")
 	}
 
 	return nil
 }
 
-func verifyResponseBodyAttrs(b hcl.Body) error {
-	content, _, _ := b.PartialContent(config.ResponseInlineSchema)
-	_, existsBody := content.Attributes["body"]
-	_, existsJSONBody := content.Attributes["json_body"]
+func verifyResponseBodyAttrs(b *hclsyntax.Body) error {
+	_, existsBody := b.Attributes["body"]
+	_, existsJSONBody := b.Attributes["json_body"]
 	if existsBody && existsJSONBody {
-		return newDiagErr(&content.Attributes["body"].Range, "response can only have one of body or json_body attributes")
+		r := b.Attributes["body"].Range()
+		return newDiagErr(&r, "response can only have one of body or json_body attributes")
 	}
 	return nil
 }
 
 var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections"}
-var forbiddenInRefinedBackendBlockSchema = &hcl.BodySchema{
-	Blocks: []hcl.BlockHeaderSchema{
-		{
-			Type: "openapi",
-		},
-		config.OAuthBlockHeaderSchema,
-		{
-			Type: "beta_health",
-		},
-		config.TokenRequestBlockHeaderSchema,
-		{
-			Type: "beta_rate_limit",
-		},
-	},
-}
 
-func invalidRefinement(body hcl.Body) error {
+func invalidRefinement(body *hclsyntax.Body) error {
 	const message = "backend reference: refinement for %q is not permitted"
-	attrs, _ := body.JustAttributes()
-	if attrs == nil {
-		return nil
-	}
 	for _, name := range invalidAttributes {
-		attr, exist := attrs[name]
+		attr, exist := body.Attributes[name]
 		if exist {
 			return newDiagErr(&attr.NameRange, fmt.Sprintf(message, attr.Name))
 		}
 	}
 
-	content, _, _ := body.PartialContent(forbiddenInRefinedBackendBlockSchema)
-	if content != nil && len(content.Blocks) > 0 {
-		return newDiagErr(&content.Blocks[0].DefRange, fmt.Sprintf(message, content.Blocks[0].Type))
+	if len(body.Blocks) > 0 {
+		r := body.Blocks[0].DefRange()
+		return newDiagErr(&r, fmt.Sprintf(message, body.Blocks[0].Type))
 	}
 
 	return nil
 }
 
-func invalidOriginRefinement(reference, params hcl.Body) error {
+func invalidOriginRefinement(reference, params *hclsyntax.Body) error {
 	const origin = "origin"
-	refAttrs, _ := reference.JustAttributes()
-	paramAttrs, _ := params.JustAttributes()
-
-	refOrigin := refAttrs[origin]
-	paramOrigin := paramAttrs[origin]
+	refOrigin := reference.Attributes[origin]
+	paramOrigin := params.Attributes[origin]
 
 	if paramOrigin != nil && refOrigin != nil {
 		if paramOrigin.Expr != refOrigin.Expr {
-			return newDiagErr(&paramOrigin.Range, "backend reference: origin must be equal")
+			r := paramOrigin.Range()
+			return newDiagErr(&r, "backend reference: origin must be equal")
 		}
 	}
 	return nil
 }
 
-func validMethods(methods []string, hr *hcl.Range) error {
+func validMethods(methods []string, attr *hclsyntax.Attribute) error {
 	for _, method := range methods {
 		if !methodRegExp.MatchString(method) {
-			return newDiagErr(hr, "method contains invalid character(s)")
+			r := attr.Range()
+			return newDiagErr(&r, "method contains invalid character(s)")
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
@@ -12,7 +13,7 @@ import (
 )
 
 // buildSequences collects possible dependencies from 'backend_responses' variable.
-func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err error) {
+func buildSequences(names map[string]*hclsyntax.Body, endpoint *config.Endpoint) (err error) {
 	sequences := map[string]*sequence.Item{}
 
 	defer func() {
@@ -64,7 +65,7 @@ func buildSequences(names map[string]hcl.Body, endpoint *config.Endpoint) (err e
 	return err
 }
 
-func responseReferences(b hcl.Body) []string {
+func responseReferences(b *hclsyntax.Body) []string {
 	var result []string
 	unique := map[string]struct{}{}
 

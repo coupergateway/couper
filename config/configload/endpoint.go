@@ -1,7 +1,6 @@
 package configload
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
@@ -15,20 +14,11 @@ import (
 )
 
 func newCatchAllEndpoint() *config.Endpoint {
-	responseBody := hclbody.New(&hcl.BodyContent{
-		Attributes: map[string]*hcl.Attribute{
-			"status": {
-				Name: "status",
-				Expr: &hclsyntax.LiteralValueExpr{
-					Val: cty.NumberIntVal(http.StatusNotFound),
-				},
-			},
-		},
-	})
+	responseBody := hclbody.NewHCLSyntaxBodyWithAttr("status", cty.NumberIntVal(http.StatusNotFound), hcl.Range{})
 
 	return &config.Endpoint{
 		Pattern: "/**",
-		Remain:  hclbody.New(&hcl.BodyContent{}),
+		Remain:  &hclsyntax.Body{},
 		Response: &config.Response{
 			Remain: responseBody,
 		},
@@ -42,33 +32,33 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 		if check && endpoint.Pattern == "" {
 			var r *hcl.Range
 			if endpoint.Remain != nil {
-				r = getRange(endpoint.Remain)
+				r = getRange(endpoint.HCLBody())
 			}
 			return newDiagErr(r, "endpoint: missing path pattern")
 		}
 
-		endpointContent := bodyToContent(endpoint.Remain)
-
-		rp := endpointContent.Attributes["beta_required_permission"]
+		endpointBody := endpoint.HCLBody()
+		rp := endpointBody.Attributes["beta_required_permission"]
 		if rp != nil {
 			endpoint.RequiredPermission = rp.Expr
 		}
 
 		if check && endpoint.AllowedMethods != nil && len(endpoint.AllowedMethods) > 0 {
-			if err = validMethods(endpoint.AllowedMethods, &endpointContent.Attributes["allowed_methods"].Range); err != nil {
+			if err = validMethods(endpoint.AllowedMethods, endpointBody.Attributes["allowed_methods"]); err != nil {
 				return err
 			}
 		}
 
 		if check && len(endpoint.Proxies)+len(endpoint.Requests) == 0 && endpoint.Response == nil {
-			return newDiagErr(&endpointContent.MissingItemRange,
+			r := endpointBody.MissingItemRange()
+			return newDiagErr(&r,
 				"missing 'default' proxy or request block, or a response definition",
 			)
 		}
 
 		proxyRequestLabelRequired := len(endpoint.Proxies)+len(endpoint.Requests) > 1
 
-		names := map[string]hcl.Body{}
+		names := map[string]*hclsyntax.Body{}
 		unique := map[string]struct{}{}
 		subject := endpoint.Remain.MissingItemRange()
 
@@ -77,14 +67,13 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				proxyConfig.Name = defaultNameLabel
 			}
 
-			names[proxyConfig.Name] = proxyConfig.Remain
+			names[proxyConfig.Name] = proxyConfig.HCLBody()
 
 			if err = validLabel(proxyConfig.Name, &subject); err != nil {
 				return err
 			}
 
 			if proxyRequestLabelRequired {
-				// TODO add test
 				if err = uniqueLabelName("proxy and request", unique, proxyConfig.Name, &subject); err != nil {
 					return err
 				}
@@ -104,7 +93,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				}
 
 				if wsBody != nil {
-					proxyConfig.Remain = hclbody.MergeBodies(proxyConfig.Remain, wsBody)
+					proxyConfig.Remain = hclbody.MergeBodies(proxyConfig.HCLBody(), wsBody, true)
 				}
 			}
 
@@ -119,33 +108,26 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				reqConfig.Name = defaultNameLabel
 			}
 
-			names[reqConfig.Name] = reqConfig.Remain
+			names[reqConfig.Name] = reqConfig.HCLBody()
 
 			if err = validLabel(reqConfig.Name, &subject); err != nil {
 				return err
 			}
 
 			if proxyRequestLabelRequired {
-				// TODO add test
 				if err = uniqueLabelName("proxy and request", unique, reqConfig.Name, &subject); err != nil {
 					return err
 				}
 			}
 
 			// remap request specific names for headers and query to well known ones
-			content, leftOvers, diags := reqConfig.Remain.PartialContent(reqConfig.Schema(true))
-			if diags.HasErrors() {
-				return diags
-			}
-
-			if err = verifyBodyAttributes(request, content); err != nil {
+			reqBody := reqConfig.HCLBody()
+			if err = verifyBodyAttributes(request, reqBody); err != nil {
 				return err
 			}
 
-			hclbody.RenameAttribute(content, "headers", "set_request_headers")
-			hclbody.RenameAttribute(content, "query_params", "set_query_params")
-
-			reqConfig.Remain = hclbody.MergeBodies(leftOvers, hclbody.New(content))
+			hclbody.RenameAttribute(reqBody, "headers", "set_request_headers")
+			hclbody.RenameAttribute(reqBody, "query_params", "set_query_params")
 
 			reqConfig.Backend, err = PrepareBackend(helper, "", "", reqConfig)
 			if err != nil {
@@ -176,32 +158,27 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 	return nil
 }
 
-func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, hcl.Body, error) {
-	content, _, diags := proxyConfig.Remain.PartialContent(
-		&hcl.BodySchema{Blocks: []hcl.BlockHeaderSchema{{Type: "websockets"}}},
-	)
-	if diags.HasErrors() {
-		return false, nil, diags
-	}
-
-	if proxyConfig.Websockets != nil && len(content.Blocks.OfType("websockets")) > 0 {
-		return false, nil, fmt.Errorf("either websockets attribute or block is allowed")
+func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, error) {
+	hasWebsocketBlocks := len(hclbody.BlocksOfType(proxyConfig.HCLBody(), "websockets")) > 0
+	if proxyConfig.Websockets != nil && hasWebsocketBlocks {
+		hr := proxyConfig.HCLBody().Attributes["websockets"].SrcRange
+		return false, nil, newDiagErr(&hr, "either websockets attribute or block is allowed")
 	}
 
 	if proxyConfig.Websockets != nil {
-		var body hcl.Body
+		var body *hclsyntax.Body
 
 		if *proxyConfig.Websockets {
-			block := &hcl.Block{
+			block := &hclsyntax.Block{
 				Type: "websockets",
-				Body: hclbody.EmptyBody(),
+				Body: &hclsyntax.Body{},
 			}
 
-			body = hclbody.New(&hcl.BodyContent{Blocks: []*hcl.Block{block}})
+			body = &hclsyntax.Body{Blocks: []*hclsyntax.Block{block}}
 		}
 
 		return *proxyConfig.Websockets, body, nil
 	}
 
-	return len(content.Blocks) > 0, nil, nil
+	return hasWebsocketBlocks, nil, nil
 }

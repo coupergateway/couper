@@ -185,8 +185,8 @@ func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
 		}
 	}
 
-	jwksBackend := backend.NewContext(hclbody.
-		New(hclbody.NewContentWithAttrName("_backend_url", jsonData.JwksURI)),
+	jwksBackend := backend.NewContext(
+		hclbody.NewHCLSyntaxBodyWithStringAttr("_backend_url", jsonData.JwksURI),
 		c.backends["jwks_uri_backend"],
 	)
 
