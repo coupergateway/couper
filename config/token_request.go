@@ -71,7 +71,5 @@ func (t *TokenRequest) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(t.Inline())
 
-	// TODO: check backend attribute vs backend block conflict at configload
-
 	return schema
 }

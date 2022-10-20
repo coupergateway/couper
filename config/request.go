@@ -62,10 +62,5 @@ func (r Request) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(r.Inline())
 
-	// A backend reference is defined, backend block is not allowed.
-	if r.BackendName != "" {
-		schema.Blocks = nil
-	}
-
 	return schema
 }

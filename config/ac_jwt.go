@@ -93,11 +93,6 @@ func (j *JWT) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(j.Inline())
 
-	// A backend reference is defined, backend block is not allowed.
-	if j.BackendName != "" {
-		schema.Blocks = nil
-	}
-
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 

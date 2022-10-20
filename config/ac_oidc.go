@@ -101,11 +101,6 @@ func (o *OIDC) Schema(inline bool) *hcl.BodySchema {
 
 	schema, _ := gohcl.ImpliedBodySchema(o.Inline())
 
-	// A backend reference is defined, backend block is not allowed.
-	if o.BackendName != "" {
-		schema.Blocks = nil
-	}
-
 	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
 
