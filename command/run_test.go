@@ -187,58 +187,49 @@ func TestAcceptForwarded(t *testing.T) {
 	ctx, shutdown := context.WithCancel(context.Background())
 	defer shutdown()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			ttt := tt
-			runCmd := NewRun(ctx)
+	for _, testcase := range tests {
+		t.Run(testcase.name, func(subT *testing.T) {
+			tc := testcase
+
+			caseCtx, caseCancel := context.WithCancel(ctx)
+			defer caseCancel()
+
+			runCmd := NewRun(caseCtx)
 			if runCmd == nil {
 				t.Error("create run cmd failed")
 				return
 			}
 
-			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file), "")
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tc.file), "")
 			if err != nil {
 				subT.Error(err)
 			}
 
-			// settings must be locked, so assign port now
-			// port := ":0"
-
-			if len(tt.envs) > 0 {
+			if len(tc.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
-					return tt.envs
+					return tc.envs
 				})
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
-			// fmt.Println(">>>>> START 1", time.Now())
-			// // ensure the previous test aren't listening
-			// test.WaitForClosedPort(port)
-			go func() {
-				execErr := runCmd.Execute(ttt.args, couperFile, log.WithContext(ctx))
-				if execErr != nil {
-					subT.Error(execErr)
-				}
-			}()
-			// test.WaitForOpenPort(port)
-			// fmt.Println(">>>>> END 1", time.Now())
+			go runCmd.Execute(tc.args, couperFile, log.WithContext(caseCtx))
+			test.WaitForOpenPort(8080)
 
 			runCmd.settingsMu.Lock()
 
-			if couperFile.Settings.AcceptsForwardedProtocol() != tt.expProto {
-				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expProto, couperFile.Settings.AcceptsForwardedProtocol())
+			if couperFile.Settings.AcceptsForwardedProtocol() != tc.expProto {
+				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expProto, couperFile.Settings.AcceptsForwardedProtocol())
 			}
-			if couperFile.Settings.AcceptsForwardedHost() != tt.expHost {
-				subT.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expHost, couperFile.Settings.AcceptsForwardedHost())
+			if couperFile.Settings.AcceptsForwardedHost() != tc.expHost {
+				subT.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expHost, couperFile.Settings.AcceptsForwardedHost())
 			}
-			if couperFile.Settings.AcceptsForwardedPort() != tt.expPort {
-				subT.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expPort, couperFile.Settings.AcceptsForwardedPort())
+			if couperFile.Settings.AcceptsForwardedPort() != tc.expPort {
+				subT.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expPort, couperFile.Settings.AcceptsForwardedPort())
 			}
+
 			runCmd.settingsMu.Unlock()
 		})
 	}
-
-	fmt.Println(">>>>> DONE", time.Now())
 }
 
 func TestArgs_CAFile(t *testing.T) {

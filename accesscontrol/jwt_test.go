@@ -662,6 +662,9 @@ func Test_JWT_yields_permissions(t *testing.T) {
 }
 
 func TestJwtConfig(t *testing.T) {
+
+	const backendURL = "http://blackhole.webpagetest.org/"
+
 	tests := []struct {
 		name  string
 		hcl   string
@@ -825,7 +828,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
-			    jwks_url = "http://no-back.end"
+			    jwks_url = "` + backendURL + `"
 			    header = "..."
 			  }
 			}
@@ -839,7 +842,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    key = "..."
-			    jwks_url = "http://no-back.end"
+			    jwks_url = "` + backendURL + `"
 			    header = "..."
 			  }
 			}
@@ -853,7 +856,7 @@ func TestJwtConfig(t *testing.T) {
 			definitions {
 			  jwt "myac" {
 			    key_file = "..."
-			    jwks_url = "http://no-back.end"
+			    jwks_url = "` + backendURL + `"
 			    header = "..."
 			  }
 			}
@@ -875,21 +878,6 @@ func TestJwtConfig(t *testing.T) {
 			`,
 			"backend is obsolete without jwks_url attribute",
 		},
-		{
-			"ok: jwks_url + backend reference",
-			`
-			server "test" {}
-			definitions {
-			  jwt "myac" {
-			    backend = "foo"
-			    header = "..."
-			    jwks_url = "http://no-back.end"
-			  }
-			  backend "foo" {}
-			}
-			`,
-			`backend error: foo: connecting to foo "no-back.end:80" failed: dial tcp: lookup no-back.end`,
-		},
 	}
 
 	log, hook := test.NewLogger()
@@ -900,14 +888,14 @@ func TestJwtConfig(t *testing.T) {
 
 			conf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if conf != nil {
-				logger := log.WithContext(context.TODO())
-
 				tmpStoreCh := make(chan struct{})
 				defer close(tmpStoreCh)
 
 				ctx, cancel := context.WithCancel(conf.Context)
 				conf.Context = ctx
 				defer cancel()
+
+				logger := log.WithContext(ctx)
 
 				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}

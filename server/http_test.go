@@ -632,16 +632,21 @@ func TestHTTPServer_RequestID(t *testing.T) {
 				req.Header.Set("Client-Request-ID", tc.uid)
 			}
 
+			test.WaitForOpenPort(8080)
+
 			hook.Reset()
 			res, err := client.Do(req)
 			helper.Must(err)
 
 			// Wait for log
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(750 * time.Millisecond)
 
 			lastLog := hook.LastEntry()
 
 			getHeaderValue := func(header http.Header, name string) string {
+				if lastLog == nil {
+					return ""
+				}
 				return strings.Replace(
 					header.Get(name),
 					"{{system-id}}",
@@ -687,7 +692,9 @@ func TestHTTPServer_RequestID(t *testing.T) {
 				}
 			} else {
 				exp := fmt.Sprintf("client request error: invalid request-id header value: Client-Request-ID: %s", tc.uid)
-				if lastLog.Message != exp {
+				if lastLog == nil {
+					subT.Errorf("Missing log line")
+				} else if lastLog.Message != exp {
 					subT.Errorf("\nWant:\t%s\nGot:\t%s", exp, lastLog.Message)
 				}
 
