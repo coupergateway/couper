@@ -478,6 +478,50 @@ func TestConfigErrors(t *testing.T) {
 		    }`,
 			"couper.hcl:6,9-26: either websockets attribute or block is allowed; ",
 		},
+		{
+			"unlabeled proxy and request",
+			`proxy {
+		      backend {}
+		    }
+		    request {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+		},
+		{
+			"unlabeled proxy and default labeled request",
+			`proxy {
+		      backend {}
+		    }
+		    request "default" {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+		},
+		{
+			"default labeled proxy and unlabeled request",
+			`proxy "default" {
+		      backend {}
+		    }
+		    request {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+		},
+		{
+			"labeled proxy and request",
+			`proxy "foo" {
+		      backend {}
+		    }
+		    request "foo" {
+		      url = "http://foo/bar"
+		      backend {}
+		    }`,
+			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "foo"; `,
+		},
 	}
 
 	template := `
