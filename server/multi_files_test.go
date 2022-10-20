@@ -1,8 +1,8 @@
 package server_test
 
 import (
-	"io"
 	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
