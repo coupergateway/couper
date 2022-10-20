@@ -46,6 +46,8 @@ func TestNewOAuthAuthorizationURLFunction(t *testing.T) {
 		_, err = rw.Write(b)
 		helper.Must(err)
 	}))
+	defer origin.Close()
+
 	confURL := origin.URL + "/.well-known/openid-configuration"
 	authURL := origin.URL + "/auth"
 	tokenURL := origin.URL + "/token"

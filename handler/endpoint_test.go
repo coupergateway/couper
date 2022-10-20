@@ -379,6 +379,8 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 		})
 
 	}
+
+	origin.Close()
 }
 
 type mockProducerResult struct {
@@ -467,6 +469,7 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 		time.Sleep(time.Second * 5)
 		rw.WriteHeader(http.StatusNoContent)
 	}))
+	defer slowOrigin.Close()
 
 	ctx, cancelFn := context.WithCancel(context.WithValue(context.Background(), request.UID, "test123"))
 	ctx = context.WithValue(ctx, request.StartTime, time.Now())

@@ -352,7 +352,7 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 		}`))
 		helper.Must(werr)
 	}))
-	defer origin.Close()
+	defer tokenEndpoint.Close()
 
 	retries := 3
 	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/07_couper.hcl", helper,
