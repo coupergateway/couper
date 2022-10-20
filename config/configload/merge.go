@@ -424,6 +424,12 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 						definitionsBlock[innerBlock.Type] = make(data)
 					}
 
+					if innerBlock.Type == backend {
+						if err := checkForMultipleBackendsInBackend(innerBlock); err != nil {
+							return nil, nil, err
+						}
+					}
+
 					// Count the "backend" blocks and "backend" attributes to
 					// forbid multiple backend definitions.
 
@@ -436,6 +442,9 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 							}
 						} else if block.Type == backend {
 							backends++
+							if err := checkForMultipleBackendsInBackend(block); err != nil {
+								return nil, nil, err
+							}
 						}
 					}
 
@@ -601,6 +610,38 @@ func checkForMultipleBackends(block *hclsyntax.Block) error {
 		for _, subSubBlock := range subBlock.Body.Blocks {
 			if subSubBlock.Type == backend {
 				backends++
+				if err := checkForMultipleBackendsInBackend(subSubBlock); err != nil {
+					return err
+				}
+			}
+		}
+
+		if _, ok := subBlock.Body.Attributes[backend]; ok {
+			backends++
+		}
+
+		if backends > 1 {
+			return newMergeError(errMultipleBackends, subBlock)
+		}
+	}
+
+	return nil
+}
+
+func checkForMultipleBackendsInBackend(block *hclsyntax.Block) error {
+	for _, subBlock := range block.Body.Blocks {
+		if subBlock.Type != oauth2 && subBlock.Type != tokenRequest {
+			continue
+		}
+
+		var backends int
+
+		for _, subSubBlock := range subBlock.Body.Blocks {
+			if subSubBlock.Type == backend {
+				backends++
+				if err := checkForMultipleBackendsInBackend(subSubBlock); err != nil { // Recursive call
+					return err
+				}
 			}
 		}
 

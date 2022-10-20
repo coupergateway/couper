@@ -193,6 +193,10 @@ func TestMultiFiles_MultipleBackends(t *testing.T) {
 		{"testdata/multi/backends/errors/ep_proxy.hcl", "proxy"},
 		{"testdata/multi/backends/errors/ep_request.hcl", "request"},
 		{"testdata/multi/backends/errors/api_ep.hcl", "proxy"},
+		{"testdata/multi/backends/errors/defined_backend_oauth2.hcl", "oauth2"},
+		{"testdata/multi/backends/errors/defined_backend_token_request.hcl", "beta_token_request"},
+		{"testdata/multi/backends/errors/anonymous_backend_oauth2.hcl", "oauth2"},
+		{"testdata/multi/backends/errors/anonymous_backend_token_request.hcl", "beta_token_request"},
 	} {
 		t.Run(tc.config, func(st *testing.T) {
 			_, err := configload.LoadFile(filepath.Join(testWorkingDir, tc.config), "")
