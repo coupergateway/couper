@@ -15,7 +15,7 @@ Like all [access control](../access-control) types, the `oidc` block is defined 
 values: [
   {
     "default": "",
-    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `configuration_url` is defined within.",
+    "description": "`backend` block reference, defined in [`definitions`](definitions). Default for OpenID configuration, JWKS, token and userinfo requests.",
     "name": "backend",
     "type": "string"
   },
@@ -33,9 +33,9 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for a given OIDC backend.",
+    "description": "Optional option to configure specific behavior for the backend to request the OpenID configuration from.",
     "name": "configuration_backend",
-    "type": "object"
+    "type": "string"
   },
   {
     "default": "\"1h\"",
@@ -75,9 +75,9 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for a given OIDC backend.",
+    "description": "Optional option to configure specific behavior for the backend to request the JWKS from.",
     "name": "jwks_uri_backend",
-    "type": "object"
+    "type": "string"
   },
   {
     "default": "",
@@ -93,9 +93,9 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for a given OIDC backend.",
+    "description": "Optional option to configure specific behavior for the backend to request the token from.",
     "name": "token_backend",
-    "type": "object"
+    "type": "string"
   },
   {
     "default": "\"client_secret_basic\"",
@@ -105,9 +105,9 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for a given OIDC backend.",
+    "description": "Optional option to configure specific behavior for the backend to request the userinfo from.",
     "name": "userinfo_backend",
-    "type": "object"
+    "type": "string"
   },
   {
     "default": "",
