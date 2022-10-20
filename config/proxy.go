@@ -63,29 +63,6 @@ func (p Proxy) Schema(inline bool) *hcl.BodySchema {
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(p.Inline())
-	backup := schema.Blocks[:]
-	schema.Blocks = nil
-
-	if p.BackendName == "" {
-		var blocks []hcl.BlockHeaderSchema
-
-		for _, block := range backup {
-			if block.Type == "backend" {
-				blocks = append(blocks, block)
-			}
-		}
-
-		schema.Blocks = blocks
-	}
-
-	if p.Websockets == nil {
-		for _, block := range backup {
-			if block.Type == "websockets" {
-				// No websockets flag is set, websocket block is allowed.
-				schema.Blocks = append(schema.Blocks, block)
-			}
-		}
-	}
 
 	return meta.MergeSchemas(schema, meta.ModifierAttributesSchema)
 }

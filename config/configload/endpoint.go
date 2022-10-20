@@ -1,7 +1,6 @@
 package configload
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
@@ -164,7 +163,8 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, error) {
 	hasWebsocketBlocks := len(hclbody.BlocksOfType(proxyConfig.HCLBody(), "websockets")) > 0
 	if proxyConfig.Websockets != nil && hasWebsocketBlocks {
-		return false, nil, fmt.Errorf("either websockets attribute or block is allowed")
+		hr := proxyConfig.HCLBody().Attributes["websockets"].SrcRange
+		return false, nil, newDiagErr(&hr, "either websockets attribute or block is allowed")
 	}
 
 	if proxyConfig.Websockets != nil {

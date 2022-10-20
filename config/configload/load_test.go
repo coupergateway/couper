@@ -462,3 +462,39 @@ func TestEnvironmentBlocksWithoutEnvironment(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"websockets attribute and block",
+			`proxy {
+		      backend = "foo"
+		      websockets = true
+		      websockets {}
+		    }`,
+			"couper.hcl:6,9-26: either websockets attribute or block is allowed; ",
+		},
+	}
+
+	template := `
+		server {
+		  endpoint "/" {
+		    %%
+		  }
+		}`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := configload.LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
+
+			errorMsg := err.Error()
+			if tt.error != errorMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
+			}
+		})
+	}
+}
