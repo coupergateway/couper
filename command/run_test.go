@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -96,11 +97,10 @@ func TestNewRun(t *testing.T) {
 			TelemetryTracesEndpoint:  defaultSettings.TelemetryTracesEndpoint,
 		}},
 	}
+	ctx, shutdown := context.WithCancel(context.Background())
+	defer shutdown()
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			ctx, shutdown := context.WithCancel(context.Background())
-			defer shutdown()
-
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
 				subT.Error("create run cmd failed")
@@ -183,53 +183,50 @@ func TestAcceptForwarded(t *testing.T) {
 		{"accept by option", "01_defaults.hcl", Args{"-accept-forwarded-url", "proto,host,port"}, nil, true, true, true},
 		{"accept by env", "01_defaults.hcl", nil, []string{"COUPER_ACCEPT_FORWARDED_URL=proto,host,port"}, true, true, true},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			ctx, shutdown := context.WithCancel(context.Background())
-			defer shutdown()
 
-			runCmd := NewRun(ctx)
+	ctx, shutdown := context.WithCancel(context.Background())
+	defer shutdown()
+
+	for _, testcase := range tests {
+		t.Run(testcase.name, func(subT *testing.T) {
+			tc := testcase
+
+			caseCtx, caseCancel := context.WithCancel(ctx)
+			defer caseCancel()
+
+			runCmd := NewRun(caseCtx)
 			if runCmd == nil {
 				t.Error("create run cmd failed")
 				return
 			}
 
-			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file), "")
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tc.file), "")
 			if err != nil {
 				subT.Error(err)
 			}
 
-			// settings must be locked, so assign port now
-			port := couperFile.Settings.DefaultPort
-
-			if len(tt.envs) > 0 {
+			if len(tc.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
-					return tt.envs
+					return tc.envs
 				})
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
-			// ensure the previous test aren't listening
-			test.WaitForClosedPort(port)
-			go func() {
-				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
-				if execErr != nil {
-					subT.Error(execErr)
-				}
-			}()
-			test.WaitForOpenPort(port)
+			go runCmd.Execute(tc.args, couperFile, log.WithContext(caseCtx))
+			test.WaitForOpenPort(8080)
 
 			runCmd.settingsMu.Lock()
 
-			if couperFile.Settings.AcceptsForwardedProtocol() != tt.expProto {
-				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expProto, couperFile.Settings.AcceptsForwardedProtocol())
+			if couperFile.Settings.AcceptsForwardedProtocol() != tc.expProto {
+				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expProto, couperFile.Settings.AcceptsForwardedProtocol())
 			}
-			if couperFile.Settings.AcceptsForwardedHost() != tt.expHost {
-				subT.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expHost, couperFile.Settings.AcceptsForwardedHost())
+			if couperFile.Settings.AcceptsForwardedHost() != tc.expHost {
+				subT.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expHost, couperFile.Settings.AcceptsForwardedHost())
 			}
-			if couperFile.Settings.AcceptsForwardedPort() != tt.expPort {
-				subT.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.expPort, couperFile.Settings.AcceptsForwardedPort())
+			if couperFile.Settings.AcceptsForwardedPort() != tc.expPort {
+				subT.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expPort, couperFile.Settings.AcceptsForwardedPort())
 			}
+
 			runCmd.settingsMu.Unlock()
 		})
 	}
@@ -288,6 +285,7 @@ func TestArgs_CAFile(t *testing.T) {
 
 		conn.Close()
 	}))
+	defer srv.Close()
 
 	srv.TLS.Certificates = []tls.Certificate{*selfSigned.Server}
 
@@ -313,6 +311,7 @@ definitions {
 
 	port := couperFile.Settings.DefaultPort
 
+	fmt.Println(">>>>> START 2", time.Now())
 	// ensure the previous tests aren't listening
 	test.WaitForClosedPort(port)
 	go func() {
