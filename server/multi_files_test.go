@@ -197,6 +197,10 @@ func TestMultiFiles_MultipleBackends(t *testing.T) {
 		t.Run(tc.config, func(st *testing.T) {
 			_, err := configload.LoadFile(filepath.Join(testWorkingDir, tc.config), "")
 
+			if !strings.Contains(err.Error(), tc.config+":") {
+				st.Errorf("Missing config file path: %s", err.Error())
+			}
+
 			if !strings.HasSuffix(err.Error(), fmt.Sprintf(": Multiple definitions of backend are not allowed in %s.; ", tc.blType)) {
 				st.Errorf("Unexpected error: %s", err.Error())
 			}
