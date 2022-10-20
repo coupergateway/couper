@@ -609,7 +609,7 @@ func absInBackends(block *hclsyntax.Block) error {
 		}
 
 		if backends > 1 {
-			return newMergeError(errMultipleBackends, block)
+			return newMergeError(errMultipleBackends, subBlock)
 		}
 	}
 

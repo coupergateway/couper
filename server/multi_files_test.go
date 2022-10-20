@@ -189,10 +189,10 @@ func TestMultiFiles_MultipleBackends(t *testing.T) {
 		{"testdata/multi/backends/errors/jwt.hcl", "jwt"},
 		{"testdata/multi/backends/errors/beta_oauth2.hcl", "beta_oauth2"},
 		{"testdata/multi/backends/errors/oidc.hcl", "oidc"},
-		{"testdata/multi/backends/errors/ac_eh.hcl", "error_handler"},
-		{"testdata/multi/backends/errors/ep_proxy.hcl", "endpoint"},
-		{"testdata/multi/backends/errors/ep_request.hcl", "endpoint"},
-		{"testdata/multi/backends/errors/api_ep.hcl", "endpoint"},
+		{"testdata/multi/backends/errors/ac_eh.hcl", "proxy"},
+		{"testdata/multi/backends/errors/ep_proxy.hcl", "proxy"},
+		{"testdata/multi/backends/errors/ep_request.hcl", "request"},
+		{"testdata/multi/backends/errors/api_ep.hcl", "proxy"},
 	} {
 		t.Run(tc.config, func(st *testing.T) {
 			_, err := configload.LoadFile(filepath.Join(testWorkingDir, tc.config), "")
