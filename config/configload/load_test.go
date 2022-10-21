@@ -471,71 +471,166 @@ func TestConfigErrors(t *testing.T) {
 	}{
 		{
 			"websockets attribute and block",
-			`proxy {
-		      backend = "foo"
-		      websockets = true
-		      websockets {}
-		    }`,
-			"couper.hcl:6,9-26: either websockets attribute or block is allowed; ",
+			`server {
+			  endpoint "/" {
+			    proxy {
+			      backend = "foo"
+			      websockets = true
+			      websockets {}
+			    }
+			  }
+			}`,
+			"couper.hcl:5,10-27: either websockets attribute or block is allowed; ",
 		},
 		{
 			"unlabeled proxy and request",
-			`proxy {
-		      backend {}
-		    }
-		    request {
-		      url = "http://foo/bar"
-		      backend {}
-		    }`,
-			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+			`server {
+			  endpoint "/" {
+			    proxy {
+			      backend {}
+			    }
+			    request {
+			      url = "http://foo/bar"
+			      backend {}
+			    }
+			  }
+			}`,
+			`couper.hcl:6,16-9,9: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
 		},
 		{
 			"unlabeled proxy and default labeled request",
-			`proxy {
-		      backend {}
-		    }
-		    request "default" {
-		      url = "http://foo/bar"
-		      backend {}
-		    }`,
-			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+			`server {
+			  endpoint "/" {
+			    proxy {
+			      backend {}
+			    }
+			    request "default" {
+			      url = "http://foo/bar"
+			      backend {}
+			    }
+			  }
+			}`,
+			`couper.hcl:6,26-9,9: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
 		},
 		{
 			"default labeled proxy and unlabeled request",
-			`proxy "default" {
-		      backend {}
-		    }
-		    request {
-		      url = "http://foo/bar"
-		      backend {}
-		    }`,
-			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+			`server {
+			  endpoint "/" {
+			    proxy "default" {
+			      backend {}
+			    }
+			    request {
+			      url = "http://foo/bar"
+			      backend {}
+			    }
+			  }
+			}`,
+			`couper.hcl:6,16-9,9: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
 		},
 		{
 			"labeled proxy and request",
-			`proxy "foo" {
-		      backend {}
-		    }
-		    request "foo" {
-		      url = "http://foo/bar"
-		      backend {}
-		    }`,
-			`couper.hcl:3,18-18: proxy and request names (either default or explicitly set via label) must be unique: "foo"; `,
+			`server {
+			  endpoint "/" {
+			    proxy "foo" {
+			      backend {}
+			    }
+			    request "foo" {
+			      url = "http://foo/bar"
+			      backend {}
+			    }
+			  }
+			}`,
+			`couper.hcl:6,22-9,9: proxy and request names (either default or explicitly set via label) must be unique: "foo"; `,
+		},
+		{
+			"undefined referenced proxy backend",
+			`server {
+			  endpoint "/" {
+			    proxy "foo" {
+			      backend = "rs"
+			    }
+			  }
+			}`,
+			`couper.hcl:3,20-5,9: referenced backend "rs" is not defined; `,
+		},
+		{
+			"undefined refined proxy backend",
+			`server {
+			  endpoint "/" {
+			    proxy "foo" {
+			      backend "rs" {}
+			    }
+			  }
+			}`,
+			`couper.hcl:4,23-25: referenced backend "rs" is not defined; `,
+		},
+		{
+			"undefined referenced oauth2 backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    oauth2 {
+			      token_endpoint = "https://as/token"
+			      backend = "as"
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
+		},
+		{
+			"undefined refined oauth2 backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    oauth2 {
+			      token_endpoint = "https://as/token"
+			      backend "as" {}
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
+		},
+		{
+			"undefined referenced token request backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    beta_token_request {
+			      url = "https://as/token"
+			      backend = "as"
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
+		},
+		{
+			"undefined refined token request backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    beta_token_request {
+			      url = "https://as/token"
+			      backend = "as"
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
 		},
 	}
 
-	template := `
-		server {
-		  endpoint "/" {
-		    %%
-		  }
-		}`
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := configload.LoadBytes([]byte(strings.Replace(template, "%%", tt.hcl, -1)), "couper.hcl")
+			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 
-			errorMsg := err.Error()
+			var errorMsg = ""
+			if err != nil {
+				if gErr, ok := err.(errors.GoError); ok {
+					errorMsg = gErr.LogError()
+				} else {
+					errorMsg = err.Error()
+				}
+			}
+
 			if tt.error != errorMsg {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
 			}

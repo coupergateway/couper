@@ -62,11 +62,11 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 	if reference != "" {
 		refBody, ok := helper.defsBackends[reference]
 		if !ok {
-			r := block.HCLBody().MissingItemRange()
+			r := block.HCLBody().SrcRange
 			if backendBody != nil {
-				r = backendBody.MissingItemRange()
+				r = backendBody.SrcRange
 			}
-			return nil, newDiagErr(&r, "backend reference is not defined: "+reference)
+			return nil, newDiagErr(&r, fmt.Sprintf("referenced backend %q is not defined", reference))
 		}
 
 		if backendBody == nil {
@@ -168,11 +168,14 @@ func setOAuth2Backend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.Body, 
 		return nil, err
 	}
 
-	backendBlock := &hclsyntax.Block{
-		Type: backend,
-		Body: backendBody,
+	if len(hclbody.BlocksOfType(oauthBody, backend)) == 0 {
+		// only add backend block, if not already there
+		backendBlock := &hclsyntax.Block{
+			Type: backend,
+			Body: backendBody,
+		}
+		oauthBody.Blocks = append(oauthBody.Blocks, backendBlock)
 	}
-	oauthBody.Blocks = append(oauthBody.Blocks, backendBlock)
 
 	return parent, nil
 }
@@ -223,7 +226,7 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 			return nil, diags
 		}
 
-		if err := verifyBodyAttributes(tokenRequest, tokenRequestBody); err != nil {
+		if err = verifyBodyAttributes(tokenRequest, tokenRequestBody); err != nil {
 			return nil, err
 		}
 
@@ -235,11 +238,14 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 			return nil, berr
 		}
 
-		backendBlock := &hclsyntax.Block{
-			Type: backend,
-			Body: hclbody.MergeBodies(backendBody, tokenRequestBody, false),
+		if len(hclbody.BlocksOfType(tokenRequestBody, backend)) == 0 {
+			// only add backend block, if not already there
+			backendBlock := &hclsyntax.Block{
+				Type: backend,
+				Body: backendBody,
+			}
+			tokenRequestBody.Blocks = append(tokenRequestBody.Blocks, backendBlock)
 		}
-		tokenRequestBody.Blocks = append(tokenRequestBody.Blocks, backendBlock)
 	}
 
 	return parent, nil
