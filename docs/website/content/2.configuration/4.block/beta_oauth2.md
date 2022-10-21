@@ -4,9 +4,9 @@ The `beta_oauth2` block lets you configure the [`oauth2_authorization_url()` fun
 control for an OAuth2 **Authorization Code Grant Flow** redirect endpoint.
 Like all [access control](../access-control) types, the `beta_oauth2` block is defined in the [`definitions` block](definitions) and can be referenced in all configuration blocks by its required _label_.
 
-| Block name    | Context                                 | Label            | Nested block(s)                                                              |
-|:--------------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------|
-| `beta_oauth2` | [Definitions Block](definitions) | &#9888; required | [Backend Block](backend), [Error Handler Block](error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
+| Block name    | Context                                 | Label            | Nested block(s)                                                                                                  |
+|:--------------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
+| `beta_oauth2` | [Definitions Block](definitions)        | &#9888; required | [Backend Block](backend), [Error Handler Block](error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
 
 ::attributes
 ---

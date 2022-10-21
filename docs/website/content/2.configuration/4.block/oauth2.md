@@ -4,8 +4,8 @@ The `oauth2` block in the [Backend Block](backend) context configures an OAuth2 
 
 **Note:** The token received from the authorization server's token endpoint is stored **per backend**. So even with flows where a user's account characteristics like username/password or email address are involved, there is no way to "switch" from one user to another depending on the client request.
 
-| Block name | Context                  | Label    | Nested block(s)          |
-|:-----------|:-------------------------|:---------|:-------------------------|
+| Block name | Context                  | Label    | Nested block(s)                                                            |
+|:-----------|:-------------------------|:---------|:---------------------------------------------------------------------------|
 | `oauth2`   | [Backend Block](backend) | no label | [Backend Block](backend), [JWT Signing Profile Block](jwt_signing_profile) |
 
 ::attributes

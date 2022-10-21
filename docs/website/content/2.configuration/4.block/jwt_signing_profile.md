@@ -8,8 +8,8 @@ It can also be used (without _label_) in [`oauth2`](oauth2), [`oidc`](oidc) or
 [`beta_oauth2`](beta_oauth2) blocks for `token_endpoint_auth_method`s `"client_secret_jwt"`
 or `"private_key_jwt"`.
 
-| Block name            | Context                                 | Label            | Nested block(s) |
-|:----------------------|:----------------------------------------|:-----------------|:----------------|
+| Block name            | Context                                                                                                             | Label                              | Nested block(s) |
+|:----------------------|:--------------------------------------------------------------------------------------------------------------------|:-----------------------------------|:----------------|
 | `jwt_signing_profile` | [Definitions Block](definitions), [OAuth2 Block](oauth2), [OAuth2 AC (Beta) Block](beta_oauth2), [OIDC Block](oidc) | required if defined in defititions | -               |
 
 
