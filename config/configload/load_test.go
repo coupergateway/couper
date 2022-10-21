@@ -495,7 +495,7 @@ func TestConfigErrors(t *testing.T) {
 			    }
 			  }
 			}`,
-			`couper.hcl:2,19-19: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+			`couper.hcl:6,16-9,9: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
 		},
 		{
 			"unlabeled proxy and default labeled request",
@@ -510,7 +510,7 @@ func TestConfigErrors(t *testing.T) {
 			    }
 			  }
 			}`,
-			`couper.hcl:2,19-19: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+			`couper.hcl:6,26-9,9: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
 		},
 		{
 			"default labeled proxy and unlabeled request",
@@ -525,7 +525,7 @@ func TestConfigErrors(t *testing.T) {
 			    }
 			  }
 			}`,
-			`couper.hcl:2,19-19: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
+			`couper.hcl:6,16-9,9: proxy and request names (either default or explicitly set via label) must be unique: "default"; `,
 		},
 		{
 			"labeled proxy and request",
@@ -540,7 +540,7 @@ func TestConfigErrors(t *testing.T) {
 			    }
 			  }
 			}`,
-			`couper.hcl:2,19-19: proxy and request names (either default or explicitly set via label) must be unique: "foo"; `,
+			`couper.hcl:6,22-9,9: proxy and request names (either default or explicitly set via label) must be unique: "foo"; `,
 		},
 		{
 			"undefined referenced proxy backend",
@@ -551,7 +551,7 @@ func TestConfigErrors(t *testing.T) {
 			    }
 			  }
 			}`,
-			`couper.hcl:3,20-20: referenced backend "rs" is not defined; `,
+			`couper.hcl:3,20-5,9: referenced backend "rs" is not defined; `,
 		},
 		{
 			"undefined refined proxy backend",
@@ -562,7 +562,7 @@ func TestConfigErrors(t *testing.T) {
 			    }
 			  }
 			}`,
-			`couper.hcl:4,23-23: referenced backend "rs" is not defined; `,
+			`couper.hcl:4,23-25: referenced backend "rs" is not defined; `,
 		},
 		{
 			"undefined referenced oauth2 backend",

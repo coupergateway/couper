@@ -155,7 +155,7 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 
 	backendBlocks := hclbody.BlocksOfType(block.Body, "backend")
 	if len(backendBlocks) == 0 {
-		r := block.Body.MissingItemRange()
+		r := block.Body.SrcRange
 		diag := &hcl.Diagnostics{&hcl.Diagnostic{
 			Subject: &r,
 			Summary: "missing backend initialization",

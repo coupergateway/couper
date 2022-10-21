@@ -62,9 +62,9 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 	if reference != "" {
 		refBody, ok := helper.defsBackends[reference]
 		if !ok {
-			r := block.HCLBody().MissingItemRange()
+			r := block.HCLBody().SrcRange
 			if backendBody != nil {
-				r = backendBody.MissingItemRange()
+				r = backendBody.SrcRange
 			}
 			return nil, newDiagErr(&r, fmt.Sprintf("referenced backend %q is not defined", reference))
 		}

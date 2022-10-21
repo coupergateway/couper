@@ -50,7 +50,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 		}
 
 		if check && len(endpoint.Proxies)+len(endpoint.Requests) == 0 && endpoint.Response == nil {
-			r := endpointBody.MissingItemRange()
+			r := endpointBody.SrcRange
 			return newDiagErr(&r,
 				"missing 'default' proxy or request block, or a response definition",
 			)
@@ -60,7 +60,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 
 		names := map[string]*hclsyntax.Body{}
 		unique := map[string]struct{}{}
-		subject := endpoint.Remain.MissingItemRange()
+		subject := endpoint.HCLBody().SrcRange
 
 		for _, proxyConfig := range endpoint.Proxies {
 			if proxyConfig.Name == "" {
@@ -69,6 +69,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 
 			names[proxyConfig.Name] = proxyConfig.HCLBody()
 
+			subject = proxyConfig.HCLBody().SrcRange
 			if err = validLabel(proxyConfig.Name, &subject); err != nil {
 				return err
 			}
@@ -110,6 +111,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 
 			names[reqConfig.Name] = reqConfig.HCLBody()
 
+			subject = reqConfig.HCLBody().SrcRange
 			if err = validLabel(reqConfig.Name, &subject); err != nil {
 				return err
 			}
