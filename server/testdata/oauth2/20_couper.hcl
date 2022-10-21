@@ -38,8 +38,10 @@ definitions {
       client_id = "my_clid"
       client_secret = "my_cls"
       token_endpoint_auth_method = "client_secret_jwt"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
     }
   }
 
@@ -52,8 +54,10 @@ definitions {
       client_id = "my_clid"
       client_secret = "my_cls"
       token_endpoint_auth_method = "client_secret_jwt"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
     }
   }
 
@@ -65,10 +69,14 @@ definitions {
       grant_type = "client_credentials"
       client_id = "my_clid"
       token_endpoint_auth_method = "private_key_jwt"
-      authn_key_file = "./testdata/oauth2/pkcs8.key"
-      authn_signature_algorithm = "RS256"
-      authn_ttl = "10s"
-      authn_aud_claim = "some explicit value"
+      jwt_signing_profile {
+        key_file = "./testdata/oauth2/pkcs8.key"
+        signature_algorithm = "RS256"
+        ttl = "10s"
+        claims = {
+          aud = "some explicit value"
+        }
+      }
     }
   }
 
@@ -80,9 +88,11 @@ definitions {
       grant_type = "client_credentials"
       client_id = "my_clid"
       token_endpoint_auth_method = "private_key_jwt"
-      authn_key_file = "./testdata/oauth2/pkcs8.key"
-      authn_signature_algorithm = "RS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        key_file = "./testdata/oauth2/pkcs8.key"
+        signature_algorithm = "RS256"
+        ttl = "10s"
+      }
     }
   }
 

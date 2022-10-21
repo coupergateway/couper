@@ -17,6 +17,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 const (
@@ -33,7 +34,9 @@ type Client struct {
 	clientConfig config.OAuth2Client
 	grantType    string
 	authnMethod  string
-	authnAud     string
+	authnAlgo    string
+	authnClaims  jwt.MapClaims
+	authnHeaders map[string]interface{}
 	authnKey     interface{}
 	authnTTL     int64
 }
@@ -48,9 +51,11 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 	}
 
 	var (
-		aud string
-		key interface{}
-		ttl int64
+		algorithm string
+		claims    jwt.MapClaims
+		headers   map[string]interface{}
+		key       interface{}
+		ttl       int64
 	)
 	switch authnMethod {
 	case clientSecretBasic, clientSecretJwt, clientSecretPost, privateKeyJwt:
@@ -65,34 +70,25 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 		}
 
 		clientSecret := clientConfig.GetClientSecret()
-		keyVal := clientConfig.GetAuthnKey()
-		keyFileVal := clientConfig.GetAuthnKeyFile()
 
 		switch authnMethod {
 		case clientSecretBasic, clientSecretJwt, clientSecretPost:
 			if clientSecret == "" {
 				return nil, fmt.Errorf("client_secret must not be empty with %s", authnMethod)
 			}
-			if keyVal != "" {
-				return nil, fmt.Errorf("authn_key must not be set with %s", authnMethod)
-			}
-			if keyFileVal != "" {
-				return nil, fmt.Errorf("authn_key_file must not be set with %s", authnMethod)
-			}
 		default: // privateKeyJwt
 			if clientSecret != "" {
 				return nil, fmt.Errorf("client_secret must not be set with %s", authnMethod)
 			}
-			if keyVal == "" && keyFileVal == "" {
-				return nil, fmt.Errorf("authn_key and authn_key_file must not both be empty with %s", authnMethod)
-			}
 		}
 
-		signatureAlgorithmVal := clientConfig.GetAuthnSignatureAlgotithm()
-		ttlVal := clientConfig.GetAuthnTTL()
+		jwtSigningProfile := clientConfig.GetJWTSigningProfile()
 		switch authnMethod {
 		case clientSecretJwt, privateKeyJwt:
-			dur, algo, err := lib.CheckData(ttlVal, signatureAlgorithmVal)
+			if jwtSigningProfile == nil {
+				return nil, fmt.Errorf("jwt_signing_profile block must be set with %s", authnMethod)
+			}
+			dur, algo, err := lib.CheckData(jwtSigningProfile.TTL, jwtSigningProfile.SignatureAlgorithm)
 			if err != nil {
 				return nil, err
 			}
@@ -103,31 +99,58 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 			ttl = int64(dur.Seconds())
 			var keyBytes []byte
 			if authnMethod == privateKeyJwt {
-				keyBytes, err = reader.ReadFromAttrFile("client authentication key", keyVal, keyFileVal)
+				if jwtSigningProfile.Key == "" && jwtSigningProfile.KeyFile == "" {
+					return nil, fmt.Errorf("key and key_file must not both be empty with %s", authnMethod)
+				}
+				keyBytes, err = reader.ReadFromAttrFile("client authentication key", jwtSigningProfile.Key, jwtSigningProfile.KeyFile)
 				if err != nil {
 					return nil, err
 				}
 			} else { // clientSecretJwt
 				keyBytes = []byte(clientSecret)
+				if jwtSigningProfile.Key != "" {
+					return nil, fmt.Errorf("key must not be set with %s", authnMethod)
+				}
+				if jwtSigningProfile.KeyFile != "" {
+					return nil, fmt.Errorf("key_file must not be set with %s", authnMethod)
+				}
 			}
 
-			key, err = lib.GetKey(keyBytes, clientConfig.GetAuthnSignatureAlgotithm())
+			key, err = lib.GetKey(keyBytes, jwtSigningProfile.SignatureAlgorithm)
 			if err != nil {
 				return nil, err
 			}
+			algorithm = jwtSigningProfile.SignatureAlgorithm
 
-			if aud = clientConfig.GetAuthnAudClaim(); aud == "" {
-				aud, err = asConfig.GetTokenEndpoint()
+			if jwtSigningProfile.Headers != nil {
+				v, err := eval.Value(nil, jwtSigningProfile.Headers)
 				if err != nil {
 					return nil, err
 				}
+				headers = seetie.ValueToMap(v)
+			}
+
+			tokenEndpoint, err := asConfig.GetTokenEndpoint()
+			if err != nil {
+				return nil, err
+			}
+			claims = jwt.MapClaims{
+				// default audience
+				"aud": tokenEndpoint,
+			}
+			// get claims from signing profile
+			if jwtSigningProfile.Claims != nil {
+				cl, err := eval.Value(nil, jwtSigningProfile.Claims)
+				if err != nil {
+					return nil, err
+				}
+				for k, v := range seetie.ValueToMap(cl) {
+					claims[k] = v
+				}
 			}
 		default:
-			if signatureAlgorithmVal != "" {
-				return nil, fmt.Errorf("authn_signature_algorithm must not be set with %s", authnMethod)
-			}
-			if ttlVal != "" {
-				return nil, fmt.Errorf("authn_ttl must not be set with %s", authnMethod)
+			if jwtSigningProfile != nil {
+				return nil, fmt.Errorf("jwt_signing_profile block must not be set with %s", authnMethod)
 			}
 		}
 	}
@@ -138,7 +161,9 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 		clientConfig,
 		grantType,
 		authnMethod,
-		aud,
+		algorithm,
+		claims,
+		headers,
 		key,
 		ttl,
 	}, nil
@@ -212,22 +237,14 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 		if err != nil {
 			return err
 		}
+
 		now := time.Now().Unix()
-		claims := jwt.MapClaims{
-			"iss": c.clientConfig.GetClientID(),
-			"sub": c.clientConfig.GetClientID(),
-			"aud": c.authnAud,
-			"iat": now,
-			"exp": now + c.authnTTL,
-			"jti": identifier.String(),
-		}
-		var headers map[string]interface{}
-		if x5t := c.clientConfig.GetAuthnX5tHeader(); x5t != "" {
-			headers = map[string]interface{}{
-				"x5t": x5t,
-			}
-		}
-		jwt, err := lib.CreateJWT(c.clientConfig.GetAuthnSignatureAlgotithm(), c.authnKey, claims, headers)
+		c.authnClaims["iss"] = c.clientConfig.GetClientID()
+		c.authnClaims["sub"] = c.clientConfig.GetClientID()
+		c.authnClaims["iat"] = now
+		c.authnClaims["exp"] = now + c.authnTTL
+		c.authnClaims["jti"] = identifier.String()
+		jwt, err := lib.CreateJWT(c.authnAlgo, c.authnKey, c.authnClaims, c.authnHeaders)
 		if err != nil {
 			return err
 		}

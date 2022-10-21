@@ -557,7 +557,7 @@ definitions {
 		},
 
 		{
-			"authn algorithm with client_secret_basic",
+			"jwt_signing_profile with client_secret_basic",
 			`server {}
 definitions {
   backend "be" {
@@ -567,15 +567,18 @@ definitions {
       client_secret  = "my_client_secret"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "client_secret_basic"
-      authn_signature_algorithm = "RS256"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
     }
   }
 }
 `,
-			"configuration error: be: authn_signature_algorithm must not be set with client_secret_basic",
+			"configuration error: be: jwt_signing_profile block must not be set with client_secret_basic",
 		},
 		{
-			"authn algorithm with client_secret_post",
+			"jwt_signing_profile with client_secret_post",
 			`server {}
 definitions {
   backend "be" {
@@ -585,12 +588,15 @@ definitions {
       client_secret  = "my_client_secret"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "client_secret_post"
-      authn_signature_algorithm = "RS256"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
     }
   }
 }
 `,
-			"configuration error: be: authn_signature_algorithm must not be set with client_secret_post",
+			"configuration error: be: jwt_signing_profile block must not be set with client_secret_post",
 		},
 		{
 			"inappropriate authn algorithm with client_secret_jwt",
@@ -603,8 +609,10 @@ definitions {
       client_secret  = "my_client_secret"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "client_secret_jwt"
-      authn_signature_algorithm = "RS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+      }
     }
   }
 }
@@ -622,8 +630,10 @@ definitions {
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "private_key_jwt"
       authn_key = "a key"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
     }
   }
 }
@@ -631,42 +641,6 @@ definitions {
 			"configuration error: be: inappropriate signature algorithm with private_key_jwt",
 		},
 
-		{
-			"authn ttl with client_secret_basic",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
-      grant_type     = "client_credentials"
-      token_endpoint_auth_method = "client_secret_basic"
-      authn_ttl = "10s"
-    }
-  }
-}
-`,
-			"configuration error: be: authn_ttl must not be set with client_secret_basic",
-		},
-		{
-			"authn ttl with client_secret_post",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
-      grant_type     = "client_credentials"
-      token_endpoint_auth_method = "client_secret_post"
-      authn_ttl = "10s"
-    }
-  }
-}
-`,
-			"configuration error: be: authn_ttl must not be set with client_secret_post",
-		},
 		{
 			"invalid authn ttl with client_secret_jwt",
 			`server {}
@@ -678,8 +652,10 @@ definitions {
       client_secret  = "my_client_secret"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "client_secret_jwt"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10"
+      }
     }
   }
 }
@@ -696,9 +672,11 @@ definitions {
       client_id      = "my_client"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "private_key_jwt"
-      authn_key = "a key"
-      authn_signature_algorithm = "RS256"
-      authn_ttl = "10"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        key = "a key"
+        ttl = "10"
+      }
     }
   }
 }
@@ -707,42 +685,7 @@ definitions {
 		},
 
 		{
-			"authn_key with client_secret_basic",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
-      grant_type     = "client_credentials"
-      authn_key = "a key"
-    }
-  }
-}
-`,
-			"configuration error: be: authn_key must not be set with client_secret_basic",
-		},
-		{
-			"authn_key with client_secret_post",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
-      grant_type     = "client_credentials"
-      token_endpoint_auth_method = "client_secret_post"
-      authn_key = "a key"
-    }
-  }
-}
-`,
-			"configuration error: be: authn_key must not be set with client_secret_post",
-		},
-		{
-			"authn_key with client_secret_jwt",
+			"authn key with client_secret_jwt",
 			`server {}
 definitions {
   backend "be" {
@@ -752,17 +695,19 @@ definitions {
       client_secret  = "my_client_secret"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "client_secret_jwt"
-      authn_key = "a key"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        key = "a key"
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
     }
   }
 }
 `,
-			"configuration error: be: authn_key must not be set with client_secret_jwt",
+			"configuration error: be: key must not be set with client_secret_jwt",
 		},
 		{
-			"authn_key value not being a valid key",
+			"authn key value not being a valid key",
 			`server {}
 definitions {
   backend "be" {
@@ -771,9 +716,11 @@ definitions {
       client_id      = "my_client"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "private_key_jwt"
-      authn_signature_algorithm = "RS256"
-      authn_ttl = "10s"
-      authn_key = "not an RSA private key"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+        key = "not an RSA private key"
+      }
     }
   }
 }
@@ -782,46 +729,7 @@ definitions {
 		},
 
 		{
-			"authn_key_file with client_secret_basic",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
-      grant_type     = "client_credentials"
-      authn_key_file = "a_key_file"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10s"
-    }
-  }
-}
-`,
-			"configuration error: be: authn_key_file must not be set with client_secret_basic",
-		},
-		{
-			"authn_key_file with client_secret_post",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      client_secret  = "my_client_secret"
-      grant_type     = "client_credentials"
-      token_endpoint_auth_method = "client_secret_post"
-      authn_key_file = "a_key_file"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10s"
-    }
-  }
-}
-`,
-			"configuration error: be: authn_key_file must not be set with client_secret_post",
-		},
-		{
-			"authn_key_file with client_secret_jwt",
+			"authn key_file with client_secret_jwt",
 			`server {}
 definitions {
   backend "be" {
@@ -831,17 +739,19 @@ definitions {
       client_secret  = "my_client_secret"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "client_secret_jwt"
-      authn_key_file = "a_key_file"
-      authn_signature_algorithm = "HS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        key_file = "a_key_file"
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
     }
   }
 }
 `,
-			"configuration error: be: authn_key_file must not be set with client_secret_jwt",
+			"configuration error: be: key_file must not be set with client_secret_jwt",
 		},
 		{
-			"missing authn_key/authn_key_file with private_key_jwt",
+			"missing authn key/key_file with private_key_jwt",
 			`server {}
 definitions {
   backend "be" {
@@ -850,16 +760,18 @@ definitions {
       client_id      = "my_client"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "private_key_jwt"
-      authn_signature_algorithm = "RS256"
-      authn_ttl = "10s"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+      }
     }
   }
 }
 `,
-			"configuration error: be: authn_key and authn_key_file must not both be empty with private_key_jwt",
+			"configuration error: be: key and key_file must not both be empty with private_key_jwt",
 		},
 		{
-			"authn_key_file referencing non-existing file",
+			"key_file referencing non-existing file",
 			`server {}
 definitions {
   backend "be" {
@@ -868,9 +780,11 @@ definitions {
       client_id      = "my_client"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "private_key_jwt"
-      authn_signature_algorithm = "RS256"
-      authn_ttl = "10s"
-      authn_key_file = "unknown"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+        key_file = "unknown"
+      }
     }
   }
 }
