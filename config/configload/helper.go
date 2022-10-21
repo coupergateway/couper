@@ -68,7 +68,10 @@ func (h *helper) configureDefinedBackends() error {
 	}
 
 	for _, name := range backendNames {
-		b := h.defsBackends[name]
+		b, set := h.defsBackends[name]
+		if !set {
+			return errors.Configuration.Messagef("referenced backend %q is not defined", name)
+		}
 		be, err := PrepareBackend(h, "_init", "", &config.Backend{Name: name, Remain: b})
 		if err != nil {
 			return err

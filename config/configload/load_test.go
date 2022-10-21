@@ -542,13 +542,95 @@ func TestConfigErrors(t *testing.T) {
 			}`,
 			`couper.hcl:2,19-19: proxy and request names (either default or explicitly set via label) must be unique: "foo"; `,
 		},
+		{
+			"undefined referenced proxy backend",
+			`server {
+			  endpoint "/" {
+			    proxy "foo" {
+			      backend = "rs"
+			    }
+			  }
+			}`,
+			`couper.hcl:3,20-20: referenced backend "rs" is not defined; `,
+		},
+		{
+			"undefined refined proxy backend",
+			`server {
+			  endpoint "/" {
+			    proxy "foo" {
+			      backend "rs" {}
+			    }
+			  }
+			}`,
+			`couper.hcl:4,23-23: referenced backend "rs" is not defined; `,
+		},
+		{
+			"undefined referenced oauth2 backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    oauth2 {
+			      token_endpoint = "https://as/token"
+			      backend = "as"
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
+		},
+		{
+			"undefined refined oauth2 backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    oauth2 {
+			      token_endpoint = "https://as/token"
+			      backend "as" {}
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
+		},
+		{
+			"undefined referenced token request backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    beta_token_request {
+			      url = "https://as/token"
+			      backend = "as"
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
+		},
+		{
+			"undefined refined token request backend",
+			`server {}
+			definitions {
+			  backend "foo" {
+			    beta_token_request {
+			      url = "https://as/token"
+			      backend = "as"
+			    }
+			  }
+			}`,
+			`configuration error: referenced backend "as" is not defined`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			_, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 
-			errorMsg := err.Error()
+			var errorMsg = ""
+			if err != nil {
+				if gErr, ok := err.(errors.GoError); ok {
+					errorMsg = gErr.LogError()
+				} else {
+					errorMsg = err.Error()
+				}
+			}
+
 			if tt.error != errorMsg {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
 			}
