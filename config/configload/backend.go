@@ -237,7 +237,7 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 
 		backendBlock := &hclsyntax.Block{
 			Type: backend,
-			Body: hclbody.MergeBodies(backendBody, tokenRequestBody, false),
+			Body: backendBody,
 		}
 		tokenRequestBody.Blocks = append(tokenRequestBody.Blocks, backendBlock)
 	}
