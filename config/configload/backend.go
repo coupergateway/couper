@@ -168,11 +168,14 @@ func setOAuth2Backend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.Body, 
 		return nil, err
 	}
 
-	backendBlock := &hclsyntax.Block{
-		Type: backend,
-		Body: backendBody,
+	if len(hclbody.BlocksOfType(oauthBody, backend)) == 0 {
+		// only add backend block, if not already there
+		backendBlock := &hclsyntax.Block{
+			Type: backend,
+			Body: backendBody,
+		}
+		oauthBody.Blocks = append(oauthBody.Blocks, backendBlock)
 	}
-	oauthBody.Blocks = append(oauthBody.Blocks, backendBlock)
 
 	return parent, nil
 }
@@ -235,11 +238,14 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 			return nil, berr
 		}
 
-		backendBlock := &hclsyntax.Block{
-			Type: backend,
-			Body: backendBody,
+		if len(hclbody.BlocksOfType(tokenRequestBody, backend)) == 0 {
+			// only add backend block, if not already there
+			backendBlock := &hclsyntax.Block{
+				Type: backend,
+				Body: backendBody,
+			}
+			tokenRequestBody.Blocks = append(tokenRequestBody.Blocks, backendBlock)
 		}
-		tokenRequestBody.Blocks = append(tokenRequestBody.Blocks, backendBlock)
 	}
 
 	return parent, nil
