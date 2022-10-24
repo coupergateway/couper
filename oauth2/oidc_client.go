@@ -7,9 +7,8 @@ import (
 	"io"
 	"net/http"
 	"sync"
-	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/oauth2/oidc"
@@ -58,18 +57,8 @@ func (o *OidcClient) refreshJWTParser() error {
 
 	options := []jwt.ParserOption{
 		// jwt.WithValidMethods([]string{algo.String()}),
-		jwt.WithLeeway(time.Second),
-		// 2. The Issuer Identifier for the OpenID Provider (which is typically
-		//    obtained during Discovery) MUST exactly match the value of the iss
-		//    (issuer) Claim.
-		jwt.WithIssuer(confIssuer),
-		// 3. The Client MUST validate that the aud (audience) Claim contains its
-		//    client_id value registered at the Issuer identified by the iss
-		//    (issuer) Claim as an audience. The aud (audience) Claim MAY contain
-		//    an array with more than one element. The ID Token MUST be rejected if
-		//    the ID Token does not list the Client as a valid audience, or if it
-		//    contains additional audiences not trusted by the Client.
-		jwt.WithAudience(o.config.GetClientID()),
+		// no equivalent in new lib
+		// jwt.WithLeeway(time.Second),
 	}
 	jwtParser := jwt.NewParser(options...)
 
@@ -92,26 +81,8 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	o.issLock.RUnlock()
 
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
-
 		idToken, err := jwtParser.Parse(idTokenString, o.Keyfunc)
 		if err != nil {
-			return err
-		}
-
-		// 2.  ID Token
-		// iss
-		// 		REQUIRED.
-		// aud
-		// 		REQUIRED.
-		// 3.1.3.7.  ID Token Validation
-		// 3. The Client MUST validate that the aud (audience) Claim contains
-		//    its client_id value registered at the Issuer identified by the
-		//    iss (issuer) Claim as an audience. The aud (audience) Claim MAY
-		//    contain an array with more than one element. The ID Token MUST
-		//    be rejected if the ID Token does not list the Client as a valid
-		//    audience, or if it contains additional audiences not trusted by
-		//    the Client.
-		if err = idToken.Claims.Valid(jwtParser.ValidationHelper); err != nil {
 			return err
 		}
 
@@ -141,15 +112,20 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claim
 	}
 
 	// 2.  ID Token
+	// iss
+	// 		REQUIRED.
+	//      handled by VerifyIssuer(issuer, true)
+	// sub
+	// 		REQUIRED.
+	var subIdtoken string
+	if s, ok := idTokenClaims["sub"].(string); ok {
+		subIdtoken = s
+	} else {
+		return nil, nil, errors.Oauth2.Messagef("missing sub claim in ID token")
+	}
 	// aud
 	// 		REQUIRED.
-	aud, audExists := idTokenClaims["aud"]
-	if !audExists {
-		return nil, nil, errors.Oauth2.Message("missing aud claim in ID token")
-	}
-	if aud == nil {
-		return nil, nil, errors.Oauth2.Message("aud claim in ID token must not be null")
-	}
+	//      handled by VerifyAudience(issuer, true)
 	// exp
 	// 		REQUIRED.
 	if _, expExists := idTokenClaims["exp"]; !expExists {
@@ -157,15 +133,32 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claim
 	}
 	// iat
 	// 		REQUIRED.
-	iat, iatExists := idTokenClaims["iat"]
+	_, iatExists := idTokenClaims["iat"]
 	if !iatExists {
 		return nil, nil, errors.Oauth2.Message("missing iat claim in ID token")
 	}
-	if _, ok := iat.(float64); !ok {
-		return nil, nil, errors.Oauth2.Messagef("iat claim in ID token must be number, but is %#v", iat)
-	}
 
 	// 3.1.3.7.  ID Token Validation
+	// 2. The Issuer Identifier for the OpenID Provider (which is typically
+	//    obtained during Discovery) MUST exactly match the value of the
+	//    iss (issuer) Claim.
+	issuer, err := o.config.GetIssuer()
+	if err != nil {
+		return nil, nil, errors.Oauth2.With(err)
+	}
+	if !idTokenClaims.VerifyIssuer(issuer, true) {
+		return nil, nil, errors.Oauth2.Message("invalid issuer in ID token")
+	}
+	// 3. The Client MUST validate that the aud (audience) Claim contains
+	//    its client_id value registered at the Issuer identified by the
+	//    iss (issuer) Claim as an audience. The aud (audience) Claim MAY
+	//    contain an array with more than one element. The ID Token MUST
+	//    be rejected if the ID Token does not list the Client as a valid
+	//    audience, or if it contains additional audiences not trusted by
+	//    the Client.
+	if !idTokenClaims.VerifyAudience(o.config.GetClientID(), true) {
+		return nil, nil, errors.Oauth2.Message("invalid audience in ID token")
+	}
 	// 4. If the ID Token contains multiple audiences, the Client SHOULD verify
 	//    that an azp Claim is present.
 	azp, azpExists := idTokenClaims["azp"]
@@ -202,21 +195,15 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claim
 		}
 	}
 
-	// 2.  ID Token
-	// sub
-	// 		REQUIRED.
-	var subIdtoken string
-	if s, ok := idTokenClaims["sub"].(string); ok {
-		subIdtoken = s
-	} else {
-		return nil, nil, errors.Oauth2.Messagef("missing sub claim in ID token, claims='%#v'", idTokenClaims)
-	}
-
 	userinfoData, subUserinfo, err := o.getUserinfo(ctx, accessToken)
 	if err != nil {
 		return nil, nil, errors.Oauth2.Message("userinfo request error").With(err)
 	}
 
+	// 5.3.2.  Successful UserInfo Response
+	// The sub Claim in the UserInfo Response MUST be verified to exactly
+	// match the sub Claim in the ID Token; if they do not match, the
+	// UserInfo Response values MUST NOT be used.
 	if subIdtoken != subUserinfo {
 		return nil, nil, errors.Oauth2.Messagef("subject mismatch, in ID token %q, in userinfo response %q", subIdtoken, subUserinfo)
 	}

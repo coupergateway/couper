@@ -6,12 +6,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	goerrors "errors"
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
@@ -219,7 +219,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
-	claims, iss, aud, err := j.getConfiguredClaims(req)
+	claims, err := j.getConfiguredClaims(req)
 	if err != nil {
 		return err
 	}
@@ -229,16 +229,11 @@ func (j *JWT) Validate(req *http.Request) error {
 		j.jwks.Data()
 	}
 
-	parser := newParser(j.algorithms, iss, aud)
+	parser := newParser(j.algorithms)
 	token, err := parser.Parse(tokenValue, j.getValidationKey)
 	if err != nil {
-		switch err := err.(type) {
-		case *jwt.TokenExpiredError:
+		if goerrors.Is(err, jwt.ErrTokenExpired) {
 			return errors.JwtTokenExpired.With(err)
-		case *jwt.UnverfiableTokenError:
-			if unwrappedError := err.ErrorWrapper.Unwrap(); unwrappedError != nil {
-				return errors.JwtTokenInvalid.With(unwrappedError)
-			}
 		}
 		return errors.JwtTokenInvalid.With(err)
 	}
@@ -288,33 +283,32 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 }
 
 // getConfiguredClaims evaluates the expected claim values from the configuration, and especially iss and aud
-func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, string, string, error) {
+func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, error) {
 	claims := make(map[string]interface{})
-	var iss, aud string
 	if j.claims != nil {
 		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
 		if verr != nil {
-			return nil, "", "", verr
+			return nil, verr
 		}
 		claims = seetie.ValueToMap(val)
 
 		var ok bool
 		if issVal, exists := claims["iss"]; exists {
-			iss, ok = issVal.(string)
+			_, ok = issVal.(string)
 			if !ok {
-				return nil, "", "", errors.Configuration.Message("invalid value type, string expected (claims / iss)")
+				return nil, errors.Configuration.Message("invalid value type, string expected (claims / iss)")
 			}
 		}
 
 		if audVal, exists := claims["aud"]; exists {
-			aud, ok = audVal.(string)
+			_, ok = audVal.(string)
 			if !ok {
-				return nil, "", "", errors.Configuration.Message("invalid value type, string expected (claims / aud)")
+				return nil, errors.Configuration.Message("invalid value type, string expected (claims / aud)")
 			}
 		}
 	}
 
-	return claims, iss, aud, nil
+	return claims, nil
 }
 
 // validateClaims validates the token claims against the list of required claims and the expected claims values
@@ -335,13 +329,22 @@ func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (m
 	}
 
 	for k, v := range claims {
-		if k == "iss" || k == "aud" { // gets validated during parsing
-			continue
-		}
-
 		val, exist := tokenClaims[k]
 		if !exist {
 			return nil, fmt.Errorf("required claim is missing: " + k)
+		}
+
+		if k == "iss" {
+			if !tokenClaims.VerifyIssuer(v.(string), true) {
+				return nil, errors.JwtTokenInvalid.Message("invalid issuer")
+			}
+			continue
+		}
+		if k == "aud" {
+			if !tokenClaims.VerifyAudience(v.(string), true) {
+				return nil, errors.JwtTokenInvalid.Message("invalid audience")
+			}
+			continue
 		}
 
 		if val != v {
@@ -504,24 +507,16 @@ func getBearer(val string) (string, error) {
 	return "", fmt.Errorf("bearer required with authorization header")
 }
 
-// newParser creates a new parser with issuer/audience validation if configured via iss/aud in expected claims
-func newParser(algos []acjwt.Algorithm, iss, aud string) *jwt.Parser {
+// newParser creates a new parser
+func newParser(algos []acjwt.Algorithm) *jwt.Parser {
 	var algorithms []string
 	for _, a := range algos {
 		algorithms = append(algorithms, a.String())
 	}
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods(algorithms),
-		jwt.WithLeeway(time.Second),
-	}
-
-	if aud != "" {
-		options = append(options, jwt.WithAudience(aud))
-	} else {
-		options = append(options, jwt.WithoutAudienceValidation())
-	}
-	if iss != "" {
-		options = append(options, jwt.WithIssuer(iss))
+		// no equivalent in new lib
+		// jwt.WithLeeway(time.Second),
 	}
 
 	return jwt.NewParser(options...)
