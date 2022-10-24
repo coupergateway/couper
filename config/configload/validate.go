@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
+	bodySyntax "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/utils"
 )
@@ -64,6 +65,11 @@ func validateBody(body *hclsyntax.Body, afterMerge bool) error {
 						}
 						uniqueBackends[label] = struct{}{}
 					}
+
+					if err := validateBackendTLS(innerBlock); err != nil {
+						return err
+					}
+
 				case "basic_auth", "beta_oauth2", "oidc", "saml":
 					err := checkAC(uniqueACs, label, labelRange, afterMerge)
 					if err != nil {
@@ -110,8 +116,8 @@ func validateBody(body *hclsyntax.Body, afterMerge bool) error {
 						return err
 					}
 				} else if innerBlock.Type == api {
-					apiBasePath, err := getBasePath(innerBlock, afterMerge)
-					if err != nil {
+					var apiBasePath string
+					if apiBasePath, err = getBasePath(innerBlock, afterMerge); err != nil {
 						return err
 					}
 
@@ -304,5 +310,23 @@ func validMethods(methods []string, attr *hclsyntax.Attribute) error {
 		}
 	}
 
+	return nil
+}
+
+// validateBackendTLS determines irrational backend certificate configuration.
+func validateBackendTLS(block *hclsyntax.Block) error {
+	validateCertAttr := bodySyntax.AttributeByName(block.Body, "disable_certificate_validation")
+	if tlsBlocks := bodySyntax.BlocksOfType(block.Body, "tls"); validateCertAttr != nil && len(tlsBlocks) > 0 {
+		var attrName string
+		if caCert := bodySyntax.AttributeByName(tlsBlocks[0].Body, "server_ca_certificate"); caCert != nil {
+			attrName = caCert.Name
+		} else if caCertFile := bodySyntax.AttributeByName(tlsBlocks[0].Body, "server_ca_certificate_file"); caCertFile != nil {
+			attrName = caCertFile.Name
+		}
+		if attrName != "" {
+			r := tlsBlocks[0].Range()
+			return newDiagErr(&r, fmt.Sprintf("configured 'disable_certificate_validation' along with '%s' attribute", attrName))
+		}
+	}
 	return nil
 }
