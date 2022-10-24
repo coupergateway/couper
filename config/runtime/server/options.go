@@ -23,11 +23,13 @@ type Options struct {
 	SPABasePaths   []string
 	SrvBasePath    string
 	ServerName     string
+	TLS            *config.ServerTLS
 }
 
 func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, error) {
 	options := &Options{
 		ServerErrTpl: errors.DefaultHTML,
+		TLS:          conf.TLS,
 	}
 
 	if conf == nil {

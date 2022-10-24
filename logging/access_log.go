@@ -129,10 +129,16 @@ func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	requestFields["tls"] = req.TLS != nil
-	if req.URL.Scheme != "" {
-		requestFields["proto"] = req.URL.Scheme
-	} else if req.TLS != nil && req.TLS.HandshakeComplete {
+	if req.Proto == "HTTP/2.0" {
+		// TODO: any way to obtain the StreamID?
+		// https://github.com/golang/net/blob/master/http2/writesched.go
+		requestFields["h2"] = true
+	}
+
+	if req.TLS != nil && req.TLS.HandshakeComplete {
 		requestFields["proto"] = "https"
+	} else if req.URL.Scheme != "" {
+		requestFields["proto"] = req.URL.Scheme
 	}
 
 	if fields["port"] == "" {
