@@ -145,7 +145,7 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claim
 	// 		REQUIRED.
 	aud, audExists := idTokenClaims["aud"]
 	if !audExists {
-		return nil, nil, errors.Oauth2.Messagef("missing aud claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Message("missing aud claim in ID token")
 	}
 	if aud == nil {
 		return nil, nil, errors.Oauth2.Message("aud claim in ID token must not be null")
@@ -153,13 +153,13 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claim
 	// exp
 	// 		REQUIRED.
 	if _, expExists := idTokenClaims["exp"]; !expExists {
-		return nil, nil, errors.Oauth2.Messagef("missing exp claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Message("missing exp claim in ID token")
 	}
 	// iat
 	// 		REQUIRED.
 	iat, iatExists := idTokenClaims["iat"]
 	if !iatExists {
-		return nil, nil, errors.Oauth2.Messagef("missing iat claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Message("missing iat claim in ID token")
 	}
 	if _, ok := iat.(float64); !ok {
 		return nil, nil, errors.Oauth2.Messagef("iat claim in ID token must be number, claims='%#v'", idTokenClaims)
@@ -170,7 +170,7 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claim
 	//    that an azp Claim is present.
 	azp, azpExists := idTokenClaims["azp"]
 	if auds, audsOK := idTokenClaims["aud"].([]interface{}); audsOK && len(auds) > 1 && !azpExists {
-		return nil, nil, errors.Oauth2.Messagef("missing azp claim in ID token, claims='%#v'", idTokenClaims)
+		return nil, nil, errors.Oauth2.Message("missing azp claim in ID token")
 	}
 	// 5. If an azp (authorized party) Claim is present, the Client SHOULD
 	//    verify that its client_id is the Claim Value.
@@ -194,7 +194,7 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, claims jwt.Claim
 		if n, ok := idTokenClaims["nonce"].(string); ok {
 			nonce = n
 		} else {
-			return nil, nil, errors.Oauth2.Messagef("missing nonce claim in ID token, claims='%#v'", idTokenClaims)
+			return nil, nil, errors.Oauth2.Message("missing nonce claim in ID token")
 		}
 
 		if hashedVerifierValue != nonce {
