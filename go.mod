@@ -42,6 +42,7 @@ require (
 
 require (
 	github.com/algolia/algoliasearch-client-go/v3 v3.26.0
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/google/go-cmp v0.5.7
 )
 

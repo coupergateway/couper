@@ -16,7 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	oldjwt "github.com/dgrijalva/jwt-go/v4"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -1047,8 +1048,8 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 		authorization := req.Header.Get("Authorization")
 		tokenString, err := getBearer(authorization)
 		helper.Must(err)
-		jwtParser := jwt.NewParser()
-		claims := jwt.MapClaims{}
+		jwtParser := oldjwt.NewParser()
+		claims := oldjwt.MapClaims{}
 		_, _, err = jwtParser.ParseUnverified(tokenString, claims)
 		helper.Must(err)
 		sub := claims["sub"].(string)
