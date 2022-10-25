@@ -116,6 +116,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
 		ConnState:         httpSrv.onConnState,
+		ErrorLog:          newErrorLogWrapper(log),
 		Handler:           startTimeHandler,
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
