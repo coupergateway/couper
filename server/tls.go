@@ -110,6 +110,12 @@ func loadServerCertificate(config *config.ServerCertificate) (tls.Certificate, e
 
 func loadClientCertificate(config *config.ClientCertificate) (caCert tls.Certificate, leafCert tls.Certificate, err error) {
 	var x509certificate *x509.Certificate
+	
+	wd, err := os.Getwd()
+	if err != nil {
+		return tls.Certificate{}, tls.Certificate{}, err
+	}
+
 	if config.CA != "" {
 		x509certificate, err = x509.ParseCertificate([]byte(config.CA))
 		if err != nil {
@@ -121,7 +127,7 @@ func loadClientCertificate(config *config.ClientCertificate) (caCert tls.Certifi
 			Leaf:        x509certificate,
 		}
 	} else if config.CAFile != "" {
-		caCert, err = tls.LoadX509KeyPair(config.CAFile, "")
+		caCert, err = tls.LoadX509KeyPair(filepath.Join(wd, config.CAFile), "")
 		if err != nil {
 			return
 		}
@@ -138,7 +144,7 @@ func loadClientCertificate(config *config.ClientCertificate) (caCert tls.Certifi
 			Leaf:        x509certificate,
 		}
 	} else if config.LeafFile != "" {
-		leafCert, err = tls.LoadX509KeyPair(config.LeafFile, "")
+		leafCert, err = tls.LoadX509KeyPair(filepath.Join(wd, config.LeafFile), "")
 		if err != nil {
 			return
 		}
