@@ -56,9 +56,6 @@ func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config
 		return nil, nil
 	}
 
-	cfg.VerifyConnection = func(state tls.ConnectionState) error {
-		return nil
-	}
 	cfg.ClientAuth = requireClientAuth(config)
 
 	for _, certConfig := range config.ServerCertificates {

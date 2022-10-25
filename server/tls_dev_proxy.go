@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -177,20 +176,4 @@ func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
 	}
 
 	return tlsConfig.Clone(), nil
-}
-
-// ErrorWrapper logs incoming Write bytes with the context filled logrus.FieldLogger.
-type ErrorWrapper struct{ l logrus.FieldLogger }
-
-func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
-	msg := string(p)
-	if strings.HasSuffix(msg, " tls: unknown certificate") ||
-		strings.HasPrefix(msg, "http: TLS handshake error") {
-		return len(p), nil // triggered on first browser connect for self signed certs; skip
-	}
-	e.l.Error(msg)
-	return len(p), nil
-}
-func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
-	return log.New(&ErrorWrapper{logger}, "", log.Lmsgprefix)
 }
