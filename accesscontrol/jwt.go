@@ -45,13 +45,14 @@ type (
 )
 
 type JWT struct {
-	algorithms            []acjwt.Algorithm
+	algorithm             acjwt.Algorithm
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
 	source                JWTSource
 	hmacSecret            []byte
 	name                  string
+	parser                *jwt.Parser
 	pubKey                interface{}
 	rolesClaim            string
 	rolesMap              map[string][]string
@@ -120,14 +121,14 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		return nil, err
 	}
 
-	algorithm := acjwt.NewAlgorithm(options.Algorithm)
-	if algorithm == acjwt.AlgorithmUnknown {
+	jwtAC.algorithm = acjwt.NewAlgorithm(options.Algorithm)
+	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
 		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
 	}
 
-	jwtAC.algorithms = []acjwt.Algorithm{algorithm}
+	jwtAC.parser = newParser([]acjwt.Algorithm{jwtAC.algorithm})
 
-	if algorithm.IsHMAC() {
+	if jwtAC.algorithm.IsHMAC() {
 		jwtAC.hmacSecret = options.Key
 		return jwtAC, nil
 	}
@@ -151,7 +152,8 @@ func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	jwtAC.algorithms = append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
+	algorithms := append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
+	jwtAC.parser = newParser(algorithms)
 	jwtAC.jwks = options.JWKS
 
 	return jwtAC, nil
@@ -229,8 +231,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		j.jwks.Data()
 	}
 
-	parser := newParser(j.algorithms)
-	token, err := parser.Parse(tokenValue, j.getValidationKey)
+	token, err := j.parser.Parse(tokenValue, j.getValidationKey)
 	if err != nil {
 		if goerrors.Is(err, jwt.ErrTokenExpired) {
 			return errors.JwtTokenExpired.With(err)
@@ -270,7 +271,7 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		return j.jwks.GetSigKeyForToken(token)
 	}
 
-	switch j.algorithms[0] {
+	switch j.algorithm {
 	case acjwt.AlgorithmRSA256, acjwt.AlgorithmRSA384, acjwt.AlgorithmRSA512:
 		return j.pubKey, nil
 	case acjwt.AlgorithmECDSA256, acjwt.AlgorithmECDSA384, acjwt.AlgorithmECDSA512:
