@@ -46,12 +46,12 @@ func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config
 
 	cfg.GetCertificate = func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		log.WithField("ClientHelloInfo", logrus.Fields{
-			"Connection": logrus.Fields{
-				"Remote": info.Conn.RemoteAddr().String(),
-				"Local":  info.Conn.LocalAddr().String(),
+			"connection": logrus.Fields{
+				"client_ip": info.Conn.RemoteAddr().String(),
+				"server_ip": info.Conn.LocalAddr().String(),
 			},
-			"ServerName":      info.ServerName,
-			"SupportedProtos": info.SupportedProtos,
+			"server_name":      info.ServerName,
+			"supported_protos": info.SupportedProtos,
 		}).Debug()
 		return nil, nil
 	}
