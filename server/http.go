@@ -123,7 +123,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	}
 
 	if serverTLS != nil {
-		tlsConfig, err := newTLSConfig(serverTLS)
+		tlsConfig, err := newTLSConfig(serverTLS, log)
 		if err != nil {
 			return nil, err
 		}

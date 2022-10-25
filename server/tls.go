@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 )
@@ -33,7 +35,7 @@ func requireClientAuth(config *config.ServerTLS) tls.ClientAuthType {
 	return tls.NoClientCert
 }
 
-func newTLSConfig(config *config.ServerTLS) (*tls.Config, error) {
+func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config, error) {
 	cfg := defaultTLSConfig()
 	cfg.RootCAs = x509.NewCertPool() // no system CA's
 
@@ -41,6 +43,19 @@ func newTLSConfig(config *config.ServerTLS) (*tls.Config, error) {
 		_, err := verifyChain(cfg, rawCerts)
 		return err
 	}
+
+	cfg.GetCertificate = func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		log.WithField("ClientHelloInfo", logrus.Fields{
+			"Connection": logrus.Fields{
+				"Remote": info.Conn.RemoteAddr().String(),
+				"Local":  info.Conn.LocalAddr().String(),
+			},
+			"ServerName":      info.ServerName,
+			"SupportedProtos": info.SupportedProtos,
+		}).Debug()
+		return nil, nil
+	}
+
 	cfg.VerifyConnection = func(state tls.ConnectionState) error {
 		return nil
 	}
@@ -110,7 +125,7 @@ func loadServerCertificate(config *config.ServerCertificate) (tls.Certificate, e
 
 func loadClientCertificate(config *config.ClientCertificate) (caCert tls.Certificate, leafCert tls.Certificate, err error) {
 	var x509certificate *x509.Certificate
-	
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return tls.Certificate{}, tls.Certificate{}, err
@@ -155,7 +170,6 @@ func loadClientCertificate(config *config.ClientCertificate) (caCert tls.Certifi
 
 // verifyChain performs standard TLS verification without enforcing remote hostname matching.
 func verifyChain(tlsCfg *tls.Config, rawCerts [][]byte) (*x509.Certificate, error) {
-
 	// Fetch leaf and intermediates. This is based on code form tls handshake.
 	if len(rawCerts) < 1 {
 		return nil, errors.New().Message("tls: no certificates from peer")
