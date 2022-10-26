@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 
 	"github.com/golang-jwt/jwt/v4"
 
@@ -19,16 +18,20 @@ type OidcClient struct {
 	*AuthCodeClient
 	config    *oidc.Config
 	backends  map[string]http.RoundTripper
-	issLock   sync.RWMutex
-	issuer    string
 	jwtParser *jwt.Parser
 }
 
 // NewOidcClient creates a new OIDC client.
 func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
+	options := []jwt.ParserOption{
+		// jwt.WithValidMethods([]string{algo.String()}),
+		// no equivalent in new lib
+		// jwt.WithLeeway(time.Second),
+	}
 	o := &OidcClient{
-		config:   oidcConfig,
-		backends: oidcConfig.Backends(),
+		config:    oidcConfig,
+		backends:  oidcConfig.Backends(),
+		jwtParser: jwt.NewParser(options...),
 	}
 
 	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, o.backends["token_backend"])
@@ -41,48 +44,11 @@ func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
 	return o, nil
 }
 
-func (o *OidcClient) refreshJWTParser() error {
-	o.issLock.RLock()
-	iss := o.issuer
-	o.issLock.RUnlock()
-
-	confIssuer, err := o.config.GetIssuer()
-	if err != nil {
-		return err
-	}
-
-	if iss == confIssuer {
-		return nil
-	}
-
-	options := []jwt.ParserOption{
-		// jwt.WithValidMethods([]string{algo.String()}),
-		// no equivalent in new lib
-		// jwt.WithLeeway(time.Second),
-	}
-	jwtParser := jwt.NewParser(options...)
-
-	o.issLock.Lock()
-	o.issuer = confIssuer
-	o.jwtParser = jwtParser
-	o.issLock.Unlock()
-
-	return nil
-}
-
 // validateTokenResponseData validates the token response data
 func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error {
-	if err := o.refreshJWTParser(); err != nil {
-		return err
-	}
-
-	o.issLock.RLock()
-	jwtParser := o.jwtParser
-	o.issLock.RUnlock()
-
 	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
 		idTokenClaims := jwt.MapClaims{}
-		_, err := jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.Keyfunc)
+		_, err := o.jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.Keyfunc)
 		if err != nil {
 			return err
 		}
