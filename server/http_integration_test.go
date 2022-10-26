@@ -3104,7 +3104,7 @@ func TestConfigBodyContent(t *testing.T) {
 	expiredCert, err := os.CreateTemp(os.TempDir(), "expired.pem")
 	helper.Must(err)
 
-	_, err = expiredCert.Write(selfSigned.CA)
+	_, err = expiredCert.Write(selfSigned.CACertificate.Certificate)
 	helper.Must(err)
 	helper.Must(expiredCert.Close())
 

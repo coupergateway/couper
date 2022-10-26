@@ -3,8 +3,8 @@ package server
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -59,7 +59,7 @@ func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config
 	cfg.ClientAuth = requireClientAuth(config)
 
 	for _, certConfig := range config.ServerCertificates {
-		cert, err := loadServerCertificate(certConfig)
+		cert, err := LoadServerCertificate(certConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +70,7 @@ func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config
 	if cfg.ClientAuth == tls.RequireAndVerifyClientCert {
 		cfg.ClientCAs = x509.NewCertPool()
 		for _, certConfig := range config.ClientCertificate {
-			cert, _, err := loadClientCertificate(certConfig)
+			cert, _, err := LoadClientCertificate(certConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -87,82 +87,121 @@ func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config
 	return cfg, nil
 }
 
-func loadServerCertificate(config *config.ServerCertificate) (tls.Certificate, error) {
-	if config.PrivateKeyFile != "" || config.PublicKeyFile != "" {
-		wd, err := os.Getwd()
-		if err != nil {
-			return tls.Certificate{}, err
-		}
-
-		return tls.LoadX509KeyPair(filepath.Join(wd, config.PublicKeyFile), filepath.Join(wd, config.PrivateKeyFile))
-	} else if config.PrivateKey != "" || config.PublicKey != "" {
-		// With PEM block signature?
-		certificate, err := tls.X509KeyPair([]byte(config.PublicKey), []byte(config.PrivateKey))
-		if err == nil {
-			return certificate, nil
-		} // else assume DER
-		x509certificate, err := x509.ParseCertificate([]byte(config.PublicKey))
-		if err != nil {
-			return tls.Certificate{}, err
-		}
-		key, err := x509.ParsePKCS8PrivateKey([]byte(config.PrivateKey))
-		if err != nil {
-			return tls.Certificate{}, err
-		}
-		// TODO: Check for public <> private key type match as seen in tls.X509KeyPair() method.
-		return tls.Certificate{
-			Certificate: [][]byte{x509certificate.Raw},
-			Leaf:        x509certificate,
-			PrivateKey:  key,
-		}, nil
-
+func LoadServerCertificate(config *config.ServerCertificate) (tls.Certificate, error) {
+	if config == nil {
+		return tls.Certificate{}, nil // currently triggers self signed fallback
 	}
-	return tls.Certificate{}, errors.Configuration.Messagef("certificate %q: TODO: msg", config.Name)
+	cert, err := readValueOrFile(config.PublicKey, config.PublicKeyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	privateKey, err := readValueOrFile(config.PrivateKey, config.PrivateKeyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	// Try PEM encoded
+	certificate, err := tls.X509KeyPair(cert, privateKey)
+	if err == nil {
+		certificate.Leaf, err = x509.ParseCertificate(certificate.Certificate[0])
+		return certificate, err
+	} // otherwise assume DER
+	x509certificate, err := x509.ParseCertificate(cert)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	key, err := x509.ParsePKCS8PrivateKey(privateKey)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	// TODO: Check for public <> private key type match as seen in tls.X509KeyPair() method.
+	return tls.Certificate{
+		Certificate: [][]byte{x509certificate.Raw},
+		Leaf:        x509certificate,
+		PrivateKey:  key,
+	}, nil
 }
 
-func loadClientCertificate(config *config.ClientCertificate) (caCert tls.Certificate, leafCert tls.Certificate, err error) {
-	var x509certificate *x509.Certificate
-
-	wd, err := os.Getwd()
-	if err != nil {
+func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, tls.Certificate, error) {
+	fail := func(err error) (tls.Certificate, tls.Certificate, error) {
 		return tls.Certificate{}, tls.Certificate{}, err
 	}
+	if config == nil {
+		return fail(nil)
+	}
 
-	if config.CA != "" {
-		x509certificate, err = x509.ParseCertificate([]byte(config.CA))
+	var x509certificate *x509.Certificate
+
+	caCert, err := readValueOrFile(config.CA, config.CAFile)
+	if err != nil {
+		return fail(err)
+	}
+
+	leafCert, err := readValueOrFile(config.Leaf, config.LeafFile)
+	if err != nil && (config.Leaf != "" || config.LeafFile != "") { // since its optional, if given
+		return fail(err)
+	}
+
+	// try PEM encoded
+	var caCertificate tls.Certificate
+	certDERBlock, _ := pem.Decode(caCert)
+	if certDERBlock != nil {
+		caCertificate.Certificate = append(caCertificate.Certificate, certDERBlock.Bytes)
+		caCertificate.Leaf, err = x509.ParseCertificate(certDERBlock.Bytes)
 		if err != nil {
-			return
+			return fail(err)
+		}
+	} else { // assume DER
+		x509certificate, err = x509.ParseCertificate(caCert)
+		if err != nil {
+			return fail(err)
 		}
 
-		caCert = tls.Certificate{
-			Certificate: [][]byte{x509certificate.Raw},
+		caCertificate = tls.Certificate{
+			Certificate: [][]byte{caCert},
 			Leaf:        x509certificate,
-		}
-	} else if config.CAFile != "" {
-		caCert, err = tls.LoadX509KeyPair(filepath.Join(wd, config.CAFile), "")
-		if err != nil {
-			return
 		}
 	}
 
-	if config.Leaf != "" {
-		x509certificate, err = x509.ParseCertificate([]byte(config.Leaf))
+	if len(leafCert) == 0 {
+		return caCertificate, tls.Certificate{}, nil
+	}
+
+	// try PEM encoded
+	var leafCertificate tls.Certificate
+	certDERBlock, _ = pem.Decode(leafCert)
+	if certDERBlock != nil {
+		leafCertificate.Certificate = append(leafCertificate.Certificate, certDERBlock.Bytes)
+		leafCertificate.Leaf, err = x509.ParseCertificate(certDERBlock.Bytes)
 		if err != nil {
-			return
+			return fail(err)
+		}
+	} else { // assume DER
+		x509certificate, err = x509.ParseCertificate(leafCert)
+		if err != nil {
+			return fail(err)
 		}
 
-		leafCert = tls.Certificate{
-			Certificate: [][]byte{x509certificate.Raw},
+		leafCertificate = tls.Certificate{
+			Certificate: [][]byte{leafCert},
 			Leaf:        x509certificate,
-		}
-	} else if config.LeafFile != "" {
-		leafCert, err = tls.LoadX509KeyPair(filepath.Join(wd, config.LeafFile), "")
-		if err != nil {
-			return
 		}
 	}
 
-	return
+	return caCertificate, leafCertificate, nil
+}
+
+func readValueOrFile(value, filePath string) ([]byte, error) {
+	if value != "" && filePath != "" {
+		return nil, errors.New().Message("both attributes provided")
+	} else if value != "" {
+		return []byte(value), nil
+	} else if filePath != "" {
+		return os.ReadFile(filePath)
+	}
+	return nil, errors.New().Message("no attributes provided")
 }
 
 // verifyChain performs standard TLS verification without enforcing remote hostname matching.
