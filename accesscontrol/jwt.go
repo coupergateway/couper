@@ -221,7 +221,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
-	claims, err := j.getConfiguredClaims(req)
+	expectedClaims, err := j.getConfiguredClaims(req)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,8 @@ func (j *JWT) Validate(req *http.Request) error {
 		j.jwks.Data()
 	}
 
-	token, err := j.parser.Parse(tokenValue, j.getValidationKey)
+	tokenClaims := jwt.MapClaims{}
+	_, err = j.parser.ParseWithClaims(tokenValue, tokenClaims, j.getValidationKey)
 	if err != nil {
 		if goerrors.Is(err, jwt.ErrTokenExpired) {
 			return errors.JwtTokenExpired.With(err)
@@ -239,7 +240,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenInvalid.With(err)
 	}
 
-	tokenClaims, err := j.validateClaims(token, claims)
+	err = j.validateClaims(tokenClaims, expectedClaims)
 	if err != nil {
 		return errors.JwtTokenInvalid.With(err)
 	}
@@ -249,7 +250,8 @@ func (j *JWT) Validate(req *http.Request) error {
 	if !ok {
 		acMap = make(map[string]interface{})
 	}
-	acMap[j.name] = tokenClaims
+	// treat token claims as map for context
+	acMap[j.name] = map[string]interface{}(tokenClaims)
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 
 	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
@@ -313,49 +315,40 @@ func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, er
 }
 
 // validateClaims validates the token claims against the list of required claims and the expected claims values
-func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (map[string]interface{}, error) {
-	var tokenClaims jwt.MapClaims
-	if tc, ok := token.Claims.(jwt.MapClaims); ok {
-		tokenClaims = tc
-	}
-
-	if tokenClaims == nil {
-		return nil, fmt.Errorf("token has no claims")
-	}
-
+func (j *JWT) validateClaims(tokenClaims jwt.MapClaims, expectedClaims map[string]interface{}) error {
 	for _, key := range j.claimsRequired {
 		if _, ok := tokenClaims[key]; !ok {
-			return nil, fmt.Errorf("required claim is missing: " + key)
+			return fmt.Errorf("required claim is missing: " + key)
 		}
 	}
 
-	for k, v := range claims {
+	for k, v := range expectedClaims {
 		val, exist := tokenClaims[k]
 		if !exist {
-			return nil, fmt.Errorf("required claim is missing: " + k)
+			return fmt.Errorf("required claim is missing: " + k)
 		}
 
 		if k == "iss" {
 			if !tokenClaims.VerifyIssuer(v.(string), true) {
-				return nil, errors.JwtTokenInvalid.Message("invalid issuer")
+				return errors.JwtTokenInvalid.Message("invalid issuer")
 			}
 			continue
 		}
 		if k == "aud" {
 			if !tokenClaims.VerifyAudience(v.(string), true) {
-				return nil, errors.JwtTokenInvalid.Message("invalid audience")
+				return errors.JwtTokenInvalid.Message("invalid audience")
 			}
 			continue
 		}
 
 		if val != v {
-			return nil, fmt.Errorf("unexpected value for claim %s, got %q, expected %q", k, val, v)
+			return fmt.Errorf("unexpected value for claim %s, got %q, expected %q", k, val, v)
 		}
 	}
-	return tokenClaims, nil
+	return nil
 }
 
-func (j *JWT) getGrantedPermissions(tokenClaims map[string]interface{}, log *logrus.Entry) []string {
+func (j *JWT) getGrantedPermissions(tokenClaims jwt.MapClaims, log *logrus.Entry) []string {
 	var grantedPermissions []string
 
 	grantedPermissions = j.addPermissionsFromPermissionsClaim(tokenClaims, grantedPermissions, log)
@@ -369,7 +362,7 @@ func (j *JWT) getGrantedPermissions(tokenClaims map[string]interface{}, log *log
 
 const warnInvalidValueMsg = "invalid %s claim value type, ignoring claim, value %#v"
 
-func (j *JWT) addPermissionsFromPermissionsClaim(tokenClaims map[string]interface{}, permissions []string, log *logrus.Entry) []string {
+func (j *JWT) addPermissionsFromPermissionsClaim(tokenClaims jwt.MapClaims, permissions []string, log *logrus.Entry) []string {
 	if j.permissionsClaim == "" {
 		return permissions
 	}
@@ -432,7 +425,7 @@ func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []st
 	return strings.Split(rolesString, " ")
 }
 
-func (j *JWT) addPermissionsFromRoles(tokenClaims map[string]interface{}, permissions []string, log *logrus.Entry) []string {
+func (j *JWT) addPermissionsFromRoles(tokenClaims jwt.MapClaims, permissions []string, log *logrus.Entry) []string {
 	if j.rolesClaim == "" || j.rolesMap == nil {
 		return permissions
 	}
