@@ -639,6 +639,9 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-miat-id") {
 					if strings.HasSuffix(code, "-wiat-id") {
 						mapClaims["iat"] = "1234abcd"
+					} else if strings.HasSuffix(code, "-liat-id") {
+						// 2096-10-02 07:06:40 +0000 UTC
+						mapClaims["iat"] = 4000000000
 					} else {
 						// 1970-01-01 00:16:40 +0000 UTC
 						mapClaims["iat"] = 1000
@@ -647,6 +650,9 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mexp-id") {
 					if strings.HasSuffix(code, "-wexp-id") {
 						mapClaims["exp"] = "1234abcd"
+					} else if strings.HasSuffix(code, "-eexp-id") {
+						// 1970-01-01 00:16:40 +0000 UTC
+						mapClaims["exp"] = 1000
 					} else {
 						// 2096-10-02 07:06:40 +0000 UTC
 						mapClaims["exp"] = 4000000000
@@ -782,8 +788,10 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		{"code, sub mismatch", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wsub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: subject mismatch, in ID token \"me\", in userinfo response \"myself\""},
 		{"code, missing exp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing exp claim in ID token"},
 		{"code, wrong exp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: json: unsupported type: string"},
+		{"code, too early exp date", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-eexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token is expired by "},
 		{"code, missing iat claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-miat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing iat claim in ID token"},
 		{"code, wrong iat claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wiat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: iat claim in ID token must be number, but is \"1234abcd\""},
+		{"code, too late iat date", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-liat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusOK, "code=qeuboub-liat-id&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code, missing azp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing azp claim in ID token"},
 		{"code, wrong azp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: azp claim / client ID mismatch, azp = \"bar\", client ID = \"foo\""},
 		{"code, missing iss claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-miss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token issuer is invalid: 'iss' value doesn't match expectation"},
