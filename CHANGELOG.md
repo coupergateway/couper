@@ -5,7 +5,7 @@
 Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
-  * CVE-2021-3538 related to our `request_id_format` option if switched to `uuid4`: replaced the underlying package to `github.com/google/uuid` 
+  * CVE-2021-3538 related to our `request_id_format` option if switched to `uuid4`: replaced the underlying package to `github.com/google/uuid` ([#611](https://github.com/avenga/couper/pull/611))
 
 ---
 
