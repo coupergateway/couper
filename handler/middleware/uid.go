@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/google/uuid"
 	"github.com/rs/xid"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
@@ -79,8 +79,9 @@ type UIDFunc func() string
 func NewUIDFunc(requestIDFormat string) UIDFunc {
 	var fn UIDFunc
 	if requestIDFormat == "uuid4" {
+		uuid.EnableRandPool() // Enabling the pool may improve the UUID generation throughput significantly.
 		fn = func() string {
-			return uuid.NewV4().String()
+			return uuid.NewString()
 		}
 	} else {
 		fn = func() string {

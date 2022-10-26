@@ -19,7 +19,6 @@ require (
 	github.com/rs/xid v1.3.0
 	github.com/russellhaering/gosaml2 v0.7.0
 	github.com/russellhaering/goxmldsig v1.2.0
-	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/zclconf/go-cty v1.10.1-0.20220623211957-834994b84991
 	go.opentelemetry.io/otel v1.4.0
@@ -43,6 +42,7 @@ require (
 require (
 	github.com/algolia/algoliasearch-client-go/v3 v3.26.0
 	github.com/google/go-cmp v0.5.7
+	github.com/google/uuid v1.3.0
 )
 
 require (
