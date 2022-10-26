@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
+	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/oauth2/oidc"
 )
@@ -23,8 +24,12 @@ type OidcClient struct {
 
 // NewOidcClient creates a new OIDC client.
 func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
+	var algorithms []string
+	for _, a := range append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...) {
+		algorithms = append(algorithms, a.String())
+	}
 	options := []jwt.ParserOption{
-		// jwt.WithValidMethods([]string{algo.String()}),
+		jwt.WithValidMethods(algorithms),
 		// no equivalent in new lib
 		// jwt.WithLeeway(time.Second),
 	}
