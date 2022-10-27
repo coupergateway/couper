@@ -699,6 +699,53 @@ func TestJwtConfig(t *testing.T) {
 			"jwt key: read error: required: configured attribute or file",
 		},
 		{
+			"signature_algorithm, both key and key_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    key_file = "testdata/secret.txt"
+			  }
+			}
+			`,
+			"jwt key: read error: configured attribute and file",
+		},
+		{
+			"signature_algorithm, both beta_roles_map and beta_roles_map_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    beta_roles_map = {}
+			    beta_roles_map_file = "testdata/map.json"
+			  }
+			}
+			`,
+			"jwt roles map: read error: configured attribute and file",
+		},
+		{
+			"signature_algorithm, both beta_permissions_map and beta_permissions_map_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    beta_permissions_map = {}
+			    beta_permissions_map_file = "testdata/map.json"
+			  }
+			}
+			`,
+			"jwt permissions map: read error: configured attribute and file",
+		},
+		{
 			"ok: signature_algorithm + key (default: header = Authorization)",
 			`
 			server "test" {}
