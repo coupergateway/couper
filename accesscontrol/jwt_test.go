@@ -874,6 +874,19 @@ func TestJwtConfig(t *testing.T) {
 			"",
 		},
 		{
+			"jwks_url file not found",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    jwks_url = "file:file_not_found",
+			    header = "..."
+			  }
+			}
+			`,
+			"configuration error: myac: jwks_url: read error: open .*/accesscontrol/file_not_found: no such file or directory",
+		},
+		{
 			"signature_algorithm + jwks_url",
 			`
 			server "test" {}
