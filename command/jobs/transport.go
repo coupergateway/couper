@@ -8,18 +8,20 @@ import (
 )
 
 type Job struct {
-	ctx     context.Context
-	handler *handler.Endpoint
-	job     *config.Job
+	ctx      context.Context
+	handler  *handler.Endpoint
+	job      *config.Job
+	settings *config.Settings
 }
 
 var jobs = make(map[string]*Job)
 
-func AddJob(ctx context.Context, j *config.Job, h *handler.Endpoint) {
+func AddJob(ctx context.Context, j *config.Job, h *handler.Endpoint, settings *config.Settings) {
 	jobs[j.Name] = &Job{
-		ctx:     ctx,
-		handler: h,
-		job:     j,
+		ctx:      ctx,
+		handler:  h,
+		job:      j,
+		settings: settings,
 	}
 }
 
@@ -37,4 +39,8 @@ func (j *Job) GetHandler() *handler.Endpoint {
 
 func (j *Job) GetJob() *config.Job {
 	return j.job
+}
+
+func (j *Job) GetSettings() *config.Settings {
+	return j.settings
 }

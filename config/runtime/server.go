@@ -125,7 +125,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			endpointHandler := handler.NewEndpoint(endpointOptions, log, nil)
 
-			jobs.AddJob(conf.Context, job, endpointHandler)
+			jobs.AddJob(conf.Context, job, endpointHandler, conf.Settings)
 		}
 	}
 
