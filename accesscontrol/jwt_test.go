@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -683,7 +684,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"signature_algorithm or jwks_url attribute required",
+			"configuration error: myac: signature_algorithm or jwks_url attribute required",
 		},
 		{
 			"signature_algorithm, missing key/key_file",
@@ -696,7 +697,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"jwt key: read error: required: configured attribute or file",
+			"configuration error: myac: jwt key: read error: required: configured attribute or file",
 		},
 		{
 			"signature_algorithm, both key and key_file",
@@ -711,7 +712,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"jwt key: read error: configured attribute and file",
+			"configuration error: myac: jwt key: read error: configured attribute and file",
 		},
 		{
 			"signature_algorithm, both beta_roles_map and beta_roles_map_file",
@@ -727,7 +728,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"jwt roles map: read error: configured attribute and file",
+			"configuration error: myac: jwt roles map: read error: configured attribute and file",
 		},
 		{
 			"signature_algorithm, both beta_permissions_map and beta_permissions_map_file",
@@ -743,7 +744,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"jwt permissions map: read error: configured attribute and file",
+			"configuration error: myac: jwt permissions map: read error: configured attribute and file",
 		},
 		{
 			"ok: signature_algorithm + key (default: header = Authorization)",
@@ -813,7 +814,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"token source is invalid",
+			"configuration error: myac: token source is invalid",
 		},
 		{
 			"token_value + cookie",
@@ -828,7 +829,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"token source is invalid",
+			"configuration error: myac: token source is invalid",
 		},
 		{
 			"cookie + header",
@@ -843,7 +844,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"token source is invalid",
+			"configuration error: myac: token source is invalid",
 		},
 		{
 			"ok: signature_algorithm + key_file",
@@ -865,7 +866,7 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-			    jwks_url = "file://...",
+			    jwks_url = "file:jwk/testdata/jwks.json",
 			    header = "..."
 			  }
 			}
@@ -884,7 +885,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"signature_algorithm cannot be used together with jwks_url",
+			"configuration error: myac: signature_algorithm cannot be used together with jwks_url",
 		},
 		{
 			"key + jwks_url",
@@ -898,7 +899,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"key cannot be used together with jwks_url",
+			"configuration error: myac: key cannot be used together with jwks_url",
 		},
 		{
 			"key_file + jwks_url",
@@ -912,7 +913,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"key_file cannot be used together with jwks_url",
+			"configuration error: myac: key_file cannot be used together with jwks_url",
 		},
 		{
 			"backend reference, missing jwks_url",
@@ -927,11 +928,12 @@ func TestJwtConfig(t *testing.T) {
 			  backend "foo" {}
 			}
 			`,
-			"backend is obsolete without jwks_url attribute",
+			"configuration error: myac: backend is obsolete without jwks_url attribute",
 		},
 	}
 
 	log, hook := test.NewLogger()
+	helper := test.New(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
@@ -958,11 +960,6 @@ func TestJwtConfig(t *testing.T) {
 				} else {
 					errMsg = err.Error()
 				}
-				if tt.error != "" {
-					expectedError = "configuration error: myac: " + tt.error
-				}
-			} else {
-				expectedError = tt.error
 			}
 
 			if tt.error == "" && errMsg == "" {
@@ -979,7 +976,9 @@ func TestJwtConfig(t *testing.T) {
 				break
 			}
 
-			if !strings.HasPrefix(errMsg, expectedError) {
+			re, err := regexp.Compile(expectedError)
+			helper.Must(err)
+			if !re.MatchString(errMsg) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, errMsg)
 			}
 		})
