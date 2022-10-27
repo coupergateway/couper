@@ -28,9 +28,10 @@ func TestReadFromAttrFile(t *testing.T) {
 		wantErr bool
 	}{
 		{"not configured", args{context: "testcase"}, nil, true},
-		{"both configured", args{context: "testcase", attribute: "", path: ""}, nil, true},
+		{"both configured", args{context: "testcase", attribute: "key", path: "file"}, nil, true},
 		{"attr configured", args{context: "testcase", attribute: "key", path: ""}, []byte("key"), false},
 		{"path configured", args{context: "testcase", attribute: "", path: file}, expBytes, false},
+		{"path configured, file not found", args{context: "testcase", attribute: "", path: "testdata/file_not_found"}, nil, true},
 	}
 
 	for _, tt := range tests {
