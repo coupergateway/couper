@@ -106,13 +106,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.",
+    "description": "Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm. Mutually exclusive with `key_file`.",
     "name": "key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Optional file reference instead of `key` usage.",
+    "description": "Reference to file containing verification key. Mutually exclusive with `key`. See `key` for more information.",
     "name": "key_file",
     "type": "string"
   },
@@ -130,13 +130,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Private key (in PEM format) for `RS*` and `ES*` variants.",
+    "description": "Private key (in PEM format) for `RS*` and `ES*` variants. Mutually exclusive with `signing_key_file`.",
     "name": "signing_key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Optional file reference instead of `signing_key` usage.",
+    "description": "Reference to file containing signing key. Mutually exclusive with `signing_key`. See `signing_key` for more information.",
     "name": "signing_key_file",
     "type": "string"
   },
