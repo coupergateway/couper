@@ -344,6 +344,9 @@ func Test_JWT_yields_permissions(t *testing.T) {
 		"user2": {"bar"},
 		"*":     {"default"},
 	}
+	permissionsMap := map[string][]string{
+		"baz": {"blubb"},
+	}
 	var noGrantedPermissions []string
 
 	tests := []struct {
@@ -455,13 +458,13 @@ func Test_JWT_yields_permissions(t *testing.T) {
 			noGrantedPermissions,
 		},
 		{
-			"roles: single string",
+			"roles: single string, permission mapped",
 			"",
 			nil,
 			"roles",
 			"admin",
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 		{
 			"roles: space-separated list",
@@ -500,22 +503,22 @@ func Test_JWT_yields_permissions(t *testing.T) {
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"roles: list of string, no additional 1",
+			"roles: list of string, no additional 1, permission mapped",
 			"",
 			nil,
 			"rollen",
 			[]string{"admin", "user1"},
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 		{
-			"roles: list of string, no additional 2",
+			"roles: list of string, no additional 2, permission mapped",
 			"",
 			nil,
 			"rollen",
 			[]string{"admin", "user2"},
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 		{
 			"roles: warn: boolean",
@@ -581,13 +584,13 @@ func Test_JWT_yields_permissions(t *testing.T) {
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"combi 2",
+			"combi 2, permission mapped",
 			"scope",
 			[]string{"foo", "bar"},
 			"roles",
 			"admin",
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 	}
 	for _, tt := range tests {
@@ -612,6 +615,7 @@ func Test_JWT_yields_permissions(t *testing.T) {
 				Algorithm:        algo.String(),
 				Name:             "test_ac",
 				PermissionsClaim: tt.permissionsClaim,
+				PermissionsMap:   permissionsMap,
 				RolesClaim:       tt.rolesClaim,
 				RolesMap:         rolesMap,
 				Source:           source,
