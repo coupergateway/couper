@@ -34,17 +34,17 @@ github.com/docker/go-units
 # github.com/fatih/color v1.13.0
 ## explicit; go 1.13
 github.com/fatih/color
-# github.com/getkin/kin-openapi v0.92.0
+# github.com/getkin/kin-openapi v0.107.0
 ## explicit; go 1.16
 github.com/getkin/kin-openapi/jsoninfo
 github.com/getkin/kin-openapi/openapi3
 github.com/getkin/kin-openapi/openapi3filter
 github.com/getkin/kin-openapi/routers
+github.com/getkin/kin-openapi/routers/gorillamux
 github.com/getkin/kin-openapi/routers/legacy
 github.com/getkin/kin-openapi/routers/legacy/pathpattern
 # github.com/ghodss/yaml v1.0.0
 ## explicit
-github.com/ghodss/yaml
 # github.com/go-logr/logr v1.2.2
 ## explicit; go 1.16
 github.com/go-logr/logr
@@ -79,6 +79,9 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
+# github.com/gorilla/mux v1.8.0
+## explicit; go 1.12
+github.com/gorilla/mux
 # github.com/grpc-ecosystem/grpc-gateway v1.16.0
 ## explicit; go 1.14
 github.com/grpc-ecosystem/grpc-gateway/internal
@@ -95,6 +98,9 @@ github.com/hashicorp/hcl/v2/hclsyntax
 github.com/hashicorp/hcl/v2/hcltest
 github.com/hashicorp/hcl/v2/hclwrite
 github.com/hashicorp/hcl/v2/json
+# github.com/invopop/yaml v0.1.0
+## explicit; go 1.14
+github.com/invopop/yaml
 # github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 ## explicit
 github.com/jimlambrt/go-oauth-pkce-code-verifier
@@ -124,6 +130,9 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mitchellh/go-wordwrap v1.0.1
 ## explicit; go 1.14
 github.com/mitchellh/go-wordwrap
+# github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
+## explicit
+github.com/mohae/deepcopy
 # github.com/prometheus/client_golang v1.12.1
 ## explicit; go 1.13
 github.com/prometheus/client_golang/prometheus
@@ -369,4 +378,7 @@ google.golang.org/protobuf/types/known/wrapperspb
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3
 # github.com/zclconf/go-cty => github.com/avenga/go-cty v0.0.0-20220627115852-3ddf0a688aea

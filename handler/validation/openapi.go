@@ -12,7 +12,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
-	"github.com/getkin/kin-openapi/routers/legacy"
+	"github.com/getkin/kin-openapi/routers/gorillamux"
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
@@ -72,7 +72,7 @@ func (v *OpenAPI) newRouter(origin string) {
 		clonedSwagger.AddServer(&openapi3.Server{URL: ns})
 	}
 
-	v.router, v.syncErr = legacy.NewRouter(clonedSwagger)
+	v.router, v.syncErr = gorillamux.NewRouter(clonedSwagger)
 }
 
 func (v *OpenAPI) ValidateRequest(req *http.Request) (*openapi3filter.RequestValidationInput, error) {
