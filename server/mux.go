@@ -92,15 +92,15 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	for _, path := range sortedPathPatterns(opts.EndpointRoutes) {
 		// TODO: handle method option per endpoint configuration
-		mux.mustAddRoute(mux.endpointRoot, path, opts.EndpointRoutes[path], true)
+		mustAddRoute(mux.endpointRoot, path, opts.EndpointRoutes[path], true)
 	}
 
 	for _, path := range sortedPathPatterns(opts.FileRoutes) {
-		mux.mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), opts.FileRoutes[path], false)
+		mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), opts.FileRoutes[path], false)
 	}
 
 	for _, path := range sortedPathPatterns(opts.SPARoutes) {
-		mux.mustAddRoute(mux.spaRoot, path, opts.SPARoutes[path], true)
+		mustAddRoute(mux.spaRoot, path, opts.SPARoutes[path], true)
 	}
 
 	return mux
@@ -108,14 +108,10 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 var noDefaultMethods []string
 
-func (m *Mux) registerHandler(root *gmux.Router, methods []string, path string, handler http.Handler) {
+func registerHandler(root *gmux.Router, methods []string, path string, handler http.Handler) {
 	notAllowedMethodsHandler := errors.DefaultJSON.WithError(errors.MethodNotAllowed)
 	allowedMethodsHandler := middleware.NewAllowedMethodsHandler(methods, noDefaultMethods, handler, notAllowedMethodsHandler)
-	m.mustAddRoute(root, path, allowedMethodsHandler, false)
-}
-
-func (m *Mux) mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailingSlash bool) {
-	mustCreateNode(root, handler, path, trailingSlash)
+	mustAddRoute(root, path, allowedMethodsHandler, false)
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
@@ -234,7 +230,7 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API
 	return nil, nil
 }
 
-func mustCreateNode(root *gmux.Router, handler http.Handler, path string, trailingSlash bool) {
+func mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailingSlash bool) {
 	if strings.HasSuffix(path, wildcardSearch) {
 		path = path[:len(path)-len(wildcardSearch)]
 		if len(path) == 0 {
