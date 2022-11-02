@@ -12,6 +12,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Changed**
   * Replaced the JWT library because the former library was no longer maintained ([#612](https://github.com/avenga/couper/pull/612))
 
+* **Changed**
+  * Routing and [OpenAPI validation](https://docs.couper.io/configuration/block/openapi) now use gorilla/mux ([#614](https://github.com/avenga/couper/pull/614))
+
 * **Fixed**
   * Aligned the evaluation of [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `redirect_uri` to `saml` `sp_acs_url` ([#589](https://github.com/avenga/couper/pull/589))
   * Proper handling of empty [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `scope` ([#593](https://github.com/avenga/couper/pull/593))
