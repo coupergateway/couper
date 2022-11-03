@@ -24,7 +24,7 @@ func requireClientAuth(config *config.ServerTLS) tls.ClientAuthType {
 func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config, error) {
 	cfg := coupertls.DefaultTLSConfig()
 	cfg.RootCAs = x509.NewCertPool() // no system CA's
-	var leafCert []byte
+	var leafCerts [][]byte
 
 	cfg.GetCertificate = func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		log.WithField("ClientHelloInfo", logrus.Fields{
@@ -60,18 +60,14 @@ func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config
 				cfg.ClientCAs.AddCert(cert.Leaf)
 			}
 			if clientCrt.Leaf != nil {
-				leafCert = clientCrt.Leaf.Raw
+				leafCerts = append(leafCerts, clientCrt.Leaf.Raw)
 			}
-			// TODO: verify clientCrt with cert ?
 		}
 	}
 
-	if len(leafCert) > 0 {
+	if len(leafCerts) > 0 {
 		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			if !bytes.Equal(rawCerts[0], leafCert) {
-				return fmt.Errorf("tls: client leaf certificate mismatch")
-			}
-			return nil
+			return verifyClientLeaf(leafCerts, rawCerts)
 		}
 	}
 
@@ -146,6 +142,9 @@ func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, t
 	var leafCertificate tls.Certificate
 	if len(leafCert) > 0 {
 		leafCertificate, err = coupertls.ParseCertificate(leafCert, nil)
+		if err != nil {
+			return fail(err)
+		}
 	}
 
 	if len(caCert) == 0 && leafCertificate.Leaf != nil {
@@ -155,4 +154,15 @@ func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, t
 	caCertificate, err := coupertls.ParseCertificate(caCert, nil)
 
 	return caCertificate, leafCertificate, err
+}
+
+func verifyClientLeaf(leafs [][]byte, rawCerts [][]byte) error {
+	for _, cert := range rawCerts {
+		for _, leaf := range leafs {
+			if bytes.Equal(cert, leaf) {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("tls: client leaf certificate mismatch")
 }
