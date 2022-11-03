@@ -1,5 +1,5 @@
 server {
-  hosts = ["*:443"]
+  hosts = ["*:4443"]
 
   tls {
     # self signed fallback

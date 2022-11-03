@@ -22,7 +22,7 @@ func TestHTTPSServer_TLS_SelfSigned(t *testing.T) {
 	shutdown, _ := newCouper("testdata/mtls/01_couper.hcl", helper)
 	defer shutdown()
 
-	outreq, err := http.NewRequest(http.MethodGet, "https://localhost/", nil)
+	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
 	helper.Must(err)
 
 	_, err = client.Do(outreq)
@@ -30,7 +30,7 @@ func TestHTTPSServer_TLS_SelfSigned(t *testing.T) {
 		t.Fatal("tls error expected, got nil")
 	}
 
-	if err.Error() != `Get "https://localhost/": x509: certificate signed by unknown authority` {
+	if err.Error() != `Get "https://localhost:4443/": x509: certificate signed by unknown authority` {
 		t.Errorf("Want unknown authority error, got: %v", err)
 	}
 }
@@ -53,7 +53,7 @@ func TestHTTPSServer_TLS_ServerCertificate(t *testing.T) {
 	})
 	defer shutdown()
 
-	outreq, err := http.NewRequest(http.MethodGet, "https://localhost/", nil)
+	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
 	helper.Must(err)
 
 	res, err := client.Do(outreq)
@@ -84,7 +84,7 @@ func TestHTTPSServer_TLS_ServerClientCertificate(t *testing.T) {
 	})
 	defer shutdown()
 
-	outreq, err := http.NewRequest(http.MethodGet, "https://localhost/", nil)
+	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
 	helper.Must(err)
 
 	res, err := client.Do(outreq)
@@ -104,7 +104,7 @@ func TestHTTPSServer_TLS_ServerClientCertificate(t *testing.T) {
 		t.Fatal("expected a remote tls error")
 	}
 
-	if err.Error() != `Get "https://localhost/": remote error: tls: bad certificate` {
+	if err.Error() != `Get "https://localhost:4443/": remote error: tls: bad certificate` {
 		t.Errorf("Expected a tls handshake error, got: %v", err)
 	}
 }
@@ -130,7 +130,7 @@ func TestHTTPSServer_TLS_ServerClientCertificateLeaf(t *testing.T) {
 	})
 	defer shutdown()
 
-	outreq, err := http.NewRequest(http.MethodGet, "https://localhost/", nil)
+	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
 	helper.Must(err)
 
 	res, err := client.Do(outreq)
@@ -162,7 +162,7 @@ func TestHTTPSServer_TLS_ServerClientCertificateLeafNoMatch(t *testing.T) {
 	})
 	defer shutdown()
 
-	outreq, err := http.NewRequest(http.MethodGet, "https://localhost/", nil)
+	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
 	helper.Must(err)
 
 	hook.Reset()
