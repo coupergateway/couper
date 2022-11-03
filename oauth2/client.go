@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/golang-jwt/jwt/v4"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 
 	"github.com/avenga/couper/config"
