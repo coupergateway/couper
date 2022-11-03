@@ -50,9 +50,16 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			attributes      hclsyntax.Attributes
 			blocks          namedBlocks
 		}
-		namedAPIs        map[string]*apiDefinition
-		namedSPAs        map[string]*spaDefinition
-		namedFiles       map[string]*filesDefinition
+
+		tlsDefinition struct {
+			*hclsyntax.Block
+			blocks namedBlocks
+		}
+
+		namedAPIs  map[string]*apiDefinition
+		namedSPAs  map[string]*spaDefinition
+		namedFiles map[string]*filesDefinition
+
 		serverDefinition struct {
 			labels          []string
 			typeRange       hcl.Range
@@ -60,11 +67,12 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			openBraceRange  hcl.Range
 			closeBraceRange hcl.Range
 			attributes      hclsyntax.Attributes
+			apis            namedAPIs
 			blocks          namedBlocks
 			endpoints       namedBlocks
-			apis            namedAPIs
-			spas            namedSPAs
 			files           namedFiles
+			spas            namedSPAs
+			tls             *tlsDefinition
 		}
 
 		servers map[string]*serverDefinition
@@ -88,6 +96,9 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			files[<key>]      = {
 				attributes           = hclsyntax.Attributes
 				blocks[<name>]       = hclsyntax.Block (cors)
+			}
+			tls = {
+				blocks[<name>]       = hclsyntax.Block (server_certificate|client_certificate)
 			}
 		}
 	*/
@@ -293,6 +304,25 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 					for _, subBlock := range block.Body.Blocks {
 						results[serverKey].files[filesKey].blocks[subBlock.Type] = subBlock
 					}
+				} else if block.Type == tls {
+					if results[serverKey].tls == nil {
+						results[serverKey].tls = &tlsDefinition{
+							Block:  block,
+							blocks: make(namedBlocks),
+						}
+					}
+
+					for name, attr := range block.Body.Attributes {
+						results[serverKey].tls.Body.Attributes[name] = attr
+					}
+
+					for _, subBlock := range block.Body.Blocks {
+						blockKey := ""
+						if len(subBlock.Labels) > 0 {
+							blockKey = subBlock.Labels[0]
+						}
+						results[serverKey].tls.blocks[blockKey] = subBlock
+					}
 				} else {
 					results[serverKey].blocks[block.Type] = block
 				}
@@ -389,6 +419,22 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 
 			serverBlocks = append(serverBlocks, mergedFiles)
 		}
+
+		var tlsCertificateBlocks hclsyntax.Blocks
+		for _, v := range serverBlock.tls.blocks {
+			tlsCertificateBlocks = append(tlsCertificateBlocks, v)
+		}
+		serverBlocks = append(serverBlocks, &hclsyntax.Block{
+			Type: tls,
+			Body: &hclsyntax.Body{
+				Attributes: serverBlock.tls.Body.Attributes,
+				Blocks:     tlsCertificateBlocks,
+			},
+			TypeRange:       serverBlock.tls.TypeRange,
+			LabelRanges:     serverBlock.tls.LabelRanges,
+			OpenBraceRange:  serverBlock.tls.OpenBraceRange,
+			CloseBraceRange: serverBlock.tls.CloseBraceRange,
+		})
 
 		mergedServer := &hclsyntax.Block{
 			Type:   server,
