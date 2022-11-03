@@ -22,3 +22,7 @@
 /docs/website/node_modules
 /docs/website/.vscode/settings.json
 docs/website/.vite
+
+# tls
+/*.crt
+/*.key

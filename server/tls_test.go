@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/server"
 )
@@ -21,18 +22,18 @@ func Test_LoadClientCertificate(t *testing.T) {
 	t.Logf("generated certificates in %s", time.Since(now).String())
 
 	// obsolete for this test
-	selfSignedCert.CA.PrivateKey = nil
-	selfSignedCert.Server.PrivateKey = nil
+	selfSignedCert.ClientIntermediate.PrivateKey = nil
+	selfSignedCert.Client.PrivateKey = nil
 
 	for _, format := range []string{"DER", "PEM"} {
 		var caCertBytes, certBytes []byte
 		switch format {
 		case "DER":
-			caCertBytes = selfSignedCert.CA.Certificate[0]
-			certBytes = selfSignedCert.Server.Certificate[0]
+			caCertBytes = selfSignedCert.ClientIntermediate.Certificate[0]
+			certBytes = selfSignedCert.Client.Certificate[0]
 		case "PEM":
-			caCertBytes = selfSignedCert.CACertificate.Certificate
-			certBytes = selfSignedCert.ServerCertificate.Certificate
+			caCertBytes = selfSignedCert.ClientIntermediateCertificate.Certificate
+			certBytes = selfSignedCert.ClientCertificate.Certificate
 		}
 
 		pattern := "couper_test_tls_" + format
@@ -62,20 +63,24 @@ func Test_LoadClientCertificate(t *testing.T) {
 			{"malformed clientCertificate value", &config.ClientCertificate{CA: "asdf"}, tls.Certificate{}, tls.Certificate{}, true},
 			{"clientCertificate CA value", &config.ClientCertificate{
 				CA: string(caCertBytes),
-			}, *selfSignedCert.CA, tls.Certificate{}, false},
+			}, *selfSignedCert.ClientIntermediate, tls.Certificate{}, false},
 			{"clientCertificate CA /w Leaf value", &config.ClientCertificate{
 				CA:   string(caCertBytes),
 				Leaf: string(certBytes),
-			}, *selfSignedCert.CA, *selfSignedCert.Server, false},
+			}, *selfSignedCert.ClientIntermediate, *selfSignedCert.Client, false},
 			{"clientCertificate /w Leaf value", &config.ClientCertificate{
 				Leaf: string(certBytes),
-			}, tls.Certificate{}, tls.Certificate{}, true},
+			}, tls.Certificate{}, *selfSignedCert.Client, false},
 		}
 		for _, tt := range tests {
 			t.Run(format+"/"+tt.name, func(t *testing.T) {
 				gotCaCert, gotLeafCert, err := server.LoadClientCertificate(tt.config)
 				if (err != nil) != tt.wantErr {
-					t.Errorf("LoadClientCertificate() error = %v, wantErr %v", err, tt.wantErr)
+					msg := err.Error()
+					if cerr, ok := err.(errors.GoError); ok {
+						msg = cerr.LogError()
+					}
+					t.Errorf("LoadClientCertificate() error = %v, wantErr %v", msg, tt.wantErr)
 					return
 				}
 				if !reflect.DeepEqual(gotCaCert, tt.wantCaCert) {

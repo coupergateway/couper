@@ -51,7 +51,7 @@ func Test_realmain(t *testing.T) {
 		{"empty string in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/13_couper.hcl"}, nil, `level=error msg="%s/13_couper.hcl:3,5-27: method contains invalid character(s); " build=dev`, 1},
 		{"invalid method in allowed_methods in endpoint", []string{"couper", "run", "-f", base + "/14_couper.hcl"}, nil, `level=error msg="%s/14_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
 		{"invalid method in allowed_methods in api", []string{"couper", "run", "-f", base + "/15_couper.hcl"}, nil, `level=error msg="%s/15_couper.hcl:3,5-35: method contains invalid character(s); " build=dev`, 1},
-		{"rate_limit block in anonymous backend", []string{"couper", "run", "-f", base + "/17_couper.hcl"}, nil, `level=error msg="configuration error: anonymous_3_11: anonymous backend (\"anonymous_3_11\") cannot define 'beta_rate_limit' block(s)" build=dev`, 1},
+		{"rate_limit block in anonymous backend", []string{"couper", "run", "-f", base + "/17_couper.hcl"}, nil, `level=error msg="configuration error: anonymous_3_11: anonymous backend 'anonymous_3_11' cannot define 'beta_rate_limit' block(s)" build=dev`, 1},
 		{"non-string proxy reference", []string{"couper", "run", "-f", base + "/19_couper.hcl"}, nil, `level=error msg="%s/19_couper.hcl:3,13-14: proxy must evaluate to string; " build=dev`, 1},
 		{"proxy reference does not exist", []string{"couper", "run", "-f", base + "/20_couper.hcl"}, nil, `level=error msg="%s/20_couper.hcl:3,14-17: proxy reference is not defined; " build=dev`, 1},
 		{"circular backend references", []string{"couper", "run", "-f", base + "/21_couper.hcl"}, nil, `level=error msg="configuration error: <nil>: configuration error; circular reference:`, 1},

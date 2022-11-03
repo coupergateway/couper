@@ -52,3 +52,7 @@ test-coverage-show:
 	go tool cover -html=logging.coverage
 	go tool cover -html=server.coverage
 	go tool cover -html=main.coverage
+
+.PHONY: mtls-certificates
+mtls-certificates:
+	time go run internal/tls/cli/main.go

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -15,11 +16,16 @@ import (
 )
 
 type SelfSignedCertificate struct {
-	CA                *tls.Certificate
-	CACertificate     PEM
-	Server            *tls.Certificate
-	ServerCertificate PEM
-	ServerPrivateKey  []byte
+	CA                            *tls.Certificate
+	CACertificate                 PEM
+	Server                        *tls.Certificate
+	ServerCertificate             PEM
+	ServerPrivateKey              []byte
+	Client                        *tls.Certificate
+	ClientCertificate             PEM
+	ClientPrivateKey              []byte
+	ClientIntermediateCertificate PEM
+	ClientIntermediate            *tls.Certificate
 }
 
 type PEM struct {
@@ -30,21 +36,18 @@ type PEM struct {
 // NewCertificate creates a certificate with given hosts and duration.
 // If no hosts are provided all localhost variants will be used.
 func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*SelfSignedCertificate, error) {
-	rootCA, rootPEM, err := newCertificateAuthority()
+	rootCA, rootPEM, err := newCertificateAuthority("rootCA", "", nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
 
+	// server
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
 
 	template := defaultTemplate()
-	template.SerialNumber, err = newSerialNumber()
-	if err != nil {
-		return nil, err
-	}
 
 	if notBefore == nil {
 		n := time.Now()
@@ -66,35 +69,81 @@ func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time
 
 	srvDER, err := x509.CreateCertificate(rand.Reader, &template, rootCA.Leaf, &privateKey.PublicKey, rootCA.PrivateKey)
 	if err != nil {
-		log.Fatalf("Failed to create certificate: %s", err)
+		return nil, err
 	}
 
-	srvCrt, keyBytes, srvPEM, err := newCertificateFromDER(srvDER, privateKey)
+	srvCrt, srvKeyBytes, srvPEM, err := newCertificateFromDER(srvDER, privateKey)
+
+	// intermediate
+	interCA, interPEM, err := newCertificateAuthority("intermediateCA", "rootCA", rootCA.Leaf.PublicKey, rootCA.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// client
+	privateKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	template = defaultTemplate()
+	template.NotAfter = notBefore.Add(duration)
+	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+	template.MaxPathLenZero = true
+
+	clientDER, err := x509.CreateCertificate(rand.Reader, &template, interCA.Leaf, &privateKey.PublicKey, interCA.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	clientCrt, ClientKeyBytes, clientPEM, err := newCertificateFromDER(clientDER, privateKey)
+
 	return &SelfSignedCertificate{
-		CA:                rootCA,
-		CACertificate:     *rootPEM,
-		Server:            srvCrt,
-		ServerCertificate: *srvPEM,
-		ServerPrivateKey:  keyBytes,
+		CA:                            rootCA,
+		CACertificate:                 *rootPEM,
+		Server:                        srvCrt,
+		ServerCertificate:             *srvPEM,
+		ServerPrivateKey:              srvKeyBytes,
+		Client:                        clientCrt,
+		ClientCertificate:             *clientPEM,
+		ClientPrivateKey:              ClientKeyBytes,
+		ClientIntermediate:            interCA,
+		ClientIntermediateCertificate: *interPEM,
 	}, err
 }
 
-func newCertificateAuthority() (*tls.Certificate, *PEM, error) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, nil, err
+func newCertificateAuthority(name, parentName string, publicKey any, privateKey crypto.PrivateKey) (*tls.Certificate, *PEM, error) {
+	pubKey := publicKey
+	pathLen := 2
+	if _, ok := privateKey.(*ecdsa.PrivateKey); !ok {
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+		pubKey = &key.PublicKey
+		privateKey = key
+		pathLen = 1
 	}
 
 	template := defaultTemplate()
-	template.SerialNumber, err = newSerialNumber()
-	if err != nil {
-		return nil, nil, err
-	}
 	template.IsCA = true
-	template.KeyUsage |= x509.KeyUsageCertSign
+	template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	template.NotAfter = template.NotBefore.Add(time.Hour * 24)
+	template.Subject = pkix.Name{
+		CommonName:         name,
+		Country:            template.Subject.Country,
+		Organization:       template.Subject.Organization,
+		OrganizationalUnit: template.Subject.OrganizationalUnit,
+	}
+	template.BasicConstraintsValid = true
+	template.MaxPathLen = pathLen
 
-	caDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	if parentName != "" {
+		template.Issuer = template.Subject
+		template.Issuer.CommonName = parentName
+	}
+
+	caDER, err := x509.CreateCertificate(rand.Reader, &template, &template, pubKey, privateKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -119,9 +168,10 @@ func newCertificateFromDER(caDER []byte, key any) (*tls.Certificate, []byte, *PE
 	return &certificate, privBytes, &PEM{caPEM, keyPEM}, err
 }
 
-func newSerialNumber() (*big.Int, error) {
+func newSerialNumber() *big.Int {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	return rand.Int(rand.Reader, serialNumberLimit)
+	i, _ := rand.Int(rand.Reader, serialNumberLimit)
+	return i
 }
 
 func defaultTemplate() x509.Certificate {
@@ -131,9 +181,10 @@ func defaultTemplate() x509.Certificate {
 			Organization:       []string{"Couper"},
 			OrganizationalUnit: []string{"Development"},
 		},
-		NotBefore:             time.Now(),
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: true,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		Issuer:       pkix.Name{CommonName: "github/avenga/couper/server"},
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		NotBefore:    time.Now(),
+		SerialNumber: newSerialNumber(),
 	}
 }

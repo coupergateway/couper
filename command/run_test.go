@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -259,7 +258,7 @@ func TestArgs_CAFile(t *testing.T) {
 
 	tmpFile, err := os.CreateTemp("", "ca.cert")
 	helper.Must(err)
-	_, err = tmpFile.Write(selfSigned.CA)
+	_, err = tmpFile.Write(selfSigned.CACertificate.Certificate)
 	helper.Must(err)
 	helper.Must(tmpFile.Close())
 	defer os.Remove(tmpFile.Name())
@@ -311,7 +310,6 @@ definitions {
 
 	port := couperFile.Settings.DefaultPort
 
-	fmt.Println(">>>>> START 2", time.Now())
 	// ensure the previous tests aren't listening
 	test.WaitForClosedPort(port)
 	go func() {
@@ -406,7 +404,7 @@ func TestReadCAFile(t *testing.T) {
 	ssc, err := server.NewCertificate(time.Minute, nil, nil)
 	helper.Must(err)
 
-	_, err = malformedFile.Write(ssc.CA[:100]) // incomplete
+	_, err = malformedFile.Write(ssc.CACertificate.Certificate[:100]) // incomplete
 	helper.Must(err)
 
 	_, err = readCertificateFile(malformedFile.Name())

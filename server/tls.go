@@ -1,32 +1,18 @@
 package server
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
-	"os"
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
+	coupertls "github.com/avenga/couper/internal/tls"
 )
-
-func defaultTLSConfig() *tls.Config {
-	cfg := &tls.Config{
-		MinVersion: tls.VersionTLS13,
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		// We have to set this since otherwise Go will attempt to verify DNS names
-		// match DNS SAN/CN which we don't want. We hook up VerifyPeerCertificate to
-		// do our own path validation as well as Connect AuthZ.
-		InsecureSkipVerify: true,
-		// Include h2 to allow connect http servers to automatically support http2.
-		// See: https://github.com/golang/go/blob/917c33fe8672116b04848cf11545296789cafd3b/src/net/http/server.go#L2724-L2731
-		NextProtos: []string{"h2"},
-	}
-	return cfg
-}
 
 func requireClientAuth(config *config.ServerTLS) tls.ClientAuthType {
 	if config != nil && len(config.ClientCertificate) > 0 {
@@ -36,13 +22,9 @@ func requireClientAuth(config *config.ServerTLS) tls.ClientAuthType {
 }
 
 func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config, error) {
-	cfg := defaultTLSConfig()
+	cfg := coupertls.DefaultTLSConfig()
 	cfg.RootCAs = x509.NewCertPool() // no system CA's
-
-	cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		_, err := verifyChain(cfg, rawCerts)
-		return err
-	}
+	var leafCert []byte
 
 	cfg.GetCertificate = func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		log.WithField("ClientHelloInfo", logrus.Fields{
@@ -70,11 +52,26 @@ func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config
 	if cfg.ClientAuth == tls.RequireAndVerifyClientCert {
 		cfg.ClientCAs = x509.NewCertPool()
 		for _, certConfig := range config.ClientCertificate {
-			cert, _, err := LoadClientCertificate(certConfig)
+			cert, clientCrt, err := LoadClientCertificate(certConfig)
 			if err != nil {
 				return nil, err
 			}
-			cfg.ClientCAs.AddCert(cert.Leaf)
+			if cert.Leaf != nil {
+				cfg.ClientCAs.AddCert(cert.Leaf)
+			}
+			if clientCrt.Leaf != nil {
+				leafCert = clientCrt.Leaf.Raw
+			}
+			// TODO: verify clientCrt with cert ?
+		}
+	}
+
+	if len(leafCert) > 0 {
+		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			if !bytes.Equal(rawCerts[0], leafCert) {
+				return fmt.Errorf("tls: client leaf certificate mismatch")
+			}
+			return nil
 		}
 	}
 
@@ -91,12 +88,12 @@ func LoadServerCertificate(config *config.ServerCertificate) (tls.Certificate, e
 	if config == nil {
 		return tls.Certificate{}, nil // currently triggers self signed fallback
 	}
-	cert, err := readValueOrFile(config.PublicKey, config.PublicKeyFile)
+	cert, err := coupertls.ReadValueOrFile(config.PublicKey, config.PublicKeyFile)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
 
-	privateKey, err := readValueOrFile(config.PrivateKey, config.PrivateKeyFile)
+	privateKey, err := coupertls.ReadValueOrFile(config.PrivateKey, config.PrivateKeyFile)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -126,117 +123,36 @@ func LoadServerCertificate(config *config.ServerCertificate) (tls.Certificate, e
 
 func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, tls.Certificate, error) {
 	fail := func(err error) (tls.Certificate, tls.Certificate, error) {
-		return tls.Certificate{}, tls.Certificate{}, err
+		return tls.Certificate{}, tls.Certificate{}, errors.Configuration.With(err).Message("client_certificate:")
 	}
+
 	if config == nil {
-		return fail(nil)
+		return tls.Certificate{}, tls.Certificate{}, nil
 	}
 
-	var x509certificate *x509.Certificate
+	hasLeaf := config.Leaf != "" || config.LeafFile != ""
 
-	caCert, err := readValueOrFile(config.CA, config.CAFile)
-	if err != nil {
+	caCert, err := coupertls.ReadValueOrFile(config.CA, config.CAFile)
+	if err != nil && !hasLeaf {
 		return fail(err)
 	}
 
-	leafCert, err := readValueOrFile(config.Leaf, config.LeafFile)
-	if err != nil && (config.Leaf != "" || config.LeafFile != "") { // since its optional, if given
+	leafCert, err := coupertls.ReadValueOrFile(config.Leaf, config.LeafFile)
+	if err != nil && hasLeaf { // since its optional, if given
 		return fail(err)
-	}
-
-	// try PEM encoded
-	var caCertificate tls.Certificate
-	certDERBlock, _ := pem.Decode(caCert)
-	if certDERBlock != nil {
-		caCertificate.Certificate = append(caCertificate.Certificate, certDERBlock.Bytes)
-		caCertificate.Leaf, err = x509.ParseCertificate(certDERBlock.Bytes)
-		if err != nil {
-			return fail(err)
-		}
-	} else { // assume DER
-		x509certificate, err = x509.ParseCertificate(caCert)
-		if err != nil {
-			return fail(err)
-		}
-
-		caCertificate = tls.Certificate{
-			Certificate: [][]byte{caCert},
-			Leaf:        x509certificate,
-		}
-	}
-
-	if len(leafCert) == 0 {
-		return caCertificate, tls.Certificate{}, nil
 	}
 
 	// try PEM encoded
 	var leafCertificate tls.Certificate
-	certDERBlock, _ = pem.Decode(leafCert)
-	if certDERBlock != nil {
-		leafCertificate.Certificate = append(leafCertificate.Certificate, certDERBlock.Bytes)
-		leafCertificate.Leaf, err = x509.ParseCertificate(certDERBlock.Bytes)
-		if err != nil {
-			return fail(err)
-		}
-	} else { // assume DER
-		x509certificate, err = x509.ParseCertificate(leafCert)
-		if err != nil {
-			return fail(err)
-		}
-
-		leafCertificate = tls.Certificate{
-			Certificate: [][]byte{leafCert},
-			Leaf:        x509certificate,
-		}
+	if len(leafCert) > 0 {
+		leafCertificate, err = coupertls.ParseCertificate(leafCert, nil)
 	}
 
-	return caCertificate, leafCertificate, nil
-}
-
-func readValueOrFile(value, filePath string) ([]byte, error) {
-	if value != "" && filePath != "" {
-		return nil, errors.New().Message("both attributes provided")
-	} else if value != "" {
-		return []byte(value), nil
-	} else if filePath != "" {
-		return os.ReadFile(filePath)
-	}
-	return nil, errors.New().Message("no attributes provided")
-}
-
-// verifyChain performs standard TLS verification without enforcing remote hostname matching.
-func verifyChain(tlsCfg *tls.Config, rawCerts [][]byte) (*x509.Certificate, error) {
-	// Fetch leaf and intermediates. This is based on code form tls handshake.
-	if len(rawCerts) < 1 {
-		return nil, errors.New().Message("tls: no certificates from peer")
-	}
-	certs := make([]*x509.Certificate, len(rawCerts))
-	for i, asn1Data := range rawCerts {
-		cert, err := x509.ParseCertificate(asn1Data)
-		if err != nil {
-			return nil, errors.New().Message("tls: failed to parse certificate from peer: " + err.Error())
-		}
-		certs[i] = cert
+	if len(caCert) == 0 && leafCertificate.Leaf != nil {
+		return tls.Certificate{}, leafCertificate, nil
 	}
 
-	cas := tlsCfg.RootCAs
+	caCertificate, err := coupertls.ParseCertificate(caCert, nil)
 
-	opts := x509.VerifyOptions{
-		Roots:         cas,
-		Intermediates: x509.NewCertPool(),
-	}
-
-	// Server side only sets KeyUsages in tls. This defaults to ServerAuth in
-	// x509 lib. See
-	// https://github.com/golang/go/blob/ee7dd810f9ca4e63ecfc1d3044869591783b8b74/src/crypto/x509/verify.go#L866-L868
-	if tlsCfg.ClientCAs != nil {
-		opts.KeyUsages = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
-	}
-
-	// All but the first cert are intermediates
-	for _, cert := range certs[1:] {
-		opts.Intermediates.AddCert(cert)
-	}
-	_, err := certs[0].Verify(opts)
-	return certs[0], err
+	return caCertificate, leafCertificate, err
 }

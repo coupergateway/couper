@@ -29,12 +29,13 @@ type Options struct {
 func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, error) {
 	options := &Options{
 		ServerErrTpl: errors.DefaultHTML,
-		TLS:          conf.TLS,
 	}
 
 	if conf == nil {
 		return options, nil
 	}
+
+	options.TLS = conf.TLS
 
 	options.FilesErrTpls = make([]*errors.Template, len(conf.Files))
 	for i := range conf.Files {

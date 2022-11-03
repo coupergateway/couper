@@ -194,7 +194,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 
 	couper, err := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, runtime.Port(0), srvConf[0])
 	helper.Must(err)
-	
+
 	couper.Listen()
 	defer couper.Close()
 

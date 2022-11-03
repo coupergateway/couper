@@ -12,4 +12,6 @@ type BackendTLS struct {
 	ServerCertificateFile string `hcl:"server_ca_certificate_file,optional"`
 	ClientCertificate     string `hcl:"client_certificate,optional"`
 	ClientCertificateFile string `hcl:"client_certificate_file,optional"`
+	ClientPrivateKey      string `hcl:"client_private_key,optional"`
+	ClientPrivateKeyFile  string `hcl:"client_private_key_file,optional"`
 }

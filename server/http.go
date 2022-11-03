@@ -349,11 +349,11 @@ type ErrorWrapper struct{ l logrus.FieldLogger }
 
 func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
 	msg := string(p)
-	if strings.HasSuffix(msg, " tls: unknown certificate") ||
-		strings.HasPrefix(msg, "http: TLS handshake error") {
+	if strings.HasSuffix(msg, " tls: unknown certificate") {
 		return len(p), nil // triggered on first browser connect for self signed certs; skip
 	}
-	e.l.Error(msg)
+
+	e.l.Error(strings.TrimSpace(msg))
 	return len(p), nil
 }
 func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {

@@ -3,7 +3,6 @@ package transport
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/handler/ratelimit"
+	coupertls "github.com/avenga/couper/internal/tls"
 	"github.com/avenga/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
 )
@@ -24,7 +24,6 @@ import (
 // Config represents the transport <Config> object.
 type Config struct {
 	BackendName            string
-	Certificate            []byte
 	DisableCertValidation  bool
 	DisableConnectionReuse bool
 	HTTP2                  bool
@@ -37,6 +36,14 @@ type Config struct {
 	TTFBTimeout    time.Duration
 	Timeout        time.Duration
 
+	// TLS settings
+	// Certificate is passed to all backends from the related cli option.
+	Certificate []byte
+	// CACertificate contains a per backend configured one.
+	CACertificate tls.Certificate
+	// ClientCertificate holds the one the backend will send during tls handshake if required.
+	ClientCertificate tls.Certificate
+
 	// Dynamic values
 	Hostname string
 	Origin   string
@@ -45,14 +52,21 @@ type Config struct {
 
 // NewTransport creates a new <*http.Transport> object by the given <*Config>.
 func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
-	certPool, err := x509.SystemCertPool()
-	if err == nil {
-		certPool.AppendCertsFromPEM(conf.Certificate)
+	tlsConf := coupertls.DefaultTLSConfig()
+	if len(conf.Certificate) > 0 {
+		tlsConf.RootCAs.AppendCertsFromPEM(conf.Certificate)
+	}
+	if conf.CACertificate.Leaf == nil {
+		tlsConf.InsecureSkipVerify = conf.DisableCertValidation
+	} else {
+		tlsConf.RootCAs.AddCert(conf.CACertificate.Leaf)
 	}
 
-	tlsConf := &tls.Config{
-		InsecureSkipVerify: conf.DisableCertValidation,
-		RootCAs:            certPool,
+	if conf.ClientCertificate.Leaf != nil {
+		clientCert := &conf.ClientCertificate
+		tlsConf.GetClientCertificate = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return clientCert, nil
+		}
 	}
 
 	if conf.Origin != conf.Hostname {
@@ -83,6 +97,7 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 	var nextProto map[string]func(authority string, c *tls.Conn) http.RoundTripper
 	if !conf.HTTP2 {
 		nextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+		tlsConf.NextProtos = nil
 	}
 
 	logEntry := log.WithField("type", "couper_connection")
