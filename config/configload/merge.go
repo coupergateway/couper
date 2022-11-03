@@ -420,21 +420,23 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			serverBlocks = append(serverBlocks, mergedFiles)
 		}
 
-		var tlsCertificateBlocks hclsyntax.Blocks
-		for _, v := range serverBlock.tls.blocks {
-			tlsCertificateBlocks = append(tlsCertificateBlocks, v)
+		if serverBlock.tls != nil {
+			var tlsCertificateBlocks hclsyntax.Blocks
+			for _, v := range serverBlock.tls.blocks {
+				tlsCertificateBlocks = append(tlsCertificateBlocks, v)
+			}
+			serverBlocks = append(serverBlocks, &hclsyntax.Block{
+				Type: tls,
+				Body: &hclsyntax.Body{
+					Attributes: serverBlock.tls.Body.Attributes,
+					Blocks:     tlsCertificateBlocks,
+				},
+				TypeRange:       serverBlock.tls.TypeRange,
+				LabelRanges:     serverBlock.tls.LabelRanges,
+				OpenBraceRange:  serverBlock.tls.OpenBraceRange,
+				CloseBraceRange: serverBlock.tls.CloseBraceRange,
+			})
 		}
-		serverBlocks = append(serverBlocks, &hclsyntax.Block{
-			Type: tls,
-			Body: &hclsyntax.Body{
-				Attributes: serverBlock.tls.Body.Attributes,
-				Blocks:     tlsCertificateBlocks,
-			},
-			TypeRange:       serverBlock.tls.TypeRange,
-			LabelRanges:     serverBlock.tls.LabelRanges,
-			OpenBraceRange:  serverBlock.tls.OpenBraceRange,
-			CloseBraceRange: serverBlock.tls.CloseBraceRange,
-		})
 
 		mergedServer := &hclsyntax.Block{
 			Type:   server,
