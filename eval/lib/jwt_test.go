@@ -761,7 +761,7 @@ func TestJwtSignConfigError(t *testing.T) {
 			`,
 			"MyToken",
 			`{"sub": "12345"}`,
-			"configuration error: MyToken: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
+			"configuration error: MyToken: invalid key: Key must be a PEM encoded PKCS1 or PKCS8 key",
 		},
 		{
 			"jwt / missing signing key or key_file",
@@ -812,7 +812,7 @@ func TestJwtSignConfigError(t *testing.T) {
 			`,
 			"MySelfSignedToken",
 			`{"sub": "12345"}`,
-			"configuration error: MySelfSignedToken: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
+			"configuration error: MySelfSignedToken: invalid key: Key must be a PEM encoded PKCS1 or PKCS8 key",
 		},
 		{
 			"user-defined alg header",
@@ -984,7 +984,7 @@ func TestJwtSignError(t *testing.T) {
 			`,
 			"MyToken",
 			`{"sub":"12345"}`,
-			"key is invalid: CurveBits in public key don't match those in signing method",
+			"key is invalid",
 		},
 	}
 

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/config/body"

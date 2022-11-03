@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.13.0
 	github.com/getkin/kin-openapi v0.92.0
@@ -42,6 +41,7 @@ require (
 
 require (
 	github.com/algolia/algoliasearch-client-go/v3 v3.26.0
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/google/go-cmp v0.5.7
 )
 

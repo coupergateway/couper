@@ -6,12 +6,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	goerrors "errors"
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
@@ -45,13 +45,14 @@ type (
 )
 
 type JWT struct {
-	algorithms            []acjwt.Algorithm
+	algorithm             acjwt.Algorithm
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
 	source                JWTSource
 	hmacSecret            []byte
 	name                  string
+	parser                *jwt.Parser
 	pubKey                interface{}
 	rolesClaim            string
 	rolesMap              map[string][]string
@@ -120,14 +121,14 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 		return nil, err
 	}
 
-	algorithm := acjwt.NewAlgorithm(options.Algorithm)
-	if algorithm == acjwt.AlgorithmUnknown {
+	jwtAC.algorithm = acjwt.NewAlgorithm(options.Algorithm)
+	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
 		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
 	}
 
-	jwtAC.algorithms = []acjwt.Algorithm{algorithm}
+	jwtAC.parser = newParser([]acjwt.Algorithm{jwtAC.algorithm})
 
-	if algorithm.IsHMAC() {
+	if jwtAC.algorithm.IsHMAC() {
 		jwtAC.hmacSecret = options.Key
 		return jwtAC, nil
 	}
@@ -151,7 +152,8 @@ func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	jwtAC.algorithms = append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
+	algorithms := append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
+	jwtAC.parser = newParser(algorithms)
 	jwtAC.jwks = options.JWKS
 
 	return jwtAC, nil
@@ -219,7 +221,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenMissing.Message("token required")
 	}
 
-	claims, iss, aud, err := j.getConfiguredClaims(req)
+	expectedClaims, err := j.getConfiguredClaims(req)
 	if err != nil {
 		return err
 	}
@@ -229,21 +231,16 @@ func (j *JWT) Validate(req *http.Request) error {
 		j.jwks.Data()
 	}
 
-	parser := newParser(j.algorithms, iss, aud)
-	token, err := parser.Parse(tokenValue, j.getValidationKey)
+	tokenClaims := jwt.MapClaims{}
+	_, err = j.parser.ParseWithClaims(tokenValue, tokenClaims, j.getValidationKey)
 	if err != nil {
-		switch err := err.(type) {
-		case *jwt.TokenExpiredError:
+		if goerrors.Is(err, jwt.ErrTokenExpired) {
 			return errors.JwtTokenExpired.With(err)
-		case *jwt.UnverfiableTokenError:
-			if unwrappedError := err.ErrorWrapper.Unwrap(); unwrappedError != nil {
-				return errors.JwtTokenInvalid.With(unwrappedError)
-			}
 		}
 		return errors.JwtTokenInvalid.With(err)
 	}
 
-	tokenClaims, err := j.validateClaims(token, claims)
+	err = j.validateClaims(tokenClaims, expectedClaims)
 	if err != nil {
 		return errors.JwtTokenInvalid.With(err)
 	}
@@ -253,7 +250,8 @@ func (j *JWT) Validate(req *http.Request) error {
 	if !ok {
 		acMap = make(map[string]interface{})
 	}
-	acMap[j.name] = tokenClaims
+	// treat token claims as map for context
+	acMap[j.name] = map[string]interface{}(tokenClaims)
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 
 	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
@@ -275,7 +273,7 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		return j.jwks.GetSigKeyForToken(token)
 	}
 
-	switch j.algorithms[0] {
+	switch j.algorithm {
 	case acjwt.AlgorithmRSA256, acjwt.AlgorithmRSA384, acjwt.AlgorithmRSA512:
 		return j.pubKey, nil
 	case acjwt.AlgorithmECDSA256, acjwt.AlgorithmECDSA384, acjwt.AlgorithmECDSA512:
@@ -288,70 +286,69 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 }
 
 // getConfiguredClaims evaluates the expected claim values from the configuration, and especially iss and aud
-func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, string, string, error) {
+func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, error) {
 	claims := make(map[string]interface{})
-	var iss, aud string
 	if j.claims != nil {
 		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
 		if verr != nil {
-			return nil, "", "", verr
+			return nil, verr
 		}
 		claims = seetie.ValueToMap(val)
 
 		var ok bool
 		if issVal, exists := claims["iss"]; exists {
-			iss, ok = issVal.(string)
+			_, ok = issVal.(string)
 			if !ok {
-				return nil, "", "", errors.Configuration.Message("invalid value type, string expected (claims / iss)")
+				return nil, errors.Configuration.Message("invalid value type, string expected (claims / iss)")
 			}
 		}
 
 		if audVal, exists := claims["aud"]; exists {
-			aud, ok = audVal.(string)
+			_, ok = audVal.(string)
 			if !ok {
-				return nil, "", "", errors.Configuration.Message("invalid value type, string expected (claims / aud)")
+				return nil, errors.Configuration.Message("invalid value type, string expected (claims / aud)")
 			}
 		}
 	}
 
-	return claims, iss, aud, nil
+	return claims, nil
 }
 
 // validateClaims validates the token claims against the list of required claims and the expected claims values
-func (j *JWT) validateClaims(token *jwt.Token, claims map[string]interface{}) (map[string]interface{}, error) {
-	var tokenClaims jwt.MapClaims
-	if tc, ok := token.Claims.(jwt.MapClaims); ok {
-		tokenClaims = tc
-	}
-
-	if tokenClaims == nil {
-		return nil, fmt.Errorf("token has no claims")
-	}
-
+func (j *JWT) validateClaims(tokenClaims jwt.MapClaims, expectedClaims map[string]interface{}) error {
 	for _, key := range j.claimsRequired {
 		if _, ok := tokenClaims[key]; !ok {
-			return nil, fmt.Errorf("required claim is missing: " + key)
+			return fmt.Errorf("required claim is missing: " + key)
 		}
 	}
 
-	for k, v := range claims {
-		if k == "iss" || k == "aud" { // gets validated during parsing
+	for k, v := range expectedClaims {
+		val, exist := tokenClaims[k]
+		if !exist {
+			return fmt.Errorf("required claim is missing: " + k)
+		}
+
+		if k == "iss" {
+			if !tokenClaims.VerifyIssuer(v.(string), true) {
+				return errors.JwtTokenInvalid.Message("invalid issuer")
+			}
+			continue
+		}
+		if k == "aud" {
+			if !tokenClaims.VerifyAudience(v.(string), true) {
+				return errors.JwtTokenInvalid.Message("invalid audience")
+			}
 			continue
 		}
 
-		val, exist := tokenClaims[k]
-		if !exist {
-			return nil, fmt.Errorf("required claim is missing: " + k)
-		}
-
 		if val != v {
-			return nil, fmt.Errorf("unexpected value for claim %s, got %q, expected %q", k, val, v)
+			return fmt.Errorf("unexpected value for claim %s, got %q, expected %q", k, val, v)
 		}
 	}
-	return tokenClaims, nil
+	return nil
 }
 
-func (j *JWT) getGrantedPermissions(tokenClaims map[string]interface{}, log *logrus.Entry) []string {
+func (j *JWT) getGrantedPermissions(tokenClaims jwt.MapClaims, log *logrus.Entry) []string {
 	var grantedPermissions []string
 
 	grantedPermissions = j.addPermissionsFromPermissionsClaim(tokenClaims, grantedPermissions, log)
@@ -365,7 +362,7 @@ func (j *JWT) getGrantedPermissions(tokenClaims map[string]interface{}, log *log
 
 const warnInvalidValueMsg = "invalid %s claim value type, ignoring claim, value %#v"
 
-func (j *JWT) addPermissionsFromPermissionsClaim(tokenClaims map[string]interface{}, permissions []string, log *logrus.Entry) []string {
+func (j *JWT) addPermissionsFromPermissionsClaim(tokenClaims jwt.MapClaims, permissions []string, log *logrus.Entry) []string {
 	if j.permissionsClaim == "" {
 		return permissions
 	}
@@ -428,7 +425,7 @@ func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []st
 	return strings.Split(rolesString, " ")
 }
 
-func (j *JWT) addPermissionsFromRoles(tokenClaims map[string]interface{}, permissions []string, log *logrus.Entry) []string {
+func (j *JWT) addPermissionsFromRoles(tokenClaims jwt.MapClaims, permissions []string, log *logrus.Entry) []string {
 	if j.rolesClaim == "" || j.rolesMap == nil {
 		return permissions
 	}
@@ -504,24 +501,16 @@ func getBearer(val string) (string, error) {
 	return "", fmt.Errorf("bearer required with authorization header")
 }
 
-// newParser creates a new parser with issuer/audience validation if configured via iss/aud in expected claims
-func newParser(algos []acjwt.Algorithm, iss, aud string) *jwt.Parser {
+// newParser creates a new parser
+func newParser(algos []acjwt.Algorithm) *jwt.Parser {
 	var algorithms []string
 	for _, a := range algos {
 		algorithms = append(algorithms, a.String())
 	}
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods(algorithms),
-		jwt.WithLeeway(time.Second),
-	}
-
-	if aud != "" {
-		options = append(options, jwt.WithAudience(aud))
-	} else {
-		options = append(options, jwt.WithoutAudienceValidation())
-	}
-	if iss != "" {
-		options = append(options, jwt.WithIssuer(iss))
+		// no equivalent in new lib
+		// jwt.WithLeeway(time.Second),
 	}
 
 	return jwt.NewParser(options...)
