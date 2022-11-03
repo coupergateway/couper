@@ -8,6 +8,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [`trim()` function](https://docs.couper.io/configuration/functions) ([#605](https://github.com/avenga/couper/pull/605))
   * OAuth2 client authentication methods (`token_endpoint_auth_method` values) `"client_secret_jwt"` and `"private_key_jwt"` including `jwt_signing_profile` block for [`oauth2`](https://docs.couper.io/configuration/block/oauth2_req_auth), [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac) and [`oidc`](https://docs.couper.io/configuration/block/oidc) blocks ([#599](https://github.com/avenga/couper/pull/599))
 
+* **Changed**
+  * Replaced the JWT library because the former library was no longer maintained ([#612](https://github.com/avenga/couper/pull/612))
+
 * **Fixed**
   * Aligned the evaluation of [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `redirect_uri` to `saml` `sp_acs_url` ([#589](https://github.com/avenga/couper/pull/589))
   * Proper handling of empty [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `scope` ([#593](https://github.com/avenga/couper/pull/593))

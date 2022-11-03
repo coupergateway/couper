@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -1019,6 +1019,9 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-miat-id") {
 					if strings.HasSuffix(code, "-wiat-id") {
 						mapClaims["iat"] = "1234abcd"
+					} else if strings.HasSuffix(code, "-liat-id") {
+						// 2096-10-02 07:06:40 +0000 UTC
+						mapClaims["iat"] = 4000000000
 					} else {
 						// 1970-01-01 00:16:40 +0000 UTC
 						mapClaims["iat"] = 1000
@@ -1027,6 +1030,9 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-mexp-id") {
 					if strings.HasSuffix(code, "-wexp-id") {
 						mapClaims["exp"] = "1234abcd"
+					} else if strings.HasSuffix(code, "-eexp-id") {
+						// 1970-01-01 00:16:40 +0000 UTC
+						mapClaims["exp"] = 1000
 					} else {
 						// 2096-10-02 07:06:40 +0000 UTC
 						mapClaims["exp"] = 4000000000
@@ -1154,24 +1160,26 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		{"code, wrong state param", "06_couper.hcl", http.MethodGet, "/cb?code=qeuboub&state=wrong", http.Header{"Cookie": []string{"st=" + st}}, http.StatusForbidden, "", "", "access control error: ac: state mismatch: \"wrong\" (from query param) vs. \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (verifier_value: \"qeirtbnpetrbi\")"},
 		{"code, state param, wrong CSRF token", "06_couper.hcl", http.MethodGet, "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: state mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (from query param) vs. \"Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A\" (verifier_value: \"qeirtbnpetrbi-wrong\")"},
 		{"code, state param, missing CSRF token", "06_couper.hcl", http.MethodGet, "/cb?code=qeuboub&state=" + state, http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty verifier_value"},
-		{"code, missing nonce", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing nonce claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"sub\":\"myself\"}'"},
+		{"code, missing nonce", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing nonce claim in ID token"},
 		{"code, wrong nonce", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wn-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: nonce mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ-wrong\" (from nonce claim) vs. \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (verifier_value: \"qeirtbnpetrbi\")"},
 		{"code, nonce, wrong CSRF token", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st + "-wrong"}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: nonce mismatch: \"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\" (from nonce claim) vs. \"Mj0ecDMNNzOwqUt1iFlY8TOTTKa17ISo8ARgt0pyb1A\" (verifier_value: \"qeirtbnpetrbi-wrong\")"},
 		{"code, nonce, missing CSRF token", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-id", http.Header{}, http.StatusForbidden, "", "", "access control error: ac: Empty verifier_value"},
-		{"code, missing sub claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-msub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing sub claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\"}'"},
+		{"code, missing sub claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-msub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing sub claim in ID token"},
 		{"code, sub mismatch", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wsub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: subject mismatch, in ID token \"me\", in userinfo response \"myself\""},
-		{"code, missing exp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing exp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
-		{"code, wrong exp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: json: unsupported type: string"},
-		{"code, missing iat claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-miat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing iat claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
-		{"code, wrong iat claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wiat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: iat claim in ID token must be number, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"azp\":\"foo\", \"exp\":4e+09, \"iat\":\"1234abcd\", \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
-		{"code, missing azp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing azp claim in ID token, claims='jwt.MapClaims{\"aud\":[]interface {}{\"foo\", \"another-client-id\"}, \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
+		{"code, missing exp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing exp claim in ID token"},
+		{"code, wrong exp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: Token is expired"},
+		{"code, too early exp date", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-eexp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: Token is expired"},
+		{"code, missing iat claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-miat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing iat claim in ID token"},
+		{"code, wrong iat claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wiat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: Token used before issued"},
+		{"code, too late iat date", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-liat-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: Token used before issued"},
+		{"code, missing azp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-mazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing azp claim in ID token"},
 		{"code, wrong azp claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wazp-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: azp claim / client ID mismatch, azp = \"bar\", client ID = \"foo\""},
-		{"code, missing iss claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-miss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token issuer is invalid: 'iss' value doesn't match expectation"},
-		{"code, wrong iss claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wiss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token issuer is invalid: 'iss' value doesn't match expectation"},
-		{"code, missing aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-maud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: missing aud claim in ID token, claims='jwt.MapClaims{\"azp\":\"foo\", \"exp\":4e+09, \"iat\":1000, \"iss\":\"https://authorization.server\", \"nonce\":\"oUuoMU0RFWI5itMBnMTt_TJ4SxxgE96eZFMNXSl63xQ\", \"sub\":\"myself\"}'"},
-		{"code, null aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-naud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: aud claim in ID token must not be null"},
-		{"code, wrong aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-waud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token audience is invalid: 'foo' wasn't found in aud claim"},
-		{"code, wrong kid", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wkid-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: token is unverifiable: Keyfunc returned an error"},
+		{"code, missing iss claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-miss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: invalid issuer in ID token"},
+		{"code, wrong iss claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wiss-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: invalid issuer in ID token"},
+		{"code, missing aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-maud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: invalid audience in ID token"},
+		{"code, null aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-naud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: invalid audience in ID token"},
+		{"code, wrong aud claim", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-waud-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: invalid audience in ID token"},
+		{"code, wrong kid", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wkid-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusForbidden, "", "", "access control error: ac: token response validation error: no matching RS256 JWK for kid \"not-found\""},
 		{"code; client_secret_basic; PKCE", "04_couper.hcl", http.MethodGet, "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; client_secret_post", "05_couper.hcl", http.MethodGet, "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}}, http.StatusOK, "client_id=foo&client_secret=etbinbp4in&code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "", ""},
 		{"code, state param", "06_couper.hcl", http.MethodGet, "/cb?code=qeuboub&state=" + state, http.Header{"Cookie": []string{"st=" + st}}, http.StatusOK, "code=qeuboub&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
