@@ -181,3 +181,37 @@ func TestHTTPSServer_TLS_ServerClientCertificateLeafNoMatch(t *testing.T) {
 		t.Errorf("expected leaf mismatch err, got: %v", entries[0].Message)
 	}
 }
+
+func TestHTTPSServer_TLS_ServerBackendClient(t *testing.T) {
+	helper := test.New(t)
+
+	selfSigned, err := server.NewCertificate(time.Minute, nil, nil)
+	helper.Must(err)
+
+	pool := x509.NewCertPool()
+	pool.AddCert(selfSigned.CA.Leaf)
+	client := test.NewHTTPSClient(&tls.Config{
+		RootCAs:      pool,
+		Certificates: []tls.Certificate{*selfSigned.Client},
+	})
+
+	shutdown, _ := newCouperWithTemplate("testdata/mtls/05_couper.hcl", helper, map[string]interface{}{
+		"publicKey":  string(selfSigned.ServerCertificate.Certificate),             // PEM
+		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),              // PEM
+		"clientCA":   string(selfSigned.ClientIntermediateCertificate.Certificate), // PEM
+		"clientLeaf": string(selfSigned.ClientCertificate.Certificate),             // PEM
+		"clientKey":  string(selfSigned.ClientCertificate.PrivateKey),              // PEM
+		"rootCA":     string(selfSigned.CACertificate.Certificate),                 // PEM
+	})
+	defer shutdown()
+
+	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/inception", nil)
+	helper.Must(err)
+
+	res, err := client.Do(outreq)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected statusOK, got: %d", res.StatusCode)
+	}
+}
