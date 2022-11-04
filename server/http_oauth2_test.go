@@ -725,7 +725,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: invalid Key: Key must be PEM encoded PKCS1 or PKCS8 private key",
+			"configuration error: be: invalid key: Key must be a PEM encoded PKCS1 or PKCS8 key",
 		},
 
 		{
@@ -868,7 +868,7 @@ func TestOAuth2_AuthnJWT(t *testing.T) {
 			"client_secret_jwt error",
 			"/csj_error",
 			http.StatusBadGateway,
-			"access control error: csj_error: token signature is invalid",
+			"access control error: csj_error: signature is invalid",
 		},
 		{
 			"private_key_jwt",
@@ -880,7 +880,7 @@ func TestOAuth2_AuthnJWT(t *testing.T) {
 			"private_key_jwt error",
 			"/pkj_error",
 			http.StatusBadGateway,
-			"access control error: pkj_error: token is unverifiable: signing method RS256 is invalid",
+			"access control error: pkj_error: signing method RS256 is invalid",
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
