@@ -61,17 +61,14 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		}
 	}
 
-	assertionValue, err := eval.Value(evalCtx, conf.AssertionExpr)
-	if err != nil {
-		return nil, err
-	}
-
+	assertionRange := conf.AssertionExpr.Range()
+	assertionSet := assertionRange.Start != assertionRange.End
 	if conf.GrantType == config.JwtBearer {
-		if assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType {
+		if !assertionSet {
 			return nil, fmt.Errorf("missing assertion with grant_type=%s", conf.GrantType)
 		}
 	} else {
-		if !(assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType) {
+		if assertionSet {
 			return nil, fmt.Errorf("assertion must not be set with grant_type=%s", conf.GrantType)
 		}
 	}
