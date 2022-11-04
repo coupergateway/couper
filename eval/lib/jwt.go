@@ -217,7 +217,9 @@ func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClai
 		headers = map[string]interface{}{}
 	}
 
-	headers["typ"] = "JWT"
+	if _, set := headers["typ"]; !set {
+		headers["typ"] = "JWT"
+	}
 	headers["alg"] = signingMethod.Alg()
 
 	// create token

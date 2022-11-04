@@ -334,8 +334,6 @@ func LoadConfig(body *hclsyntax.Body, src [][]byte, environment string) (*config
 			var errorMessage string
 			if _, exists := headers["alg"]; exists {
 				errorMessage = `"alg" cannot be set via "headers"`
-			} else if _, exists = headers["typ"]; exists {
-				errorMessage = `"typ" cannot be set via "headers"`
 			}
 
 			if errorMessage != "" {
