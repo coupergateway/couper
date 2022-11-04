@@ -567,7 +567,7 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 	}
 }
 
-func TestEndpointSequence(t *testing.T) {
+func TestEndpoint_Sequence(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -673,7 +673,7 @@ func TestEndpointSequence(t *testing.T) {
 
 }
 
-func TestEndpointSequenceClientCancel(t *testing.T) {
+func TestEndpoint_Sequence_ClientCancel(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -735,7 +735,7 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 	}
 }
 
-func TestEndpointSequenceBackendTimeout(t *testing.T) {
+func TestEndpoint_Sequence_BackendTimeout(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -793,7 +793,32 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 	if !ctxDeadlineSeen || !statusOKseen {
 		t.Errorf("Expected one sucessful and one failed backend request")
 	}
+}
 
+func TestEndpoint_Sequence_NestedDefaultRequest(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(filepath.Join(testdataPath, "19_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(err)
+
+	exp := `{"data":[{"features":1},{"features":2}]}`
+	if !bytes.Equal([]byte(exp), b) {
+		t.Errorf("expected %v, got %v", exp, string(b))
+	}
 }
 
 func TestEndpointCyclicSequence(t *testing.T) {

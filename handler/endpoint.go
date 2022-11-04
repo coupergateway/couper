@@ -128,6 +128,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if !ok {
 			err = errors.Server
 		}
+	} else {
+		err = errors.Server.Message("missing client response")
 	}
 
 	if handled := e.handleError(rw, req, err); handled {
@@ -217,7 +219,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 
 		resultCh := make(chan *producer.Result, trip.Len())
 		go func(rt producer.Roundtrip, rc chan *producer.Result) {
-			rt.Produce(outreq, resultCh)
+			rt.Produce(outreq, rc)
 			close(rc)
 		}(trip, resultCh)
 		tripCh <- resultCh

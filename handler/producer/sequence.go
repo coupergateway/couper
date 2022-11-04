@@ -29,7 +29,7 @@ func (seqs Sequences) Produce(req *http.Request, results chan<- *Result) {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequences", trace.WithSpanKind(trace.SpanKindProducer))
 	}
 
-	resultsCh := make(chan *Result, seqs.Len())
+	resultsCh := make(chan *Result)
 
 	for _, s := range seqs {
 		outreq := req.WithContext(ctx)
@@ -67,7 +67,7 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 
 	var lastResult *Result
 	var lastBeresps []*http.Response
-	var moreEntries bool
+
 	for _, seq := range s {
 		outCtx := ctx
 
@@ -75,24 +75,24 @@ func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
 
 		seq.Produce(outreq, result)
 
-		select {
-		case <-outreq.Context().Done():
-			return
-		case lastResult, moreEntries = <-result:
-			if !moreEntries {
+		// handle nested sequences by len; expected results
+		for i := 0; i < seq.Len(); i++ {
+			select {
+			case <-outreq.Context().Done():
+				return
+			case lastResult = <-result:
+			}
+
+			if lastResult.Err != nil {
+				if _, ok := lastResult.Err.(*errors.Error); !ok {
+					lastResult.Err = errors.Sequence.With(lastResult.Err)
+				}
+				results <- lastResult
 				return
 			}
-		}
 
-		if lastResult.Err != nil {
-			if _, ok := lastResult.Err.(*errors.Error); !ok {
-				lastResult.Err = errors.Sequence.With(lastResult.Err)
-			}
-			results <- lastResult
-			return
+			lastBeresps = append(lastBeresps, lastResult.Beresp)
 		}
-
-		lastBeresps = append(lastBeresps, lastResult.Beresp)
 	}
 
 	if lastResult == nil {
