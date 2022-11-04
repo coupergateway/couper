@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -307,21 +309,6 @@ definitions {
 			"configuration error: be: client_id must not be empty",
 		},
 		{
-			"grant_type client_credentials without client_secret",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      grant_type     = "client_credentials"
-    }
-  }
-}
-`,
-			"configuration error: be: client_secret must not be empty",
-		},
-		{
 			"grant_type password without client_id",
 			`server {}
 definitions {
@@ -337,23 +324,6 @@ definitions {
 }
 `,
 			"configuration error: be: client_id must not be empty",
-		},
-		{
-			"grant_type password without client_secret",
-			`server {}
-definitions {
-  backend "be" {
-    oauth2 {
-      token_endpoint = "https://authorization.server/token"
-      client_id      = "my_client"
-      grant_type     = "password"
-      username       = "my_user"
-      password       = "my_password"
-    }
-  }
-}
-`,
-			"configuration error: be: client_secret must not be empty",
 		},
 		{
 			"username with grant_type client_credentials",
@@ -502,6 +472,325 @@ definitions {
 `,
 			"configuration error: be: missing assertion with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
+
+		{
+			"unsupported token_endpoint_auth_method",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "unknown"
+    }
+  }
+}
+`,
+			`configuration error: be: token_endpoint_auth_method "unknown" not supported`,
+		},
+
+		{
+			"missing client_secret with client_secret_basic",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty with client_secret_basic",
+		},
+		{
+			"missing client_secret with client_secret_post",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_post"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty with client_secret_post",
+		},
+		{
+			"missing client_secret with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be empty with client_secret_jwt",
+		},
+		{
+			"client_secret with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+    }
+  }
+}
+`,
+			"configuration error: be: client_secret must not be set with private_key_jwt",
+		},
+
+		{
+			"jwt_signing_profile with client_secret_basic",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_basic"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: jwt_signing_profile block must not be set with client_secret_basic",
+		},
+		{
+			"jwt_signing_profile with client_secret_post",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_post"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: jwt_signing_profile block must not be set with client_secret_post",
+		},
+		{
+			"inappropriate authn algorithm with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: inappropriate signature algorithm with client_secret_jwt",
+		},
+		{
+			"inappropriate authn algorithm with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      authn_key = "a key"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: inappropriate signature algorithm with private_key_jwt",
+		},
+
+		{
+			"invalid authn ttl with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10"
+      }
+    }
+  }
+}
+`,
+			`configuration error: be: time: missing unit in duration "10"`,
+		},
+		{
+			"invalid authn ttl with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        key = "a key"
+        ttl = "10"
+      }
+    }
+  }
+}
+`,
+			`configuration error: be: time: missing unit in duration "10"`,
+		},
+
+		{
+			"authn key with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      jwt_signing_profile {
+        key = "a key"
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: key must not be set with client_secret_jwt",
+		},
+		{
+			"authn key value not being a valid key",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+        key = "not an RSA private key"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: invalid key: Key must be a PEM encoded PKCS1 or PKCS8 key",
+		},
+
+		{
+			"authn key_file with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      jwt_signing_profile {
+        key_file = "a_key_file"
+        signature_algorithm = "HS256"
+        ttl = "10s"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: key_file must not be set with client_secret_jwt",
+		},
+		{
+			"missing authn key/key_file with private_key_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: key and key_file must not both be empty with private_key_jwt",
+		},
+		{
+			"key_file referencing non-existing file",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "private_key_jwt"
+      jwt_signing_profile {
+        signature_algorithm = "RS256"
+        ttl = "10s"
+        key_file = "unknown"
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: client authentication key: read error: open ",
+		},
 	} {
 		var errMsg string
 		conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
@@ -530,6 +819,98 @@ definitions {
 			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
 		}
 	}
+}
+
+func TestOAuth2_AuthnJWT(t *testing.T) {
+	helper := test.New(t)
+	jtiRE, err := regexp.Compile("^[a-zA-Z0-9]{43}$")
+	helper.Must(err)
+
+	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		authz := req.Header.Get("Authorization")
+		if !strings.HasPrefix(authz, "Bearer ") {
+			helper.Must(fmt.Errorf("wrong authz: %q", authz))
+		}
+		token := strings.TrimPrefix(authz, "Bearer ")
+		parts := strings.Split(token, " ")
+		if len(parts) != 3 {
+			helper.Must(fmt.Errorf("wrong token: %q", token))
+		}
+		exp, err := strconv.Atoi(parts[1])
+		helper.Must(err)
+		iat, err := strconv.Atoi(parts[0])
+		helper.Must(err)
+		if exp-iat != 10 {
+			helper.Must(fmt.Errorf("wrong token: %q", token))
+		}
+		if !jtiRE.MatchString(parts[2]) {
+			helper.Must(fmt.Errorf("wrong jti: %q", parts[2]))
+		}
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer rsOrigin.Close()
+
+	type testCase struct {
+		name       string
+		path       string
+		wantStatus int
+		wantErrLog string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"client_secret_jwt",
+			"/csj",
+			http.StatusNoContent,
+			"",
+		},
+		{
+			"client_secret_jwt error",
+			"/csj_error",
+			http.StatusBadGateway,
+			"access control error: csj_error: signature is invalid",
+		},
+		{
+			"private_key_jwt",
+			"/pkj",
+			http.StatusNoContent,
+			"",
+		},
+		{
+			"private_key_jwt error",
+			"/pkj_error",
+			http.StatusBadGateway,
+			"access control error: pkj_error: signing method RS256 is invalid",
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			shutdown, hook := newCouperWithTemplate("testdata/oauth2/20_couper.hcl", h, map[string]interface{}{"rsOrigin": rsOrigin.URL})
+			defer shutdown()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			h.Must(err)
+
+			hook.Reset()
+
+			res, err := newClient().Do(req)
+			h.Must(err)
+
+			if res.StatusCode != tc.wantStatus {
+				t.Errorf("expected status %d, got: %d", tc.wantStatus, res.StatusCode)
+			}
+
+			message := getFirstAccessLogMessage(hook)
+			if message != tc.wantErrLog {
+				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+			}
+
+			shutdown()
+		})
+	}
+
+	rsOrigin.Close()
 }
 
 func TestOAuth2_Runtime_Errors(t *testing.T) {
@@ -579,7 +960,7 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != http.StatusBadGateway {
-				t.Errorf("expected status NoContent, got: %d", res.StatusCode)
+				t.Errorf("expected status StatusBadGateway, got: %d", res.StatusCode)
 			}
 
 			message := getFirstAccessLogMessage(hook)

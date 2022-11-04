@@ -14,6 +14,7 @@ type OAuth2Client interface {
 	ClientAuthenticationRequired() bool
 	GetClientID() string
 	GetClientSecret() string
+	GetJWTSigningProfile() *JWTSigningProfile
 	GetTokenEndpointAuthMethod() *string
 }
 

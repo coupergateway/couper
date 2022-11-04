@@ -32,7 +32,7 @@ type JWTSigningConfig struct {
 	TTL                time.Duration
 }
 
-func checkData(ttl, signatureAlgorithm string) (time.Duration, acjwt.Algorithm, error) {
+func CheckData(ttl, signatureAlgorithm string) (time.Duration, acjwt.Algorithm, error) {
 	var (
 		dur      time.Duration
 		parseErr error
@@ -53,7 +53,7 @@ func checkData(ttl, signatureAlgorithm string) (time.Duration, acjwt.Algorithm, 
 	return dur, alg, nil
 }
 
-func getKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
+func GetKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
 	var (
 		key      interface{}
 		parseErr error
@@ -69,12 +69,12 @@ func getKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
 }
 
 func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWTSigningConfig, error) {
-	ttl, _, err := checkData(j.TTL, j.SignatureAlgorithm)
+	ttl, _, err := CheckData(j.TTL, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := getKey(j.KeyBytes, j.SignatureAlgorithm)
+	key, err := GetKey(j.KeyBytes, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, nil
 	}
 
-	ttl, alg, err := checkData(j.SigningTTL, j.SignatureAlgorithm)
+	ttl, alg, err := CheckData(j.SigningTTL, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, err
 	}
 
-	key, err := getKey(keyBytes, j.SignatureAlgorithm)
+	key, err := GetKey(keyBytes, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}

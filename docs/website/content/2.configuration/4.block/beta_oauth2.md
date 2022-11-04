@@ -4,9 +4,9 @@ The `beta_oauth2` block lets you configure the [`oauth2_authorization_url()` fun
 control for an OAuth2 **Authorization Code Grant Flow** redirect endpoint.
 Like all [access control](../access-control) types, the `beta_oauth2` block is defined in the [`definitions` block](definitions) and can be referenced in all configuration blocks by its required _label_.
 
-| Block name    | Context                                 | Label            | Nested block(s)                                                              |
-|:--------------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------|
-| `beta_oauth2` | [Definitions Block](definitions) | &#9888; required | [Backend Block](backend), [Error Handler Block](error_handler) |
+| Block name    | Context                                 | Label            | Nested block(s)                                                                                                  |
+|:--------------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
+| `beta_oauth2` | [Definitions Block](definitions)        | &#9888; required | [Backend Block](backend), [Error Handler Block](error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
 
 ::attributes
 ---
@@ -67,7 +67,7 @@ values: [
   },
   {
     "default": "\"client_secret_basic\"",
-    "description": "Defines the method to authenticate the client at the token endpoint. If set to `client_secret_post`, the client credentials are transported in the request body. If set to `client_secret_basic`, the client credentials are transported via Basic Authentication.",
+    "description": "Defines the method to authenticate the client at the token endpoint. If set to `\"client_secret_post\"`, the client credentials are transported in the request body. If set to `\"client_secret_basic\"`, the client credentials are transported via Basic Authentication. If set to `\"client_secret_jwt\"`, the client is authenticated via a JWT signed with the `client_secret`. If set to `\"private_key_jwt\"`, the client is authenticated via a JWT signed with its private key (see `jwt_signing_profile` block).",
     "name": "token_endpoint_auth_method",
     "type": "string"
   },
