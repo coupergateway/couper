@@ -35,7 +35,7 @@ type Client struct {
 	grantType    string
 	authnMethod  string
 	authnAlgo    string
-	authnClaims  jwt.MapClaims
+	authnClaims  map[string]interface{}
 	authnHeaders map[string]interface{}
 	authnKey     interface{}
 	authnTTL     int64
@@ -52,7 +52,7 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 
 	var (
 		algorithm string
-		claims    jwt.MapClaims
+		claims    map[string]interface{}
 		headers   map[string]interface{}
 		key       interface{}
 		ttl       int64
@@ -65,7 +65,8 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 	}
 
 	if clientConfig.ClientAuthenticationRequired() {
-		if clientConfig.GetClientID() == "" {
+		clientID := clientConfig.GetClientID()
+		if clientID == "" {
 			return nil, fmt.Errorf("client_id must not be empty")
 		}
 
@@ -134,7 +135,7 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 			if err != nil {
 				return nil, err
 			}
-			claims = jwt.MapClaims{
+			claims = map[string]interface{}{
 				// default audience
 				"aud": tokenEndpoint,
 			}
@@ -148,6 +149,8 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 					claims[k] = v
 				}
 			}
+			claims["iss"] = clientID
+			claims["sub"] = clientID
 		default:
 			if jwtSigningProfile != nil {
 				return nil, fmt.Errorf("jwt_signing_profile block must not be set with %s", authnMethod)
@@ -238,13 +241,15 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 			return err
 		}
 
+		claims := jwt.MapClaims{}
+		for k, v := range c.authnClaims {
+			claims[k] = v
+		}
 		now := time.Now().Unix()
-		c.authnClaims["iss"] = c.clientConfig.GetClientID()
-		c.authnClaims["sub"] = c.clientConfig.GetClientID()
-		c.authnClaims["iat"] = now
-		c.authnClaims["exp"] = now + c.authnTTL
-		c.authnClaims["jti"] = identifier.String()
-		jwt, err := lib.CreateJWT(c.authnAlgo, c.authnKey, c.authnClaims, c.authnHeaders)
+		claims["iat"] = now
+		claims["exp"] = now + c.authnTTL
+		claims["jti"] = identifier.String()
+		jwt, err := lib.CreateJWT(c.authnAlgo, c.authnKey, claims, c.authnHeaders)
 		if err != nil {
 			return err
 		}
