@@ -249,12 +249,12 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 		claims["iat"] = now
 		claims["exp"] = now + c.authnTTL
 		claims["jti"] = identifier.String()
-		jwt, err := lib.CreateJWT(c.authnAlgo, c.authnKey, claims, c.authnHeaders)
+		clientAssertion, err := lib.CreateJWT(c.authnAlgo, c.authnKey, claims, c.authnHeaders)
 		if err != nil {
 			return err
 		}
 		formParams.Set("client_id", clientID)
-		formParams.Set("client_assertion", jwt)
+		formParams.Set("client_assertion", clientAssertion)
 		formParams.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 	default:
 		// already handled with error
