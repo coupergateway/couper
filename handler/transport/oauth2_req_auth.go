@@ -118,11 +118,12 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 		if assertionValue.IsNull() {
 			return requestError.Message("assertion expression evaluates to null")
-		} else if assertionValue.Type() != cty.String {
-			return requestError.Message("assertion expression must evaluate to a string")
-		} else {
-			formParams.Set("assertion", assertionValue.AsString())
 		}
+		if assertionValue.Type() != cty.String {
+			return requestError.Message("assertion expression must evaluate to a string")
+		}
+
+		formParams.Set("assertion", assertionValue.AsString())
 	}
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)
