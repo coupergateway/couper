@@ -387,8 +387,10 @@ type mockProducerResult struct {
 
 func (m *mockProducerResult) Produce(r *http.Request) chan *producer.Result {
 	result := make(chan *producer.Result, 1)
+	defer close(result)
+
 	if m == nil || m.rt == nil {
-		return nil
+		return result
 	}
 
 	res, err := m.rt.RoundTrip(r)
