@@ -12,6 +12,6 @@ var (
 )
 
 type Roundtrip interface {
-	Produce(req *http.Request, results chan<- *Result)
+	Produce(req *http.Request) chan *Result
 	Len() int
 }

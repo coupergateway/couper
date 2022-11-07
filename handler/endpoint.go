@@ -217,23 +217,18 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 			continue
 		}
 
-		resultCh := make(chan *producer.Result, trip.Len())
-		go func(rt producer.Roundtrip, rc chan *producer.Result) {
-			rt.Produce(outreq, rc)
-			close(rc)
-		}(trip, resultCh)
-		tripCh <- resultCh
+		tripCh <- trip.Produce(outreq)
 	}
 	close(tripCh)
 
 	for resultCh := range tripCh {
-		e.readResults(req.Context(), resultCh, results)
+		e.readResults(resultCh, results)
 	}
 
 	var err error // TODO: prefer default resp err
 	// TODO: additionally log all panic error types
 	for _, r := range results {
-		if r.Err != nil {
+		if r != nil && r.Err != nil {
 			err = r.Err
 			break
 		}
@@ -242,26 +237,19 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	return results, err
 }
 
-func (e *Endpoint) readResults(ctx context.Context, requestResults producer.Results, beresps producer.ResultMap) {
+func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
 	i := 0
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case r, more := <-requestResults:
-			if !more {
-				return
-			}
-
-			i++
-			name := r.RoundTripName
-
-			// fallback
-			if name == "" { // panic case
-				name = strconv.Itoa(i)
-			}
-			beresps[name] = r
+	for r := range requestResults {
+		i++
+		var name string
+		if r != nil {
+			name = r.RoundTripName
 		}
+		
+		if name == "" {
+			name = strconv.Itoa(i)
+		}
+		beresps[name] = r
 	}
 }
 

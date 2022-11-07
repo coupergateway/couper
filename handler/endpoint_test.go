@@ -379,21 +379,25 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 	}
 }
 
+var _ producer.Roundtrip = &mockProducerResult{}
+
 type mockProducerResult struct {
 	rt http.RoundTripper
 }
 
-func (m *mockProducerResult) Produce(r *http.Request, results chan<- *producer.Result) {
+func (m *mockProducerResult) Produce(r *http.Request) chan *producer.Result {
+	result := make(chan *producer.Result, 1)
 	if m == nil || m.rt == nil {
-		return
+		return nil
 	}
 
 	res, err := m.rt.RoundTrip(r)
-	results <- &producer.Result{
+	result <- &producer.Result{
 		RoundTripName: "default",
 		Beresp:        res,
 		Err:           err,
 	}
+	return result
 }
 
 func (m *mockProducerResult) Len() int {
