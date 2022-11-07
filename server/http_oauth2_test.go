@@ -340,7 +340,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: username must not be set with grant_type=client_credentials",
+			"configuration error: be: username attribute must not be set with grant_type=client_credentials",
 		},
 		{
 			"password with grant_type client_credentials",
@@ -357,7 +357,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: password must not be set with grant_type=client_credentials",
+			"configuration error: be: password attribute must not be set with grant_type=client_credentials",
 		},
 		{
 			"username with grant_type jwt-bearer",
@@ -372,7 +372,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: username must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+			"configuration error: be: username attribute must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
 		{
 			"password with grant_type jwt-bearer",
@@ -387,7 +387,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: password must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+			"configuration error: be: password attribute must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
 		{
 			"assertion with grant_type client_credentials",
@@ -404,7 +404,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: assertion must not be set with grant_type=client_credentials",
+			"configuration error: be: assertion attribute must not be set with grant_type=client_credentials",
 		},
 		{
 			"assertion with grant_type password",
@@ -423,7 +423,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: assertion must not be set with grant_type=password",
+			"configuration error: be: assertion attribute must not be set with grant_type=password",
 		},
 		{
 			"missing username with grant_type password",
@@ -470,7 +470,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: missing assertion with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+			"configuration error: be: missing assertion attribute with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
 
 		{

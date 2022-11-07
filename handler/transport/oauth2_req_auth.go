@@ -54,10 +54,10 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		}
 	} else {
 		if conf.Username != "" {
-			return nil, fmt.Errorf("username must not be set with grant_type=%s", conf.GrantType)
+			return nil, fmt.Errorf("username attribute must not be set with grant_type=%s", conf.GrantType)
 		}
 		if conf.Password != "" {
-			return nil, fmt.Errorf("password must not be set with grant_type=%s", conf.GrantType)
+			return nil, fmt.Errorf("password attribute must not be set with grant_type=%s", conf.GrantType)
 		}
 	}
 
@@ -65,11 +65,11 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 	assertionSet := assertionRange.Start != assertionRange.End
 	if conf.GrantType == config.JwtBearer {
 		if !assertionSet {
-			return nil, fmt.Errorf("missing assertion with grant_type=%s", conf.GrantType)
+			return nil, fmt.Errorf("missing assertion attribute with grant_type=%s", conf.GrantType)
 		}
 	} else {
 		if assertionSet {
-			return nil, fmt.Errorf("assertion must not be set with grant_type=%s", conf.GrantType)
+			return nil, fmt.Errorf("assertion attribute must not be set with grant_type=%s", conf.GrantType)
 		}
 	}
 
