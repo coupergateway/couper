@@ -32,7 +32,7 @@ type JWTSigningConfig struct {
 	TTL                int64
 }
 
-func CheckData(ttl, signatureAlgorithm string) (int64, acjwt.Algorithm, error) {
+func checkData(ttl, signatureAlgorithm string) (int64, acjwt.Algorithm, error) {
 	alg := acjwt.NewAlgorithm(signatureAlgorithm)
 	if alg == acjwt.AlgorithmUnknown {
 		return 0, alg, fmt.Errorf("algorithm is not supported")
@@ -49,7 +49,7 @@ func CheckData(ttl, signatureAlgorithm string) (int64, acjwt.Algorithm, error) {
 	return 0, alg, nil
 }
 
-func GetKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
+func getKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
 	var (
 		key      interface{}
 		parseErr error
@@ -65,7 +65,7 @@ func GetKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
 }
 
 func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile, algCheckFunc func(alg acjwt.Algorithm) error) (*JWTSigningConfig, error) {
-	ttl, alg, err := CheckData(j.TTL, j.SignatureAlgorithm)
+	ttl, alg, err := checkData(j.TTL, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile, algCh
 		return nil, err
 	}
 
-	key, err := GetKey(keyBytes, j.SignatureAlgorithm)
+	key, err := getKey(keyBytes, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, nil
 	}
 
-	ttl, alg, err := CheckData(j.SigningTTL, j.SignatureAlgorithm)
+	ttl, alg, err := checkData(j.SigningTTL, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 		return nil, err
 	}
 
-	key, err := GetKey(keyBytes, j.SignatureAlgorithm)
+	key, err := getKey(keyBytes, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
