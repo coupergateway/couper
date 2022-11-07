@@ -776,18 +776,15 @@ func TestEndpoint_Sequence_BackendTimeout(t *testing.T) {
 		}
 
 		path := entry.Data["request"].(logging.Fields)["path"]
-		if entry.Message == "backend error: anonymous_3_23: deadline exceeded" {
-			ctxDeadlineSeen = true
-			if path != "/" {
-				t.Errorf("expected '/' to fail")
-			}
-		}
 
-		if entry.Message == "" && entry.Data["status"] == 200 {
-			statusOKseen = true
-			if path != "/reflect" {
-				t.Errorf("expected '/reflect' to be ok")
-			}
+		switch path {
+		case "/":
+			isDeadlineErr := entry.Message == "backend error: anonymous_3_23: deadline exceeded"
+			hasStatusZero := entry.Data["status"] == 0
+			ctxDeadlineSeen = isDeadlineErr && hasStatusZero && entry.Level == logrus.ErrorLevel
+		case "/reflect":
+			hasStatusOK := entry.Data["status"] == http.StatusOK
+			statusOKseen = hasStatusOK && entry.Level == logrus.InfoLevel
 		}
 	}
 

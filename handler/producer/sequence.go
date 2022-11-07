@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/telemetry"
 )
 
@@ -70,10 +71,23 @@ func pipe(req *http.Request, rt []Roundtrip, kind string) chan *Result {
 	// Since the sequence gets resolved in order just the last item matters.
 	for _, rch := range allResults {
 		var last *Result
+		var err error
+
 		for last = range rch {
 			// drain
+			if last.Err != nil {
+				err = last.Err
+				// drain must be continued (pipeResult)
+			}
 		}
-		result <- last
+
+		if err != nil {
+			result <- &Result{Err: err}
+		} else if last == nil {
+			result <- &Result{Err: errors.Sequence.Message("no result")}
+		} else {
+			result <- last
+		}
 	}
 
 	close(result)
