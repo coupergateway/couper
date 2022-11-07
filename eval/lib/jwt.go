@@ -74,7 +74,12 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile) (*JWT
 		return nil, err
 	}
 
-	key, err := GetKey(j.KeyBytes, j.SignatureAlgorithm)
+	keyBytes, err := reader.ReadFromAttrFile("jwt_signing_profile key", j.Key, j.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := GetKey(keyBytes, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err
 	}
