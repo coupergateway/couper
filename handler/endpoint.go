@@ -245,7 +245,7 @@ func (e *Endpoint) readResults(requestResults producer.Results, beresps producer
 		if r != nil {
 			name = r.RoundTripName
 		}
-		
+
 		if name == "" {
 			name = strconv.Itoa(i)
 		}
