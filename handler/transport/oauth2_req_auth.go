@@ -5,15 +5,20 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 )
 
@@ -27,13 +32,115 @@ var (
 	_ RequestAuthorizer = &OAuth2ReqAuth{}
 )
 
+type assertionCreator interface {
+	createAssertion(ctx *hcl.EvalContext) (string, error)
+}
+
+var (
+	_ assertionCreator = &assertionCreatorFromExpr{}
+	_ assertionCreator = &assertionCreatorFromJSP{}
+)
+
+type assertionCreatorFromExpr struct {
+	expr hcl.Expression
+}
+
+func newAssertionCreatorFromExpr(expr hcl.Expression) assertionCreator {
+	return &assertionCreatorFromExpr{
+		expr,
+	}
+}
+
+func (ac *assertionCreatorFromExpr) createAssertion(ctx *hcl.EvalContext) (string, error) {
+	assertionValue, err := eval.Value(ctx, ac.expr)
+	if err != nil {
+		return "", err
+	}
+
+	if assertionValue.IsNull() {
+		return "", fmt.Errorf("assertion expression evaluates to null")
+	}
+	if assertionValue.Type() != cty.String {
+		return "", fmt.Errorf("assertion expression must evaluate to a string")
+	}
+
+	return assertionValue.AsString(), nil
+}
+
+type assertionCreatorFromJSP struct {
+	ttl       int64
+	algorithm string
+	key       interface{}
+	headers   map[string]interface{}
+	claims    map[string]interface{}
+}
+
+func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigningProfile) (assertionCreator, error) {
+	dur, _, err := lib.CheckData(jsp.TTL, jsp.SignatureAlgorithm)
+	if err != nil {
+		return nil, err
+	}
+
+	if jsp.Key == "" && jsp.KeyFile == "" {
+		return nil, fmt.Errorf("key and key_file must not both be empty")
+	}
+	keyBytes, err := reader.ReadFromAttrFile("jwt-bearer key", jsp.Key, jsp.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := lib.GetKey(keyBytes, jsp.SignatureAlgorithm)
+	if err != nil {
+		return nil, err
+	}
+
+	var headers map[string]interface{}
+	if jsp.Headers != nil {
+		v, err := eval.Value(evalCtx, jsp.Headers)
+		if err != nil {
+			return nil, err
+		}
+		headers = seetie.ValueToMap(v)
+	}
+
+	claims := map[string]interface{}{}
+	if jsp.Claims != nil {
+		cl, err := eval.Value(evalCtx, jsp.Claims)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range seetie.ValueToMap(cl) {
+			claims[k] = v
+		}
+	}
+	return &assertionCreatorFromJSP{
+		int64(dur.Seconds()),
+		jsp.SignatureAlgorithm,
+		key,
+		headers,
+		claims,
+	}, nil
+}
+
+func (ac *assertionCreatorFromJSP) createAssertion(_ *hcl.EvalContext) (string, error) {
+	claims := jwt.MapClaims{}
+	for k, v := range ac.claims {
+		claims[k] = v
+	}
+	now := time.Now().Unix()
+	claims["exp"] = now + ac.ttl
+
+	return lib.CreateJWT(ac.algorithm, ac.key, claims, ac.headers)
+}
+
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
-	config       *config.OAuth2ReqAuth
-	mu           sync.Mutex
-	memStore     *cache.MemoryStore
-	oauth2Client *oauth2.Client
-	storageKey   string
+	config           *config.OAuth2ReqAuth
+	mu               sync.Mutex
+	memStore         *cache.MemoryStore
+	oauth2Client     *oauth2.Client
+	storageKey       string
+	assertionCreator assertionCreator
 }
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
@@ -61,11 +168,21 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		}
 	}
 
+	var assertionCreator assertionCreator
 	assertionRange := conf.AssertionExpr.Range()
 	assertionSet := assertionRange.Start != assertionRange.End
 	if conf.GrantType == config.JwtBearer {
-		if !assertionSet {
-			return nil, fmt.Errorf("missing assertion attribute with grant_type=%s", conf.GrantType)
+		if !assertionSet && conf.JWTSigningProfile == nil {
+			return nil, fmt.Errorf("missing assertion attribute or jwt_signing_profile block with grant_type=%s", conf.GrantType)
+		}
+		if assertionSet {
+			assertionCreator = newAssertionCreatorFromExpr(conf.AssertionExpr)
+		} else {
+			var err error
+			assertionCreator, err = newAssertionCreatorFromJSP(evalCtx, conf.JWTSigningProfile)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		if assertionSet {
@@ -79,9 +196,10 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 	}
 
 	reqAuth := &OAuth2ReqAuth{
-		config:       conf,
-		oauth2Client: oauth2Client,
-		memStore:     memStore,
+		config:           conf,
+		oauth2Client:     oauth2Client,
+		memStore:         memStore,
+		assertionCreator: assertionCreator,
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
 	return reqAuth, nil
@@ -108,19 +226,12 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	if oa.config.GrantType == config.JwtBearer {
 		requestContext := eval.ContextFromRequest(req).HCLContext()
-		assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
+		assertion, err := oa.assertionCreator.createAssertion(requestContext)
 		if err != nil {
-			return err
+			return requestError.With(err)
 		}
 
-		if assertionValue.IsNull() {
-			return requestError.Message("assertion expression evaluates to null")
-		}
-		if assertionValue.Type() != cty.String {
-			return requestError.Message("assertion expression must evaluate to a string")
-		}
-
-		formParams.Set("assertion", assertionValue.AsString())
+		formParams.Set("assertion", assertion)
 	}
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)
