@@ -73,7 +73,7 @@ type assertionCreatorFromJSP struct {
 }
 
 func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigningProfile) (assertionCreator, error) {
-	signingConfig, err := lib.NewJWTSigningConfigFromJWTSigningProfile(jsp)
+	signingConfig, err := lib.NewJWTSigningConfigFromJWTSigningProfile(jsp, nil)
 	if err != nil {
 		return nil, err
 	}

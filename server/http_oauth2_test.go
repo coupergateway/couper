@@ -898,7 +898,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: client authentication key: read error: open ",
+			"configuration error: be: jwt_signing_profile key: read error: open ",
 		},
 		{
 			"alg header with client_secret_jwt",

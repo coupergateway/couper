@@ -349,7 +349,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 
 	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
 	for _, profile := range helper.config.Definitions.JWTSigningProfile {
-		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile)
+		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile, nil)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
 		}
