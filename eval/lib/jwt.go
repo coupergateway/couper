@@ -27,7 +27,6 @@ type JWTSigningConfig struct {
 	Claims             config.Claims
 	Headers            hcl.Expression
 	Key                interface{}
-	Name               string
 	SignatureAlgorithm string
 	TTL                int64
 }
@@ -90,7 +89,6 @@ func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile, algCh
 		Claims:             j.Claims,
 		Headers:            j.Headers,
 		Key:                key,
-		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
 		TTL:                ttl,
 	}
@@ -129,7 +127,6 @@ func NewJWTSigningConfigFromJWT(j *config.JWT) (*JWTSigningConfig, error) {
 	c := &JWTSigningConfig{
 		Claims:             j.Claims,
 		Key:                key,
-		Name:               j.Name,
 		SignatureAlgorithm: j.SignatureAlgorithm,
 		TTL:                ttl,
 	}
