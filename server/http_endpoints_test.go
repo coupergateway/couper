@@ -715,18 +715,19 @@ func TestEndpoint_Sequence_ClientCancel(t *testing.T) {
 
 		path := entry.Data["request"].(logging.Fields)["path"]
 
-		if strings.Contains(entry.Message, context.Canceled.Error()) {
-			ctxCanceledSeen = true
-			if path != "/" {
-				t.Errorf("expected '/' to fail")
+		switch path {
+		case "/":
+			isCancelErr := strings.Contains(entry.Message, context.Canceled.Error())
+			hasStatusZero := entry.Data["status"] == 0
+			ctxCanceledSeen = isCancelErr && hasStatusZero && entry.Level == logrus.ErrorLevel
+		case "/reflect":
+			request := entry.Data["request"].(logging.Fields)
+			if request["name"] != "resolve_first" {
+				continue
 			}
-		}
-
-		if entry.Message == "" && entry.Data["status"] == 200 {
-			statusOKseen = true
-			if path != "/reflect" {
-				t.Errorf("expected '/reflect' to be ok")
-			}
+			isCancelErr := strings.Contains(entry.Message, context.Canceled.Error())
+			hasStatusOK := entry.Data["status"] == http.StatusOK
+			statusOKseen = !isCancelErr && hasStatusOK && entry.Level == logrus.InfoLevel
 		}
 	}
 
