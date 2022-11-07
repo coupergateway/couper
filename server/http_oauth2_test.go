@@ -740,6 +740,7 @@ definitions {
       authn_key = "a key"
       jwt_signing_profile {
         signature_algorithm = "HS256"
+        key = "a key"
         ttl = "10s"
       }
     }

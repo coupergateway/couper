@@ -90,6 +90,19 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 			if jwtSigningProfile == nil {
 				return nil, fmt.Errorf("jwt_signing_profile block must be set with %s", authnMethod)
 			}
+			if authnMethod == privateKeyJwt {
+				if jwtSigningProfile.Key == "" && jwtSigningProfile.KeyFile == "" {
+					return nil, fmt.Errorf("key and key_file must not both be empty with %s", authnMethod)
+				}
+			} else { // clientSecretJwt
+				if jwtSigningProfile.Key != "" {
+					return nil, fmt.Errorf("key must not be set with %s", authnMethod)
+				}
+				if jwtSigningProfile.KeyFile != "" {
+					return nil, fmt.Errorf("key_file must not be set with %s", authnMethod)
+				}
+			}
+
 			dur, algo, err := lib.CheckData(jwtSigningProfile.TTL, jwtSigningProfile.SignatureAlgorithm)
 			if err != nil {
 				return nil, err
@@ -101,21 +114,12 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 			ttl = int64(dur.Seconds())
 			var keyBytes []byte
 			if authnMethod == privateKeyJwt {
-				if jwtSigningProfile.Key == "" && jwtSigningProfile.KeyFile == "" {
-					return nil, fmt.Errorf("key and key_file must not both be empty with %s", authnMethod)
-				}
 				keyBytes, err = reader.ReadFromAttrFile("client authentication key", jwtSigningProfile.Key, jwtSigningProfile.KeyFile)
 				if err != nil {
 					return nil, err
 				}
 			} else { // clientSecretJwt
 				keyBytes = []byte(clientSecret)
-				if jwtSigningProfile.Key != "" {
-					return nil, fmt.Errorf("key must not be set with %s", authnMethod)
-				}
-				if jwtSigningProfile.KeyFile != "" {
-					return nil, fmt.Errorf("key_file must not be set with %s", authnMethod)
-				}
 			}
 
 			key, err = lib.GetKey(keyBytes, jwtSigningProfile.SignatureAlgorithm)
