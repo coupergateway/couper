@@ -237,7 +237,7 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 		}
 		now := time.Now().Unix()
 		claims["iat"] = now
-		claims["exp"] = now + int64(c.authnJSC.TTL.Seconds())
+		claims["exp"] = now + c.authnJSC.TTL
 		claims["jti"] = identifier.String()
 		clientAssertion, err := lib.CreateJWT(c.authnJSC.SignatureAlgorithm, c.authnJSC.Key, claims, c.authnHeaders)
 		if err != nil {

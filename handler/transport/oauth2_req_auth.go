@@ -110,7 +110,7 @@ func (ac *assertionCreatorFromJSP) createAssertion(_ *hcl.EvalContext) (string, 
 		claims[k] = v
 	}
 	now := time.Now().Unix()
-	claims["exp"] = now + int64(ac.TTL.Seconds())
+	claims["exp"] = now + ac.TTL
 
 	return lib.CreateJWT(ac.SignatureAlgorithm, ac.Key, claims, ac.headers)
 }

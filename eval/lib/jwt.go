@@ -29,28 +29,24 @@ type JWTSigningConfig struct {
 	Key                interface{}
 	Name               string
 	SignatureAlgorithm string
-	TTL                time.Duration
+	TTL                int64
 }
 
-func CheckData(ttl, signatureAlgorithm string) (time.Duration, acjwt.Algorithm, error) {
-	var (
-		dur      time.Duration
-		parseErr error
-	)
-
+func CheckData(ttl, signatureAlgorithm string) (int64, acjwt.Algorithm, error) {
 	alg := acjwt.NewAlgorithm(signatureAlgorithm)
 	if alg == acjwt.AlgorithmUnknown {
-		return dur, alg, fmt.Errorf("algorithm is not supported")
+		return 0, alg, fmt.Errorf("algorithm is not supported")
 	}
 
 	if ttl != "0" {
-		dur, parseErr = time.ParseDuration(ttl)
-		if parseErr != nil {
-			return dur, alg, parseErr
+		dur, err := time.ParseDuration(ttl)
+		if err != nil {
+			return 0, alg, err
 		}
+		return int64(dur.Seconds()), alg, nil
 	}
 
-	return dur, alg, nil
+	return 0, alg, nil
 }
 
 func GetKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
@@ -190,7 +186,7 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 			}
 
 			if signingConfig.TTL != 0 {
-				mapClaims["exp"] = time.Now().Unix() + int64(signingConfig.TTL.Seconds())
+				mapClaims["exp"] = time.Now().Unix() + signingConfig.TTL
 			}
 
 			// get claims from function argument
