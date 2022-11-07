@@ -13,7 +13,6 @@ import (
 
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -68,35 +67,20 @@ func (ac *assertionCreatorFromExpr) createAssertion(ctx *hcl.EvalContext) (strin
 }
 
 type assertionCreatorFromJSP struct {
-	ttl       int64
-	algorithm string
-	key       interface{}
-	headers   map[string]interface{}
-	claims    map[string]interface{}
+	*lib.JWTSigningConfig
+	headers map[string]interface{}
+	claims  map[string]interface{}
 }
 
 func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigningProfile) (assertionCreator, error) {
-	dur, _, err := lib.CheckData(jsp.TTL, jsp.SignatureAlgorithm)
-	if err != nil {
-		return nil, err
-	}
-
-	if jsp.Key == "" && jsp.KeyFile == "" {
-		return nil, fmt.Errorf("key and key_file must not both be empty")
-	}
-	keyBytes, err := reader.ReadFromAttrFile("jwt-bearer key", jsp.Key, jsp.KeyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := lib.GetKey(keyBytes, jsp.SignatureAlgorithm)
+	signingConfig, err := lib.NewJWTSigningConfigFromJWTSigningProfile(jsp)
 	if err != nil {
 		return nil, err
 	}
 
 	var headers map[string]interface{}
-	if jsp.Headers != nil {
-		v, err := eval.Value(evalCtx, jsp.Headers)
+	if signingConfig.Headers != nil {
+		v, err := eval.Value(evalCtx, signingConfig.Headers)
 		if err != nil {
 			return nil, err
 		}
@@ -104,8 +88,8 @@ func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigning
 	}
 
 	claims := map[string]interface{}{}
-	if jsp.Claims != nil {
-		cl, err := eval.Value(evalCtx, jsp.Claims)
+	if signingConfig.Claims != nil {
+		cl, err := eval.Value(evalCtx, signingConfig.Claims)
 		if err != nil {
 			return nil, err
 		}
@@ -114,9 +98,7 @@ func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigning
 		}
 	}
 	return &assertionCreatorFromJSP{
-		int64(dur.Seconds()),
-		jsp.SignatureAlgorithm,
-		key,
+		signingConfig,
 		headers,
 		claims,
 	}, nil
@@ -128,9 +110,9 @@ func (ac *assertionCreatorFromJSP) createAssertion(_ *hcl.EvalContext) (string, 
 		claims[k] = v
 	}
 	now := time.Now().Unix()
-	claims["exp"] = now + ac.ttl
+	claims["exp"] = now + int64(ac.TTL.Seconds())
 
-	return lib.CreateJWT(ac.algorithm, ac.key, claims, ac.headers)
+	return lib.CreateJWT(ac.SignatureAlgorithm, ac.Key, claims, ac.headers)
 }
 
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
