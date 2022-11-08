@@ -4,18 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/telemetry"
 )
-
-type SequenceItem struct {
-	Backend http.RoundTripper
-	Context hcl.Body
-	Name    string // label
-}
 
 // Sequence represents a list of serialized items.
 type Sequence []Roundtrip
