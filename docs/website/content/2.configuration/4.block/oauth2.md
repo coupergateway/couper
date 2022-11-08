@@ -17,7 +17,7 @@ A nested `jwt_signing_profile` block is used in two cases:
 values: [
   {
     "default": "",
-    "description": "The assertion (JWT for jwt-bearer flow). Required if `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer` and no nested `jwt_signing_profile` block is present.",
+    "description": "The assertion (JWT for jwt-bearer flow). Required if `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"` and no nested `jwt_signing_profile` block is present.",
     "name": "assertion",
     "type": "string"
   },
@@ -29,25 +29,25 @@ values: [
   },
   {
     "default": "",
-    "description": "The client identifier. Required unless the `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer`.",
+    "description": "The client identifier. Required unless the `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"`.",
     "name": "client_id",
     "type": "string"
   },
   {
     "default": "",
-    "description": "The client password. Required unless the `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer`.",
+    "description": "The client password. Required unless the `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"`.",
     "name": "client_secret",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Required, valid values: `client_credentials`, `password`, `urn:ietf:params:oauth:grant-type:jwt-bearer`",
+    "description": "Required, valid values: `\"client_credentials\"`, `\"password\"`, `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"`",
     "name": "grant_type",
     "type": "string"
   },
   {
     "default": "",
-    "description": "The (service account's) password (for password flow). Required if grant_type is `password`.",
+    "description": "The (service account's) password (for password flow). Required if grant_type is `\"password\"`.",
     "name": "password",
     "type": "string"
   },
@@ -77,7 +77,7 @@ values: [
   },
   {
     "default": "",
-    "description": "The (service account's) username (for password flow). Required if grant_type is `password`.",
+    "description": "The (service account's) username (for password flow). Required if grant_type is `\"password\"`.",
     "name": "username",
     "type": "string"
   }
