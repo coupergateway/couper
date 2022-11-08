@@ -13,7 +13,7 @@ import (
 // Sequence represents a list of serialized items.
 type Sequence []Roundtrip
 
-// Sequences holds several list of serialized items which effectively gets executed in parallel.
+// Sequences holds a list of items which gets executed in parallel.
 type Sequences []Roundtrip
 
 func (seqs Sequences) Produce(req *http.Request) chan *Result {
