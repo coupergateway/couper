@@ -36,7 +36,7 @@ func (s Sequence) Len() int {
 	return sum
 }
 
-// pipe calls the Roundtrip Interface on each given item and distinguish between parallelism and trace kind.
+// pipe calls the Roundtrip Interface on each given item and distinguishes between parallelism and trace kind.
 // The returned channel will be closed if this chain part has been ended.
 func pipe(req *http.Request, rt []Roundtrip, kind string) chan *Result {
 	var rootSpan trace.Span
