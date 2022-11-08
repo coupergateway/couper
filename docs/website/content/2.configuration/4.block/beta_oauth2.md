@@ -8,6 +8,8 @@ Like all [access control](/configuration/access-control) types, the `beta_oauth2
 |:--------------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
 | `beta_oauth2` | [Definitions Block](/configuration/block/definitions)        | &#9888; required | [Backend Block](/configuration/block/backend), [Error Handler Block](/configuration/block/error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
 
+A nested `jwt_signing_profile` block is used to create a client assertion if `token_endpoint_auth_method` is either `"client_secret_jwt"` or `"private_key_jwt"`.
+
 ::attributes
 ---
 values: [

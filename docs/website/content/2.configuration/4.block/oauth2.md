@@ -8,12 +8,16 @@ The `oauth2` block in the [Backend Block](/configuration/block/backend) context 
 |:-----------|:-------------------------|:---------|:---------------------------------------------------------------------------|
 | `oauth2`   | [Backend Block](/configuration/block/backend) | no label | [Backend Block](/configuration/block/backend), [JWT Signing Profile Block](jwt_signing_profile) |
 
+A nested `jwt_signing_profile` block is used in two cases:
+* to create a client assertion if `token_endpoint_auth_method` is either `"client_secret_jwt"` or `"private_key_jwt"`; or
+* to create an assertion if `grant_type` is `"urn:ietf:params:oauth:grant-type:jwt-bearer"` and no `assertion` attribute is set.
+
 ::attributes
 ---
 values: [
   {
     "default": "",
-    "description": "The assertion (JWT for jwt-bearer flow). Required if `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer`.",
+    "description": "The assertion (JWT for jwt-bearer flow). Required if `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer` and no nested `jwt_signing_profile` block is present.",
     "name": "assertion",
     "type": "string"
   },
