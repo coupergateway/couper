@@ -158,8 +158,7 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt (with signing_ttl) for given label %q", label)
 			}
 
-			mapClaims := jwt.MapClaims{}
-			var defaultClaims, argumentClaims, headers map[string]interface{}
+			var claims, argumentClaims, headers map[string]interface{}
 
 			if signingConfig.Headers != nil {
 				h, diags := evalFn(ctx, signingConfig.Headers)
@@ -175,15 +174,13 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 				if diags != nil {
 					return cty.StringVal(""), err
 				}
-				defaultClaims = seetie.ValueToMap(v)
-			}
-
-			for k, v := range defaultClaims {
-				mapClaims[k] = v
+				claims = seetie.ValueToMap(v)
+			} else {
+				claims = make(map[string]interface{})
 			}
 
 			if signingConfig.TTL != 0 {
-				mapClaims["exp"] = time.Now().Unix() + signingConfig.TTL
+				claims["exp"] = time.Now().Unix() + signingConfig.TTL
 			}
 
 			// get claims from function argument
@@ -198,10 +195,10 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 			}
 
 			for k, v := range argumentClaims {
-				mapClaims[k] = v
+				claims[k] = v
 			}
 
-			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, signingConfig.Key, mapClaims, headers)
+			tokenString, err := CreateJWT(signingConfig.SignatureAlgorithm, signingConfig.Key, claims, headers)
 			if err != nil {
 				return cty.StringVal(""), err
 			}

@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
@@ -78,7 +77,8 @@ func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigning
 		return nil, err
 	}
 
-	var headers map[string]interface{}
+	var headers, claims map[string]interface{}
+
 	if signingConfig.Headers != nil {
 		v, err := eval.Value(evalCtx, signingConfig.Headers)
 		if err != nil {
@@ -87,16 +87,14 @@ func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigning
 		headers = seetie.ValueToMap(v)
 	}
 
-	claims := map[string]interface{}{}
 	if signingConfig.Claims != nil {
 		cl, err := eval.Value(evalCtx, signingConfig.Claims)
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range seetie.ValueToMap(cl) {
-			claims[k] = v
-		}
+		claims = seetie.ValueToMap(cl)
 	}
+
 	return &assertionCreatorFromJSP{
 		signingConfig,
 		headers,
@@ -105,7 +103,7 @@ func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigning
 }
 
 func (ac *assertionCreatorFromJSP) createAssertion(_ *hcl.EvalContext) (string, error) {
-	claims := jwt.MapClaims{}
+	claims := make(map[string]interface{})
 	for k, v := range ac.claims {
 		claims[k] = v
 	}

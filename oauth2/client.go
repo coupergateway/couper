@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 
@@ -123,23 +122,22 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 				}
 			}
 
-			tokenEndpoint, err := asConfig.GetTokenEndpoint()
-			if err != nil {
-				return nil, err
-			}
-			claims = map[string]interface{}{
-				// default audience
-				"aud": tokenEndpoint,
-			}
 			// get claims from signing profile
 			if signingConfig.Claims != nil {
 				cl, err := eval.Value(evalCtx, signingConfig.Claims)
 				if err != nil {
 					return nil, err
 				}
-				for k, v := range seetie.ValueToMap(cl) {
-					claims[k] = v
+				claims = seetie.ValueToMap(cl)
+			} else {
+				claims = make(map[string]interface{}, 3)
+			}
+			if _, set := claims["aud"]; !set {
+				tokenEndpoint, err := asConfig.GetTokenEndpoint()
+				if err != nil {
+					return nil, err
 				}
+				claims["aud"] = tokenEndpoint
 			}
 			claims["iss"] = clientID
 			claims["sub"] = clientID
@@ -231,7 +229,7 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 			return err
 		}
 
-		claims := jwt.MapClaims{}
+		claims := make(map[string]interface{})
 		for k, v := range c.authnClaims {
 			claims[k] = v
 		}
