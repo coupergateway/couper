@@ -146,10 +146,10 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
 	}
 
-	parallel, requests, proxies := resolveDependencies(allProxies, allRequests, endpointConf.Sequences...)
+	sequences, requests, proxies := resolveDependencies(allProxies, allRequests, endpointConf.Sequences...)
 
 	// TODO: redirect
-	if endpointConf.Response == nil && len(proxies)+len(requests)+len(parallel) == 0 { // && redirect == nil
+	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
 		r := endpointConf.Remain.MissingItemRange()
 		m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -185,7 +185,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		ReqBodyLimit:  bodyLimit,
 		BufferOpts:    bufferOpts,
 		Requests:      requests,
-		Parallel:      parallel,
+		Sequences:     sequences,
 		Response:      response,
 		ServerOpts:    serverOptions,
 	}, nil
@@ -204,7 +204,7 @@ func resolveDependencies(proxies map[string]*producer.Proxy, requests map[string
 
 	// read from prepared config sequences
 	for _, seq := range items {
-		seqs = append(seqs, newSequence(seq, proxies, requests))
+		seqs = append(seqs, newRoundtrip(seq, proxies, requests))
 	}
 
 proxyLeftovers:
@@ -234,7 +234,7 @@ reqLeftovers:
 	return seqs, reqs, ps
 }
 
-func newSequence(seq *sequence.Item,
+func newRoundtrip(seq *sequence.Item,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 
@@ -245,12 +245,12 @@ func newSequence(seq *sequence.Item,
 	if len(deps) > 1 { // more deps per item can be parallelized
 		var seqs producer.Parallel
 		for _, d := range deps {
-			seqs = append(seqs, newSequence(d, proxies, requests))
+			seqs = append(seqs, newRoundtrip(d, proxies, requests))
 			previous = append(previous, d.Name)
 		}
 		rt = seqs
 	} else if len(deps) == 1 {
-		rt = newSequence(deps[0], proxies, requests)
+		rt = newRoundtrip(deps[0], proxies, requests)
 		previous = append(previous, deps[0].Name)
 	}
 
