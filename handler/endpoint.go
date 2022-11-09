@@ -42,8 +42,8 @@ type EndpointOptions struct {
 	ReqBodyLimit   int64
 	ServerOpts     *server.Options
 
-	Proxies   producer.Roundtrip
-	Redirect  *producer.Redirect
+	Proxies  producer.Roundtrip
+	Redirect *producer.Redirect
 	Requests producer.Roundtrip
 	Parallel producer.Parallel
 	Response *producer.Response
