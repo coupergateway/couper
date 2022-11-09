@@ -185,7 +185,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		ReqBodyLimit:  bodyLimit,
 		BufferOpts:    bufferOpts,
 		Requests:      requests,
-		Sequences:     sequences,
+		Parallel:      sequences,
 		Response:      response,
 		ServerOpts:    serverOptions,
 	}, nil

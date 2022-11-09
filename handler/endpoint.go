@@ -44,9 +44,9 @@ type EndpointOptions struct {
 
 	Proxies   producer.Roundtrip
 	Redirect  *producer.Redirect
-	Requests  producer.Roundtrip
-	Sequences producer.Parallel
-	Response  *producer.Response
+	Requests producer.Roundtrip
+	Parallel producer.Parallel
+	Response *producer.Response
 }
 
 type BodyLimit interface {
@@ -209,7 +209,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 
 	outreq := req.WithContext(context.WithValue(req.Context(), request.ResponseBlock, e.opts.Response != nil))
 
-	trips := []producer.Roundtrip{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
+	trips := []producer.Roundtrip{e.opts.Proxies, e.opts.Requests, e.opts.Parallel}
 	tripCh := make(chan chan *producer.Result, len(trips))
 	for _, trip := range trips {
 		// use-case: just a response block within an endpoint
