@@ -45,7 +45,7 @@ type EndpointOptions struct {
 	Proxies   producer.Roundtrip
 	Redirect  *producer.Redirect
 	Requests  producer.Roundtrip
-	Sequences producer.Sequences
+	Sequences producer.SequenceParallel
 	Response  *producer.Response
 }
 

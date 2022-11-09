@@ -13,14 +13,14 @@ import (
 // Sequence represents a list of serialized items.
 type Sequence []Roundtrip
 
-// Sequences holds a list of items which get executed in parallel.
-type Sequences []Roundtrip
+// SequenceParallel holds a list of items which get executed in parallel.
+type SequenceParallel []Roundtrip
 
-func (seqs Sequences) Produce(req *http.Request) chan *Result {
-	return pipe(req, seqs, "sequences")
+func (seqs SequenceParallel) Produce(req *http.Request) chan *Result {
+	return pipe(req, seqs, "parallel")
 }
 
-func (seqs Sequences) Len() int {
+func (seqs SequenceParallel) Len() int {
 	return len(seqs)
 }
 
@@ -54,7 +54,7 @@ func pipe(req *http.Request, rt []Roundtrip, kind string) chan *Result {
 		allResults = append(allResults, rch)
 
 		switch kind {
-		case "sequences": // execute each sequence branch in parallel
+		case "parallel": // execute each sequence branch in parallel
 			go pipeResult(ctx, req, rch, srt)
 		case "sequence": // one by one
 			pipeResult(ctx, req, rch, srt)
