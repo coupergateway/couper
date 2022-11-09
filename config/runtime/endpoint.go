@@ -146,7 +146,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
 	}
 
-	sequences, requests, proxies := newSequences(allProxies, allRequests, endpointConf.Sequences...)
+	sequences, requests, proxies := resolveDependencies(allProxies, allRequests, endpointConf.Sequences...)
 
 	// TODO: redirect
 	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
@@ -191,20 +191,20 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}, nil
 }
 
-// newSequences lookups any request related dependency and sort them into a sequence.
+// resolveDependencies lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
-func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
-	items ...*sequence.Item) (producer.Sequences, producer.Requests, producer.Proxies) {
+func resolveDependencies(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
+	items ...*sequence.Item) (producer.Parallel, producer.Requests, producer.Proxies) {
 
 	allDeps := sequence.Dependencies(items)
 
 	var reqs producer.Requests
 	var ps producer.Proxies
-	var seqs producer.Sequences
+	var seqs producer.Parallel
 
 	// read from prepared config sequences
 	for _, seq := range items {
-		seqs = append(seqs, newSequence(seq, proxies, requests))
+		seqs = append(seqs, newRoundtrip(seq, proxies, requests))
 	}
 
 proxyLeftovers:
@@ -234,7 +234,7 @@ reqLeftovers:
 	return seqs, reqs, ps
 }
 
-func newSequence(seq *sequence.Item,
+func newRoundtrip(seq *sequence.Item,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 
@@ -243,14 +243,14 @@ func newSequence(seq *sequence.Item,
 
 	var previous []string
 	if len(deps) > 1 { // more deps per item can be parallelized
-		var seqs producer.Sequences
+		var seqs producer.Parallel
 		for _, d := range deps {
-			seqs = append(seqs, newSequence(d, proxies, requests))
+			seqs = append(seqs, newRoundtrip(d, proxies, requests))
 			previous = append(previous, d.Name)
 		}
 		rt = seqs
 	} else if len(deps) == 1 {
-		rt = newSequence(deps[0], proxies, requests)
+		rt = newRoundtrip(deps[0], proxies, requests)
 		previous = append(previous, deps[0].Name)
 	}
 

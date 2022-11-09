@@ -567,7 +567,7 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 	}
 }
 
-func TestEndpointSequence(t *testing.T) {
+func TestEndpoint_Sequence(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -673,7 +673,7 @@ func TestEndpointSequence(t *testing.T) {
 
 }
 
-func TestEndpointSequenceClientCancel(t *testing.T) {
+func TestEndpoint_Sequence_ClientCancel(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -715,18 +715,19 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 
 		path := entry.Data["request"].(logging.Fields)["path"]
 
-		if strings.Contains(entry.Message, context.Canceled.Error()) {
-			ctxCanceledSeen = true
-			if path != "/" {
-				t.Errorf("expected '/' to fail")
+		switch path {
+		case "/":
+			isCancelErr := strings.Contains(entry.Message, context.Canceled.Error())
+			hasStatusZero := entry.Data["status"] == 0
+			ctxCanceledSeen = isCancelErr && hasStatusZero && entry.Level == logrus.ErrorLevel
+		case "/reflect":
+			request := entry.Data["request"].(logging.Fields)
+			if request["name"] != "resolve_first" {
+				continue
 			}
-		}
-
-		if entry.Message == "" && entry.Data["status"] == 200 {
-			statusOKseen = true
-			if path != "/reflect" {
-				t.Errorf("expected '/reflect' to be ok")
-			}
+			isCancelErr := strings.Contains(entry.Message, context.Canceled.Error())
+			hasStatusOK := entry.Data["status"] == http.StatusOK
+			statusOKseen = !isCancelErr && hasStatusOK && entry.Level == logrus.InfoLevel
 		}
 	}
 
@@ -735,7 +736,7 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 	}
 }
 
-func TestEndpointSequenceBackendTimeout(t *testing.T) {
+func TestEndpoint_Sequence_BackendTimeout(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -775,25 +776,47 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 		}
 
 		path := entry.Data["request"].(logging.Fields)["path"]
-		if entry.Message == "backend error: anonymous_3_23: deadline exceeded" {
-			ctxDeadlineSeen = true
-			if path != "/" {
-				t.Errorf("expected '/' to fail")
-			}
-		}
 
-		if entry.Message == "" && entry.Data["status"] == 200 {
-			statusOKseen = true
-			if path != "/reflect" {
-				t.Errorf("expected '/reflect' to be ok")
-			}
+		switch path {
+		case "/":
+			isDeadlineErr := entry.Message == "backend error: anonymous_3_23: deadline exceeded"
+			hasStatusZero := entry.Data["status"] == 0
+			ctxDeadlineSeen = isDeadlineErr && hasStatusZero && entry.Level == logrus.ErrorLevel
+		case "/reflect":
+			hasStatusOK := entry.Data["status"] == http.StatusOK
+			statusOKseen = hasStatusOK && entry.Level == logrus.InfoLevel
 		}
 	}
 
 	if !ctxDeadlineSeen || !statusOKseen {
 		t.Errorf("Expected one sucessful and one failed backend request")
 	}
+}
 
+func TestEndpoint_Sequence_NestedDefaultRequest(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(filepath.Join(testdataPath, "19_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(err)
+
+	exp := `{"data":[{"features":1},{"features":2}]}`
+	if !bytes.Equal([]byte(exp), b) {
+		t.Errorf("expected %v, got %v", exp, string(b))
+	}
 }
 
 func TestEndpointCyclicSequence(t *testing.T) {

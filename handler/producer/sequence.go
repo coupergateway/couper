@@ -1,105 +1,31 @@
 package producer
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/telemetry"
 )
 
-type SequenceItem struct {
-	Backend http.RoundTripper
-	Context hcl.Body
-	Name    string // label
-}
-
-// Sequence represents a list of serialized items.
+// Sequence holds a list of items which get executed sequentially.
 type Sequence []Roundtrip
 
-// Sequences holds several list of serialized items.
-type Sequences []Roundtrip
+// Parallel holds a list of items which get executed in parallel.
+type Parallel []Roundtrip
 
-func (seqs Sequences) Produce(req *http.Request, results chan<- *Result) {
-	var rootSpan trace.Span
-	ctx := req.Context()
-	if len(seqs) > 0 {
-		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequences", trace.WithSpanKind(trace.SpanKindProducer))
-	}
-
-	resultsCh := make(chan *Result, seqs.Len())
-
-	for _, s := range seqs {
-		outreq := req.WithContext(ctx)
-		go s.Produce(outreq, resultsCh)
-	}
-
-	for i := 0; i < seqs.Len(); i++ {
-		results <- <-resultsCh
-	}
-
-	if rootSpan != nil {
-		rootSpan.End()
-	}
+func (seqs Parallel) Produce(req *http.Request) chan *Result {
+	return pipe(req, seqs, "parallel")
 }
 
-func (seqs Sequences) Len() int {
+func (seqs Parallel) Len() int {
 	return len(seqs)
 }
 
-func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
-	var rootSpan trace.Span
-
-	ctx := req.Context()
-	l := s.Len()
-	if l > 0 {
-		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequence", trace.WithSpanKind(trace.SpanKindProducer))
-	}
-	defer func() {
-		if rootSpan != nil {
-			rootSpan.End()
-		}
-	}()
-
-	result := make(chan *Result, l)
-
-	var lastResult *Result
-	var lastBeresps []*http.Response
-	var moreEntries bool
-	for _, seq := range s {
-		outCtx := ctx
-
-		outreq := req.WithContext(outCtx)
-
-		seq.Produce(outreq, result)
-
-		select {
-		case <-outreq.Context().Done():
-			return
-		case lastResult, moreEntries = <-result:
-			if !moreEntries {
-				return
-			}
-		}
-
-		if lastResult.Err != nil {
-			if _, ok := lastResult.Err.(*errors.Error); !ok {
-				lastResult.Err = errors.Sequence.With(lastResult.Err)
-			}
-			results <- lastResult
-			return
-		}
-
-		lastBeresps = append(lastBeresps, lastResult.Beresp)
-	}
-
-	if lastResult == nil {
-		results <- &Result{Err: errors.Sequence.With(errors.New().Message("no result"))}
-	}
-
-	results <- lastResult
+func (s Sequence) Produce(req *http.Request) chan *Result {
+	return pipe(req, s, "sequence")
 }
 
 func (s Sequence) Len() int {
@@ -108,4 +34,69 @@ func (s Sequence) Len() int {
 		sum += t.Len()
 	}
 	return sum
+}
+
+// pipe calls the Roundtrip Interface on each given item and distinguishes between parallelism and trace kind.
+// The returned channel will be closed if this chain part has been ended.
+func pipe(req *http.Request, rt []Roundtrip, kind string) chan *Result {
+	var rootSpan trace.Span
+	ctx := req.Context()
+	if len(rt) > 0 {
+		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, kind, trace.WithSpanKind(trace.SpanKindProducer))
+		defer rootSpan.End()
+	}
+
+	result := make(chan *Result, len(rt))
+	var allResults []chan *Result
+
+	for _, srt := range rt {
+		rch := make(chan *Result, srt.Len())
+		allResults = append(allResults, rch)
+
+		switch kind {
+		case "parallel": // execute each sequence branch in parallel
+			go pipeResult(ctx, req, rch, srt)
+		case "sequence": // one by one
+			pipeResult(ctx, req, rch, srt)
+		}
+	}
+
+	// Since the sequence gets resolved in order just the last item matters.
+	for _, rch := range allResults {
+		var last *Result
+		var err error
+
+		for last = range rch {
+			// drain
+			if last.Err != nil {
+				err = last.Err
+				// drain must be continued (pipeResult)
+			}
+		}
+
+		if err != nil {
+			result <- &Result{Err: err}
+		} else if last == nil {
+			result <- &Result{Err: errors.Sequence.Message("no result")}
+		} else {
+			result <- last
+		}
+	}
+
+	close(result)
+	return result
+}
+
+func pipeResult(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip) {
+	outreq := req.WithContext(ctx)
+	defer close(results)
+
+	for r := range rt.Produce(outreq) {
+		select {
+		case <-ctx.Done():
+			results <- &Result{Err: ctx.Err()}
+			return
+		case results <- r:
+		}
+	}
 }
