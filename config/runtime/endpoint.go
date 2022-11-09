@@ -146,10 +146,10 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
 	}
 
-	sequences, requests, proxies := newSequences(allProxies, allRequests, endpointConf.Sequences...)
+	parallel, requests, proxies := resolveDependencies(allProxies, allRequests, endpointConf.Sequences...)
 
 	// TODO: redirect
-	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
+	if endpointConf.Response == nil && len(proxies)+len(requests)+len(parallel) == 0 { // && redirect == nil
 		r := endpointConf.Remain.MissingItemRange()
 		m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -185,15 +185,15 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		ReqBodyLimit:  bodyLimit,
 		BufferOpts:    bufferOpts,
 		Requests:      requests,
-		Parallel:      sequences,
+		Parallel:      parallel,
 		Response:      response,
 		ServerOpts:    serverOptions,
 	}, nil
 }
 
-// newSequences lookups any request related dependency and sort them into a sequence.
+// resolveDependencies lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
-func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
+func resolveDependencies(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
 	items ...*sequence.Item) (producer.Parallel, producer.Requests, producer.Proxies) {
 
 	allDeps := sequence.Dependencies(items)
