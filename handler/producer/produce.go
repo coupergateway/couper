@@ -7,7 +7,7 @@ import (
 var (
 	_ Roundtrip = Proxies{}
 	_ Roundtrip = Requests{}
-	_ Roundtrip = SequenceParallel{}
+	_ Roundtrip = Parallel{}
 	_ Roundtrip = Sequence{}
 )
 

@@ -194,13 +194,13 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 // newSequences lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
 func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
-	items ...*sequence.Item) (producer.SequenceParallel, producer.Requests, producer.Proxies) {
+	items ...*sequence.Item) (producer.Parallel, producer.Requests, producer.Proxies) {
 
 	allDeps := sequence.Dependencies(items)
 
 	var reqs producer.Requests
 	var ps producer.Proxies
-	var seqs producer.SequenceParallel
+	var seqs producer.Parallel
 
 	// read from prepared config sequences
 	for _, seq := range items {
@@ -243,7 +243,7 @@ func newSequence(seq *sequence.Item,
 
 	var previous []string
 	if len(deps) > 1 { // more deps per item can be parallelized
-		var seqs producer.SequenceParallel
+		var seqs producer.Parallel
 		for _, d := range deps {
 			seqs = append(seqs, newSequence(d, proxies, requests))
 			previous = append(previous, d.Name)

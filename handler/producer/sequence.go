@@ -13,14 +13,14 @@ import (
 // Sequence represents a list of serialized items.
 type Sequence []Roundtrip
 
-// SequenceParallel holds a list of items which get executed in parallel.
-type SequenceParallel []Roundtrip
+// Parallel holds a list of items which get executed in parallel.
+type Parallel []Roundtrip
 
-func (seqs SequenceParallel) Produce(req *http.Request) chan *Result {
+func (seqs Parallel) Produce(req *http.Request) chan *Result {
 	return pipe(req, seqs, "parallel")
 }
 
-func (seqs SequenceParallel) Len() int {
+func (seqs Parallel) Len() int {
 	return len(seqs)
 }
 
