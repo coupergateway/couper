@@ -10,7 +10,7 @@ import (
 	"github.com/avenga/couper/telemetry"
 )
 
-// Sequence represents a list of serialized items.
+// Sequence holds a list of items which get executed sequentially.
 type Sequence []Roundtrip
 
 // Parallel holds a list of items which get executed in parallel.
