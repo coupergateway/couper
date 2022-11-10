@@ -1,12 +1,12 @@
 # OAuth2 AC (Beta)
 
-The `beta_oauth2` block lets you configure the [`oauth2_authorization_url()` function](../functions) and an access
+The `beta_oauth2` block lets you configure the [`oauth2_authorization_url()` function](/configuration/functions) and an access
 control for an OAuth2 **Authorization Code Grant Flow** redirect endpoint.
-Like all [access control](../access-control) types, the `beta_oauth2` block is defined in the [`definitions` block](definitions) and can be referenced in all configuration blocks by its required _label_.
+Like all [access control](/configuration/access-control) types, the `beta_oauth2` block is defined in the [`definitions` block](/configuration/block/definitions) and can be referenced in all configuration blocks by its required _label_.
 
 | Block name    | Context                                 | Label            | Nested block(s)                                                                                                  |
 |:--------------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
-| `beta_oauth2` | [Definitions Block](definitions)        | &#9888; required | [Backend Block](backend), [Error Handler Block](error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
+| `beta_oauth2` | [Definitions Block](/configuration/block/definitions)        | &#9888; required | [Backend Block](/configuration/block/backend), [Error Handler Block](/configuration/block/error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
 
 ::attributes
 ---
@@ -90,4 +90,4 @@ values: [
 
 If the authorization server supports the `code_challenge_method` `S256` (a.k.a. PKCE, see RFC 7636), we recommend `verifier_method = "ccm_s256"`.
 
-The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](../modifiers#request-header) in a [backend block](backend).
+The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](/configuration/modifiers#request-header) in a [backend block](/configuration/block/backend).

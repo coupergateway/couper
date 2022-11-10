@@ -1,0 +1,68 @@
+---
+title: 'Client Certificate'
+description: 'The `client_certificate` block is part of its parent `tls` block. Enables mTLS configuration.'
+draft: false
+---
+
+# Client Certificate
+
+| Block name   | Context                                              | Label    |
+|:-------------|:-----------------------------------------------------|:---------|
+| `client_certificate` | [tls Block](/configuration/block/server_tls) | optional |
+
+Define an optional `client_certificate` block with its optional _label_ to enable **mTLS**.
+
+> **mTLS:** stands for mutual TLS and will extend the normal handshake process with an additional request (client must present the certificate) and verification for the configured client certificate (CA).
+
+Configure a `ca_certificate` is the standard way to verify a client certificate but you can also provide the `leaf_certificate`
+which effectively is the client certificate. The server will verify the given client certificate byte by byte with the leaf one.
+A use-case would be that the CA has signed multiple client certificates and you want to limit the access to specific ones.
+
+## Example
+
+```hcl
+client_certificate "IOT" {
+  ca_certificate = "base64_der" # PEM or DER encoded
+  # OR
+  ca_certificate_file = "couperIntermediate.crt" # PEM
+
+  # OR(AND!)
+  # trusted client leaf cert
+
+  leaf_certificate = "base64_der"
+  # OR
+  leaf_certificate_file = "couperClient.crt" # PEM
+}
+```
+
+::attributes
+---
+values: [
+  {
+    "default": "",
+    "description": "Public part of the certificate authority in DER or PEM format.",
+    "name": "ca_certificate",
+    "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Public part of the certificate authority file in DER or PEM format.",
+    "name": "ca_certificate_file",
+    "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Public part of the client certificate in DER or PEM format.",
+    "name": "leaf_certificate",
+    "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Public part of the client certificate file in DER or PEM format.",
+    "name": "leaf_certificate_file",
+    "type": "string"
+  }
+]
+
+---
+::

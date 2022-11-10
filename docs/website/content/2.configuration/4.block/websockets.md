@@ -4,7 +4,7 @@ The `websockets` block activates support for WebSocket connections in Couper.
 
 | Block name   | Context                     | Label    | Nested block(s) |
 |:-------------|:----------------------------|:---------|:----------------|
-| `websockets` | [`proxy`](proxy)            | –        | –               |
+| `websockets` | [`proxy`](/configuration/block/proxy)            | –        | –               |
 
 ::attributes
 ---

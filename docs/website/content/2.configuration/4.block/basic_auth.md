@@ -2,11 +2,11 @@
 
 | Block name   | Context                                 | Label    | Nested block(s)                                |
 |:-------------|:----------------------------------------|:---------|:-----------------------------------------------|
-| `basic_auth` | [Definitions Block](definitions) | required | [Error Handler Block(s)](error_handler) |
+| `basic_auth` | [Definitions Block](/configuration/block/definitions) | required | [Error Handler Block(s)](/configuration/block/error_handler) |
 
 The  `basic_auth` block lets you configure basic auth for your gateway. Like all
-[access control](../access-control) types, the `basic_auth` block is defined in the
-[`definitions` block](definitions) and can be referenced in all configuration
+[access control](/configuration/access-control) types, the `basic_auth` block is defined in the
+[`definitions` block](/configuration/block/definitions) and can be referenced in all configuration
 blocks by its required _label_.
 
 If both `user`/`password` and `htpasswd_file` are configured, the incoming

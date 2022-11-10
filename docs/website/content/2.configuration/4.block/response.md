@@ -4,7 +4,7 @@ The `response` block creates and sends a client response.
 
 | Block name | Context                           | Label    | Nested block(s) |
 |:-----------|:----------------------------------|:---------|:----------------|
-| `response` | [Endpoint Block](endpoint) | no label | -               |
+| `response` | [Endpoint Block](/configuration/block/endpoint) | no label | -               |
 
 The response body can be omitted or must be one of `body` or `json_body`.
 

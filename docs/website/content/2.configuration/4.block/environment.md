@@ -1,19 +1,19 @@
 # Environment
 
 The `environment` block lets you refine the Couper configuration based on the set
-[environment](../command-line#global-options).
+[environment](/configuration/command-line#global-options).
 
 | Block name    | Context  | Label                                            | Nested block(s)                     |
 | :------------ | :------- | :----------------------------------------------- | :---------------------------------- |
 | `environment` | Overall. | &#9888; required, multiple labels are supported. | All configuration blocks of Couper. |
 
 The `environment` block works like a preprocessor. If the label of an `environment`
-block does not match the set [`COUPER_ENVIRONMENT`](../command-line#global-options) value, the preprocessor
+block does not match the set [`COUPER_ENVIRONMENT`](/configuration/command-line#global-options) value, the preprocessor
 removes this block and its content. Otherwise, the content of the block is added
 to the configuration.
 
 Starting Couper with a configuration containing `environment` blocks will fail, if `COUPER_ENVIRONMENT`
-is missing or empty. A default value can be set using the [`settings` block](settings).
+is missing or empty. A default value can be set using the [`settings` block](/configuration/block/settings).
 
 ## Example
 

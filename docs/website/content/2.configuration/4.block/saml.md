@@ -1,14 +1,14 @@
 # SAML
 
-The `saml` block lets you configure the [`saml_sso_url()` function](../functions) and an access
+The `saml` block lets you configure the [`saml_sso_url()` function](/configuration/functions) and an access
 control for a SAML Assertion Consumer Service (ACS) endpoint.
-Like all [access control](../access-control) types, the `saml` block is defined in
-the [`definitions` block](definitions) and can be referenced in all configuration blocks by its
+Like all [access control](/configuration/access-control) types, the `saml` block is defined in
+the [`definitions` block](/configuration/block/definitions) and can be referenced in all configuration blocks by its
 required _label_.
 
 | Block name | Context                                 | Label            | Nested block(s)                             |
 |:-----------|:----------------------------------------|:-----------------|:--------------------------------------------|
-| `saml`     | [Definitions Block](definitions) | &#9888; required | [Error Handler Block](error_handler) |
+| `saml`     | [Definitions Block](/configuration/block/definitions) | &#9888; required | [Error Handler Block](/configuration/block/error_handler) |
 
 ## Example
 

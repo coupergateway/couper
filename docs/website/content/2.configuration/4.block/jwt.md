@@ -1,15 +1,15 @@
 # JWT
 
 The `jwt` block lets you configure JSON Web Token access control for your gateway.
-Like all [access control](../access-control) types, the `jwt` block is defined in
-the [`definitions` Block](definitions) and can be referenced in all configuration blocks by its
+Like all [access control](/configuration/access-control) types, the `jwt` block is defined in
+the [`definitions` Block](/configuration/block/definitions) and can be referenced in all configuration blocks by its
 required _label_.
 
 Since responses from endpoints protected by JWT access controls are not publicly cacheable, a `Cache-Control: private` header field is added to the response, unless this feature is disabled with `disable_private_caching = true`.
 
 | Block name | Context                                 | Label            | Nested block(s)                                                                  |
 |:-----------|:----------------------------------------|:-----------------|:---------------------------------------------------------------------------------|
-| `jwt`      | [Definitions Block](definitions) | &#9888; required | [JWKS `backend`](backend), [Error Handler Block(s)](error_handler) |
+| `jwt`      | [Definitions Block](/configuration/block/definitions) | &#9888; required | [JWKS `backend`](/configuration/block/backend), [Error Handler Block(s)](/configuration/block/error_handler) |
 
 ::attributes
 ---
@@ -156,7 +156,7 @@ A JWT access control configured by this block can extract permissions from
 - the value of the claim specified by `beta_permissions_claim` and
 - the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
 
-The `jwt` block may also be referenced by the [`jwt_sign()` function](../functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
+The `jwt` block may also be referenced by the [`jwt_sign()` function](/configuration/functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
 > **Note:** A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
 

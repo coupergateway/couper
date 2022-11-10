@@ -7,12 +7,12 @@ as JSON error with an error body payload. This can be customized via `error_file
 
 | Block name | Context                       | Label    | Nested block(s)                                                                                                 |
 |:-----------|:------------------------------|:---------|:----------------------------------------------------------------------------------------------------------------|
-| `api`      | [Server Block](server) | Optional | [Endpoint Block(s)](endpoint), [CORS Block](cors), [Error Handler Block(s)](error_handler) |
+| `api`      | [Server Block](/configuration/block/server) | Optional | [Endpoint Block(s)](/configuration/block/endpoint), [CORS Block](/configuration/block/cors), [Error Handler Block(s)](/configuration/block/error_handler) |
 
 
 ### Attribute `allowed_methods`
 
-The default value `*` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](cors) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.
+The default value `*` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](/configuration/block/cors) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.
 
 **Example:** `allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]`
 

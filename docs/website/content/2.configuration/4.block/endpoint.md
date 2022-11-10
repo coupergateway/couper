@@ -6,7 +6,7 @@ produce an explicit or implicit client response.
 
 | Block name | Context                                                | Label                                                                  | Nested block(s)                                                                                                                                        |
 |:-----------|:-------------------------------------------------------|:-----------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `endpoint` | [Server Block](server), [API Block](api) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](proxy),  [Request Block(s)](request), [Response Block](response), [Error Handler Block(s)](error_handler) |
+| `endpoint` | [Server Block](/configuration/block/server), [API Block](/configuration/block/api) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](/configuration/block/proxy),  [Request Block(s)](/configuration/block/request), [Response Block](/configuration/block/response), [Error Handler Block(s)](/configuration/block/error_handler) |
 
 ## Endpoint Sequence
 
@@ -15,7 +15,7 @@ at load-time they will be executed sequentially. Unexpected responses can be cau
 
 ### Attribute `allowed_methods`
 
-The default value `"*"` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](cors) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.
+The default value `"*"` can be combined with additional methods. Methods are matched case-insensitively. `Access-Control-Allow-Methods` is only sent in response to a [CORS](/configuration/block/cors) preflight request, if the method requested by `Access-Control-Request-Method` is an allowed method.
 
 **Example:**
 
