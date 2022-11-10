@@ -32,7 +32,7 @@ jobs:
       uses: actions/setup-go@v2
 
     - name: WriteGoList
-      run: go list -json -m all > go.list
+      run: go list -json -mod=readonly -m all > go.list
 
     - name: Nancy
       uses: sonatype-nexus-community/nancy-github-action@main
