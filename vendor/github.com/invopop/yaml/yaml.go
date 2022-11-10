@@ -11,6 +11,7 @@ package yaml // import "github.com/invopop/yaml"
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -113,7 +114,11 @@ func yamlToJSON(dec *yaml.Decoder, jsonTarget *reflect.Value) ([]byte, error) {
 	// Convert the YAML to an object.
 	var yamlObj interface{}
 	if err := dec.Decode(&yamlObj); err != nil {
-		return nil, err
+		// Functionality changed in v3 which means we need to ignore EOF error.
+		// See https://github.com/go-yaml/yaml/issues/639
+		if !errors.Is(err, io.EOF) {
+			return nil, err
+		}
 	}
 
 	// YAML objects are not completely compatible with JSON objects (e.g. you

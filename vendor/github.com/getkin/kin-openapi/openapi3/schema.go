@@ -113,7 +113,7 @@ func (s SchemaRefs) JSONLookup(token string) (interface{}, error) {
 // Schema is specified by OpenAPI/Swagger 3.0 standard.
 // See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#schemaObject
 type Schema struct {
-	ExtensionProps
+	ExtensionProps `json:"-" yaml:"-"`
 
 	OneOf        SchemaRefs    `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
 	AnyOf        SchemaRefs    `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
@@ -926,7 +926,7 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 
 		var (
 			ok               = 0
-			validationErrors = []error{}
+			validationErrors = multiErrorForOneOf{}
 			matchedOneOfIdx  = 0
 			tempValue        = value
 		)
@@ -955,14 +955,7 @@ func (schema *Schema) visitSetOperations(settings *schemaValidationSettings, val
 
 		if ok != 1 {
 			if len(validationErrors) > 1 {
-				errorMessage := ""
-				for _, err := range validationErrors {
-					if errorMessage != "" {
-						errorMessage += " Or "
-					}
-					errorMessage += err.Error()
-				}
-				return errors.New("doesn't match schema due to: " + errorMessage)
+				return fmt.Errorf("doesn't match schema due to: %w", validationErrors)
 			}
 			if settings.failfast {
 				return errSchema

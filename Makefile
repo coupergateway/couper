@@ -4,6 +4,11 @@
 build:
 	go build -race -v -o couper main.go
 
+.PHONY: update-modules
+update-modules:
+	go get -u
+	go mod tidy
+
 docker-telemetry:
 	docker compose -f telemetry/docker-compose.yaml pull
 	docker compose -f telemetry/docker-compose.yaml up --build

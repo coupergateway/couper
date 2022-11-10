@@ -51,6 +51,15 @@ type SAMLServiceProvider struct {
 	SignAuthnRequestsAlgorithm     string
 	SignAuthnRequestsCanonicalizer dsig.Canonicalizer
 
+	// ForceAuthn attribute in authentication request forces the identity provider to
+	// re-authenticate the presenter directly rather than rely on a previous security context.
+	// NOTE: If both ForceAuthn and IsPassive are "true", the identity provider MUST NOT freshly
+	// authenticate the presenter unless the constraints of IsPassive can be met.
+	ForceAuthn bool
+	// IsPassive attribute in authentication request requires that the identity provider and the
+	// user agent itself MUST NOT visibly take control of the user interface from the requester
+	// and interact with the presenter in a noticeable fashion.
+	IsPassive bool
 	// RequestedAuthnContext allows service providers to require that the identity
 	// provider use specific authentication mechanisms. Leaving this unset will
 	// permit the identity provider to choose the auth method. To maximize compatibility
@@ -119,6 +128,8 @@ func (sp *SAMLServiceProvider) Metadata() (*types.EntityDescriptor, error) {
 			},
 			EncryptionMethods: []types.EncryptionMethod{
 				{Algorithm: types.MethodAES128GCM},
+				{Algorithm: types.MethodAES192GCM},
+				{Algorithm: types.MethodAES256GCM},
 				{Algorithm: types.MethodAES128CBC},
 				{Algorithm: types.MethodAES256CBC},
 			},
@@ -185,6 +196,8 @@ func (sp *SAMLServiceProvider) MetadataWithSLO(validityHours int64) (*types.Enti
 					},
 					EncryptionMethods: []types.EncryptionMethod{
 						{Algorithm: types.MethodAES128GCM, DigestMethod: nil},
+						{Algorithm: types.MethodAES192GCM, DigestMethod: nil},
+						{Algorithm: types.MethodAES256GCM, DigestMethod: nil},
 						{Algorithm: types.MethodAES128CBC, DigestMethod: nil},
 						{Algorithm: types.MethodAES256CBC, DigestMethod: nil},
 					},
