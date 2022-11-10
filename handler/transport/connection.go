@@ -66,6 +66,7 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 	entry.WithFields(o.logFields(eventOpen)).Debug()
 
 	meter := provider.Meter("couper/connection")
+	
 	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
 	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.BackendConnections, metric.WithDescription(string(unit.Dimensionless)))
 	meter.RecordBatch(ctx, o.labels,

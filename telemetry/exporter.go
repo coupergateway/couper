@@ -7,23 +7,19 @@ import (
 	"sync"
 	"time"
 
-	prompkg "github.com/prometheus/client_golang/prometheus"
+	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/prometheus"
+	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/propagation"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"google.golang.org/grpc"
 
 	"github.com/avenga/couper/cache"
@@ -42,7 +38,7 @@ const (
 const otlpExporterEnvKey = "OTEL_EXPORTER_OTLP_ENDPOINT"
 
 // InitExporter initialises configured metrics and/or trace exporter.
-func InitExporter(ctx context.Context, opts *Options, memStore *cache.MemoryStore, logEntry *logrus.Entry) {
+func InitExporter(ctx context.Context, opts *Options, memStore *cache.MemoryStore, logEntry *logrus.Entry) error {
 	log := logEntry.WithField("type", "couper_telemetry")
 	otel.SetErrorHandler(ErrorHandleFunc(func(e error) { // configure otel to use our logger for error handling
 		if e != nil {
@@ -55,7 +51,9 @@ func InitExporter(ctx context.Context, opts *Options, memStore *cache.MemoryStor
 		wg.Add(1)
 		otel.Handle(initMetricExporter(ctx, opts, log, wg))
 
-		newBackendsObserver(memStore)
+		if err := newBackendsObserver(memStore); err != nil {
+			return err
+		}
 	}
 
 	if opts.Traces {
@@ -64,6 +62,8 @@ func InitExporter(ctx context.Context, opts *Options, memStore *cache.MemoryStor
 	}
 
 	wg.Wait()
+
+	return nil
 }
 
 func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry, wg *sync.WaitGroup) error {
@@ -129,7 +129,13 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 		if err != nil {
 			return err
 		}
-		provider.SetMeterProvider(promExporter.MeterProvider())
+
+		meterProvider := metric.NewMeterProvider(
+			metric.WithResource(newResource(opts.ServiceName)),
+			metric.WithReader(promExporter),
+		)
+		provider.SetMeterProvider(meterProvider)
+
 		go func() {
 			metrics := NewMetricsServer(log, promExporter, opts.MetricsPort)
 			go metrics.ListenAndServe()
@@ -160,29 +166,28 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 		collectPeriod = time.Second * 2
 	}
 
-	metricClient := otlpmetricgrpc.NewClient(clientOps...)
-	metricExp, err := otlpmetric.New(ctx, metricClient)
+	metricExporter, err := otlpmetricgrpc.New(ctx, clientOps...)
 	if err != nil {
 		return err
 	}
 
-	pusher := controller.New(
-		processor.NewFactory(
-			selector.NewWithInexpensiveDistribution(),
-			metricExp,
-		),
-		controller.WithExporter(metricExp),
-		controller.WithCollectPeriod(collectPeriod),
+	periodicReader := metric.NewPeriodicReader(
+		metricExporter,
+		metric.WithInterval(collectPeriod),
 	)
-	if err = pusher.Start(ctx); err != nil {
-		return err
-	}
 
-	provider.SetMeterProvider(pusher)
+	res := newResource(opts.ServiceName)
 
-	go pushOnShutdown(ctx, pusher.Stop)
+	meterProvider :=
+		metric.NewMeterProvider(
+			metric.WithResource(res),
+			metric.WithReader(periodicReader),
+		)
+	provider.SetMeterProvider(meterProvider)
 
-	log.Info("couper is pushing metrics")
+	go pushOnShutdown(ctx, periodicReader.Shutdown)
+
+	log.Info("couper is pushing metrics", endpoint)
 
 	return nil
 }
@@ -195,32 +200,26 @@ func pushOnShutdown(ctx context.Context, shutdownFdn func(ctx context.Context) e
 	otel.Handle(shutdownFdn(shtctx))
 }
 
-func newPromExporter(opts *Options) (*prometheus.Exporter, error) {
-	config := prometheus.Config{
-		Registry: prompkg.NewRegistry(),
-	}
+func newPromExporter(opts *Options) (*otelprom.Exporter, error) {
+	registry := prom.NewRegistry()
 
-	config.Registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewGoCollector()))
-	config.Registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewProcessCollector(
+	registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewGoCollector()))
+	registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewProcessCollector(
 		collectors.ProcessCollectorOpts{
 			Namespace: "couper", // name prefix
 		},
 	)))
 
-	ctlr := controller.New(
-		processor.NewFactory(
-			selector.NewWithHistogramDistribution(),
-			aggregation.CumulativeTemporalitySelector(),
-			processor.WithMemory(true),
-		),
-		controller.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(opts.ServiceName),
-			semconv.ServiceVersionKey.String(utils.VersionName),
-		)),
-	)
-	promExporter, err := prometheus.New(config, ctlr)
+	promExporter, err := otelprom.New(otelprom.WithRegisterer(registry))
 	return promExporter, err
+}
+
+func newResource(serviceName string) *resource.Resource {
+	return resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String(serviceName),
+		semconv.ServiceVersionKey.String(utils.VersionName),
+	)
 }
 
 func parseExporter(e string) uint8 {

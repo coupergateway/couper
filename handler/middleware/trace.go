@@ -6,9 +6,9 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config/request"
@@ -63,11 +63,12 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	meter := provider.Meter("couper/server")
-	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientRequest, metric.WithDescription(string(unit.Dimensionless)))
-	duration := metric.Must(meter).
-		NewFloat64Histogram(instrumentation.ClientRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
-	meter.RecordBatch(req.Context(), metricsAttrs,
-		counter.Measurement(1),
-		duration.Measurement(end.Seconds()),
-	)
+
+	counter, _ := meter.AsyncInt64().
+		Counter(instrumentation.ClientRequest, instrument.WithDescription(string(unit.Dimensionless)))
+	duration, _ := meter.SyncFloat64().
+		Histogram(instrumentation.ClientRequestDuration, instrument.WithDescription(string(unit.Dimensionless)))
+
+	counter.Observe(req.Context(), 1)
+	duration.Record(req.Context(), end.Seconds())
 }

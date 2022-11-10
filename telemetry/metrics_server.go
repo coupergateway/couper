@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/exporters/prometheus"
+	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 
 	"github.com/avenga/couper/telemetry/handler"
 )
@@ -15,10 +15,10 @@ type MetricsServer struct {
 	server *http.Server
 }
 
-func NewMetricsServer(log *logrus.Entry, exporter *prometheus.Exporter, port int) *MetricsServer {
+func NewMetricsServer(log *logrus.Entry, exporter *otelprom.Exporter, port int) *MetricsServer {
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(port),
-		Handler: handler.NewWrappedHandler(log, exporter),
+		Handler: handler.NewWrappedHandler(log, nil), // TODO: how to promhttp export
 	}
 
 	return &MetricsServer{
