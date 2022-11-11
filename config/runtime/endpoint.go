@@ -254,14 +254,17 @@ func newRoundtrip(seq *sequence.Item,
 		previous = append(previous, deps[0].Name)
 	}
 
-	item := newSequenceItem(seq.Name, strings.Join(previous, ","), proxies, requests)
+	leaf := newLeafRoundtrip(seq.Name, strings.Join(previous, ","), proxies, requests)
 	if rt != nil {
-		return producer.Sequence{rt, item}
+		return producer.Sequence{rt, leaf}
 	}
-	return item
+	return leaf
 }
 
-func newSequenceItem(name, previous string,
+// newLeafRoundtrip creates a "leaf" Roundtrip, i.e. one of
+// producer.Proxies or producer.Requests,
+// no producer.Parallel or producer.Sequence
+func newLeafRoundtrip(name, previous string,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 	if p, ok := proxies[name]; ok {
