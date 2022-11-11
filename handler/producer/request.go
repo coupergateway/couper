@@ -57,6 +57,7 @@ func (r Requests) Produce(req *http.Request) chan *Result {
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync() // also synced for requests due to sequence case
 
 	for _, or := range r {
+		currentName = or.Name
 		// span end by result reader
 		outCtx, span := telemetry.NewSpanFromContext(withRoundTripName(ctx, or.Name), or.Name, trace.WithSpanKind(trace.SpanKindClient))
 		if or.PreviousSequence != "" {
