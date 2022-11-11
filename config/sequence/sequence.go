@@ -32,7 +32,7 @@ func (s *Item) Add(ref *Item) *Item {
 
 	ref.parent = s
 
-	if s.backend && s.hasAncestor(ref.Name) || !s.backend && s.hasSeen(ref.Name) { // collect names to populate error message
+	if s.hasAncestor(ref.Name) { // collect names to populate error message
 		refs := []string{ref.Name}
 		p := s.parent
 		for p != s {
