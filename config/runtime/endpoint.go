@@ -268,22 +268,12 @@ func newLeafRoundtrip(name, previous string,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 	if p, ok := proxies[name]; ok {
-		return producer.Proxies{
-			&producer.Proxy{
-				Content:          p.Content,
-				Name:             p.Name,
-				RoundTrip:        p.RoundTrip,
-				PreviousSequence: previous,
-			}}
+		p.PreviousSequence = previous
+		return producer.Proxies{p}
 	}
 	if r, ok := requests[name]; ok {
-		return producer.Requests{
-			&producer.Request{
-				Backend:          r.Backend,
-				Context:          r.Context,
-				Name:             r.Name,
-				PreviousSequence: previous,
-			}}
+		r.PreviousSequence = previous
+		return producer.Requests{r}
 	}
 	return nil
 }
