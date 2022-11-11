@@ -243,12 +243,12 @@ func newRoundtrip(seq *sequence.Item,
 
 	var previous []string
 	if len(deps) > 1 { // more deps per item can be parallelized
-		var seqs producer.Parallel
+		var pl producer.Parallel
 		for _, d := range deps {
-			seqs = append(seqs, newRoundtrip(d, proxies, requests))
+			pl = append(pl, newRoundtrip(d, proxies, requests))
 			previous = append(previous, d.Name)
 		}
-		rt = seqs
+		rt = pl
 	} else if len(deps) == 1 {
 		rt = newRoundtrip(deps[0], proxies, requests)
 		previous = append(previous, deps[0].Name)
