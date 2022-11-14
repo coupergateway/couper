@@ -530,10 +530,21 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 	}
 
 	var blocks []*hclsyntax.Block
+	var sortedDefinitions []string
+	for name := range definitionsBlock {
+		sortedDefinitions = append(sortedDefinitions, name)
+	}
+	sort.Strings(sortedDefinitions)
 
-	for _, labels := range definitionsBlock {
-		for _, block := range labels {
-			blocks = append(blocks, block)
+	for _, name := range sortedDefinitions {
+		var sortedLabels []string
+		for label := range definitionsBlock[name] {
+			sortedLabels = append(sortedLabels, label)
+		}
+
+		sort.Strings(sortedLabels)
+		for _, label := range sortedLabels {
+			blocks = append(blocks, definitionsBlock[name][label])
 		}
 	}
 
