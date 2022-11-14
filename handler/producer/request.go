@@ -146,6 +146,14 @@ func (r Requests) Len() int {
 	return len(r)
 }
 
+func (r Requests) Names() []string {
+	var names []string
+	for _, i := range r {
+		names = append(names, i.Name)
+	}
+	return names
+}
+
 func withRoundTripName(ctx context.Context, name string) context.Context {
 	n := name
 	if n == "" {

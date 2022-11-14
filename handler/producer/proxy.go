@@ -93,3 +93,11 @@ func (pr Proxies) Produce(clientReq *http.Request) chan *Result {
 func (pr Proxies) Len() int {
 	return len(pr)
 }
+
+func (pr Proxies) Names() []string {
+	var names []string
+	for _, i := range pr {
+		names = append(names, i.Name)
+	}
+	return names
+}

@@ -406,6 +406,10 @@ func (m *mockProducerResult) Len() int {
 	return 1
 }
 
+func (m *mockProducerResult) Names() []string {
+	return []string{"default"}
+}
+
 func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	log, hook := test.NewLogger()
 

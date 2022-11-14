@@ -201,10 +201,11 @@ func resolveDependencies(proxies map[string]*producer.Proxy, requests map[string
 	var reqs producer.Requests
 	var ps producer.Proxies
 	var seqs producer.Parallel
+	roundtrips := map[string]producer.Roundtrip{}
 
 	// read from prepared config sequences
 	for _, seq := range items {
-		seqs = append(seqs, newRoundtrip(seq, proxies, requests))
+		seqs = append(seqs, newRoundtrip(seq, roundtrips, proxies, requests))
 	}
 
 proxyLeftovers:
@@ -235,6 +236,7 @@ reqLeftovers:
 }
 
 func newRoundtrip(seq *sequence.Item,
+	roundtrips map[string]producer.Roundtrip,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 
@@ -243,20 +245,41 @@ func newRoundtrip(seq *sequence.Item,
 
 	var previous []string
 	if len(deps) > 1 { // more deps per item can be parallelized
-		var pl producer.Parallel
+		var names []string
 		for _, d := range deps {
-			pl = append(pl, newRoundtrip(d, proxies, requests))
+			names = append(names, d.Name)
+		}
+		k := fmt.Sprintf("%v", names)
+		for _, d := range deps {
 			previous = append(previous, d.Name)
 		}
-		rt = pl
+		if np, ok := roundtrips[k]; ok {
+			rt = np
+		} else {
+			var pl producer.Parallel
+			for _, d := range deps {
+				pl = append(pl, newRoundtrip(d, roundtrips, proxies, requests))
+			}
+			rt = &pl
+			roundtrips[k] = &pl
+		}
 	} else if len(deps) == 1 {
-		rt = newRoundtrip(deps[0], proxies, requests)
+		rt = newRoundtrip(deps[0], roundtrips, proxies, requests)
 		previous = append(previous, deps[0].Name)
 	}
 
-	leaf := newLeafRoundtrip(seq.Name, strings.Join(previous, ","), proxies, requests)
+	leaf := newLeafRoundtrip(seq.Name, strings.Join(previous, ","), roundtrips, proxies, requests)
 	if rt != nil {
-		return producer.Sequence{rt, leaf}
+		var names []string
+		names = append(names, rt.Names()...)
+		names = append(names, leaf.Names()...)
+		k := fmt.Sprintf("%v", names)
+		if ns, ok := roundtrips[k]; ok {
+			return ns
+		}
+		s := &producer.Sequence{rt, leaf}
+		roundtrips[k] = s
+		return s
 	}
 	return leaf
 }
@@ -265,15 +288,23 @@ func newRoundtrip(seq *sequence.Item,
 // producer.Proxies or producer.Requests,
 // no producer.Parallel or producer.Sequence
 func newLeafRoundtrip(name, previous string,
+	roundtrips map[string]producer.Roundtrip,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
+	if rt, ok := roundtrips[name]; ok {
+		return rt
+	}
 	if p, ok := proxies[name]; ok {
 		p.PreviousSequence = previous
-		return producer.Proxies{p}
+		ps := &producer.Proxies{p}
+		roundtrips[name] = ps
+		return ps
 	}
 	if r, ok := requests[name]; ok {
 		r.PreviousSequence = previous
-		return producer.Requests{r}
+		rs := &producer.Requests{r}
+		roundtrips[name] = rs
+		return rs
 	}
 	return nil
 }

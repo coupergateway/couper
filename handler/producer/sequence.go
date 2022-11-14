@@ -24,6 +24,14 @@ func (p Parallel) Len() int {
 	return len(p)
 }
 
+func (p Parallel) Names() []string {
+	var names []string
+	for _, i := range p {
+		names = append(names, i.Names()...)
+	}
+	return names
+}
+
 func (s Sequence) Produce(req *http.Request) chan *Result {
 	return pipe(req, s, "sequence")
 }
@@ -34,6 +42,14 @@ func (s Sequence) Len() int {
 		sum += t.Len()
 	}
 	return sum
+}
+
+func (s Sequence) Names() []string {
+	var names []string
+	for _, i := range s {
+		names = append(names, i.Names()...)
+	}
+	return names
 }
 
 // pipe calls the Roundtrip Interface on each given item and distinguishes between parallelism and trace kind.
