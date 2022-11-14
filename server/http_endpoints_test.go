@@ -823,6 +823,7 @@ func TestEndpointCyclicSequence(t *testing.T) {
 	for _, testcase := range []struct{ file, exp string }{
 		{file: "15_couper.hcl", exp: "circular sequence reference: a,b,a"},
 		{file: "16_couper.hcl", exp: "circular sequence reference: a,aa,aaa,a"},
+		{file: "20_couper.hcl", exp: ""},
 	} {
 		t.Run(testcase.file, func(st *testing.T) {
 			// since we will switch the working dir, reset afterwards
@@ -832,12 +833,15 @@ func TestEndpointCyclicSequence(t *testing.T) {
 			_, err := configload.LoadFile(path, "")
 
 			diags, ok := err.(*hcl.Diagnostic)
-			if !ok {
-				st.Errorf("Expected an cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
+			if !ok && testcase.exp != "" {
+				st.Errorf("Expected a cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
+				st.Fatal(err, path)
+			} else if ok && testcase.exp == "" {
+				st.Errorf("Expected no cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
 				st.Fatal(err, path)
 			}
 
-			if diags.Detail != testcase.exp {
+			if testcase.exp != "" && diags.Detail != testcase.exp {
 				st.Errorf("\nWant:\t%s\nGot:\t%s", testcase.exp, diags.Detail)
 			}
 		})

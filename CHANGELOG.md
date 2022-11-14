@@ -6,7 +6,8 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * CVE-2021-3538 related to our `request_id_format` option if switched to `uuid4`: replaced the underlying package to `github.com/google/uuid` ([#611](https://github.com/avenga/couper/pull/611))
-  * Possible panic for nested endpoint sequences ([#618](https://github.com/avenga/couper/pull/618))
+  * Possible panic for nested [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#618](https://github.com/avenga/couper/pull/618))
+  * Cycle check for [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#623](https://github.com/avenga/couper/pull/623))
 
 ---
 
