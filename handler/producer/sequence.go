@@ -16,12 +16,12 @@ type Sequence []Roundtrip
 // Parallel holds a list of items which get executed in parallel.
 type Parallel []Roundtrip
 
-func (seqs Parallel) Produce(req *http.Request) chan *Result {
-	return pipe(req, seqs, "parallel")
+func (p Parallel) Produce(req *http.Request) chan *Result {
+	return pipe(req, p, "parallel")
 }
 
-func (seqs Parallel) Len() int {
-	return len(seqs)
+func (p Parallel) Len() int {
+	return len(p)
 }
 
 func (s Sequence) Produce(req *http.Request) chan *Result {
