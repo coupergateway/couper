@@ -12,6 +12,8 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,10 +35,15 @@ type PEM struct {
 	PrivateKey  []byte
 }
 
+var caCount uint32 = 1
+
 // NewCertificate creates a certificate with given hosts and duration.
 // If no hosts are provided all localhost variants will be used.
 func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*SelfSignedCertificate, error) {
-	rootCA, rootPEM, err := newCertificateAuthority("rootCA", "", nil, nil)
+	parentName := "rootCA_" + strconv.Itoa(int(atomic.LoadUint32(&caCount)))
+	defer atomic.AddUint32(&caCount, 1)
+
+	rootCA, rootPEM, err := newCertificateAuthority(parentName, "", nil, nil)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
@@ -75,7 +82,8 @@ func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time
 	srvCrt, srvKeyBytes, srvPEM, err := newCertificateFromDER(srvDER, privateKey)
 
 	// intermediate
-	interCA, interPEM, err := newCertificateAuthority("intermediateCA", "rootCA", rootCA.Leaf.PublicKey, rootCA.PrivateKey)
+	intermediateName := "intermediateCA_" + strconv.Itoa(int(atomic.LoadUint32(&caCount)))
+	interCA, interPEM, err := newCertificateAuthority(intermediateName, parentName, rootCA.Leaf.PublicKey, rootCA.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
