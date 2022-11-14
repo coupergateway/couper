@@ -255,7 +255,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, fmt.Errorf("endpoint path pattern required")
 			}
 
-			epOpts, err := newEndpointOptions(confCtx, endpointConf, parentAPI, serverOptions,
+			epOpts, err := NewEndpointOptions(confCtx, endpointConf, parentAPI, serverOptions,
 				log, conf, memStore)
 			if err != nil {
 				return nil, err
