@@ -16,6 +16,7 @@ Define an optional `client_certificate` block with its optional _label_ to enabl
 
 Configuring a `ca_certificate` is the standard way to verify a client certificate. But you can also provide the `leaf_certificate`
 which effectively is the client certificate. The server will verify the given client certificate byte by byte with the leaf one.
+A combination of `ca_certificate`(or `ca_certificate_file`) or/and `leaf_certificate`(or `leaf_certificate_file`) is valid.
 A use-case would be that the CA has signed multiple client certificates and you want to limit the access to specific ones.
 
 ## Example
