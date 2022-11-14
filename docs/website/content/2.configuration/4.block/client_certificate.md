@@ -14,7 +14,7 @@ Define an optional `client_certificate` block with its optional _label_ to enabl
 
 > **mTLS:** stands for mutual TLS and will extend the normal handshake process with an additional request (client must present the certificate) and verification for the configured client certificate (CA).
 
-Configure a `ca_certificate` is the standard way to verify a client certificate but you can also provide the `leaf_certificate`
+Configuring a `ca_certificate` is the standard way to verify a client certificate. But you can also provide the `leaf_certificate`
 which effectively is the client certificate. The server will verify the given client certificate byte by byte with the leaf one.
 A use-case would be that the CA has signed multiple client certificates and you want to limit the access to specific ones.
 

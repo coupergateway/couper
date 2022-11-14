@@ -17,7 +17,7 @@ However, this `tls` block allows a more specific pool configuration per backend 
 ### mTLS
 
 Additionally the `client_certificate`(or `client_certificate_file`) and `client_private_key` (or `client_private_key_file`)
-attributes allows the backend to present those ones during a TLS handshake to an origin which requires them due to a mTLS setup.
+attributes allow the backend to present those ones during a TLS handshake to an origin which requires them due to an mTLS setup.
 
 ::attributes
 ---

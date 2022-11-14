@@ -12,6 +12,6 @@ type BackendTLS struct {
 	ServerCertificateFile string `hcl:"server_ca_certificate_file,optional" docs:"Public part of the certificate authority file in DER or PEM format."`
 	ClientCertificate     string `hcl:"client_certificate,optional" docs:"Public part of the client certificate in DER or PEM format."`
 	ClientCertificateFile string `hcl:"client_certificate_file,optional" docs:"Public part of the client certificate file in DER or PEM format."`
-	ClientPrivateKey      string `hcl:"client_private_key,optional" docs:"Private part of the client certificate in DER or PEM format. Required to complete a mTLS handshake."`
-	ClientPrivateKeyFile  string `hcl:"client_private_key_file,optional" docs:"Private part of the client certificate file in DER or PEM format. Required to complete a mTLS handshake."`
+	ClientPrivateKey      string `hcl:"client_private_key,optional" docs:"Private part of the client certificate in DER or PEM format. Required to complete an mTLS handshake."`
+	ClientPrivateKeyFile  string `hcl:"client_private_key_file,optional" docs:"Private part of the client certificate file in DER or PEM format. Required to complete an mTLS handshake."`
 }
