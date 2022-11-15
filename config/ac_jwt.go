@@ -32,17 +32,19 @@ type JWT struct {
 	JWKsURL               string              `hcl:"jwks_url,optional" docs:"URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)"`
 	JWKsTTL               string              `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
 	JWKsMaxStale          string              `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
-	Key                   string              `hcl:"key,optional" docs:"Public key (in PEM format) for {RS*} and {ES*} variants or the secret for {HS*} algorithm."`
-	KeyFile               string              `hcl:"key_file,optional" docs:"Optional file reference instead of {key} usage."`
+	Key                   string              `hcl:"key,optional" docs:"Public key (in PEM format) for {RS*} and {ES*} variants or the secret for {HS*} algorithm. Mutually exclusive with {key_file}."`
+	KeyFile               string              `hcl:"key_file,optional" docs:"Reference to file containing verification key. Mutually exclusive with {key}. See {key} for more information."`
 	Name                  string              `hcl:"name,label"`
 	Remain                hcl.Body            `hcl:",remain"`
 	RolesClaim            string              `hcl:"beta_roles_claim,optional" docs:"Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values."`
-	RolesMap              map[string][]string `hcl:"beta_roles_map,optional" docs:"Mapping of roles to granted permissions. Non-mapped roles can be assigned with {*} to specific permissions."`
+	RolesMap              map[string][]string `hcl:"beta_roles_map,optional" docs:"Mapping of roles to granted permissions. Non-mapped roles can be assigned with {*} to specific permissions. Mutually exclusive with {beta_roles_map_file}."`
+	RolesMapFile          string              `hcl:"beta_roles_map_file,optional" docs:"Reference to JSON file containing role mappings. Mutually exclusive with {beta_roles_map}. See {beta_roles_map} for more information."`
 	PermissionsClaim      string              `hcl:"beta_permissions_claim,optional" docs:"Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions."`
-	PermissionsMap        map[string][]string `hcl:"beta_permissions_map,optional" docs:"Mapping of granted permissions to additional granted permissions. Maps values from {beta_permissions_claim} and those created from {beta_roles_map}. The map is called recursively."`
+	PermissionsMap        map[string][]string `hcl:"beta_permissions_map,optional" docs:"Mapping of granted permissions to additional granted permissions. Maps values from {beta_permissions_claim} and those created from {beta_roles_map}. The map is called recursively. Mutually exclusive with {beta_permissions_map_file}."`
+	PermissionsMapFile    string              `hcl:"beta_permissions_map_file,optional" docs:"Reference to JSON file containing permission mappings. Mutually exclusive with {beta_permissions_map}. See {beta_permissions_map} for more information."`
 	SignatureAlgorithm    string              `hcl:"signature_algorithm,optional" docs:"Valid values: {RS256}, {RS384}, {RS512}, {HS256}, {HS384}, {HS512}, {ES256}, {ES384}, {ES512}"`
-	SigningKey            string              `hcl:"signing_key,optional" docs:"Private key (in PEM format) for {RS*} and {ES*} variants."`
-	SigningKeyFile        string              `hcl:"signing_key_file,optional" docs:"Optional file reference instead of {signing_key} usage."`
+	SigningKey            string              `hcl:"signing_key,optional" docs:"Private key (in PEM format) for {RS*} and {ES*} variants. Mutually exclusive with {signing_key_file}."`
+	SigningKeyFile        string              `hcl:"signing_key_file,optional" docs:"Reference to file containing signing key. Mutually exclusive with {signing_key}. See {signing_key} for more information."`
 	SigningTTL            string              `hcl:"signing_ttl,optional" docs:"The token's time-to-live (creates the {exp} claim)." type:"duration"`
 	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}." type:"string"`
 

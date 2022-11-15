@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -344,6 +345,9 @@ func Test_JWT_yields_permissions(t *testing.T) {
 		"user2": {"bar"},
 		"*":     {"default"},
 	}
+	permissionsMap := map[string][]string{
+		"baz": {"blubb"},
+	}
 	var noGrantedPermissions []string
 
 	tests := []struct {
@@ -455,13 +459,13 @@ func Test_JWT_yields_permissions(t *testing.T) {
 			noGrantedPermissions,
 		},
 		{
-			"roles: single string",
+			"roles: single string, permission mapped",
 			"",
 			nil,
 			"roles",
 			"admin",
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 		{
 			"roles: space-separated list",
@@ -500,22 +504,22 @@ func Test_JWT_yields_permissions(t *testing.T) {
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"roles: list of string, no additional 1",
+			"roles: list of string, no additional 1, permission mapped",
 			"",
 			nil,
 			"rollen",
 			[]string{"admin", "user1"},
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 		{
-			"roles: list of string, no additional 2",
+			"roles: list of string, no additional 2, permission mapped",
 			"",
 			nil,
 			"rollen",
 			[]string{"admin", "user2"},
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 		{
 			"roles: warn: boolean",
@@ -581,13 +585,13 @@ func Test_JWT_yields_permissions(t *testing.T) {
 			[]string{"foo", "bar", "default"},
 		},
 		{
-			"combi 2",
+			"combi 2, permission mapped",
 			"scope",
 			[]string{"foo", "bar"},
 			"roles",
 			"admin",
 			"",
-			[]string{"foo", "bar", "baz", "default"},
+			[]string{"foo", "bar", "baz", "default", "blubb"},
 		},
 	}
 	for _, tt := range tests {
@@ -612,6 +616,7 @@ func Test_JWT_yields_permissions(t *testing.T) {
 				Algorithm:        algo.String(),
 				Name:             "test_ac",
 				PermissionsClaim: tt.permissionsClaim,
+				PermissionsMap:   permissionsMap,
 				RolesClaim:       tt.rolesClaim,
 				RolesMap:         rolesMap,
 				Source:           source,
@@ -679,7 +684,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"signature_algorithm or jwks_url attribute required",
+			"configuration error: myac: signature_algorithm or jwks_url attribute required",
 		},
 		{
 			"signature_algorithm, missing key/key_file",
@@ -692,7 +697,84 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"jwt key: read error: required: configured attribute or file",
+			"configuration error: myac: jwt key: read error: required: configured attribute or file",
+		},
+		{
+			"signature_algorithm, both key and key_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    key_file = "testdata/secret.txt"
+			  }
+			}
+			`,
+			"configuration error: myac: jwt key: read error: configured attribute and file",
+		},
+		{
+			"signature_algorithm, both beta_roles_map and beta_roles_map_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    beta_roles_map = {}
+			    beta_roles_map_file = "testdata/map.json"
+			  }
+			}
+			`,
+			"configuration error: myac: jwt roles map: read error: configured attribute and file",
+		},
+		{
+			"signature_algorithm, beta_roles_map_file not found",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    beta_roles_map_file = "file_not_found"
+			  }
+			}
+			`,
+			"configuration error: myac: roles map: read error: open .*/testdata/file_not_found: no such file or directory",
+		},
+		{
+			"signature_algorithm, both beta_permissions_map and beta_permissions_map_file",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    beta_permissions_map = {}
+			    beta_permissions_map_file = "testdata/map.json"
+			  }
+			}
+			`,
+			"configuration error: myac: jwt permissions map: read error: configured attribute and file",
+		},
+		{
+			"signature_algorithm, beta_permissions_map_file not found",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    header = "..."
+			    key = "..."
+			    beta_permissions_map_file = "file_not_found"
+			  }
+			}
+			`,
+			"configuration error: myac: permissions map: read error: open .*/accesscontrol/file_not_found: no such file or directory",
 		},
 		{
 			"ok: signature_algorithm + key (default: header = Authorization)",
@@ -762,7 +844,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"token source is invalid",
+			"configuration error: myac: token source is invalid",
 		},
 		{
 			"token_value + cookie",
@@ -777,7 +859,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"token source is invalid",
+			"configuration error: myac: token source is invalid",
 		},
 		{
 			"cookie + header",
@@ -792,7 +874,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"token source is invalid",
+			"configuration error: myac: token source is invalid",
 		},
 		{
 			"ok: signature_algorithm + key_file",
@@ -814,12 +896,25 @@ func TestJwtConfig(t *testing.T) {
 			server "test" {}
 			definitions {
 			  jwt "myac" {
-			    jwks_url = "file://...",
+			    jwks_url = "file:jwk/testdata/jwks.json",
 			    header = "..."
 			  }
 			}
 			`,
 			"",
+		},
+		{
+			"jwks_url file not found",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    jwks_url = "file:file_not_found",
+			    header = "..."
+			  }
+			}
+			`,
+			"configuration error: myac: jwks_url: read error: open .*/accesscontrol/file_not_found: no such file or directory",
 		},
 		{
 			"signature_algorithm + jwks_url",
@@ -833,7 +928,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"signature_algorithm cannot be used together with jwks_url",
+			"configuration error: myac: signature_algorithm cannot be used together with jwks_url",
 		},
 		{
 			"key + jwks_url",
@@ -847,7 +942,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"key cannot be used together with jwks_url",
+			"configuration error: myac: key cannot be used together with jwks_url",
 		},
 		{
 			"key_file + jwks_url",
@@ -861,7 +956,7 @@ func TestJwtConfig(t *testing.T) {
 			  }
 			}
 			`,
-			"key_file cannot be used together with jwks_url",
+			"configuration error: myac: key_file cannot be used together with jwks_url",
 		},
 		{
 			"backend reference, missing jwks_url",
@@ -876,11 +971,12 @@ func TestJwtConfig(t *testing.T) {
 			  backend "foo" {}
 			}
 			`,
-			"backend is obsolete without jwks_url attribute",
+			"configuration error: myac: backend is obsolete without jwks_url attribute",
 		},
 	}
 
 	log, hook := test.NewLogger()
+	helper := test.New(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
@@ -907,11 +1003,6 @@ func TestJwtConfig(t *testing.T) {
 				} else {
 					errMsg = err.Error()
 				}
-				if tt.error != "" {
-					expectedError = "configuration error: myac: " + tt.error
-				}
-			} else {
-				expectedError = tt.error
 			}
 
 			if tt.error == "" && errMsg == "" {
@@ -928,7 +1019,9 @@ func TestJwtConfig(t *testing.T) {
 				break
 			}
 
-			if !strings.HasPrefix(errMsg, expectedError) {
+			re, err := regexp.Compile(expectedError)
+			helper.Must(err)
+			if !re.MatchString(errMsg) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, expectedError, errMsg)
 			}
 		})

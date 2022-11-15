@@ -1,17 +1,39 @@
 package reader
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 
 	"github.com/avenga/couper/errors"
 )
 
-func ReadFromAttrFile(context, attribute, path string) ([]byte, error) {
+func ReadFromAttrFileJSONObjectOptional(context string, attributeValue map[string][]string, path string) (map[string][]string, error) {
 	readErr := errors.Configuration.Label(context + ": read error")
-	if attribute != "" && path != "" {
+	if attributeValue != nil && path != "" {
 		return nil, readErr.Message("configured attribute and file")
-	} else if attribute == "" && path == "" {
+	}
+
+	if path != "" {
+		fileContent, err := ReadFromFile(context, path)
+		if err != nil {
+			return nil, err
+		}
+		var m map[string][]string
+		if err = json.Unmarshal(fileContent, &m); err != nil {
+			return nil, readErr.Message("invalid file content")
+		}
+		return m, nil
+	}
+
+	return attributeValue, nil
+}
+
+func ReadFromAttrFile(context, attributeValue, path string) ([]byte, error) {
+	readErr := errors.Configuration.Label(context + ": read error")
+	if attributeValue != "" && path != "" {
+		return nil, readErr.Message("configured attribute and file")
+	} else if attributeValue == "" && path == "" {
 		return nil, readErr.Message("required: configured attribute or file")
 	}
 
@@ -19,7 +41,7 @@ func ReadFromAttrFile(context, attribute, path string) ([]byte, error) {
 		return ReadFromFile(context, path)
 	}
 
-	return []byte(attribute), nil
+	return []byte(attributeValue), nil
 }
 
 func ReadFromFile(context, path string) ([]byte, error) {

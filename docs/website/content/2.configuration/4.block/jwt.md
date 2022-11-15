@@ -28,9 +28,15 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively.",
+    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `beta_permissions_map_file`.",
     "name": "beta_permissions_map",
     "type": "object"
+  },
+  {
+    "default": "",
+    "description": "Reference to JSON file containing permission mappings. Mutually exclusive with `beta_permissions_map`. See `beta_permissions_map` for more information.",
+    "name": "beta_permissions_map_file",
+    "type": "string"
   },
   {
     "default": "",
@@ -40,9 +46,15 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions.",
+    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions. Mutually exclusive with `beta_roles_map_file`.",
     "name": "beta_roles_map",
     "type": "object"
+  },
+  {
+    "default": "",
+    "description": "Reference to JSON file containing role mappings. Mutually exclusive with `beta_roles_map`. See `beta_roles_map` for more information.",
+    "name": "beta_roles_map_file",
+    "type": "string"
   },
   {
     "default": "",
@@ -94,13 +106,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm.",
+    "description": "Public key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithm. Mutually exclusive with `key_file`.",
     "name": "key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Optional file reference instead of `key` usage.",
+    "description": "Reference to file containing verification key. Mutually exclusive with `key`. See `key` for more information.",
     "name": "key_file",
     "type": "string"
   },
@@ -118,13 +130,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Private key (in PEM format) for `RS*` and `ES*` variants.",
+    "description": "Private key (in PEM format) for `RS*` and `ES*` variants. Mutually exclusive with `signing_key_file`.",
     "name": "signing_key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Optional file reference instead of `signing_key` usage.",
+    "description": "Reference to file containing signing key. Mutually exclusive with `signing_key`. See `signing_key` for more information.",
     "name": "signing_key_file",
     "type": "string"
   },

@@ -168,6 +168,28 @@ server "scoped jwt" {
       }
     }
   }
+  api {
+    base_path = "/scope_and_role_files"
+    access_control = ["scoped_and_roled_jwt_files"]
+    endpoint "/foo" {
+      beta_required_permission = "d"
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+    endpoint "/bar" {
+      beta_required_permission = "e"
+      response {
+        status = 204
+        headers = {
+          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+        }
+      }
+    }
+  }
 }
 definitions {
   jwt "scoped_jwt" {
@@ -200,5 +222,14 @@ definitions {
       c = ["d"]
       d = ["a"] # cycle is ignored
     }
+  }
+  jwt "scoped_and_roled_jwt_files" {
+    header = "authorization"
+    signature_algorithm = "HS256"
+    key = "asdf"
+    beta_permissions_claim = "scp"
+    beta_roles_claim = "rl"
+    beta_roles_map_file = "testdata/integration/config/roles.json"
+    beta_permissions_map_file = "testdata/integration/config/permissions.json"
   }
 }

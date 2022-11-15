@@ -30,13 +30,13 @@ values: [
   },
   {
     "default": "",
-    "description": "private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithms",
+    "description": "private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithms. Mutually exclusive with `key_file`.",
     "name": "key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "optional file reference instead of `key` usage",
+    "description": "reference to file containing signing key. Mutually exclusive with `key`. See `key` for more information.",
     "name": "key_file",
     "type": "string"
   },
