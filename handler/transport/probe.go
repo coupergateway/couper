@@ -144,8 +144,15 @@ func (p *Probe) probe(c context.Context) {
 				if unwrapped != nil {
 					err = unwrapped
 				}
+
 				if gerr, ok := err.(errors.GoError); ok {
-					errorMessage = gerr.LogError()
+					// Upstream log wraps a possible transport deadline into a backend error
+					if gerr.Unwrap() == context.DeadlineExceeded {
+						errorMessage = fmt.Sprintf("backend error: connecting to %s '%s' failed: i/o timeout",
+							p.backendName, p.opts.Request.URL.Hostname())
+					} else {
+						errorMessage = gerr.LogError()
+					}
 				} else {
 					errorMessage = err.Error()
 				}

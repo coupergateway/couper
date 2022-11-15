@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -121,7 +122,14 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 
 			conn, cerr := d.DialContext(stx, network, address)
 			if cerr != nil {
-				return nil, fmt.Errorf("connecting to %s %q failed: %w", conf.BackendName, conf.Origin, cerr)
+				host, port, _ := net.SplitHostPort(conf.Origin)
+				if port != "80" && port != "443" {
+					host = conf.Origin
+				}
+				if os.IsTimeout(cerr) || cerr == context.DeadlineExceeded {
+					return nil, fmt.Errorf("connecting to %s '%s' failed: i/o timeout", conf.BackendName, host)
+				}
+				return nil, fmt.Errorf("connecting to %s '%s' failed: %w", conf.BackendName, conf.Origin, cerr)
 			}
 			return NewOriginConn(stx, conn, conf, logEntry), nil
 		},

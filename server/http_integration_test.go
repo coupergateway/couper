@@ -2698,7 +2698,7 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"unhealthy backend: timeout",
 			"/unhealthy/timeout",
-			`{"error":"backend error: context deadline exceeded","healthy":false,"state":"unhealthy"}`,
+			`{"error":"backend error: connecting to unhealthy_timeout '1.2.3.4' failed: i/o timeout","healthy":false,"state":"unhealthy"}`,
 		},
 		{
 			"unhealthy backend: unexpected status code",
@@ -2738,7 +2738,7 @@ func TestHTTPServer_BackendProbes(t *testing.T) {
 		{
 			"backend error: timeout but threshold not reached",
 			"/failing",
-			`{"error":"backend error: context deadline exceeded","healthy":true,"state":"failing"}`,
+			`{"error":"backend error: connecting to failing '1.2.3.4' failed: i/o timeout","healthy":true,"state":"failing"}`,
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {

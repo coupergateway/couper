@@ -25,6 +25,7 @@ type GoError interface {
 	error
 	HTTPStatus() int
 	LogError() string
+	Unwrap() error
 }
 
 var _ GoError = &Error{}
