@@ -4,7 +4,7 @@ Rate limiting protects backend services. It implements quota management used to 
 
 | Block name        | Context                         | Label | Nested block(s) |
 | :---------------- | :------------------------------ | :---- | :-------------- |
-| `beta_rate_limit` | named [`backend` block](backend)| -     | -               |
+| `beta_rate_limit` | named [`backend` block](/configuration/block/backend)| -     | -               |
 
 ::attributes
 ---

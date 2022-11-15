@@ -2,13 +2,13 @@
 
 The `proxy` block creates and executes a proxy request to a backend service.
 
-> 📝 Multiple `proxy` and [`request`](request) blocks are executed in parallel.
+> 📝 Multiple `proxy` and [`request`](/configuration/block/request) blocks are executed in parallel.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                          | Nested block(s)                                                                                                                                                                                                                                |
 |:-----------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `proxy`    | [Endpoint Block](endpoint) | See `Label` description below. | [Backend Block](backend) (&#9888; required, if no [Backend Block](backend) reference is defined or no `url` attribute is set.), [Websockets Block](websockets) (&#9888; Either websockets attribute or block is allowed.) |
+| `proxy`    | [Endpoint Block](/configuration/block/endpoint) | See `Label` description below. | [Backend Block](/configuration/block/backend) (&#9888; required, if no [Backend Block](/configuration/block/backend) reference is defined or no `url` attribute is set.), [Websockets Block](/configuration/block/websockets) (&#9888; Either websockets attribute or block is allowed.) |
 
-**Label:** If defined in an [Endpoint Block](endpoint), a `proxy` block or [Request Block](request) w/o a label has an implicit name `"default"`. If defined in the [Definitions Block](definitions), the label of `proxy` is used as reference in [Endpoint Blocks](endpoint) and the name can be defined via `name` attribute. Only **one** `proxy` block or [Request Block](request) w/ label `"default"` per [Endpoint Block](endpoint) is allowed. 
+**Label:** If defined in an [Endpoint Block](/configuration/block/endpoint), a `proxy` block or [Request Block](/configuration/block/request) w/o a label has an implicit name `"default"`. If defined in the [Definitions Block](/configuration/block/definitions), the label of `proxy` is used as reference in [Endpoint Blocks](/configuration/block/endpoint) and the name can be defined via `name` attribute. Only **one** `proxy` block or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. 
 
 ::attributes
 ---

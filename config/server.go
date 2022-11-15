@@ -23,6 +23,7 @@ type Server struct {
 	Name                 string      `hcl:"name,label,optional"`
 	Remain               hcl.Body    `hcl:",remain"`
 	SPAs                 SPAs        `hcl:"spa,block"`
+	TLS                  *ServerTLS  `hcl:"tls,block"`
 }
 
 // Servers represents a list of <Server> objects.

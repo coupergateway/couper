@@ -8,11 +8,11 @@ draft: false
 
 The `backend` block defines the connection to a local/remote backend service.
 
-Backends can be defined in the [Definitions Block](definitions) and referenced by _label_.
+Backends can be defined in the [Definitions Block](/configuration/block/definitions) and referenced by _label_.
 
 | Block name | Context                                                                                                                                                                                                                                   | Label                                                                     | Nested block(s)                                                                                                                       |
 |:-----------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------|
-| `backend`  | [Definitions Block](definitions), [Proxy Block](proxy), [Request Block](request), [OAuth2 CC Block](oauth2req_auth), [JWT Block](jwt), [OAuth2 AC Block (beta)](oauth2), [OIDC Block](oidc)                                               | &#9888; required, when defined in [Definitions Block](definitions)        | [OpenAPI Block](openapi), [OAuth2 CC Block](oauth2req_auth), [Health Block](health), [Token Request (Beta) Block](token_request), [Rate Limit Block (beta)](rate_limit) |
+| `backend`  | [Definitions Block](/configuration/block/definitions), [Proxy Block](/configuration/block/proxy), [Request Block](/configuration/block/request), [OAuth2 CC Block](/configuration/block/oauth2req_auth), [JWT Block](/configuration/block/jwt), [OAuth2 AC Block (beta)](/configuration/block/oauth2), [OIDC Block](/configuration/block/oidc)                                               | &#9888; required, when defined in [Definitions Block](/configuration/block/definitions)        | [OpenAPI Block](/configuration/block/openapi), [OAuth2 CC Block](/configuration/block/oauth2req_auth), [Health Block](/configuration/block/health), [Token Request (Beta) Block](/configuration/block/token_request), [Rate Limit Block (beta)](/configuration/block/rate_limit), [TLS Block](/configuration/block/backend_tls) |
 
 ::attributes
 ---

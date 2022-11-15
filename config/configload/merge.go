@@ -18,9 +18,10 @@ const (
 	errUniqueLabels     = "All %s blocks must have unique labels."
 )
 
+type namedBlocks map[string]*hclsyntax.Block
+
 func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block) (hclsyntax.Blocks, error) {
 	type (
-		namedBlocks   map[string]*hclsyntax.Block
 		apiDefinition struct {
 			labels          []string
 			typeRange       hcl.Range
@@ -50,9 +51,16 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			attributes      hclsyntax.Attributes
 			blocks          namedBlocks
 		}
-		namedAPIs        map[string]*apiDefinition
-		namedSPAs        map[string]*spaDefinition
-		namedFiles       map[string]*filesDefinition
+
+		tlsDefinition struct {
+			*hclsyntax.Block
+			blocks namedBlocks
+		}
+
+		namedAPIs  map[string]*apiDefinition
+		namedSPAs  map[string]*spaDefinition
+		namedFiles map[string]*filesDefinition
+
 		serverDefinition struct {
 			labels          []string
 			typeRange       hcl.Range
@@ -60,11 +68,12 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			openBraceRange  hcl.Range
 			closeBraceRange hcl.Range
 			attributes      hclsyntax.Attributes
+			apis            namedAPIs
 			blocks          namedBlocks
 			endpoints       namedBlocks
-			apis            namedAPIs
-			spas            namedSPAs
 			files           namedFiles
+			spas            namedSPAs
+			tls             *tlsDefinition
 		}
 
 		servers map[string]*serverDefinition
@@ -88,6 +97,9 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			files[<key>]      = {
 				attributes           = hclsyntax.Attributes
 				blocks[<name>]       = hclsyntax.Block (cors)
+			}
+			tls = {
+				blocks[<name>]       = hclsyntax.Block (server_certificate|client_certificate)
 			}
 		}
 	*/
@@ -293,6 +305,25 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 					for _, subBlock := range block.Body.Blocks {
 						results[serverKey].files[filesKey].blocks[subBlock.Type] = subBlock
 					}
+				} else if block.Type == tls {
+					if results[serverKey].tls == nil {
+						results[serverKey].tls = &tlsDefinition{
+							Block:  block,
+							blocks: make(namedBlocks),
+						}
+					}
+
+					for name, attr := range block.Body.Attributes {
+						results[serverKey].tls.Body.Attributes[name] = attr
+					}
+
+					for _, subBlock := range block.Body.Blocks {
+						blockKey := ""
+						if len(subBlock.Labels) > 0 {
+							blockKey = subBlock.Labels[0]
+						}
+						results[serverKey].tls.blocks[blockKey] = subBlock
+					}
 				} else {
 					results[serverKey].blocks[block.Type] = block
 				}
@@ -302,30 +333,30 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 
 	var mergedServers hclsyntax.Blocks
 
-	for _, serverBlock := range results {
+	for _, name := range getSortedMapKeys(results) {
 		var serverBlocks hclsyntax.Blocks
-
-		for _, b := range serverBlock.blocks {
-			serverBlocks = append(serverBlocks, b)
+		serverBlock := results[name]
+		for _, blockName := range getSortedMapKeys(serverBlock.blocks) {
+			serverBlocks = append(serverBlocks, serverBlock.blocks[blockName])
 		}
 
-		for _, b := range serverBlock.endpoints {
-			serverBlocks = append(serverBlocks, b)
+		for _, blockName := range getSortedMapKeys(serverBlock.endpoints) {
+			serverBlocks = append(serverBlocks, serverBlock.endpoints[blockName])
 		}
 
 		for _, apiBlock := range serverBlock.apis {
 			var apiBlocks hclsyntax.Blocks
 
-			for _, b := range apiBlock.blocks {
-				apiBlocks = append(apiBlocks, b)
+			for _, blockName := range getSortedMapKeys(apiBlock.blocks) {
+				apiBlocks = append(apiBlocks, apiBlock.blocks[blockName])
 			}
 
-			for _, b := range apiBlock.endpoints {
-				apiBlocks = append(apiBlocks, b)
+			for _, blockName := range getSortedMapKeys(apiBlock.endpoints) {
+				apiBlocks = append(apiBlocks, apiBlock.endpoints[blockName])
 			}
 
-			for _, b := range apiBlock.errorHandler {
-				apiBlocks = append(apiBlocks, b)
+			for _, blockName := range getSortedMapKeys(apiBlock.errorHandler) {
+				apiBlocks = append(apiBlocks, apiBlock.errorHandler[blockName])
 			}
 
 			mergedAPI := &hclsyntax.Block{
@@ -344,11 +375,12 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			serverBlocks = append(serverBlocks, mergedAPI)
 		}
 
-		for _, spaBlock := range serverBlock.spas {
+		for _, blockName := range getSortedMapKeys(serverBlock.spas) {
+			spaBlock := serverBlock.spas[blockName]
 			var spaBlocks hclsyntax.Blocks
 
-			for _, b := range spaBlock.blocks {
-				spaBlocks = append(spaBlocks, b)
+			for _, bn := range getSortedMapKeys(spaBlock.blocks) {
+				spaBlocks = append(spaBlocks, spaBlock.blocks[bn])
 			}
 
 			mergedSPA := &hclsyntax.Block{
@@ -367,11 +399,12 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			serverBlocks = append(serverBlocks, mergedSPA)
 		}
 
-		for _, filesBlock := range serverBlock.files {
+		for _, blockName := range getSortedMapKeys(serverBlock.files) {
+			filesBlock := serverBlock.files[blockName]
 			var filesBlocks hclsyntax.Blocks
 
-			for _, b := range filesBlock.blocks {
-				filesBlocks = append(filesBlocks, b)
+			for _, bn := range getSortedMapKeys(filesBlock.blocks) {
+				filesBlocks = append(filesBlocks, filesBlock.blocks[bn])
 			}
 
 			mergedFiles := &hclsyntax.Block{
@@ -388,6 +421,24 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 			}
 
 			serverBlocks = append(serverBlocks, mergedFiles)
+		}
+
+		if serverBlock.tls != nil {
+			var tlsCertificateBlocks hclsyntax.Blocks
+			for _, blockName := range getSortedMapKeys(serverBlock.tls.blocks) {
+				tlsCertificateBlocks = append(tlsCertificateBlocks, serverBlock.tls.blocks[blockName])
+			}
+			serverBlocks = append(serverBlocks, &hclsyntax.Block{
+				Type: tls,
+				Body: &hclsyntax.Body{
+					Attributes: serverBlock.tls.Body.Attributes,
+					Blocks:     tlsCertificateBlocks,
+				},
+				TypeRange:       serverBlock.tls.TypeRange,
+				LabelRanges:     serverBlock.tls.LabelRanges,
+				OpenBraceRange:  serverBlock.tls.OpenBraceRange,
+				CloseBraceRange: serverBlock.tls.CloseBraceRange,
+			})
 		}
 
 		mergedServer := &hclsyntax.Block{
@@ -410,18 +461,15 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 }
 
 func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*hclsyntax.Block, error) {
-	type data map[string]*hclsyntax.Block
-	type list map[string]data
-
-	definitionsBlock := make(list)
-	proxiesList := make(data)
+	definitionsBlock := make(map[string]namedBlocks)
+	proxiesList := make(namedBlocks)
 
 	for _, body := range bodies {
 		for _, outerBlock := range body.Blocks {
 			if outerBlock.Type == definitions {
 				for _, innerBlock := range outerBlock.Body.Blocks {
 					if definitionsBlock[innerBlock.Type] == nil {
-						definitionsBlock[innerBlock.Type] = make(data)
+						definitionsBlock[innerBlock.Type] = make(namedBlocks)
 					}
 
 					if innerBlock.Type == backend {
@@ -483,9 +531,9 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 	var blocks []*hclsyntax.Block
 
-	for _, labels := range definitionsBlock {
-		for _, block := range labels {
-			blocks = append(blocks, block)
+	for _, name := range getSortedMapKeys(definitionsBlock) {
+		for _, label := range getSortedMapKeys(definitionsBlock[name]) {
+			blocks = append(blocks, definitionsBlock[name][label])
 		}
 	}
 
@@ -707,4 +755,13 @@ func newErrorHandlerKey(block *hclsyntax.Block) (key string) {
 	sort.Strings(sorted)
 
 	return strings.Join(sorted, errorHandlerLabelSep)
+}
+
+func getSortedMapKeys[K string, V any](m map[K]V) []string {
+	var result []string
+	for k := range m {
+		result = append(result, string(k))
+	}
+	sort.Strings(result)
+	return result
 }

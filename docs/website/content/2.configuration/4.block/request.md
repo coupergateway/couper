@@ -2,11 +2,11 @@
 
 The `request` block creates and executes a request to a backend service.
 
-> 📝 Multiple [`proxy`](proxy) and `request` blocks are executed in parallel.
+> 📝 Multiple [`proxy`](/configuration/block/proxy) and `request` blocks are executed in parallel.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                                                      | Nested block(s)                                                                                                             |
 |:-----------|:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|
-| `request`  | [Endpoint Block](endpoint) | &#9888; A [Proxy Block](proxy) or [Request Block](request) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](proxy) or [Request Block](request) w/ label `"default"` per [Endpoint Block](endpoint) is allowed. | [Backend Block](backend) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set. |
+| `request`  | [Endpoint Block](/configuration/block/endpoint) | &#9888; A [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. | [Backend Block](/configuration/block/backend) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set. |
 <!-- TODO: add available http methods -->
 
 

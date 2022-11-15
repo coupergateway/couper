@@ -1,10 +1,10 @@
 # Token Request (Beta)
 
-The `beta_token_request` block in the [Backend Block](backend) context configures a request to get a token used to authorize backend requests.
+The `beta_token_request` block in the [Backend Block](/configuration/block/backend) context configures a request to get a token used to authorize backend requests.
 
 | Block name            | Context                           | Label                                                                                                                                                                                                                       | Nested block(s)                                                                                                      |
 |:----------------------|:----------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------|
-| `beta_token_request`  | [Backend Block](backend)          | &#9888; A [Token Request (Beta) Block](token_request) w/o a label has an implicit label `"default"`. Only **one** [Token Request (Beta) Block](token_request) w/ label `"default"` per [Backend Block](backend) is allowed. | [Backend Block](backend) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set. |
+| `beta_token_request`  | [Backend Block](/configuration/block/backend)          | &#9888; A [Token Request (Beta) Block](/configuration/block/token_request) w/o a label has an implicit label `"default"`. Only **one** [Token Request (Beta) Block](/configuration/block/token_request) w/ label `"default"` per [Backend Block](/configuration/block/backend) is allowed. | [Backend Block](/configuration/block/backend) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set. |
 <!-- TODO: add available http methods -->
 
 ::attributes

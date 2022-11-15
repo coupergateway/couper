@@ -4,7 +4,7 @@ The `server` block is one of the root configuration blocks of Couper's configura
 
 | Block name | Context | Label    | Nested block(s)                                                                                                                                       |
 |:-----------|:--------|:---------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `server`   | -       | optional | [CORS Block](cors), [Files Block](files), [SPA Block(s)](spa) , [API Block(s)](api), [Endpoint Block(s)](endpoint) |
+| `server`   | -       | optional | [CORS Block](/configuration/block/cors), [Files Block](/configuration/block/files), [SPA Block(s)](/configuration/block/spa) , [API Block(s)](/configuration/block/api), [Endpoint Block(s)](/configuration/block/endpoint) |
 
 ::attributes
 ---

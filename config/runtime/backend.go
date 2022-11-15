@@ -58,12 +58,12 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 		return nil, diags
 	}
 
+	var err error
 	if beConf.Name == "" {
-		name, err := getBackendName(evalCtx, backendCtx)
+		beConf.Name, err = getBackendName(evalCtx, backendCtx)
 		if err != nil {
 			return nil, err
 		}
-		beConf.Name = name
 	}
 
 	tc := &transport.Config{
@@ -76,17 +76,24 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 		MaxConnections:         beConf.MaxConnections,
 	}
 
+	tc.CACertificate, tc.ClientCertificate, err = transport.ReadCertificates(beConf.TLS)
+	if err != nil {
+		return nil, hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  err.(errors.GoError).LogError(),
+			Subject:  &backendCtx.SrcRange,
+		}}
+	}
+
 	if len(beConf.RateLimits) > 0 {
 		if strings.HasPrefix(beConf.Name, "anonymous_") {
-			// TODO remove " (%q)"?
-			return nil, fmt.Errorf("anonymous backend (%q) cannot define 'beta_rate_limit' block(s)", beConf.Name)
+			return nil, fmt.Errorf("anonymous backend '%s' cannot define 'beta_rate_limit' block(s)", beConf.Name)
 		}
 
-		rateLimits, err := ratelimit.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
+		tc.RateLimits, err = ratelimit.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
 		if err != nil {
 			return nil, err
 		}
-		tc.RateLimits = rateLimits
 	}
 
 	options := &transport.BackendOptions{}
@@ -108,7 +115,6 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 			return nil, fmt.Errorf("missing origin for backend %q", beConf.Name)
 		}
 
-		var err error
 		options.HealthCheck, err = config.NewHealthCheck(origin.AsString(), beConf.Health, conf)
 		if err != nil {
 			return nil, err
@@ -121,7 +127,8 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 	} {
 		blocks := hclbody.BlocksOfType(backendCtx, blockType)
 		for _, block := range blocks {
-			requestAuthorizer, err := newRequestAuthorizer(evalCtx, block, log, conf, memStore)
+			var requestAuthorizer transport.RequestAuthorizer
+			requestAuthorizer, err = newRequestAuthorizer(evalCtx, block, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}

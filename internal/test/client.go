@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
 	"time"
@@ -24,4 +25,12 @@ func NewHTTPClient() *http.Client {
 			DisableCompression: true,
 		},
 	}
+}
+
+func NewHTTPSClient(tlsConf *tls.Config) *http.Client {
+	client := NewHTTPClient()
+	transport := client.Transport.(*http.Transport)
+	transport.TLSClientConfig = tlsConf
+	client.Transport = transport
+	return client
 }

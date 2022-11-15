@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -41,14 +42,18 @@ type HTTPServer struct {
 	timings    *runtime.HTTPTimings
 }
 
-// NewServerList creates a list of all configured HTTP server.
-func NewServerList(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
-	timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func()) {
+// NewServers returns a list of the created and configured HTTP(s) servers.
+func NewServers(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
+	timings *runtime.HTTPTimings, srvConf runtime.ServerConfiguration) ([]*HTTPServer, func(), error) {
 
 	var list []*HTTPServer
 
 	for port, hosts := range srvConf {
-		list = append(list, New(cmdCtx, evalCtx, log, settings, timings, port, hosts))
+		srv, err := New(cmdCtx, evalCtx, log, settings, timings, port, hosts)
+		if err != nil {
+			return nil, nil, err
+		}
+		list = append(list, srv)
 	}
 
 	handleShutdownFn := func() {
@@ -56,12 +61,12 @@ func NewServerList(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, sett
 		time.Sleep(timings.ShutdownDelay + timings.ShutdownTimeout) // wait for max amount, TODO: feedback per server
 	}
 
-	return list, handleShutdownFn
+	return list, handleShutdownFn, nil
 }
 
-// New creates a configured HTTP server.
+// New creates an HTTP(S) server with configured router and middlewares.
 func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *config.Settings,
-	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) *HTTPServer {
+	timings *runtime.HTTPTimings, p runtime.Port, hosts runtime.Hosts) (*HTTPServer, error) {
 
 	logConf := *logging.DefaultConfig
 	logConf.TypeFieldKey = "couper_access"
@@ -70,11 +75,17 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	shutdownCh := make(chan struct{})
 
 	muxersList := make(muxers)
+	var serverTLS *config.ServerTLS
 	for host, muxOpts := range hosts {
 		mux := NewMux(muxOpts)
 		mux.registerHandler(mux.endpointRoot, []string{http.MethodGet}, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
-
 		muxersList[host] = mux
+
+		// TODO: refactor (hosts,muxOpts, etc) format type and usage
+		// serverOpts are all the same, pick first
+		if serverTLS == nil && muxOpts.ServerOptions != nil && muxOpts.ServerOptions.TLS != nil {
+			serverTLS = muxOpts.ServerOptions.TLS
+		}
 	}
 
 	httpSrv := &HTTPServer{
@@ -106,14 +117,23 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
 		ConnState:         httpSrv.onConnState,
+		ErrorLog:          newErrorLogWrapper(log),
 		Handler:           startTimeHandler,
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
 	}
 
+	if serverTLS != nil {
+		tlsConfig, err := newTLSConfig(serverTLS, log)
+		if err != nil {
+			return nil, err
+		}
+		srv.TLSConfig = tlsConfig
+	}
+
 	httpSrv.srv = srv
 
-	return httpSrv
+	return httpSrv, nil
 }
 
 // Addr returns the listener address.
@@ -128,7 +148,11 @@ func (s *HTTPServer) Addr() string {
 func (s *HTTPServer) Listen() error {
 	if s.srv.Addr == "" {
 		s.srv.Addr = ":http"
+		if s.srv.TLSConfig != nil {
+			s.srv.Addr += "s"
+		}
 	}
+
 	ln, err := net.Listen("tcp4", s.srv.Addr)
 	if err != nil {
 		return err
@@ -140,7 +164,14 @@ func (s *HTTPServer) Listen() error {
 	go s.listenForCtx()
 
 	go func() {
-		if serveErr := s.srv.Serve(ln); serveErr != nil {
+		var serveErr error
+		if s.srv.TLSConfig != nil {
+			serveErr = s.srv.ServeTLS(s.listener, "", "")
+		} else {
+			serveErr = s.srv.Serve(ln)
+		}
+
+		if serveErr != nil {
 			if serveErr == http.ErrServerClosed {
 				s.log.Infof("%v: %s", serveErr, ln.Addr().String())
 			} else {
@@ -311,4 +342,20 @@ func getChildHandler(handler http.Handler) http.Handler {
 		break
 	}
 	return outer
+}
+
+// ErrorWrapper logs incoming Write bytes with the context filled logrus.FieldLogger.
+type ErrorWrapper struct{ l logrus.FieldLogger }
+
+func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	if strings.HasSuffix(msg, " tls: unknown certificate") {
+		return len(p), nil // triggered on first browser connect for self signed certs; skip
+	}
+
+	e.l.Error(strings.TrimSpace(msg))
+	return len(p), nil
+}
+func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
+	return log.New(&ErrorWrapper{logger}, "", log.Lmsgprefix)
 }

@@ -82,7 +82,11 @@ settings {
 		panic("init error: " + err.Error())
 	}
 
-	servers, _ := server.NewServerList(cmdCtx, configFile.Context, log, configFile.Settings, &couperruntime.DefaultTimings, config)
+	servers, _, err := server.NewServers(cmdCtx, configFile.Context, log, configFile.Settings, &couperruntime.DefaultTimings, config)
+	if err != nil {
+		panic("init error: " + err.Error())
+	}
+
 	var addr string
 	for _, s := range servers {
 		if err = s.Listen(); err != nil {

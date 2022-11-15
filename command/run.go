@@ -114,6 +114,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		return err
 	}
 
+	// TODO: move to config validation
 	if config.Settings.SecureCookies != "" &&
 		config.Settings.SecureCookies != writer.SecureCookiesStrip {
 		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", config.Settings.SecureCookies)
@@ -170,7 +171,10 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		}
 	}
 
-	serverList, listenCmdShutdown := server.NewServerList(r.context, config.Context, logEntry, config.Settings, &timings, srvConf)
+	servers, listenCmdShutdown, err := server.NewServers(r.context, config.Context, logEntry, config.Settings, &timings, srvConf)
+	if err != nil {
+		return err
+	}
 	var tlsServer []*http.Server
 
 	for mappedListenPort := range tlsDevPorts {
@@ -179,7 +183,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		}
 	}
 
-	for _, srv := range serverList {
+	for _, srv := range servers {
 		if listenErr := srv.Listen(); listenErr != nil {
 			return listenErr
 		}

@@ -2,320 +2,244 @@ package server
 
 import (
 	"bytes"
-	"context"
-	"crypto/rand"
-	"crypto/rsa"
+	"crypto/md5"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
+	"encoding/hex"
 	"fmt"
-	"log"
-	"math/big"
-	"net"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"strconv"
-	"strings"
-	"sync"
 	"time"
 
-	"github.com/rs/xid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
+	coupertls "github.com/avenga/couper/internal/tls"
 )
 
-type ListenPort string
-type Ports []string
-type TLSDevPorts map[ListenPort]Ports
-
-const TLSProxyOption = "https_dev_proxy"
-
-var httpsDevProxyIDField = "x-" + xid.New().String()
-
-func (tdp TLSDevPorts) Add(pair string) error {
-	ports := strings.Split(pair, ":")
-	if len(ports) != 2 {
-		return errors.Configuration.Messagef("%s: invalid port mapping: %s", TLSProxyOption, pair)
+func requireClientAuth(config *config.ServerTLS) tls.ClientAuthType {
+	if config != nil && len(config.ClientCertificate) > 0 {
+		return tls.RequireAndVerifyClientCert
 	}
-	for _, p := range ports {
-		if _, err := strconv.Atoi(p); err != nil {
-			return errors.Configuration.Messagef("%s: invalid format: %s", TLSProxyOption, pair).With(err)
-		}
-	}
-
-	if dp, exist := tdp[ListenPort(ports[1])]; exist && dp.Contains(ports[0]) {
-		return errors.Configuration.Messagef("https_dev_proxy: tls port already defined: %s", pair)
-	}
-
-	tdp[ListenPort(ports[1])] = append(tdp[ListenPort(ports[1])], ports[0])
-	return nil
+	return tls.NoClientCert
 }
 
-func (tdp TLSDevPorts) Get(p string) []string {
-	if result, exist := tdp[ListenPort(p)]; exist {
-		return result
-	}
-	return nil
-}
+func newTLSConfig(config *config.ServerTLS, log logrus.FieldLogger) (*tls.Config, error) {
+	cfg := coupertls.DefaultTLSConfig()
+	cfg.RootCAs = x509.NewCertPool() // no system CA's
+	var leafOnlyCerts [][]byte
 
-func (tp Ports) Contains(needle string) bool {
-	for _, p := range tp {
-		if p == needle {
-			return true
-		}
-	}
-	return false
-}
-
-func (lp ListenPort) Port() runtime.Port {
-	i, _ := strconv.Atoi(string(lp))
-	return runtime.Port(i)
-}
-
-func NewTLSProxy(addr, port string, logger logrus.FieldLogger, settings *config.Settings) (*http.Server, error) {
-	origin, err := url.Parse(fmt.Sprintf("http://%s/", addr))
-	if err != nil {
-		return nil, err
+	cfg.GetCertificate = func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		log.WithField("ClientHelloInfo", logrus.Fields{
+			"connection": logrus.Fields{
+				"client_ip": info.Conn.RemoteAddr().String(),
+				"server_ip": info.Conn.LocalAddr().String(),
+			},
+			"server_name":      info.ServerName,
+			"supported_protos": info.SupportedProtos,
+		}).Debug()
+		return nil, nil
 	}
 
-	logEntry := logger.WithField("type", "couper_access_tls")
+	cfg.ClientAuth = requireClientAuth(config)
 
-	httpProxy := httputil.NewSingleHostReverseProxy(origin)
-	httpProxy.Transport = &http.Transport{ // http.DefaultTransport /wo Proxy
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	headers := []string{"Connection", "Upgrade"}
-	accessLog := logging.NewAccessLog(&logging.Config{
-		RequestHeaders:  append(logging.DefaultConfig.RequestHeaders, headers...),
-		ResponseHeaders: append(logging.DefaultConfig.ResponseHeaders, headers...),
-	}, logEntry)
-
-	initialConfig, err := getTLSConfig(&tls.ClientHelloInfo{})
-	if err != nil {
-		return nil, err
-	}
-
-	listener, err := net.Listen("tcp4", ":"+port)
-	if err != nil {
-		return nil, err
-	}
-
-	uidFn := middleware.NewUIDFunc(settings.RequestIDFormat)
-
-	tlsServer := &http.Server{
-		Addr:     ":" + port,
-		ErrorLog: newErrorLogWrapper(logEntry),
-		Handler: http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			uid := uidFn()
-			req.Header.Set(httpsDevProxyIDField, uid)
-
-			ctx := context.WithValue(req.Context(), request.ServerName, "couper_tls")
-			ctx = context.WithValue(ctx, request.UID, uid)
-			ctx = context.WithValue(ctx, request.StartTime, time.Now())
-
-			req.Header.Set("Forwarded", fmt.Sprintf("for=%s;proto=https;host=%s;by=%s", req.RemoteAddr, req.Host, listener.Addr().String()))
-			req.Header.Set("Via", "couper-https-dev-proxy")
-			req.Header.Set("X-Forwarded-For", req.RemoteAddr+", "+listener.Addr().String())
-			req.Header.Set("X-Forwarded-Host", req.Host)
-			req.Header.Set("X-Forwarded-Proto", "https")
-
-			req.URL.Host = req.Host
-
-			respW := writer.NewResponseWriter(rw, "")
-			outreq := req.WithContext(ctx)
-			httpProxy.ServeHTTP(respW, outreq)
-			accessLog.Do(respW, outreq)
-		}),
-		TLSConfig: initialConfig,
-	}
-
-	go tlsServer.ServeTLS(listener, "", "")
-	return tlsServer, err
-}
-
-var tlsConfigurations = map[string]*tls.Config{}
-var tlsLock = sync.RWMutex{}
-
-// getTLSConfig returns a clone from created or memorized tls configuration due to
-// transport protocol upgrades / clones later on which would result in data races.
-func getTLSConfig(info *tls.ClientHelloInfo) (*tls.Config, error) {
-	var hosts []string
-	key := "localhost"
-	if info.ServerName != "" {
-		hosts = append(hosts, info.ServerName)
-		key = info.ServerName
-	}
-
-	// Global lock to prevent recreate loop for new connections.
-	tlsLock.Lock()
-	defer tlsLock.Unlock()
-
-	tlsConfig, ok := tlsConfigurations[key]
-	if !ok || tlsConfig.Certificates[0].Leaf.NotAfter.Before(time.Now()) {
-		selfSigned, err := NewCertificate(time.Hour*24, hosts, nil)
+	for _, certConfig := range config.ServerCertificates {
+		cert, err := LoadServerCertificate(certConfig)
 		if err != nil {
 			return nil, err
 		}
-		tlsConf := &tls.Config{
-			Certificates:       []tls.Certificate{*selfSigned.Server},
-			GetConfigForClient: getTLSConfig,
-		}
 
-		tlsConfigurations[key] = tlsConf
-		return tlsConf.Clone(), nil
+		cfg.Certificates = append(cfg.Certificates, cert)
 	}
 
-	return tlsConfig.Clone(), nil
-}
+	var leafCerts map[string][]byte
+	if cfg.ClientAuth == tls.RequireAndVerifyClientCert {
+		cfg.ClientCAs = x509.NewCertPool()
+		for _, certConfig := range config.ClientCertificate {
+			cert, clientCrt, err := LoadClientCertificate(certConfig)
+			if err != nil {
+				return nil, err
+			}
 
-type SelfSignedCertificate struct {
-	CA     []byte // PEM encoded
-	Server *tls.Certificate
-}
+			if cert.Leaf != nil {
+				cfg.ClientCAs.AddCert(cert.Leaf)
+			}
 
-// NewCertificate creates a certificate with given hosts and duration.
-// If no hosts are provided all localhost variants will be used.
-func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time) (*SelfSignedCertificate, error) {
-	caPrivateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(hosts) == 0 {
-		hosts = []string{"127.0.0.1", "::1", "localhost", "0.0.0.0", "::0"}
-	}
-
-	if notBefore == nil {
-		n := time.Now()
-		notBefore = &n
-	}
-	notAfter := notBefore.Add(duration)
-
-	serialNumber, err := newSerialNumber()
-	if err != nil {
-		log.Fatalf("failed to generate serial number: %s", err)
-	}
-
-	template := x509.Certificate{
-		Subject: pkix.Name{
-			Country:            []string{"DE"},
-			Organization:       []string{"Couper"},
-			OrganizationalUnit: []string{"Development"},
-		},
-		NotBefore: *notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		BasicConstraintsValid: true,
-	}
-
-	// self CA
-	caTemplate := template
-	caTemplate.SerialNumber = serialNumber
-	caTemplate.IsCA = true
-	caTemplate.KeyUsage |= x509.KeyUsageCertSign
-
-	caDER, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caPrivateKey.PublicKey, caPrivateKey)
-	if err != nil {
-		log.Fatalf("Failed to create certificate: %s", err)
-	}
-
-	caCert := &bytes.Buffer{}
-	err = pem.Encode(caCert, &pem.Block{Type: "CERTIFICATE", Bytes: caDER})
-	if err != nil {
-		return nil, err
-	}
-
-	caKey := &bytes.Buffer{}
-	err = pem.Encode(caKey, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(caPrivateKey)})
-	if err != nil {
-		return nil, err
-	}
-
-	// server certificate
-	srvPrivateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		return nil, err
-	}
-
-	srvTemplate := template
-	srvTemplate.SerialNumber, err = newSerialNumber()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, h := range hosts {
-		if ip := net.ParseIP(h); ip != nil {
-			srvTemplate.IPAddresses = append(srvTemplate.IPAddresses, ip)
-		} else {
-			srvTemplate.DNSNames = append(srvTemplate.DNSNames, h)
+			if clientCrt.Leaf != nil {
+				if cert.Leaf == nil {
+					leafOnlyCerts = append(leafOnlyCerts, clientCrt.Leaf.Raw)
+				} else {
+					if leafCerts == nil {
+						leafCerts = make(map[string][]byte)
+					}
+					leafCerts[checksum(cert.Leaf.Raw)] = clientCrt.Leaf.Raw
+				}
+			}
 		}
 	}
 
-	srvDER, err := x509.CreateCertificate(rand.Reader, &srvTemplate, &caTemplate, &srvPrivateKey.PublicKey, caPrivateKey)
-	if err != nil {
-		log.Fatalf("Failed to create certificate: %s", err)
+	if len(leafCerts)+len(leafOnlyCerts) > 0 {
+		cfg.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			// TODO: check if chains can be passed to prevent double verify
+			return verifyClientCertificate(cfg.ClientCAs, leafCerts, leafOnlyCerts, rawCerts)
+		}
+
+		// If one of the certificate blocks has no CA certificate but a leaf one then downgrade
+		// the clientCert option to prevent the tls module to call verify on its own.
+		if len(leafOnlyCerts) > 0 {
+			cfg.ClientAuth = tls.RequestClientCert
+		}
 	}
 
-	srvCert := &bytes.Buffer{}
-	err = pem.Encode(srvCert, &pem.Block{Type: "CERTIFICATE", Bytes: srvDER})
-	if err != nil {
-		return nil, err
+	// fallback to the self-signed server certificate
+	if len(cfg.Certificates) == 0 {
+		selfSigned, _ := NewCertificate(time.Hour*12, nil, nil)
+		cfg.Certificates = append(cfg.Certificates, *selfSigned.Server)
 	}
 
-	srvKey := &bytes.Buffer{}
-	err = pem.Encode(srvKey, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(srvPrivateKey)})
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.X509KeyPair(srvCert.Bytes(), srvKey.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	cert.Leaf, err = x509.ParseCertificate(srvDER)
-	return &SelfSignedCertificate{
-		CA:     caCert.Bytes(),
-		Server: &cert,
-	}, err
+	return cfg, nil
 }
 
-func newSerialNumber() (*big.Int, error) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	return rand.Int(rand.Reader, serialNumberLimit)
-}
-
-// ErrorWrapper logs incoming Write bytes with the context filled logrus.FieldLogger.
-type ErrorWrapper struct{ l logrus.FieldLogger }
-
-func (e *ErrorWrapper) Write(p []byte) (n int, err error) {
-	msg := string(p)
-	if strings.HasSuffix(msg, " tls: unknown certificate") ||
-		strings.HasPrefix(msg, "http: TLS handshake error") {
-		return len(p), nil // triggered on first browser connect for self signed certs; skip
+func LoadServerCertificate(config *config.ServerCertificate) (tls.Certificate, error) {
+	if config == nil {
+		return tls.Certificate{}, nil // currently triggers self signed fallback
 	}
-	e.l.Error(msg)
-	return len(p), nil
+	cert, err := coupertls.ReadValueOrFile(config.PublicKey, config.PublicKeyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	privateKey, err := coupertls.ReadValueOrFile(config.PrivateKey, config.PrivateKeyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	// Try PEM encoded
+	certificate, err := tls.X509KeyPair(cert, privateKey)
+	if err == nil {
+		certificate.Leaf, err = x509.ParseCertificate(certificate.Certificate[0])
+		return certificate, err
+	} // otherwise assume DER
+	x509certificate, err := x509.ParseCertificate(cert)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	key, err := x509.ParsePKCS8PrivateKey(privateKey)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	// TODO: Check for public <> private key type match as seen in tls.X509KeyPair() method.
+	return tls.Certificate{
+		Certificate: [][]byte{x509certificate.Raw},
+		Leaf:        x509certificate,
+		PrivateKey:  key,
+	}, nil
 }
-func newErrorLogWrapper(logger logrus.FieldLogger) *log.Logger {
-	return log.New(&ErrorWrapper{logger}, "", log.Lmsgprefix)
+
+func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, tls.Certificate, error) {
+	fail := func(err error) (tls.Certificate, tls.Certificate, error) {
+		return tls.Certificate{}, tls.Certificate{}, errors.Configuration.With(err).Message("client_certificate:")
+	}
+
+	if config == nil {
+		return tls.Certificate{}, tls.Certificate{}, nil
+	}
+
+	hasLeaf := config.Leaf != "" || config.LeafFile != ""
+
+	caCert, err := coupertls.ReadValueOrFile(config.CA, config.CAFile)
+	if err != nil && !hasLeaf {
+		return fail(err)
+	}
+
+	leafCert, err := coupertls.ReadValueOrFile(config.Leaf, config.LeafFile)
+	if err != nil && hasLeaf { // since its optional, if given
+		return fail(err)
+	}
+
+	// try PEM encoded
+	var leafCertificate tls.Certificate
+	if len(leafCert) > 0 {
+		leafCertificate, err = coupertls.ParseCertificate(leafCert, nil)
+		if err != nil {
+			return fail(err)
+		}
+	}
+
+	if len(caCert) == 0 && leafCertificate.Leaf != nil {
+		return tls.Certificate{}, leafCertificate, nil
+	}
+
+	caCertificate, err := coupertls.ParseCertificate(caCert, nil)
+
+	return caCertificate, leafCertificate, err
+}
+
+// verifyClientCertificate will be called as soon as a client_certificate block contains just one leaf certificate
+// without a CA certificate. Other possible client_certificate blocks with CA certificate must still be validated.
+// If there is no "leaf-only" client_certificate block the tls package will do the verification.
+func verifyClientCertificate(caPool *x509.CertPool, leafs map[string][]byte, leafsOnly [][]byte, rawCerts [][]byte) error {
+	for _, leaf := range leafsOnly {
+		for _, cert := range rawCerts {
+			if bytes.Equal(cert, leaf) {
+				return nil
+			}
+		}
+	}
+
+	// unfortunately parsing happens twice, already before calling this callback
+	certs := make([]*x509.Certificate, len(rawCerts))
+	var err error
+	for i, asn1Data := range rawCerts {
+		if certs[i], err = x509.ParseCertificate(asn1Data); err != nil {
+			return fmt.Errorf("tls: failed to parse client certificate: " + err.Error())
+		}
+	}
+
+	chains, err := verify(caPool, certs)
+	if err != nil {
+		return err
+	}
+
+	// Determine the requirement to verify leaf equality with CA <> leaf mapping.
+	var checkLeaf bool
+	var leaf []byte
+	if leafs != nil && len(chains) > 0 && len(chains[0]) > 1 {
+		leaf, checkLeaf = leafs[checksum(chains[0][1].Raw)]
+	}
+
+	if !checkLeaf {
+		return nil
+	}
+
+	for _, cert := range rawCerts {
+		if bytes.Equal(cert, leaf) {
+			return nil
+		}
+	}
+	return fmt.Errorf("tls: client leaf certificate mismatch")
+}
+
+func verify(caPool *x509.CertPool, certs []*x509.Certificate) ([][]*x509.Certificate, error) {
+	opts := x509.VerifyOptions{
+		Roots:         caPool,
+		CurrentTime:   time.Now(),
+		Intermediates: x509.NewCertPool(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+
+	for _, cert := range certs[1:] {
+		opts.Intermediates.AddCert(cert)
+	}
+
+	chains, err := certs[0].Verify(opts)
+	if err != nil {
+		return nil, fmt.Errorf("tls: failed to verify client certificate: " + err.Error())
+	}
+	return chains, nil
+}
+
+func checksum(b []byte) string {
+	sum := md5.Sum(b)
+	return hex.EncodeToString(sum[:])
 }

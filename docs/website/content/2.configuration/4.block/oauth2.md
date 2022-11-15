@@ -1,12 +1,12 @@
 # OAuth2
 
-The `oauth2` block in the [Backend Block](backend) context configures an OAuth2 flow to request a bearer token for the backend request.
+The `oauth2` block in the [Backend Block](/configuration/block/backend) context configures an OAuth2 flow to request a bearer token for the backend request.
 
 **Note:** The token received from the authorization server's token endpoint is stored **per backend**. So even with flows where a user's account characteristics like username/password or email address are involved, there is no way to "switch" from one user to another depending on the client request.
 
 | Block name | Context                  | Label    | Nested block(s)                                                            |
 |:-----------|:-------------------------|:---------|:---------------------------------------------------------------------------|
-| `oauth2`   | [Backend Block](backend) | no label | [Backend Block](backend), [JWT Signing Profile Block](jwt_signing_profile) |
+| `oauth2`   | [Backend Block](/configuration/block/backend) | no label | [Backend Block](/configuration/block/backend), [JWT Signing Profile Block](jwt_signing_profile) |
 
 ::attributes
 ---
@@ -82,4 +82,4 @@ values: [
 ---
 ::
 
-The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](../modifiers#request-header) in a [backend block](backend).
+The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](/configuration/modifiers#request-header) in a [backend block](/configuration/block/backend).

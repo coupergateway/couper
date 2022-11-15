@@ -88,7 +88,9 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 	helper.Must(err)
 
 	port := runtime.Port(conf.Settings.DefaultPort)
-	gw := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, port, srvConf[port])
+	gw, err := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, port, srvConf[port])
+	helper.Must(err)
+
 	gw.Listen()
 	defer gw.Close()
 
@@ -190,7 +192,9 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	srvConf, err := runtime.NewServerConfiguration(conf, logger, tmpMemStore)
 	helper.Must(err)
 
-	couper := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, runtime.Port(0), srvConf[0])
+	couper, err := server.New(ctx, conf.Context, log.WithContext(ctx), conf.Settings, &runtime.DefaultTimings, runtime.Port(0), srvConf[0])
+	helper.Must(err)
+
 	couper.Listen()
 	defer couper.Close()
 

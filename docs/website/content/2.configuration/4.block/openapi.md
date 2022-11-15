@@ -12,7 +12,7 @@ In this case the response validation will fail if not ignored, too.
 
 |Block name|Context|Label|Nested block(s)|
 | :-----------| :-----------| :-----------| :-----------|
-|`openapi`| [Backend Block](backend)|-|-|
+|`openapi`| [Backend Block](/configuration/block/backend)|-|-|
 
 
 ::attributes

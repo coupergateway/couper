@@ -73,6 +73,7 @@ func main() {
 	for _, impl := range []interface{}{
 		&config.API{},
 		&config.Backend{},
+		&config.BackendTLS{},
 		&config.BasicAuth{},
 		&config.CORS{},
 		&config.Defaults{},
@@ -92,6 +93,8 @@ func main() {
 		&config.Response{},
 		&config.SAML{},
 		&config.Server{},
+		&config.ClientCertificate{},
+		&config.ServerCertificate{},
 		&config.Settings{},
 		&config.Spa{},
 		&config.TokenRequest{},
@@ -105,11 +108,13 @@ func main() {
 		if _, exists := blockNamesMap[blockName]; exists {
 			blockName = blockNamesMap[blockName]
 		}
+
 		result := entry{
 			Name: blockName,
 			URL:  strings.ToLower(basePath + blockName),
 			Type: "block",
 		}
+
 		result.ID = result.URL
 
 		var fields []reflect.StructField

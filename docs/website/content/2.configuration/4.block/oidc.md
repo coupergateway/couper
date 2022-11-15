@@ -2,11 +2,11 @@
 
 The `oidc` block lets you configure the [`oauth2_authorization_url()` function](/configuration/functions) and an access
 control for an OIDC **Authorization Code Grant Flow** redirect endpoint.
-Like all [access control](../access-control) types, the `oidc` block is defined in the [`definitions` Block](definitions) and can be referenced in all configuration blocks by its required _label_.
+Like all [access control](/configuration/access-control) types, the `oidc` block is defined in the [`definitions` Block](/configuration/block/definitions) and can be referenced in all configuration blocks by its required _label_.
 
 | Block name | Context                                 | Label            | Nested block(s)                                                                                                  |
 |:-----------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
-| `oidc`     | [Definitions Block](definitions)        | &#9888; required | [Backend Block](backend), [Error Handler Block](error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
+| `oidc`     | [Definitions Block](/configuration/block/definitions)        | &#9888; required | [Backend Block](/configuration/block/backend), [Error Handler Block](/configuration/block/error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
 
 > any `backend` attributes: Do not disable the peer certificate validation with `disable_certificate_validation = true`.
 
@@ -131,7 +131,7 @@ You should only use `configuration_backend`, `jwks_uri_backend`, `token_backend`
 
 If the OpenID server supports the `code_challenge_method` `S256` the default value for `verifier_method`is `"ccm_s256"`, `"nonce"` otherwise.
 
-The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](../modifiers#request-header) in a [backend block](backend).
+The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](/configuration/modifiers#request-header) in a [backend block](/configuration/block/backend).
 
 
 ::duration

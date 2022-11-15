@@ -289,6 +289,43 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:5,15-20: backend labels must be unique; ",
 		},
 		{
+			"backend disable cert validation with tls block and server_ca_certificate",
+			`server {}
+			 definitions {
+			   backend "foo" {
+					disable_certificate_validation = false # value does not matter
+					tls {
+						server_ca_certificate = "asdf"
+					}
+			   }
+			 }`,
+			"couper.hcl:5,6-7,7: configured 'disable_certificate_validation' along with 'server_ca_certificate' attribute; ",
+		},
+		{
+			"backend disable cert validation with tls block and server_ca_certificate_file",
+			`server {}
+			 definitions {
+			   backend "foo" {
+					disable_certificate_validation = true # value does not matter
+					tls {
+						server_ca_certificate_file = "asdf.crt"
+					}
+			   }
+			 }`,
+			"couper.hcl:5,6-7,7: configured 'disable_certificate_validation' along with 'server_ca_certificate_file' attribute; ",
+		},
+		{
+			"backend disable cert validation with tls block and w/o server_ca_certificate*",
+			`server {}
+			 definitions {
+			   backend "foo" {
+					disable_certificate_validation = true # value does not matter
+					tls {}
+			   }
+			 }`,
+			"",
+		},
+		{
 			"duplicate proxy labels",
 			`server {}
 			 definitions {

@@ -23,6 +23,7 @@ type Options struct {
 	SPABasePaths   []string
 	SrvBasePath    string
 	ServerName     string
+	TLS            *config.ServerTLS
 }
 
 func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, error) {
@@ -33,6 +34,8 @@ func NewServerOptions(conf *config.Server, logger *logrus.Entry) (*Options, erro
 	if conf == nil {
 		return options, nil
 	}
+
+	options.TLS = conf.TLS
 
 	options.FilesErrTpls = make([]*errors.Template, len(conf.Files))
 	for i := range conf.Files {

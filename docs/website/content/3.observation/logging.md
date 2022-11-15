@@ -121,8 +121,8 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 
 | Name         |                 | Description                                                                                                                |
 |:-------------|:----------------|:---------------------------------------------------------------------------------------------------------------------------|
-| `"deadline"` |                 | shutdown parameter, see [Health Check](health)                                                        |
-| `"delay"`    |                 | shutdown parameter, see [Health Check](health)                                                        |
+| `"deadline"` |                 | shutdown parameter, see [Health Check](/observation/health)                                                        |
+| `"delay"`    |                 | shutdown parameter, see [Health Check](/observation/health)                                                        |
 | `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings) |
 |              | `{`             |                                                                                                                            |
 |              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                         |

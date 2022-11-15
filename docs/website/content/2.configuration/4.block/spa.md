@@ -4,7 +4,7 @@ The `spa` blocks configure the Web serving for SPA assets. Can be defined multip
 
 | Block name | Context                       | Label    | Nested block(s)           |
 |:-----------|:------------------------------|:---------|:--------------------------|
-| `spa`      | [Server Block](server) | Optional | [CORS Block](cors) |
+| `spa`      | [Server Block](/configuration/block/server) | Optional | [CORS Block](/configuration/block/cors) |
 
 ```hcl
 spa {
