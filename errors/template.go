@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/sirupsen/logrus"
@@ -61,8 +62,12 @@ func NewTemplateFromFile(path string, logger *logrus.Entry) (*Template, error) {
 	return NewTemplate(mime, fileName, tplFile, logger)
 }
 
+var setLoggerMu sync.Mutex // required for testing purposes
+
 // SetLogger updates the default templates with the configured "daemon" logger.
 func SetLogger(log *logrus.Entry) {
+	setLoggerMu.Lock()
+	defer setLoggerMu.Unlock()
 	DefaultJSON.log = log
 	DefaultHTML.log = log
 }
