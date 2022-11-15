@@ -115,18 +115,20 @@ func registerHandler(root *gmux.Router, methods []string, path string, handler h
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
-	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
+	ctx := context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName)
 	routeMatch, matches := m.match(m.endpointRoot, req)
 	if !matches {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
-		// Otherwise look for existing files or spa fallback.
+		// Otherwise, look for existing files or spa fallback.
 		if tpl, api := m.getAPIErrorTemplate(req.URL.Path); tpl != nil {
+			*req = *req.WithContext(ctx)
 			return tpl.WithError(errors.RouteNotFound.Label(api.BasePath)) // TODO: api label
 		}
 
 		fileHandler, exist := m.hasFileResponse(req)
 		if exist {
+			*req = *req.WithContext(ctx)
 			return fileHandler
 		}
 
@@ -138,6 +140,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 			}
 
 			// Fallback
+			*req = *req.WithContext(ctx)
 			return m.opts.ServerOptions.ServerErrTpl.WithError(errors.RouteNotFound)
 		}
 	}
@@ -157,8 +160,6 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	if strings.HasPrefix(wc, "/") {
 		wc = strings.TrimPrefix(wc, "/")
 	}
-
-	ctx := req.Context()
 
 	if wc != "" {
 		ctx = context.WithValue(ctx, request.Wildcard, wc)
