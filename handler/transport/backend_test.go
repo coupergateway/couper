@@ -210,21 +210,21 @@ func TestBackend_RoundTrip_Validation(t *testing.T) {
 			"backend error",
 			"'GET /pa/.//th': no matching operation was found",
 		},
-		{
+		{ // gorilla/mux router has .UseEncodedPath(), see https://pkg.go.dev/github.com/gorilla/mux#Router.UseEncodedPath
 			"URL encoded request",
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodGet,
 			"/pa%2f%2e%2fth",
-			"",
-			"",
+			"backend error",
+			"'GET /pa/./th': no matching operation was found",
 		},
-		{
+		{ // gorilla/mux router has .UseEncodedPath(), see https://pkg.go.dev/github.com/gorilla/mux#Router.UseEncodedPath
 			"URL encoded request, wrong method",
 			&config.OpenAPI{File: "testdata/upstream.yaml"},
 			http.MethodPost,
 			"/pa%2f%2e%2fth",
 			"backend error",
-			"'POST /pa/./th': method not allowed",
+			"'POST /pa/./th': no matching operation was found",
 		},
 		{
 			"invalid request",

@@ -13,6 +13,59 @@ import (
 	"github.com/avenga/couper/server"
 )
 
+func TestSortPathPatterns(t *testing.T) {
+	pathPatterns := []string{
+		"/a/b/c",
+		"/a/b/{c}",
+		"/**",
+		"/{a}/b/{c}",
+		"/a/b/**",
+		"/a/{b}/c",
+		"/",
+		"/{a}/{b}/**",
+		"/a/{b}",
+		"/a/**",
+		"/a/{b}/{c}",
+		"/{a}",
+		"/{a}/b/c",
+		"/{a}/b/**",
+		"/{a}/{b}/c",
+		"/{a}/**",
+		"/{a}/{b}/{c}",
+		"/a/b",
+		"/{a}/b",
+		"/{a}/{b}",
+		"/a",
+	}
+	server.SortPathPatterns(pathPatterns)
+	expectedSortedPathPatterns := []string{
+		"/a/b/c",
+		"/a/b/{c}",
+		"/a/{b}/c",
+		"/a/{b}/{c}",
+		"/{a}/b/c",
+		"/{a}/b/{c}",
+		"/{a}/{b}/c",
+		"/{a}/{b}/{c}",
+		"/a/b",
+		"/a/{b}",
+		"/{a}/b",
+		"/{a}/{b}",
+		"/",
+		"/a",
+		"/{a}",
+		"/a/b/**",
+		"/{a}/b/**",
+		"/{a}/{b}/**",
+		"/a/**",
+		"/{a}/**",
+		"/**",
+	}
+	if !reflect.DeepEqual(expectedSortedPathPatterns, pathPatterns) {
+		t.Errorf("exp: %v\ngot:%v", expectedSortedPathPatterns, pathPatterns)
+	}
+}
+
 func TestMux_FindHandler_PathParamContext(t *testing.T) {
 	type noContentHandler http.Handler
 	var noContent noContentHandler = http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -32,6 +85,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"/{section}/{project}":  noContent,
 			"/project/{project}/**": noContent,
 			"/w/c/{param}/**":       noContent,
+			"/prefix/**":            noContent,
 		},
 		FileRoutes: map[string]http.Handler{
 			"/htdocs/test.html": noContent,
@@ -100,6 +154,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 		}, ""},
 		{" w/o path param, w/o wildcard, double /", newReq("/w/c//"), http.NotFoundHandler(), nil, ""},
 		{" w/o path param, w/o wildcard, triple /", newReq("/w/c///"), http.NotFoundHandler(), nil, ""},
+		{"** not just concatenating", newReq("/prefixandsomethingelse"), http.NotFoundHandler(), nil, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {

@@ -2,19 +2,15 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"regexp"
+	"sort"
 	"strings"
 
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/getkin/kin-openapi/routers"
-	"github.com/getkin/kin-openapi/routers/legacy/pathpattern"
+	gmux "github.com/gorilla/mux"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/middleware"
@@ -24,22 +20,62 @@ import (
 // Mux is a http request router and dispatches requests
 // to their corresponding http handlers.
 type Mux struct {
-	endpointRoot *pathpattern.Node
-	fileRoot     *pathpattern.Node
-	handler      map[*routers.Route]http.Handler
+	endpointRoot *gmux.Router
+	fileRoot     *gmux.Router
 	opts         *runtime.MuxOptions
-	spaRoot      *pathpattern.Node
+	spaRoot      *gmux.Router
 }
 
 const (
-	serverOptionsKey    = "serverContextOptions"
-	wildcardVariable    = "_couper_wildcardMatch"
-	wildcardReplacement = "/{" + wildcardVariable + "*}"
-	wildcardSearch      = "/**"
-	pathParamPattern    = `/{$1|.+}`
+	serverOptionsKey = "serverContextOptions"
+	wildcardSearch   = "/**"
 )
 
-var pathParamSegmentRegexp = regexp.MustCompile(`/{(\w+)}`)
+func isParamSegment(segment string) bool {
+	return strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}")
+}
+
+func SortPathPatterns(pathPatterns []string) {
+	sort.Slice(pathPatterns, func(i, j int) bool {
+		iSegments := strings.Split(strings.TrimPrefix(pathPatterns[i], "/"), "/")
+		jSegments := strings.Split(strings.TrimPrefix(pathPatterns[j], "/"), "/")
+		iLastSegment := iSegments[len(iSegments)-1]
+		jLastSegment := jSegments[len(jSegments)-1]
+		if iLastSegment != "**" && jLastSegment == "**" {
+			return true
+		}
+		if iLastSegment == "**" && jLastSegment != "**" {
+			return false
+		}
+		if len(iSegments) > len(jSegments) {
+			return true
+		}
+		if len(iSegments) < len(jSegments) {
+			return false
+		}
+		for k, iSegment := range iSegments {
+			jSegment := jSegments[k]
+			if !isParamSegment(iSegment) && isParamSegment(jSegment) {
+				return true
+			}
+			if isParamSegment(iSegment) && !isParamSegment(jSegment) {
+				return false
+			}
+		}
+		return sort.StringSlice{pathPatterns[i], pathPatterns[j]}.Less(0, 1)
+	})
+}
+
+func sortedPathPatterns(routes map[string]http.Handler) []string {
+	pathPatterns := make([]string, len(routes))
+	i := 0
+	for k, _ := range routes {
+		pathPatterns[i] = k
+		i++
+	}
+	SortPathPatterns(pathPatterns)
+	return pathPatterns
+}
 
 func NewMux(options *runtime.MuxOptions) *Mux {
 	opts := options
@@ -49,23 +85,22 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 	mux := &Mux{
 		opts:         opts,
-		endpointRoot: &pathpattern.Node{},
-		fileRoot:     &pathpattern.Node{},
-		spaRoot:      &pathpattern.Node{},
-		handler:      make(map[*routers.Route]http.Handler),
+		endpointRoot: gmux.NewRouter(),
+		fileRoot:     gmux.NewRouter(),
+		spaRoot:      gmux.NewRouter(),
 	}
 
-	for path, h := range opts.EndpointRoutes {
+	for _, path := range sortedPathPatterns(opts.EndpointRoutes) {
 		// TODO: handle method option per endpoint configuration
-		mux.mustAddRoute(mux.endpointRoot, path, h)
+		mustAddRoute(mux.endpointRoot, path, opts.EndpointRoutes[path], true)
 	}
 
-	for path, h := range opts.FileRoutes {
-		mux.mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), h)
+	for _, path := range sortedPathPatterns(opts.FileRoutes) {
+		mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), opts.FileRoutes[path], false)
 	}
 
-	for path, h := range opts.SPARoutes {
-		mux.mustAddRoute(mux.spaRoot, path, h)
+	for _, path := range sortedPathPatterns(opts.SPARoutes) {
+		mustAddRoute(mux.spaRoot, path, opts.SPARoutes[path], true)
 	}
 
 	return mux
@@ -73,114 +108,85 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 
 var noDefaultMethods []string
 
-func (m *Mux) registerHandler(root *pathpattern.Node, methods []string, path string, handler http.Handler) {
+func registerHandler(root *gmux.Router, methods []string, path string, handler http.Handler) {
 	notAllowedMethodsHandler := errors.DefaultJSON.WithError(errors.MethodNotAllowed)
 	allowedMethodsHandler := middleware.NewAllowedMethodsHandler(methods, noDefaultMethods, handler, notAllowedMethodsHandler)
-	m.mustAddRoute(root, path, allowedMethodsHandler)
-}
-
-func (m *Mux) mustAddRoute(root *pathpattern.Node, path string, handler http.Handler) {
-	// EndpointRoutes allowed methods are handled by handler
-	route := mustCreateNode(root, handler, path)
-	m.handler[route] = handler
+	mustAddRoute(root, path, allowedMethodsHandler, false)
 }
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
-	node, paramValues := m.matchWithMethod(m.endpointRoot, req)
-	if node == nil {
-		node, paramValues = m.matchWithoutMethod(m.endpointRoot, req)
-	}
-
-	if node == nil {
+	ctx := context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName)
+	routeMatch, matches := m.match(m.endpointRoot, req)
+	if !matches {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
 		// and handle api related errors accordingly.
-		// Otherwise look for existing files or spa fallback.
+		// Otherwise, look for existing files or spa fallback.
 		if tpl, api := m.getAPIErrorTemplate(req.URL.Path); tpl != nil {
+			*req = *req.WithContext(ctx)
 			return tpl.WithError(errors.RouteNotFound.Label(api.BasePath)) // TODO: api label
 		}
 
 		fileHandler, exist := m.hasFileResponse(req)
 		if exist {
+			*req = *req.WithContext(ctx)
 			return fileHandler
 		}
 
-		node, paramValues = m.matchWithoutMethod(m.spaRoot, req)
+		routeMatch, matches = m.match(m.spaRoot, req)
 
-		if node == nil {
+		if !matches {
 			if fileHandler != nil {
 				return fileHandler
 			}
 
 			// Fallback
+			*req = *req.WithContext(ctx)
 			return m.opts.ServerOptions.ServerErrTpl.WithError(errors.RouteNotFound)
 		}
 	}
 
-	route, _ := node.Value.(*routers.Route)
-
-	pathParams := make(request.PathParameter, len(paramValues))
-	paramKeys := node.VariableNames
-	for i, value := range paramValues {
-		key := strings.TrimSuffix(strings.TrimSuffix(paramKeys[i], "*"), "|.+")
+	pathParams := make(request.PathParameter, len(routeMatch.Vars))
+	for k, value := range routeMatch.Vars {
+		key := strings.TrimSuffix(strings.TrimSuffix(k, "*"), "|.+")
 		pathParams[key] = value
 	}
 
-	ctx := req.Context()
+	pt, _ := routeMatch.Route.GetPathTemplate()
+	p := pt
+	for k, v := range routeMatch.Vars {
+		p = strings.Replace(p, "{"+k+"}", v, 1)
+	}
+	wc := strings.TrimPrefix(req.URL.Path, p)
+	if strings.HasPrefix(wc, "/") {
+		wc = strings.TrimPrefix(wc, "/")
+	}
 
-	if wildcardMatch, ok := pathParams[wildcardVariable]; ok {
-		ctx = context.WithValue(ctx, request.Wildcard, wildcardMatch)
-		delete(pathParams, wildcardVariable)
+	if wc != "" {
+		ctx = context.WithValue(ctx, request.Wildcard, wc)
 	}
 
 	ctx = context.WithValue(ctx, request.PathParams, pathParams)
 	*req = *req.WithContext(ctx)
 
-	return m.handler[route]
+	return routeMatch.Handler
 }
 
-func (m *Mux) matchWithMethod(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
-	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
-
-	return m.match(root, req.Method+" ", req.URL.Path)
-}
-
-func (m *Mux) matchWithoutMethod(root *pathpattern.Node, req *http.Request) (*pathpattern.Node, []string) {
-	*req = *req.WithContext(context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName))
-
-	return m.match(root, "", req.URL.Path)
-}
-
-func (m *Mux) match(root *pathpattern.Node, methodPrefix, path string) (*pathpattern.Node, []string) {
-	node, values := root.Match(methodPrefix + path)
-	if node != nil {
-		route, _ := node.Value.(*routers.Route)
-		if !strings.HasSuffix(route.Path, wildcardReplacement) {
-			// Allow one single trailing / on request path and/or endpoint path
-			if path != "/" {
-				path = strings.TrimSuffix(path, "/")
-			}
-			routePath := route.Path
-			if routePath != "/" {
-				routePath = strings.TrimSuffix(routePath, "/")
-			}
-			expectedSegments := strings.Split(path, "/")
-			matchedSegments := strings.Split(routePath, "/")
-			if len(expectedSegments) != len(matchedSegments) {
-				node = nil
-			}
-		}
+func (m *Mux) match(root *gmux.Router, req *http.Request) (*gmux.RouteMatch, bool) {
+	var routeMatch gmux.RouteMatch
+	if root.Match(req, &routeMatch) {
+		return &routeMatch, true
 	}
-	return node, values
+
+	return nil, false
 }
 
 func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
-	node, _ := m.matchWithoutMethod(m.fileRoot, req)
-	if node == nil {
+	routeMatch, matches := m.match(m.fileRoot, req)
+	if !matches {
 		return nil, false
 	}
 
-	route := node.Value.(*routers.Route)
-	fileHandler := m.handler[route]
+	fileHandler := routeMatch.Handler
 	unprotectedHandler := getChildHandler(fileHandler)
 	if fh, ok := unprotectedHandler.(*handler.File); ok {
 		return fileHandler, fh.HasResponse(req)
@@ -225,35 +231,34 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API
 	return nil, nil
 }
 
-func mustCreateNode(root *pathpattern.Node, handler http.Handler, path string) *routers.Route {
-	pathOptions := &pathpattern.Options{
-		SupportRegExp:   true,
-		SupportWildcard: true,
-	}
-
+func mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailingSlash bool) {
 	if strings.HasSuffix(path, wildcardSearch) {
-		path = path[:len(path)-len(wildcardSearch)] + wildcardReplacement
+		path = path[:len(path)-len(wildcardSearch)]
+		if len(path) == 0 {
+			path = "/" // path at least be /
+		}
+		root.Path(path).Handler(handler) // register /path ...
+		if !strings.HasSuffix(path, "/") {
+			path = path + "/" // ... and /path/**
+		}
+		root.PathPrefix(path).Handler(handler)
+		return
 	}
 
-	path = pathParamSegmentRegexp.ReplaceAllString(path, pathParamPattern)
-	node, err := root.CreateNode(path, pathOptions)
-	if err != nil {
-		panic(fmt.Errorf("create path node failed: %q: %v", path, err))
+	if len(path) == 0 {
+		path = "/" // path at least be /
 	}
-
-	var serverOpts *server.Options
-	if optsHandler, ok := handler.(server.Context); ok {
-		serverOpts = optsHandler.Options()
+	// cannot use Router.StrictSlash(true) because redirect and subsequent GET request would cause problem with CORS
+	if trailingSlash {
+		if strings.HasSuffix(path, "/") {
+			path = strings.TrimSuffix(path, "/")
+		}
+		if len(path) > 0 {
+			root.Path(path).Handler(handler) // register /path ...
+		}
+		path = path + "/" // ... and /path/
 	}
-
-	node.Value = &routers.Route{
-		Path: path,
-		Server: &openapi3.Server{Variables: map[string]*openapi3.ServerVariable{
-			serverOptionsKey: {Default: fmt.Sprintf("%#v", serverOpts)},
-		}},
-	}
-
-	return node.Value.(*routers.Route)
+	root.Path(path).Handler(handler)
 }
 
 // isAPIError checks the path w/ and w/o the

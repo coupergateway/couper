@@ -1401,7 +1401,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 		{expectation{
 			Body:   "body",
 			Method: "PUT",
-			Path:   "/anything/",
+			Path:   "/anything",
 			Query: url.Values{
 				"q": []string{"query"},
 			},
@@ -1418,7 +1418,7 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 			shutdown, _ := newCouper(configFile, helper)
 			defer shutdown()
 
-			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080?method=put", nil)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/?method=put", nil)
 			helper.Must(err)
 
 			req.Header.Set("Body", "body")
