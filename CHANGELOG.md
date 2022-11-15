@@ -11,8 +11,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Changed**
   * Replaced the JWT library because the former library was no longer maintained ([#612](https://github.com/avenga/couper/pull/612))
-
-* **Changed**
   * Routing and [OpenAPI validation](https://docs.couper.io/configuration/block/openapi) now use gorilla/mux ([#614](https://github.com/avenga/couper/pull/614))
 
 * **Fixed**
