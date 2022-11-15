@@ -331,15 +331,8 @@ func LoadConfig(body *hclsyntax.Body, src [][]byte, environment string) (*config
 			expression, _ := profile.Headers.Value(nil)
 			headers := seetie.ValueToMap(expression)
 
-			var errorMessage string
 			if _, exists := headers["alg"]; exists {
-				errorMessage = `"alg" cannot be set via "headers"`
-			} else if _, exists = headers["typ"]; exists {
-				errorMessage = `"typ" cannot be set via "headers"`
-			}
-
-			if errorMessage != "" {
-				return nil, errors.Configuration.Label(profile.Name).With(fmt.Errorf(errorMessage))
+				return nil, errors.Configuration.Label(profile.Name).With(fmt.Errorf(`"alg" cannot be set via "headers"`))
 			}
 		}
 

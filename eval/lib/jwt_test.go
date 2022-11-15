@@ -598,6 +598,7 @@ func TestJwtSignDynamic(t *testing.T) {
 					headers = {
 						kid = "key-id"
 						foo = [request.method, backend_responses.default.status]
+						typ = "at+jwt"
 					}
 					claims = {
 						x-method = "GET"
@@ -607,7 +608,7 @@ func TestJwtSignDynamic(t *testing.T) {
 			}
 			`,
 			"MyToken",
-			map[string]interface{}{"alg": "HS256", "typ": "JWT", "kid": "key-id", "foo": []interface{}{"GET", 200}},
+			map[string]interface{}{"alg": "HS256", "typ": "at+jwt", "kid": "key-id", "foo": []interface{}{"GET", 200}},
 			`{"sub": "12345"}`,
 			3600,
 			http.MethodGet,
@@ -833,26 +834,6 @@ func TestJwtSignConfigError(t *testing.T) {
 			"MyToken",
 			`{"sub": "12345"}`,
 			`configuration error: MyToken: "alg" cannot be set via "headers"`,
-		},
-		{
-			"user-defined typ header",
-			`
-			server "test" {
-			}
-			definitions {
-				jwt_signing_profile "MyToken" {
-					signature_algorithm = "HS256"
-					key = "$3cRe4"
-					ttl = "1h"
-					headers = {
-						typ = "JET"
-					}
-				}
-			}
-			`,
-			"MyToken",
-			`{"sub": "12345"}`,
-			`configuration error: MyToken: "typ" cannot be set via "headers"`,
 		},
 	}
 

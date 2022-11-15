@@ -24,7 +24,7 @@ values: [
   },
   {
     "default": "",
-    "description": "additional header fields for the JWT, `alg` and `typ` cannot be set",
+    "description": "additional header fields for the JWT, `typ` has the default value `JWT`, `alg` cannot be set",
     "name": "headers",
     "type": "object"
   },

@@ -129,6 +129,9 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 					return nil, err
 				}
 				headers = seetie.ValueToMap(v)
+				if _, exists := headers["alg"]; exists {
+					return nil, fmt.Errorf(`"alg" cannot be set via "headers"`)
+				}
 			}
 
 			tokenEndpoint, err := asConfig.GetTokenEndpoint()

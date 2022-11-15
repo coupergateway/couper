@@ -18,6 +18,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Aligned the evaluation of [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `redirect_uri` to `saml` `sp_acs_url` ([#589](https://github.com/avenga/couper/pull/589))
   * Proper handling of empty [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `scope` ([#593](https://github.com/avenga/couper/pull/593))
   * Throwing [sequence errors](https://docs.couper.io/configuration/error-handling#endpoint-error-types) and selecting appropriate [error handlers](https://docs.couper.io/configuration/error-handling) ([#595](https://github.com/avenga/couper/pull/595))
+  * Allow setting of the `typ` JWT header in [`jwt_signing_profile`s](https://docs.couper.io/configuration/block/jwt_signing_profile) ([#616](https://github.com/avenga/couper/pull/616))
 
 ---
 

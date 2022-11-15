@@ -791,6 +791,30 @@ definitions {
 `,
 			"configuration error: be: client authentication key: read error: open ",
 		},
+		{
+			"alg header with client_secret_jwt",
+			`server {}
+definitions {
+  backend "be" {
+    oauth2 {
+      token_endpoint = "https://authorization.server/token"
+      client_id      = "my_client"
+      client_secret  = "my_client_secret"
+      grant_type     = "client_credentials"
+      token_endpoint_auth_method = "client_secret_jwt"
+      jwt_signing_profile {
+        signature_algorithm = "HS256"
+        ttl = "10s"
+        headers = {
+          alg = "some value"
+        }
+      }
+    }
+  }
+}
+`,
+			"configuration error: be: \"alg\" cannot be set via \"headers\"",
+		},
 	} {
 		var errMsg string
 		conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
