@@ -217,7 +217,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 			continue
 		}
 
-		tripCh <- trip.Produce(outreq)
+		tripCh <- trip.Produce(outreq, make(map[string][]chan *producer.Result))
 	}
 	close(tripCh)
 

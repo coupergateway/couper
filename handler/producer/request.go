@@ -30,7 +30,7 @@ type Request struct {
 // Requests represents the producer <Requests> object.
 type Requests []*Request
 
-func (r Requests) Produce(req *http.Request) chan *Result {
+func (r Requests) Produce(req *http.Request, _ map[string][]chan *Result) chan *Result {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 	ctx := req.Context()

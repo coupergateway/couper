@@ -12,7 +12,7 @@ var (
 )
 
 type Roundtrip interface {
-	Produce(req *http.Request) chan *Result
+	Produce(req *http.Request, additionalChs map[string][]chan *Result) chan *Result
 	Len() int
 	Names() []string
 }
