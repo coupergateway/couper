@@ -147,7 +147,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 		var spaHandler http.Handler
 		for _, spaConf := range srvConf.SPAs {
-			spaHandler, err = handler.NewSpa(spaConf.BootstrapFile, serverOptions, []hcl.Body{spaConf.Remain, srvConf.Remain})
+			spaHandler, err = handler.NewSpa(spaConf, serverOptions, []hcl.Body{spaConf.Remain, srvConf.Remain})
 			if err != nil {
 				return nil, err
 			}
