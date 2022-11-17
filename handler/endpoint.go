@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strconv"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
@@ -217,7 +218,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 			continue
 		}
 
-		tripCh <- trip.Produce(outreq, make(map[string][]chan *producer.Result))
+		tripCh <- trip.Produce(outreq, &sync.Map{})
 	}
 	close(tripCh)
 

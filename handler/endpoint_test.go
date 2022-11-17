@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -385,7 +386,7 @@ type mockProducerResult struct {
 	rt http.RoundTripper
 }
 
-func (m *mockProducerResult) Produce(r *http.Request, _ map[string][]chan *producer.Result) chan *producer.Result {
+func (m *mockProducerResult) Produce(r *http.Request, _ *sync.Map) chan *producer.Result {
 	result := make(chan *producer.Result, 1)
 	defer close(result)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -17,7 +18,7 @@ type Sequence []Roundtrip
 // Parallel holds a list of items which get executed in parallel.
 type Parallel []Roundtrip
 
-func (p Parallel) Produce(req *http.Request, additionalChs map[string][]chan *Result) chan *Result {
+func (p Parallel) Produce(req *http.Request, additionalChs *sync.Map) chan *Result {
 	return pipe(req, p, "parallel", additionalChs)
 }
 
@@ -33,7 +34,7 @@ func (p Parallel) Names() []string {
 	return names
 }
 
-func (s Sequence) Produce(req *http.Request, additionalChs map[string][]chan *Result) chan *Result {
+func (s Sequence) Produce(req *http.Request, additionalChs *sync.Map) chan *Result {
 	return pipe(req, s, "sequence", additionalChs)
 }
 
@@ -55,7 +56,7 @@ func (s Sequence) Names() []string {
 
 // pipe calls the Roundtrip Interface on each given item and distinguishes between parallelism and trace kind.
 // The returned channel will be closed if this chain part has been ended.
-func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs map[string][]chan *Result) chan *Result {
+func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs *sync.Map) chan *Result {
 	var rootSpan trace.Span
 	ctx := req.Context()
 	if len(rt) > 0 {
@@ -70,11 +71,12 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs map[stri
 		rch := make(chan *Result, srt.Len())
 		allResults = append(allResults, rch)
 		k := fmt.Sprintf("%v", srt.Names())
-		if additional, ok := additionalChs[k]; ok {
+		if val, ok := additionalChs.Load(k); ok {
+			additional := val.([]chan *Result)
 			// srt is already prepared to Produce(), so we can here just listen to the result(s)
 			rch2 := make(chan *Result, srt.Len())
 			additional = append(additional, rch2)
-			additionalChs[k] = additional
+			additionalChs.Store(k, additional)
 			switch kind {
 			case "parallel": // execute each sequence branch in parallel
 				go pipeResults(rch, rch2)
@@ -83,7 +85,7 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs map[stri
 			}
 			continue
 		}
-		additionalChs[k] = []chan *Result{}
+		additionalChs.Store(k, []chan *Result{})
 
 		switch kind {
 		case "parallel": // execute each sequence branch in parallel
@@ -126,15 +128,15 @@ func pipeResults(results, rch2 chan *Result) {
 	}
 }
 
-func produceAndPipeResults(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip, additionalChs map[string][]chan *Result) {
+func produceAndPipeResults(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip, additionalChs *sync.Map) {
 	outreq := req.WithContext(ctx)
 	defer close(results)
 	rs := rt.Produce(outreq, additionalChs)
 
 	k := fmt.Sprintf("%v", rt.Names())
 	var additional []chan *Result
-	if add, ok := additionalChs[k]; ok {
-		additional = add
+	if val, ok := additionalChs.Load(k); ok {
+		additional = val.([]chan *Result)
 	}
 	for _, ach := range additional {
 		defer close(ach)
