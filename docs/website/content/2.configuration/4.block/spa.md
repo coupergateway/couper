@@ -16,7 +16,7 @@ spa {
 
 ## Bootstrap Data
 
-As it could get complicated to configure an SPA Application based on its environment (urls, clientIDs, ...) Couper can
+As it could get complicated to configure an SPA based on its environment (urls, clientIDs, ...) Couper can
 inject those environment based values into the `bootstrap_file` before serving it to the client.
 
 The first `bootstrap_data_placeholder` will be replaced with the evaluated value of `bootstrap_data`.
@@ -55,7 +55,7 @@ spa {
 ```
 
 The result would be the following snippet. Just place this `<script>` tag before all other script references in the head tag.
-Then the Application can access the `window.AppConfig` object to bootstrap its configuration.
+Then the application can access the `window.AppConfig` object to bootstrap its configuration.
 
 ```html
 <!-- ... -->
