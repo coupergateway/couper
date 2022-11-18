@@ -34,6 +34,10 @@ type Spa struct {
 	srvOptions       *server.Options
 }
 
+func init() {
+	ctyjson.EscapeHTML = true
+}
+
 func NewSpa(config *config.Spa, srvOpts *server.Options, modifier []hcl.Body) (*Spa, error) {
 	var err error
 	if config.BootstrapFile, err = filepath.Abs(config.BootstrapFile); err != nil {
