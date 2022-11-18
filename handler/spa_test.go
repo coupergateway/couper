@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"github.com/avenga/couper/eval"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -68,7 +69,7 @@ App
 	for _, tt := range tests {
 		t.Run(tt.cfg.Name, func(subT *testing.T) {
 			opts, _ := server.NewServerOptions(&config.Server{}, nil)
-			s, err := handler.NewSpa(tt.cfg, opts, nil)
+			s, err := handler.NewSpa(eval.NewDefaultContext().HCLContext(), tt.cfg, opts, nil)
 			if err != nil {
 				subT.Fatal(err)
 			}

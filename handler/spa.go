@@ -35,58 +35,77 @@ type Spa struct {
 }
 
 func init() {
+	// related to bootstrap_data and ist a must due to XSS
 	ctyjson.EscapeHTML = true
 }
 
-func NewSpa(config *config.Spa, srvOpts *server.Options, modifier []hcl.Body) (*Spa, error) {
+func NewSpa(ctx *hcl.EvalContext, config *config.Spa, srvOpts *server.Options, modifier []hcl.Body) (*Spa, error) {
 	var err error
 	if config.BootstrapFile, err = filepath.Abs(config.BootstrapFile); err != nil {
 		return nil, err
 	}
 
-	return &Spa{
+	spa := &Spa{
 		config:     config,
 		modifier:   modifier,
 		srvOptions: srvOpts,
-	}, nil
+	}
+
+	if config.BootstrapData == nil {
+		return spa, nil
+	}
+
+	file, err := os.Open(config.BootstrapFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	spa.bootstrapModTime = fileInfo.ModTime()
+
+	spa.replaceBootstrapData(ctx, file)
+
+	return spa, nil
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	file, err := os.Open(s.config.BootstrapFile)
-	if err != nil {
-		if _, ok := err.(*os.PathError); ok {
-			s.srvOptions.ServerErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
+	var content io.ReadSeeker
+	var modTime time.Time
+
+	if len(s.bootstrapContent) > 0 {
+		content = strings.NewReader(string(s.bootstrapContent))
+		modTime = s.bootstrapModTime
+	} else {
+		file, err := os.Open(s.config.BootstrapFile)
+		if err != nil {
+			if _, ok := err.(*os.PathError); ok {
+				s.srvOptions.ServerErrTpl.WithError(errors.RouteNotFound).ServeHTTP(rw, req)
+				return
+			}
+
+			s.srvOptions.ServerErrTpl.WithError(errors.Configuration).ServeHTTP(rw, req)
+			return
+		}
+		content = file
+		defer file.Close()
+
+		fileInfo, err := file.Stat()
+		if err != nil || fileInfo.IsDir() {
+			s.srvOptions.ServerErrTpl.WithError(errors.Configuration).ServeHTTP(rw, req)
 			return
 		}
 
-		s.srvOptions.ServerErrTpl.WithError(errors.Configuration).ServeHTTP(rw, req)
-		return
-	}
-	defer file.Close()
-	defer func() { // since the bootstrapOnce func does not return an error, we have to handle a possible panic.
-		if rp := recover(); rp != nil {
-			s.srvOptions.ServerErrTpl.WithError(errors.Server.With(rp.(error))).ServeHTTP(rw, req)
-		}
-	}()
-
-	fileInfo, err := file.Stat()
-	if err != nil || fileInfo.IsDir() {
-		s.srvOptions.ServerErrTpl.WithError(errors.Configuration).ServeHTTP(rw, req)
-		return
+		modTime = fileInfo.ModTime()
 	}
 
 	evalContext := eval.ContextFromRequest(req)
-	s.bootstrapOnce.Do(func() { s.replaceBootstrapData(evalContext.HCLContext(), file) })
 
 	if r, ok := rw.(*writer.Response); ok {
 		r.AddModifier(evalContext.HCLContext(), s.modifier...)
-	}
-
-	var content io.ReadSeeker = file
-	modTime := fileInfo.ModTime()
-	if len(s.bootstrapContent) > 0 {
-		content = strings.NewReader(string(s.bootstrapContent[:]))
-		modTime = s.bootstrapModTime
 	}
 
 	http.ServeContent(rw, req, s.config.BootstrapFile, modTime, content)
@@ -114,7 +133,6 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) {
 		bootstrapName = defaultName
 	}
 	s.bootstrapContent = bytes.Replace(b, []byte(bootstrapName), data, 1)
-	s.bootstrapModTime = time.Now()
 }
 
 func (s *Spa) Options() *server.Options {

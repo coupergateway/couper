@@ -20,7 +20,7 @@ As it could get complicated to configure an SPA Application based on its environ
 inject those environment based values into the `bootstrap_file` before serving it to the client.
 
 The first occurrence of the `bootstrap_data_placeholder` will be replaced with the evaluated value of `bootstrap_data`.
-This happens just once on the first request at meant to mainly inject `env` values.
+This happens on startup and meant to inject `env` values.
 
 ### `bootstrap_data` Example
 
@@ -30,7 +30,7 @@ spa {
     bootstrap_file = "./htdocs/index.html"
     paths = ["/**"]
     bootstrap_data = {
-      url: default(env.MY_API_URL, "https://docs.couper.io/"),
+      url: env.MY_API_URL,
       prop: "value",
     }
 }
@@ -46,7 +46,8 @@ spa {
         window.AppConfig = __BOOTSTRAP_DATA__;
       } catch(e) {
         console.warn('DEVELOPMENT MODE: ', e)
-        window.AppConfig = {} // fallback for local development or could be filled with templating.
+        window.AppConfig = {} // fallback for local development
+      }
     </script>
   </head>
   <body>App</body>
@@ -66,7 +67,8 @@ Then the Application can access the `window.AppConfig` object to bootstrap its c
       };
     } catch(e) {
       console.warn('DEVELOPMENT MODE: ', e)
-      window.AppConfig = {} // fallback for local development or could be filled with templating.
+      window.AppConfig = {} // fallback for local development
+    }
   </script>
 <!-- ... -->
 ```
