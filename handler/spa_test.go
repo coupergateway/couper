@@ -40,7 +40,7 @@ func TestSpa_ServeHTTP(t *testing.T) {
 		{&config.Spa{Name: "serve bootstrap dir", BootstrapFile: path.Join(wd, "testdata/spa")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusInternalServerError, ""},
 		{&config.Spa{Name: "serve bootstrap file /w simple-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
 			BootstrapData: hcl.StaticExpr(cty.StringVal("no-object"), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
-			nil, http.StatusInternalServerError, "bootstrap_data must be an object type"},
+			nil, http.StatusInternalServerError, ":0,0-0: configuration error; bootstrap_data must be an object type"},
 		{&config.Spa{Name: "serve bootstrap file /w obj-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
 			BootstrapData: hcl.StaticExpr(cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("value")}), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
 			[]byte(`<!DOCTYPE html>

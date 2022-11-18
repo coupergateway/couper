@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -124,7 +123,13 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) e
 	}
 
 	if !val.Type().IsObjectType() {
-		return fmt.Errorf("bootstrap_data must be an object type")
+		r := s.config.BootstrapData.Range()
+		return &hcl.Diagnostic{
+			Detail:   "bootstrap_data must be an object type",
+			Severity: hcl.DiagError,
+			Subject:  &r,
+			Summary:  "configuration error",
+		}
 	}
 
 	data, err := ctyjson.Marshal(val, val.Type())
