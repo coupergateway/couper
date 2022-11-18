@@ -49,6 +49,8 @@ func NewSpa(ctx *hcl.EvalContext, config *config.Spa, srvOpts *server.Options, m
 
 	if config.BootstrapData == nil {
 		return spa, nil
+	} else if v, _ := config.BootstrapData.Value(ctx); v.IsNull() {
+		return spa, nil
 	}
 
 	file, err := os.Open(config.BootstrapFile)
