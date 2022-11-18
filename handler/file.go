@@ -28,11 +28,12 @@ type File struct {
 	basePath   string
 	errorTpl   *errors.Template
 	modifier   []hcl.Body
+	preferSPA  bool
 	rootDir    http.Dir
 	srvOptions *server.Options
 }
 
-func NewFile(docRoot, basePath string, errorTpl *errors.Template, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
+func NewFile(docRoot, basePath string, preferSPA bool, errorTpl *errors.Template, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -58,6 +59,7 @@ func NewFile(docRoot, basePath string, errorTpl *errors.Template, srvOpts *serve
 		basePath:   basePath,
 		errorTpl:   errorTpl,
 		modifier:   modifier,
+		preferSPA:  preferSPA,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),
 	}
@@ -143,6 +145,8 @@ func (f *File) HasResponse(req *http.Request) bool {
 		if info.IsDir() {
 			return false
 		}
+
+		return !f.preferSPA
 	}
 
 	return true

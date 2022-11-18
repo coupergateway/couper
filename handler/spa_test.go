@@ -32,7 +32,7 @@ func TestSpa_ServeHTTP(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			opts, _ := server.NewServerOptions(&config.Server{}, nil)
-			s, err := handler.NewSpa(path.Join(wd, tt.filePath), opts, nil)
+			s, err := handler.NewSpa(&config.Spa{BootstrapFile: path.Join(wd, tt.filePath)}, opts, nil)
 			if err != nil {
 				subT.Fatal(err)
 			}
