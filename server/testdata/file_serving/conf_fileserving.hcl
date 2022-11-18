@@ -16,7 +16,9 @@ server "fileserving-tests" {
             // api wins
             "/api/**",
             // spa wins
-            "/"
+            "/",
+            "/my_app",
+            "/my_app/**"
         ]
     }
 

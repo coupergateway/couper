@@ -148,13 +148,21 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 		var spaHandler http.Handler
 		var bootstrapFiles []string
+		spaMountPathSeen := make(map[string]struct{})
 		for _, spaConf := range srvConf.SPAs {
 			spaHandler, err = handler.NewSpa(evalContext.HCLContext(), spaConf, serverOptions, []hcl.Body{spaConf.Remain, srvConf.Remain})
 			if err != nil {
 				return nil, err
 			}
 
-			bootstrapFiles = append(bootstrapFiles, spaConf.BootstrapFile)
+			for _, mountPath := range spaConf.Paths {
+				mp := strings.Replace(mountPath, "**", "", 1)
+				bfp := filepath.Join(filepath.Dir(spaConf.BootstrapFile), mp, filepath.Base(spaConf.BootstrapFile))
+				if _, seen := spaMountPathSeen[bfp]; !seen {
+					bootstrapFiles = append(bootstrapFiles, bfp)
+					spaMountPathSeen[bfp] = struct{}{}
+				}
+			}
 
 			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.ServerErrTpl}
 			notAllowedMethodsHandler := epOpts.ErrorTemplate.WithError(errors.MethodNotAllowed)
@@ -199,23 +207,12 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 		}
 
-		// preferSPA determines if a file handler should have a response for 'docRoot/(index.html)' or not.
-		preferSPA := func(docRoot string) bool {
-			absRoot, _ := filepath.Abs(docRoot)
-			for _, f := range bootstrapFiles {
-				if filepath.Dir(f) == absRoot && filepath.Base(f) == "index.html" {
-					return true
-				}
-			}
-			return false
-		}
-
 		var fileHandler http.Handler
 		for i, filesConf := range srvConf.Files {
 			fileHandler, err = handler.NewFile(
 				filesConf.DocumentRoot,
 				serverOptions.FilesBasePaths[i],
-				preferSPA(filesConf.DocumentRoot),
+				handler.NewPreferSpaFn(bootstrapFiles, filesConf.DocumentRoot),
 				serverOptions.FilesErrTpls[i],
 				serverOptions,
 				[]hcl.Body{filesConf.Remain, srvConf.Remain},

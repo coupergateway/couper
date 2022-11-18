@@ -222,9 +222,12 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		{"/dir:", error404Content, 404},
 		{"/dir.txt", error404Content, 404},
 		// dir w/ index in files
-		{"/dir", nil, 302},
+		{"/another_dir", nil, http.StatusFound},
+		{"/another_dir/", []byte("<html>this is another_dir/index.html</html>\n"), http.StatusOK},
+		// dir w/ index in files but also a spa mount path
+		{"/dir", spaContent, http.StatusOK},
 		// dir/ w/ index in files
-		{"/dir/", []byte("<html>this is dir/index.html</html>\n"), 200},
+		{"/dir/", spaContent, 200},
 		// dir w/o index in files
 		{"/assets/noindex", error404Content, 404},
 		{"/assets/noindex/", error404Content, 404},
@@ -242,8 +245,8 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		{"/app/bla", spaContent, 200},
 		{"/app/bla/foo", spaContent, 200},
 		{"/api/foo/bar", []byte("/bar"), 200},
-		//FIXME:
-		//{"/api", content500.Bytes(), 500},
+		// spa > file
+		{"/my_app", spaContent, http.StatusOK},
 	} {
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", couper.Addr(), testCase.path), nil)
 		helper.Must(err)
