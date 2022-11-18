@@ -96,7 +96,7 @@ values: [
   },
   {
     "default": "",
-    "description": "JSON object which replace the placeholder from `bootstrap_file` content.",
+    "description": "JSON object which replaces the placeholder from `bootstrap_file` content.",
     "name": "bootstrap_data",
     "type": "object"
   },

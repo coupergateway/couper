@@ -36,13 +36,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Private part of the client certificate in DER or PEM format. Required to complete a mTLS handshake.",
+    "description": "Private part of the client certificate in DER or PEM format. Required to complete an mTLS handshake.",
     "name": "client_private_key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Private part of the client certificate file in DER or PEM format. Required to complete a mTLS handshake.",
+    "description": "Private part of the client certificate file in DER or PEM format. Required to complete an mTLS handshake.",
     "name": "client_private_key_file",
     "type": "string"
   },
