@@ -33,25 +33,29 @@ func TestSpa_ServeHTTP(t *testing.T) {
 		req             *http.Request
 		expectedContent []byte
 		expectedCode    int
+		expectedErr     string
 	}{
-		{&config.Spa{Name: "serve bootstrap file", BootstrapFile: path.Join(wd, "testdata/spa/app.html")}, httptest.NewRequest(http.MethodGet, "/", nil), appHtmlContent, http.StatusOK},
-		{&config.Spa{Name: "serve no bootstrap file", BootstrapFile: path.Join(wd, "testdata/spa/not_exist.html")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusNotFound},
-		{&config.Spa{Name: "serve bootstrap dir", BootstrapFile: path.Join(wd, "testdata/spa")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusInternalServerError},
-		{&config.Spa{Name: "serve bootstrap file /w data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
-			BootstrapData: hcl.StaticExpr(cty.StringVal("value"), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
+		{&config.Spa{Name: "serve bootstrap file", BootstrapFile: path.Join(wd, "testdata/spa/app.html")}, httptest.NewRequest(http.MethodGet, "/", nil), appHtmlContent, http.StatusOK, ""},
+		{&config.Spa{Name: "serve no bootstrap file", BootstrapFile: path.Join(wd, "testdata/spa/not_exist.html")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusNotFound, ""},
+		{&config.Spa{Name: "serve bootstrap dir", BootstrapFile: path.Join(wd, "testdata/spa")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusInternalServerError, ""},
+		{&config.Spa{Name: "serve bootstrap file /w simple-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
+			BootstrapData: hcl.StaticExpr(cty.StringVal("no-object"), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
+			nil, http.StatusInternalServerError, "bootstrap_data must be an object type"},
+		{&config.Spa{Name: "serve bootstrap file /w obj-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
+			BootstrapData: hcl.StaticExpr(cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("value")}), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
 			[]byte(`<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>App</title>
-    <script>const conf = "value";</script>
+    <script>const conf = {"prop":"value"};</script>
 </head>
 <body>
 App with __BOOTSTRAP_DATA__.
 </body>
 </html>
-`), http.StatusOK},
-		{&config.Spa{Name: "serve bootstrap file /w html data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
+`), http.StatusOK, ""},
+		{&config.Spa{Name: "serve bootstrap file /w html obj-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
 			BootstrapData: hcl.StaticExpr(cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("</script>")}), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
 			[]byte(`<!DOCTYPE html>
 <html lang="en">
@@ -64,13 +68,16 @@ App with __BOOTSTRAP_DATA__.
 App with __BOOTSTRAP_DATA__.
 </body>
 </html>
-`), http.StatusOK},
+`), http.StatusOK, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.cfg.Name, func(subT *testing.T) {
 			opts, _ := server.NewServerOptions(&config.Server{}, nil)
 			s, err := handler.NewSpa(eval.NewDefaultContext().HCLContext(), tt.cfg, opts, nil)
 			if err != nil {
+				if tt.expectedErr != "" && err.Error() == tt.expectedErr {
+					return
+				}
 				subT.Fatal(err)
 			}
 

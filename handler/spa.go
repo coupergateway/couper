@@ -64,9 +64,9 @@ func NewSpa(ctx *hcl.EvalContext, config *config.Spa, srvOpts *server.Options, m
 	}
 	spa.bootstrapModTime = fileInfo.ModTime()
 
-	spa.replaceBootstrapData(ctx, file)
+	err = spa.replaceBootstrapData(ctx, file)
 
-	return spa, nil
+	return spa, err
 }
 
 func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -118,10 +118,11 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) e
 		return err
 	}
 
-	val, err := s.config.BootstrapData.Value(ctx)
-	if err != nil {
-		return err
+	val, diags := s.config.BootstrapData.Value(ctx)
+	if diags.HasErrors() {
+		return diags
 	}
+
 	if !val.Type().IsObjectType() {
 		return fmt.Errorf("bootstrap_data must be an object type")
 	}
