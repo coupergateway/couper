@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -107,20 +108,27 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	http.ServeContent(rw, req, s.config.BootstrapFile, modTime, content)
 }
 
-func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) {
+func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) error {
 	if s.config.BootstrapData == nil {
-		return
+		return nil
 	}
 
 	b, err := io.ReadAll(reader)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 
-	val, _ := s.config.BootstrapData.Value(ctx)
+	val, err := s.config.BootstrapData.Value(ctx)
+	if err != nil {
+		return err
+	}
+	if !val.Type().IsObjectType() {
+		return fmt.Errorf("bootstrap_data must be an object type")
+	}
+
 	data, err := ctyjson.Marshal(val, val.Type())
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	escapedData := &bytes.Buffer{}
@@ -132,6 +140,8 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) {
 		bootstrapName = defaultName
 	}
 	s.bootstrapContent = bytes.Replace(b, []byte(bootstrapName), escapedData.Bytes(), 1)
+
+	return nil
 }
 
 func (s *Spa) Options() *server.Options {

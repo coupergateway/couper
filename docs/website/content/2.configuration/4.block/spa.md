@@ -19,8 +19,8 @@ spa {
 As it could get complicated to configure an SPA Application based on its environment (urls, clientIDs, ...) Couper can
 inject those environment based values into the `bootstrap_file` before serving it to the client.
 
-The first occurrence of the `bootstrap_data_placeholder` will be replaced with the evaluated value of `bootstrap_data`.
-This happens on startup and meant to inject `env` values.
+The first `bootstrap_data_placeholder` will be replaced with the evaluated value of `bootstrap_data`.
+This happens on startup and is meant to inject `env` values.
 
 ### `bootstrap_data` Example
 

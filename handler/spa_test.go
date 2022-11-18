@@ -47,7 +47,7 @@ func TestSpa_ServeHTTP(t *testing.T) {
     <script>const conf = "value";</script>
 </head>
 <body>
-App
+App with __BOOTSTRAP_DATA__.
 </body>
 </html>
 `), http.StatusOK},
@@ -61,7 +61,7 @@ App
     <script>const conf = {"prop":"\u003c/script\u003e"};</script>
 </head>
 <body>
-App
+App with __BOOTSTRAP_DATA__.
 </body>
 </html>
 `), http.StatusOK},
