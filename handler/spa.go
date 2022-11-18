@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -32,11 +33,6 @@ type Spa struct {
 	config           *config.Spa
 	modifier         []hcl.Body
 	srvOptions       *server.Options
-}
-
-func init() {
-	// related to bootstrap_data and ist a must due to XSS
-	ctyjson.EscapeHTML = true
 }
 
 func NewSpa(ctx *hcl.EvalContext, config *config.Spa, srvOpts *server.Options, modifier []hcl.Body) (*Spa, error) {
@@ -127,12 +123,15 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) {
 		panic(err)
 	}
 
+	escapedData := &bytes.Buffer{}
+	json.HTMLEscape(escapedData, data)
+
 	const defaultName = "__BOOTSTRAP_DATA__"
 	bootstrapName := s.config.BootStrapDataName
 	if bootstrapName == "" {
 		bootstrapName = defaultName
 	}
-	s.bootstrapContent = bytes.Replace(b, []byte(bootstrapName), data, 1)
+	s.bootstrapContent = bytes.Replace(b, []byte(bootstrapName), escapedData.Bytes(), 1)
 }
 
 func (s *Spa) Options() *server.Options {
