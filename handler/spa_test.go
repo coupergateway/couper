@@ -1,7 +1,6 @@
 package handler_test
 
 import (
-	"github.com/avenga/couper/eval"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 )
 
