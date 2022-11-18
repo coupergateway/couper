@@ -59,6 +59,11 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer file.Close()
+	defer func() { // since the bootstrapOnce func does not return an error, we have to handle a possible panic.
+		if rp := recover(); rp != nil {
+			s.srvOptions.ServerErrTpl.WithError(errors.Server.With(rp.(error))).ServeHTTP(rw, req)
+		}
+	}()
 
 	fileInfo, err := file.Stat()
 	if err != nil || fileInfo.IsDir() {
