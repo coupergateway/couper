@@ -149,7 +149,8 @@ func (f *File) HasResponse(req *http.Request) bool {
 		return !f.preferSPA(reqPath)
 	}
 
-	return true
+	// TODO improve performance for this range call
+	return !f.preferSPA(reqPath)
 }
 
 func (f *File) openDocRootFile(name string) (http.File, os.FileInfo, error) {
@@ -201,7 +202,8 @@ func NewPreferSpaFn(bootstrapFiles []string, docRoot string) PreferSPAfn {
 	return func(subPath string) bool {
 		fileHandlerPath := filepath.Join(absDocRoot, subPath)
 		for _, f := range files {
-			if filepath.Dir(f) == fileHandlerPath {
+			if filepath.Dir(f) == fileHandlerPath || // baseDir index case
+				f == fileHandlerPath { // direct spa file call
 				return true
 			}
 		}

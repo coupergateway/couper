@@ -17,9 +17,18 @@ server "fileserving-tests" {
             "/api/**",
             // spa wins
             "/",
+        ]
+    }
+
+    spa "myapp" {
+        bootstrap_file = "./htdocs/my_app/spa.html"
+        paths = [
             "/my_app",
             "/my_app/**"
         ]
+        bootstrap_data = {
+            framework: "react.js"
+        }
     }
 
     api {

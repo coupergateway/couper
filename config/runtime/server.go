@@ -157,7 +157,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			for _, mountPath := range spaConf.Paths {
 				mp := strings.Replace(mountPath, "**", "", 1)
-				bfp := filepath.Join(filepath.Dir(spaConf.BootstrapFile), mp, filepath.Base(spaConf.BootstrapFile))
+				dir := filepath.Dir(spaConf.BootstrapFile)
+				if !strings.HasSuffix(dir, mp) {
+					dir = filepath.Join(dir, mp)
+				}
+				bfp := filepath.Join(dir, filepath.Base(spaConf.BootstrapFile))
 				if _, seen := spaMountPathSeen[bfp]; !seen {
 					bootstrapFiles = append(bootstrapFiles, bfp)
 					spaMountPathSeen[bfp] = struct{}{}

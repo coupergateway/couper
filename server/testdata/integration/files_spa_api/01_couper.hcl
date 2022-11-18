@@ -6,6 +6,9 @@ server "spa" {
   spa {
     bootstrap_file = "01_app.html"
     paths = ["/**"]
+    bootstrap_data = {
+      default = default(env.NOT_THERE, "true")
+    }
   }
   api {
     error_file = "./../api_error.json"

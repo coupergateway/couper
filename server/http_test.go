@@ -246,7 +246,8 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		{"/app/bla/foo", spaContent, 200},
 		{"/api/foo/bar", []byte("/bar"), 200},
 		// spa > file
-		{"/my_app", spaContent, http.StatusOK},
+		{"/my_app", []byte(`<html><body><h1>{"framework":"react.js"}</h1></body></html>`), http.StatusOK},
+		{"/my_app/spa.html", []byte(`<html><body><h1>{"framework":"react.js"}</h1></body></html>`), http.StatusOK},
 	} {
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", couper.Addr(), testCase.path), nil)
 		helper.Must(err)
@@ -256,7 +257,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		helper.Must(err)
 
 		if res.StatusCode != testCase.expectedStatus {
-			t.Fatalf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
+			t.Errorf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
 		}
 
 		result, err := io.ReadAll(res.Body)
