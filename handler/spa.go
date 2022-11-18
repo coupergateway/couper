@@ -115,7 +115,7 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) e
 
 	b, err := io.ReadAll(reader)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	val, err := s.config.BootstrapData.Value(ctx)
