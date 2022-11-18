@@ -56,6 +56,20 @@ App with __BOOTSTRAP_DATA__.
 </body>
 </html>
 `), http.StatusOK, ""},
+		{&config.Spa{Name: "serve bootstrap file /w obj-data /custom placeholder", BootStrapDataName: "__SERVER_DATA__", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data_custom.html"),
+			BootstrapData: hcl.StaticExpr(cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("value")}), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
+			[]byte(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>App</title>
+    <script>const conf = {"prop":"value"};</script>
+</head>
+<body>
+App with __SERVER_DATA__.
+</body>
+</html>
+`), http.StatusOK, ""},
 		{&config.Spa{Name: "serve bootstrap file /w html obj-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
 			BootstrapData: hcl.StaticExpr(cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("</script>")}), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
 			[]byte(`<!DOCTYPE html>
