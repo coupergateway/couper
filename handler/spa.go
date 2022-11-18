@@ -47,12 +47,6 @@ func NewSpa(ctx *hcl.EvalContext, config *config.Spa, srvOpts *server.Options, m
 		srvOptions: srvOpts,
 	}
 
-	if config.BootstrapData == nil {
-		return spa, nil
-	} else if v, _ := config.BootstrapData.Value(ctx); v.IsNull() {
-		return spa, nil
-	}
-
 	file, err := os.Open(config.BootstrapFile)
 	if err != nil {
 		return nil, err
@@ -64,6 +58,15 @@ func NewSpa(ctx *hcl.EvalContext, config *config.Spa, srvOpts *server.Options, m
 		return nil, err
 	}
 	spa.bootstrapModTime = fileInfo.ModTime()
+
+	if config.BootstrapData == nil {
+		return spa, nil
+	} else if v, diags := config.BootstrapData.Value(ctx); v.IsNull() || diags.HasErrors() {
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		return spa, nil
+	}
 
 	err = spa.replaceBootstrapData(ctx, file)
 

@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -36,7 +37,7 @@ func TestSpa_ServeHTTP(t *testing.T) {
 		expectedErr     string
 	}{
 		{&config.Spa{Name: "serve bootstrap file", BootstrapFile: path.Join(wd, "testdata/spa/app.html")}, httptest.NewRequest(http.MethodGet, "/", nil), appHtmlContent, http.StatusOK, ""},
-		{&config.Spa{Name: "serve no bootstrap file", BootstrapFile: path.Join(wd, "testdata/spa/not_exist.html")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusNotFound, ""},
+		{&config.Spa{Name: "serve no bootstrap file", BootstrapFile: path.Join(wd, "testdata/spa/not_exist.html")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusNotFound, fmt.Sprintf("open %s/testdata/spa/not_exist.html: no such file or directory", wd)},
 		{&config.Spa{Name: "serve bootstrap dir", BootstrapFile: path.Join(wd, "testdata/spa")}, httptest.NewRequest(http.MethodGet, "/", nil), nil, http.StatusInternalServerError, ""},
 		{&config.Spa{Name: "serve bootstrap file /w simple-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
 			BootstrapData: hcl.StaticExpr(cty.StringVal("no-object"), hcl.Range{})}, httptest.NewRequest(http.MethodGet, "/", nil),
