@@ -160,7 +160,7 @@ func TestDuplicateEndpoint(t *testing.T) {
 			"spa + api: catch-all",
 			`spa {
 			   base_path = "/public"
-			   bootstrap_file = "foo"
+			   bootstrap_file = "access_control_test.go"
 			   paths = []
 			 }
 			 api {
@@ -172,7 +172,7 @@ func TestDuplicateEndpoint(t *testing.T) {
 			"spa + api, same base path: no catch-all",
 			`spa {
 			    base_path = "/path"
-				bootstrap_file = "foo"
+				bootstrap_file = "access_control_test.go"
 				paths = []
 			 }
 			 api {
@@ -186,7 +186,7 @@ func TestDuplicateEndpoint(t *testing.T) {
 			"files + api, same base path: no catch-all",
 			`spa {
 			   base_path = "/p"
-			   bootstrap_file = "foo"
+			   bootstrap_file = "access_control_test.go"
 			   paths = []
 			 }
 			 api {

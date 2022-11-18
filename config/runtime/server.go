@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -146,10 +147,25 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		serverBodies = append(serverBodies, srvConf.Remain)
 
 		var spaHandler http.Handler
+		var bootstrapFiles []string
+		spaMountPathSeen := make(map[string]struct{})
 		for _, spaConf := range srvConf.SPAs {
-			spaHandler, err = handler.NewSpa(spaConf.BootstrapFile, serverOptions, []hcl.Body{spaConf.Remain, srvConf.Remain})
+			spaHandler, err = handler.NewSpa(evalContext.HCLContext(), spaConf, serverOptions, []hcl.Body{spaConf.Remain, srvConf.Remain})
 			if err != nil {
 				return nil, err
+			}
+
+			for _, mountPath := range spaConf.Paths {
+				mp := strings.Replace(mountPath, "**", "", 1)
+				dir := filepath.Dir(spaConf.BootstrapFile)
+				if !strings.HasSuffix(dir, mp) {
+					dir = filepath.Join(dir, mp)
+				}
+				bfp := filepath.Join(dir, filepath.Base(spaConf.BootstrapFile))
+				if _, seen := spaMountPathSeen[bfp]; !seen {
+					bootstrapFiles = append(bootstrapFiles, bfp)
+					spaMountPathSeen[bfp] = struct{}{}
+				}
 			}
 
 			epOpts := &handler.EndpointOptions{ErrorTemplate: serverOptions.ServerErrTpl}
@@ -182,9 +198,9 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				append(serverBodies, append(spaBodies, spaConf.Remain)...), spaHandler, "",
 			)
 
-			for _, spaPath := range spaConf.Paths {
-				err = setRoutesFromHosts(serverConfiguration, portsHosts,
-					path.Join(serverOptions.SrvBasePath, spaConf.BasePath, spaPath), spaHandler, spa)
+			for _, p := range spaConf.Paths {
+				spaPath := path.Join(serverOptions.SrvBasePath, spaConf.BasePath, p)
+				err = setRoutesFromHosts(serverConfiguration, portsHosts, spaPath, spaHandler, spa)
 				if err != nil {
 					sbody := spaConf.HCLBody()
 					return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -200,6 +216,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			fileHandler, err = handler.NewFile(
 				filesConf.DocumentRoot,
 				serverOptions.FilesBasePaths[i],
+				handler.NewPreferSpaFn(bootstrapFiles, filesConf.DocumentRoot),
 				serverOptions.FilesErrTpls[i],
 				serverOptions,
 				[]hcl.Body{filesConf.Remain, srvConf.Remain},
