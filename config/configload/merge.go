@@ -563,24 +563,24 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	attrs := make(hclsyntax.Attributes)
-	envVars := make(map[string]cty.Value)
+	envVars := make(map[string]hcl.Expression)
 
 	for _, body := range bodies {
 		for _, block := range body.Blocks {
 			if block.Type == defaults {
 				for name, attr := range block.Body.Attributes {
 					if name == environmentVars {
-						v, err := eval.Value(nil, attr.Expr)
-						if err != nil {
-							return nil, err
+						expObj, ok := attr.Expr.(*hclsyntax.ObjectConsExpr)
+						if !ok {
+							r := attr.Expr.Range()
+							return nil, newDiagErr(&r, fmt.Sprintf("error: %s must be object type", environmentVars))
 						}
 
-						for k, value := range v.AsValueMap() {
-							if value.Type() != cty.String {
-								return nil, fmt.Errorf("value in 'environment_variables' is not a string")
-							}
-
-							envVars[k] = value
+						for _, kv := range expObj.ExprMap() {
+							k := kv.Key.(*hclsyntax.ObjectConsKeyExpr)
+							uk := k.UnwrapExpression().(*hclsyntax.ScopeTraversalExpr)
+							keyName := uk.Traversal.RootName()
+							envVars[keyName] = kv.Value
 						}
 					} else {
 						attrs[name] = attr // Currently not used
@@ -591,20 +591,34 @@ func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	}
 
 	if len(envVars) > 0 {
+		items := make([]hclsyntax.ObjectConsItem, 0)
+		for k, v := range envVars {
+			items = append(items, hclsyntax.ObjectConsItem{
+				KeyExpr: &hclsyntax.ObjectConsKeyExpr{
+					Wrapped: &hclsyntax.ScopeTraversalExpr{
+						Traversal: hcl.Traversal{hcl.TraverseRoot{Name: k}},
+					},
+					ForceNonLiteral: false,
+				},
+				ValueExpr: v.(hclsyntax.Expression),
+			})
+		}
+
 		attrs[environmentVars] = &hclsyntax.Attribute{
 			Name: environmentVars,
-			Expr: &hclsyntax.LiteralValueExpr{
-				Val: cty.MapVal(envVars),
+			Expr: &hclsyntax.ObjectConsExpr{
+				Items: items,
 			},
 		}
 	}
 
-	return &hclsyntax.Block{
+	defaultsBlock := &hclsyntax.Block{
 		Type: defaults,
 		Body: &hclsyntax.Body{
 			Attributes: attrs,
 		},
-	}, nil
+	}
+	return defaultsBlock, nil
 }
 
 func mergeSettings(bodies []*hclsyntax.Body) *hclsyntax.Block {
