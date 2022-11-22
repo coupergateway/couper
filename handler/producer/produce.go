@@ -2,6 +2,7 @@ package producer
 
 import (
 	"net/http"
+	"sync"
 )
 
 var (
@@ -12,6 +13,7 @@ var (
 )
 
 type Roundtrip interface {
-	Produce(req *http.Request) chan *Result
+	Produce(req *http.Request, additionalChs *sync.Map) chan *Result
 	Len() int
+	Names() []string
 }

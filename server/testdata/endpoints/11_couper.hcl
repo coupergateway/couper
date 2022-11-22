@@ -158,4 +158,99 @@ server { # sequences
       }
     }
   }
+
+  endpoint "/multiple-request-uses" {
+    request "r1" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+    }
+    request "r2" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = backend_responses.r1.json_body
+    }
+    request {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = [
+        backend_responses.r1.json_body
+        ,
+        backend_responses.r2.json_body
+      ]
+    }
+  }
+
+  endpoint "/multiple-proxy-uses" {
+    proxy "p1" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+    }
+    request "r2" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = backend_responses.p1.json_body
+    }
+    request {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = [
+        backend_responses.p1.json_body
+        ,
+        backend_responses.r2.json_body
+      ]
+    }
+  }
+
+  endpoint "/multiple-sequence-uses" {
+    request "r1" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+    }
+    request "r2" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = backend_responses.r1.json_body
+    }
+    request "r3" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = backend_responses.r2.json_body
+    }
+    request "r4" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = backend_responses.r2.json_body
+    }
+    request {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = [
+        backend_responses.r3.json_body
+        ,
+        backend_responses.r4.json_body
+      ]
+    }
+  }
+
+  endpoint "/multiple-parallel-uses" {
+    request "r1" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+    }
+    request "r2" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+    }
+    request "r3" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = [
+        backend_responses.r1.json_body
+        ,
+        backend_responses.r2.json_body
+      ]
+    }
+    request "r4" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = [
+        backend_responses.r1.json_body
+        ,
+        backend_responses.r2.json_body
+      ]
+    }
+    request {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      json_body = [
+        backend_responses.r3.json_body
+        ,
+        backend_responses.r4.json_body
+      ]
+    }
+  }
 }

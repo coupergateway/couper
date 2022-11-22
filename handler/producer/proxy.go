@@ -24,7 +24,7 @@ type Proxy struct {
 
 type Proxies []*Proxy
 
-func (pr Proxies) Produce(clientReq *http.Request) chan *Result {
+func (pr Proxies) Produce(clientReq *http.Request, _ *sync.Map) chan *Result {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 	ctx := clientReq.Context()
@@ -92,4 +92,12 @@ func (pr Proxies) Produce(clientReq *http.Request) chan *Result {
 
 func (pr Proxies) Len() int {
 	return len(pr)
+}
+
+func (pr Proxies) Names() []string {
+	var names []string
+	for _, i := range pr {
+		names = append(names, i.Name)
+	}
+	return names
 }

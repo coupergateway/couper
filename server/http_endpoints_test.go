@@ -592,15 +592,16 @@ func TestEndpoint_Sequence(t *testing.T) {
 		path           string
 		expectedHeader test.Header
 		expectedBody   string
-		expectedLog    log
+		expectedDep    log
+		expNumBEReq    int
 	}
 
 	for _, tc := range []testcase{
-		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`, log{"default": "resolve"}},
-		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, "", log{"default": "resolve"}},
-		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
-		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
-		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
+		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`, log{"default": "resolve"}, 2},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, "", log{"default": "resolve"}, 2},
+		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}, 2},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}, 3},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}, 6},
 		{"complex nested request/proxy sequences", "/parallel-complex-nested", test.Header{
 			"a": "my-value",
 			"b": "my-value",
@@ -611,7 +612,11 @@ func TestEndpoint_Sequence(t *testing.T) {
 			"resolve":       "resolve_first",
 			"resolve_gamma": "resolve_gamma_first",
 			"last":          "resolve,resolve_gamma",
-		}},
+		}, 6},
+		{"multiple request uses", "/multiple-request-uses", test.Header{}, "", log{"r2": "r1", "default": "r2,r1"}, 3},
+		{"multiple proxy uses", "/multiple-proxy-uses", test.Header{}, "", log{"r2": "p1", "default": "r2,p1"}, 3},
+		{"multiple sequence uses", "/multiple-sequence-uses", test.Header{}, "", log{"r2": "r1", "r4": "r2", "r3": "r2", "default": "r4,r3"}, 5},
+		{"multiple parallel uses", "/multiple-parallel-uses", test.Header{}, "", log{"r4": "r2,r1", "r3": "r2,r1", "default": "r4,r3"}, 5},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()
@@ -646,15 +651,17 @@ func TestEndpoint_Sequence(t *testing.T) {
 				}
 			}
 
+			nbr := 0
 			for _, e := range hook.AllEntries() {
 				if e.Data["type"] != "couper_backend" {
 					continue
 				}
+				nbr++
 
 				requestName, _ := e.Data["request"].(logging.Fields)["name"].(string)
 
 				// test result for expected named ones
-				if _, exist := tc.expectedLog[requestName]; !exist {
+				if _, exist := tc.expectedDep[requestName]; !exist {
 					continue
 				}
 
@@ -663,9 +670,12 @@ func TestEndpoint_Sequence(t *testing.T) {
 					st.Fatal("Expected 'depends_on' log field")
 				}
 
-				if dependsOn != tc.expectedLog[requestName] {
-					st.Errorf("Expected 'depends_on' log for %q with field value: %q, got: %q", requestName, tc.expectedLog[requestName], dependsOn)
+				if dependsOn != tc.expectedDep[requestName] {
+					st.Errorf("Expected 'depends_on' log for %q with field value: %q, got: %q", requestName, tc.expectedDep[requestName], dependsOn)
 				}
+			}
+			if nbr != tc.expNumBEReq {
+				st.Errorf("Expected number of backend requests: %d, got: %d", tc.expNumBEReq, nbr)
 			}
 
 		})
