@@ -121,10 +121,10 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs *sync.Ma
 	return result
 }
 
-func pipeResults(results, rch2 chan *Result) {
-	defer close(results)
-	for r := range rch2 {
-		results <- r
+func pipeResults(target, src chan *Result) {
+	defer close(target)
+	for r := range src {
+		target <- r
 	}
 }
 
