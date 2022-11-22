@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -383,25 +384,35 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 	origin.Close()
 }
 
+var _ producer.Roundtrip = &mockProducerResult{}
+
 type mockProducerResult struct {
 	rt http.RoundTripper
 }
 
-func (m *mockProducerResult) Produce(r *http.Request, results chan<- *producer.Result) {
+func (m *mockProducerResult) Produce(r *http.Request, _ *sync.Map) chan *producer.Result {
+	result := make(chan *producer.Result, 1)
+	defer close(result)
+
 	if m == nil || m.rt == nil {
-		return
+		return result
 	}
 
 	res, err := m.rt.RoundTrip(r)
-	results <- &producer.Result{
+	result <- &producer.Result{
 		RoundTripName: "default",
 		Beresp:        res,
 		Err:           err,
 	}
+	return result
 }
 
 func (m *mockProducerResult) Len() int {
 	return 1
+}
+
+func (m *mockProducerResult) Names() []string {
+	return []string{"default"}
 }
 
 func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {

@@ -28,11 +28,12 @@ type File struct {
 	basePath   string
 	errorTpl   *errors.Template
 	modifier   []hcl.Body
+	preferSPA  PreferSPAfn
 	rootDir    http.Dir
 	srvOptions *server.Options
 }
 
-func NewFile(docRoot, basePath string, errorTpl *errors.Template, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
+func NewFile(docRoot, basePath string, preferFn PreferSPAfn, errorTpl *errors.Template, srvOpts *server.Options, modifier []hcl.Body) (*File, error) {
 	dir, err := filepath.Abs(docRoot)
 	if err != nil {
 		return nil, err
@@ -58,6 +59,7 @@ func NewFile(docRoot, basePath string, errorTpl *errors.Template, srvOpts *serve
 		basePath:   basePath,
 		errorTpl:   errorTpl,
 		modifier:   modifier,
+		preferSPA:  preferFn,
 		srvOptions: srvOpts,
 		rootDir:    http.Dir(dir),
 	}
@@ -132,9 +134,9 @@ func (f *File) HasResponse(req *http.Request) bool {
 	file.Close()
 
 	if info.IsDir() {
-		reqPath = path.Join(reqPath, "/", dirIndexFile)
+		filePath := path.Join(reqPath, "/", dirIndexFile)
 
-		file, info, err = f.openDocRootFile(reqPath)
+		file, info, err = f.openDocRootFile(filePath)
 		if err != nil {
 			return false
 		}
@@ -143,9 +145,12 @@ func (f *File) HasResponse(req *http.Request) bool {
 		if info.IsDir() {
 			return false
 		}
+
+		return !f.preferSPA(reqPath)
 	}
 
-	return true
+	// TODO improve performance for this range call
+	return !f.preferSPA(reqPath)
 }
 
 func (f *File) openDocRootFile(name string) (http.File, os.FileInfo, error) {
@@ -187,4 +192,21 @@ func (f *File) Options() *server.Options {
 
 func (f *File) String() string {
 	return "file"
+}
+
+type PreferSPAfn func(string) bool
+
+func NewPreferSpaFn(bootstrapFiles []string, docRoot string) PreferSPAfn {
+	absDocRoot, _ := filepath.Abs(docRoot)
+	files := bootstrapFiles[:]
+	return func(subPath string) bool {
+		fileHandlerPath := filepath.Join(absDocRoot, subPath)
+		for _, f := range files {
+			if filepath.Dir(f) == fileHandlerPath || // baseDir index case
+				f == fileHandlerPath { // direct spa file call
+				return true
+			}
+		}
+		return false
+	}
 }

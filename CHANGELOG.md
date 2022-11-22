@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * OAuth2 client authentication methods (`token_endpoint_auth_method` values) `"client_secret_jwt"` and `"private_key_jwt"` including `jwt_signing_profile` block for [`oauth2`](https://docs.couper.io/configuration/block/oauth2_req_auth), [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac) and [`oidc`](https://docs.couper.io/configuration/block/oidc) blocks ([#599](https://github.com/avenga/couper/pull/599))
   * **mTLS** Support for [`server`](https://docs.couper.io/configuration/block/server_tls) and [`backend`](https://docs.couper.io/configuration/block/backend_tls) blocks ([#615](https://github.com/avenga/couper/pull/615))
   * `beta_roles_map_file` and `beta_permissions_map_file` attributes to [`jwt` block](https://docs.couper.io/configuration/block/jwt) ([#613](https://github.com/avenga/couper/pull/613))
+  * `spa` block option to inject server-data to the applications `bootstrap_file` with [`bootstrap_data`](https://docs.couper.io/configuration/block/spa#bootstrap-data) ([#626](https://github.com/avenga/couper/issues/626))
 
 * **Changed**
   * Replaced the JWT library because the former library was no longer maintained ([#612](https://github.com/avenga/couper/pull/612))
@@ -19,6 +20,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Proper handling of empty [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `scope` ([#593](https://github.com/avenga/couper/pull/593))
   * Throwing [sequence errors](https://docs.couper.io/configuration/error-handling#endpoint-error-types) and selecting appropriate [error handlers](https://docs.couper.io/configuration/error-handling) ([#595](https://github.com/avenga/couper/pull/595))
   * Allow setting of the `typ` JWT header in [`jwt_signing_profile`s](https://docs.couper.io/configuration/block/jwt_signing_profile) ([#616](https://github.com/avenga/couper/pull/616))
+  * CVE-2021-3538 related to our `request_id_format` option if switched to `uuid4`: replaced the underlying package to `github.com/google/uuid` ([#611](https://github.com/avenga/couper/pull/611))
+  * Possible panic for nested [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#618](https://github.com/avenga/couper/pull/618))
+  * Cycle check for [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#623](https://github.com/avenga/couper/pull/623))
+  * In [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) send requests only once ([#624](https://github.com/avenga/couper/pull/624))
 
 ---
 

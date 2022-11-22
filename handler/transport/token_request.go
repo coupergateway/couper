@@ -79,13 +79,11 @@ func (t *TokenRequest) readToken() string {
 }
 
 func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
-	results := make(chan *producer.Result, 1)
 	ctx := context.WithValue(req.Context(), request.Wildcard, nil)           // disable handling this
 	ctx = context.WithValue(ctx, request.BufferOptions, eval.BufferResponse) // always read out a possible token
 	ctx = context.WithValue(ctx, request.TokenRequest, t.config.Name)        // set the name for variable mapping purposes
 	outreq, _ := http.NewRequestWithContext(ctx, req.Method, "", nil)
-	t.reqProducer.Produce(outreq, results)
-	result := <-results
+	result := <-t.reqProducer.Produce(outreq, nil)
 	if result.Err != nil {
 		return "", 0, fmt.Errorf("token request failed") // don't propagate token request roundtrip error
 	}

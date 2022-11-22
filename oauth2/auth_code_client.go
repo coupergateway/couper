@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/avenga/couper/config"
 )
 
@@ -21,7 +23,7 @@ type AuthCodeClient struct {
 }
 
 // NewAuthCodeClient creates a new OAuth2 Authorization Code client.
-func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2AS, backend http.RoundTripper) (*AuthCodeClient, error) {
+func NewAuthCodeClient(evalCtx *hcl.EvalContext, acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2AS, backend http.RoundTripper) (*AuthCodeClient, error) {
 	grantType := acClientConf.GetGrantType()
 	if grantType != "authorization_code" {
 		return nil, fmt.Errorf("grant_type %s not supported", grantType)
@@ -41,7 +43,7 @@ func NewAuthCodeClient(acClientConf config.OAuth2AcClient, oauth2AsConf config.O
 		// skip this for oidc configurations due to possible startup errors
 	}
 
-	client, err := NewClient(grantType, oauth2AsConf, acClientConf, backend)
+	client, err := NewClient(evalCtx, grantType, oauth2AsConf, acClientConf, backend)
 	if err != nil {
 		return nil, err
 	}

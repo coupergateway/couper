@@ -567,7 +567,7 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 	}
 }
 
-func TestEndpointSequence(t *testing.T) {
+func TestEndpoint_Sequence(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -592,15 +592,16 @@ func TestEndpointSequence(t *testing.T) {
 		path           string
 		expectedHeader test.Header
 		expectedBody   string
-		expectedLog    log
+		expectedDep    log
+		expNumBEReq    int
 	}
 
 	for _, tc := range []testcase{
-		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`, log{"default": "resolve"}},
-		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, "", log{"default": "resolve"}},
-		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}},
-		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
-		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}},
+		{"simple request sequence", "/simple", test.Header{"x": "my-value"}, `{"value":"my-value"}`, log{"default": "resolve"}, 2},
+		{"simple request/proxy sequence", "/simple-proxy", test.Header{"x": "my-value", "y": `{"value":"my-proxy-value"}`}, "", log{"default": "resolve"}, 2},
+		{"simple proxy/request sequence", "/simple-proxy-named", test.Header{"x": "my-value"}, "", log{"default": "resolve"}, 2},
+		{"complex request/proxy sequence", "/complex-proxy", test.Header{"x": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}, 3},
+		{"complex request/proxy sequences", "/parallel-complex-proxy", test.Header{"x": "my-value", "y": "my-value", "z": "my-value"}, "", log{"default": "resolve", "resolve": "resolve_first"}, 6},
 		{"complex nested request/proxy sequences", "/parallel-complex-nested", test.Header{
 			"a": "my-value",
 			"b": "my-value",
@@ -611,7 +612,11 @@ func TestEndpointSequence(t *testing.T) {
 			"resolve":       "resolve_first",
 			"resolve_gamma": "resolve_gamma_first",
 			"last":          "resolve,resolve_gamma",
-		}},
+		}, 6},
+		{"multiple request uses", "/multiple-request-uses", test.Header{}, "", log{"r2": "r1", "default": "r2,r1"}, 3},
+		{"multiple proxy uses", "/multiple-proxy-uses", test.Header{}, "", log{"r2": "p1", "default": "r2,p1"}, 3},
+		{"multiple sequence uses", "/multiple-sequence-uses", test.Header{}, "", log{"r2": "r1", "r4": "r2", "r3": "r2", "default": "r4,r3"}, 5},
+		{"multiple parallel uses", "/multiple-parallel-uses", test.Header{}, "", log{"r4": "r2,r1", "r3": "r2,r1", "default": "r4,r3"}, 5},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()
@@ -646,15 +651,17 @@ func TestEndpointSequence(t *testing.T) {
 				}
 			}
 
+			nbr := 0
 			for _, e := range hook.AllEntries() {
 				if e.Data["type"] != "couper_backend" {
 					continue
 				}
+				nbr++
 
 				requestName, _ := e.Data["request"].(logging.Fields)["name"].(string)
 
 				// test result for expected named ones
-				if _, exist := tc.expectedLog[requestName]; !exist {
+				if _, exist := tc.expectedDep[requestName]; !exist {
 					continue
 				}
 
@@ -663,9 +670,12 @@ func TestEndpointSequence(t *testing.T) {
 					st.Fatal("Expected 'depends_on' log field")
 				}
 
-				if dependsOn != tc.expectedLog[requestName] {
-					st.Errorf("Expected 'depends_on' log for %q with field value: %q, got: %q", requestName, tc.expectedLog[requestName], dependsOn)
+				if dependsOn != tc.expectedDep[requestName] {
+					st.Errorf("Expected 'depends_on' log for %q with field value: %q, got: %q", requestName, tc.expectedDep[requestName], dependsOn)
 				}
+			}
+			if nbr != tc.expNumBEReq {
+				st.Errorf("Expected number of backend requests: %d, got: %d", tc.expNumBEReq, nbr)
 			}
 
 		})
@@ -673,7 +683,7 @@ func TestEndpointSequence(t *testing.T) {
 
 }
 
-func TestEndpointSequenceClientCancel(t *testing.T) {
+func TestEndpoint_Sequence_ClientCancel(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -715,18 +725,19 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 
 		path := entry.Data["request"].(logging.Fields)["path"]
 
-		if strings.Contains(entry.Message, context.Canceled.Error()) {
-			ctxCanceledSeen = true
-			if path != "/" {
-				t.Errorf("expected '/' to fail")
+		switch path {
+		case "/":
+			isCancelErr := strings.Contains(entry.Message, context.Canceled.Error())
+			hasStatusZero := entry.Data["status"] == 0
+			ctxCanceledSeen = isCancelErr && hasStatusZero && entry.Level == logrus.ErrorLevel
+		case "/reflect":
+			request := entry.Data["request"].(logging.Fields)
+			if request["name"] != "resolve_first" {
+				continue
 			}
-		}
-
-		if entry.Message == "" && entry.Data["status"] == 200 {
-			statusOKseen = true
-			if path != "/reflect" {
-				t.Errorf("expected '/reflect' to be ok")
-			}
+			isCancelErr := strings.Contains(entry.Message, context.Canceled.Error())
+			hasStatusOK := entry.Data["status"] == http.StatusOK
+			statusOKseen = !isCancelErr && hasStatusOK && entry.Level == logrus.InfoLevel
 		}
 	}
 
@@ -735,7 +746,7 @@ func TestEndpointSequenceClientCancel(t *testing.T) {
 	}
 }
 
-func TestEndpointSequenceBackendTimeout(t *testing.T) {
+func TestEndpoint_Sequence_BackendTimeout(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)
 
@@ -775,31 +786,54 @@ func TestEndpointSequenceBackendTimeout(t *testing.T) {
 		}
 
 		path := entry.Data["request"].(logging.Fields)["path"]
-		if entry.Message == "backend error: anonymous_3_23: deadline exceeded" {
-			ctxDeadlineSeen = true
-			if path != "/" {
-				t.Errorf("expected '/' to fail")
-			}
-		}
 
-		if entry.Message == "" && entry.Data["status"] == 200 {
-			statusOKseen = true
-			if path != "/reflect" {
-				t.Errorf("expected '/reflect' to be ok")
-			}
+		switch path {
+		case "/":
+			isDeadlineErr := entry.Message == "backend error: anonymous_3_23: deadline exceeded"
+			hasStatusZero := entry.Data["status"] == 0
+			ctxDeadlineSeen = isDeadlineErr && hasStatusZero && entry.Level == logrus.ErrorLevel
+		case "/reflect":
+			hasStatusOK := entry.Data["status"] == http.StatusOK
+			statusOKseen = hasStatusOK && entry.Level == logrus.InfoLevel
 		}
 	}
 
 	if !ctxDeadlineSeen || !statusOKseen {
 		t.Errorf("Expected one sucessful and one failed backend request")
 	}
+}
 
+func TestEndpoint_Sequence_NestedDefaultRequest(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper(filepath.Join(testdataPath, "19_couper.hcl"), helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected StatusOK, got: %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(err)
+
+	exp := `{"data":[{"features":1},{"features":2}]}`
+	if !bytes.Equal([]byte(exp), b) {
+		t.Errorf("expected %v, got %v", exp, string(b))
+	}
 }
 
 func TestEndpointCyclicSequence(t *testing.T) {
 	for _, testcase := range []struct{ file, exp string }{
 		{file: "15_couper.hcl", exp: "circular sequence reference: a,b,a"},
 		{file: "16_couper.hcl", exp: "circular sequence reference: a,aa,aaa,a"},
+		{file: "20_couper.hcl", exp: ""},
 	} {
 		t.Run(testcase.file, func(st *testing.T) {
 			// since we will switch the working dir, reset afterwards
@@ -809,12 +843,15 @@ func TestEndpointCyclicSequence(t *testing.T) {
 			_, err := configload.LoadFile(path, "")
 
 			diags, ok := err.(*hcl.Diagnostic)
-			if !ok {
-				st.Errorf("Expected an cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
+			if !ok && testcase.exp != "" {
+				st.Errorf("Expected a cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
+				st.Fatal(err, path)
+			} else if ok && testcase.exp == "" {
+				st.Errorf("Expected no cyclic hcl diagnostics error, got: %v", reflect.TypeOf(err))
 				st.Fatal(err, path)
 			}
 
-			if diags.Detail != testcase.exp {
+			if testcase.exp != "" && diags.Detail != testcase.exp {
 				st.Errorf("\nWant:\t%s\nGot:\t%s", testcase.exp, diags.Detail)
 			}
 		})

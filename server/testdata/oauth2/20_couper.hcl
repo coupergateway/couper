@@ -41,6 +41,9 @@ definitions {
       jwt_signing_profile {
         signature_algorithm = "HS256"
         ttl = "10s"
+        claims = {
+          foo = env.BAR
+        }
       }
     }
   }
@@ -75,6 +78,7 @@ definitions {
         ttl = "10s"
         claims = {
           aud = "some explicit value"
+          foo = to_lower(env.BAR)
         }
       }
     }
@@ -104,6 +108,7 @@ definitions {
       iss = "my_clid"
       sub = "my_clid"
       aud = "http://1.1.1.1:9999/token/csj"
+      foo = "BaR"
     }
     required_claims = ["iat", "exp", "jti"]
   }
@@ -122,6 +127,7 @@ definitions {
       iss = "my_clid"
       sub = "my_clid"
       aud = "some explicit value"
+      foo = "bar"
     }
     required_claims = ["iat", "exp", "jti"]
   }
@@ -180,5 +186,11 @@ server {
         }
       }
     }
+  }
+}
+
+defaults {
+  environment_variables = {
+    BAR = "BaR"
   }
 }

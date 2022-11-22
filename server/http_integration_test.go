@@ -271,11 +271,11 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 		{"files_spa_api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
-				expectation{http.StatusOK, []byte(`<html><body><title>FS</title></body></html>`), nil, "file"},
+				expectation{http.StatusOK, []byte("<html><body><title>SPA_01</title>{\"default\":\"true\"}</body></html>\n"), nil, "spa"},
 			},
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/foo"},
-				expectation{http.StatusOK, []byte("<html><body><title>SPA_01</title></body></html>\n"), nil, "spa"},
+				expectation{http.StatusOK, []byte("<html><body><title>SPA_01</title>{\"default\":\"true\"}</body></html>\n"), nil, "spa"},
 			},
 		}},
 		{"api/01_couper.hcl", []requestCase{
