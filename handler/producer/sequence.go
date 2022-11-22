@@ -79,9 +79,13 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs *sync.Ma
 			additionalChs.Store(k, additional)
 			switch kind {
 			case "parallel": // execute each sequence branch in parallel
-				go pipeResults(rch, rch2)
+				go func() {
+					pipeResults(rch, rch2)
+					close(rch)
+				}()
 			case "sequence": // one by one
 				pipeResults(rch, rch2)
+				close(rch)
 			}
 			continue
 		}
@@ -122,7 +126,6 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs *sync.Ma
 }
 
 func pipeResults(target, src chan *Result) {
-	defer close(target)
 	for r := range src {
 		target <- r
 	}
