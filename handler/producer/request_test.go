@@ -105,9 +105,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 				outreq := clientRequest.WithContext(ctx)
 				outreq.Header.Set("X-Status", strconv.Itoa(tt.reflectStatus))
 
-				resultCh := make(chan *producer.Result, 1)
-				rt.Produce(outreq, resultCh)
-				result := <-resultCh
+				result := <-rt.Produce(outreq, nil)
 
 				if !errors.Equals(tt.expectedErr, result.Err) {
 					t.Fatalf("expected error: %v, got %v", tt.expectedErr, result.Err)

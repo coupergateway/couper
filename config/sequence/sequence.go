@@ -22,7 +22,6 @@ type Item struct {
 	backend   bool
 	deps      List
 	parent    *Item
-	seen      map[string]struct{}
 }
 
 func (s *Item) Add(ref *Item) *Item {
@@ -32,7 +31,7 @@ func (s *Item) Add(ref *Item) *Item {
 
 	ref.parent = s
 
-	if s.backend && s.hasAncestor(ref.Name) || !s.backend && s.hasSeen(ref.Name) { // collect names to populate error message
+	if s.hasAncestor(ref.Name) { // collect names to populate error message
 		refs := []string{ref.Name}
 		p := s.parent
 		for p != s {
@@ -94,28 +93,6 @@ func (s *Item) hasAncestor(name string) bool {
 	}
 
 	return s.parent.hasAncestor(name)
-}
-
-func (s *Item) hasSeen(name string) bool {
-	if s == nil {
-		return false
-	}
-
-	if s.seen == nil {
-		s.seen = make(map[string]struct{})
-	}
-
-	if _, exist := s.seen[name]; exist {
-		return true
-	}
-
-	s.seen[name] = struct{}{}
-
-	if s.HasParent() && s.parent.hasSeen(name) {
-		return true
-	}
-
-	return false
 }
 
 func resolveSequence(item *Item, resolved, seen *[]string) {

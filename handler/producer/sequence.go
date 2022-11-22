@@ -1,113 +1,41 @@
 package producer
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"sync"
 
-	"github.com/hashicorp/hcl/v2"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/telemetry"
 )
 
-type SequenceItem struct {
-	Backend http.RoundTripper
-	Context hcl.Body
-	Name    string // label
-}
-
-// Sequence represents a list of serialized items.
+// Sequence holds a list of items which get executed sequentially.
 type Sequence []Roundtrip
 
-// Sequences holds several list of serialized items.
-type Sequences []Roundtrip
+// Parallel holds a list of items which get executed in parallel.
+type Parallel []Roundtrip
 
-func (seqs Sequences) Produce(req *http.Request, results chan<- *Result) {
-	var rootSpan trace.Span
-	ctx := req.Context()
-	if len(seqs) > 0 {
-		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequences", trace.WithSpanKind(trace.SpanKindProducer))
-	}
-
-	resultsCh := make(chan *Result, seqs.Len())
-
-	for _, s := range seqs {
-		outreq := req.WithContext(ctx)
-		go s.Produce(outreq, resultsCh)
-	}
-
-	for i := 0; i < seqs.Len(); i++ {
-		results <- <-resultsCh
-	}
-
-	if rootSpan != nil {
-		rootSpan.End()
-	}
+func (p Parallel) Produce(req *http.Request, additionalSync *sync.Map) chan *Result {
+	return pipe(req, p, "parallel", additionalSync)
 }
 
-func (seqs Sequences) Len() int {
-	return len(seqs)
+func (p Parallel) Len() int {
+	return len(p)
 }
 
-func (s Sequence) Produce(req *http.Request, results chan<- *Result) {
-	var rootSpan trace.Span
-
-	ctx := req.Context()
-	l := s.Len()
-	if l > 0 {
-		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "sequence", trace.WithSpanKind(trace.SpanKindProducer))
+func (p Parallel) Names() []string {
+	var names []string
+	for _, i := range p {
+		names = append(names, i.Names()...)
 	}
-	defer func() {
-		if rootSpan != nil {
-			rootSpan.End()
-		}
-	}()
-
-	result := make(chan *Result, l)
-
-	var lastResult *Result
-	var moreEntries bool
-	for _, seq := range s {
-		outCtx := ctx
-
-		outreq := req.WithContext(outCtx)
-
-		seq.Produce(outreq, result)
-
-		select {
-		case <-outreq.Context().Done():
-			return
-		case lastResult, moreEntries = <-result:
-			if !moreEntries {
-				return
-			}
-		}
-
-		if lastResult.Err != nil {
-			// only wrap if lastResult.Err is not already an errors.Sequence
-			cErr, ok := lastResult.Err.(*errors.Error)
-			if !ok || !hasSequenceKind(cErr) {
-				lastResult.Err = errors.Sequence.With(lastResult.Err)
-			}
-			results <- lastResult
-			return
-		}
-	}
-
-	if lastResult == nil {
-		results <- &Result{Err: errors.Sequence.With(errors.New().Message("no result"))}
-	}
-
-	results <- lastResult
+	return names
 }
 
-func hasSequenceKind(cerr *errors.Error) bool {
-	for _, kind := range cerr.Kinds() {
-		if kind == "sequence" {
-			return true
-		}
-	}
-	return false
+func (s Sequence) Produce(req *http.Request, additionalSync *sync.Map) chan *Result {
+	return pipe(req, s, "sequence", additionalSync)
 }
 
 func (s Sequence) Len() int {
@@ -116,4 +44,120 @@ func (s Sequence) Len() int {
 		sum += t.Len()
 	}
 	return sum
+}
+
+func (s Sequence) Names() []string {
+	var names []string
+	for _, i := range s {
+		names = append(names, i.Names()...)
+	}
+	return names
+}
+
+// pipe calls the Roundtrip Interface on each given item and distinguishes between parallelism and trace kind.
+// The returned channel will be closed if this chain part has been ended.
+func pipe(req *http.Request, rt []Roundtrip, kind string, additionalSync *sync.Map) chan *Result {
+	var rootSpan trace.Span
+	ctx := req.Context()
+	if len(rt) > 0 {
+		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, kind, trace.WithSpanKind(trace.SpanKindProducer))
+		defer rootSpan.End()
+	}
+
+	result := make(chan *Result, len(rt))
+	var allResults []chan *Result
+
+	for _, srt := range rt {
+		rch := make(chan *Result, srt.Len())
+		allResults = append(allResults, rch)
+		k := fmt.Sprintf("%v", srt.Names())
+		if val, ok := additionalSync.Load(k); ok {
+			additionalChs := val.([]chan *Result)
+			// srt is already prepared to Produce(), so we can here just listen to the result(s)
+			ach := make(chan *Result, srt.Len())
+			additionalChs = append(additionalChs, ach)
+			additionalSync.Store(k, additionalChs)
+			switch kind {
+			case "parallel": // execute each sequence branch in parallel
+				go func() {
+					pipeResults(rch, ach)
+					close(rch)
+				}()
+			case "sequence": // one by one
+				pipeResults(rch, ach)
+				close(rch)
+			}
+			continue
+		}
+		additionalSync.Store(k, []chan *Result{})
+
+		switch kind {
+		case "parallel": // execute each sequence branch in parallel
+			go produceAndPipeResults(ctx, req, rch, srt, additionalSync)
+		case "sequence": // one by one
+			produceAndPipeResults(ctx, req, rch, srt, additionalSync)
+		}
+	}
+
+	// Since the sequence gets resolved in order just the last item matters.
+	for _, rch := range allResults {
+		var last *Result
+		var err error
+
+		for last = range rch {
+			// drain
+			if last.Err != nil {
+				err = last.Err
+				// drain must be continued (pipeResult)
+			}
+		}
+
+		if err != nil {
+			result <- &Result{Err: err}
+		} else if last == nil {
+			result <- &Result{Err: errors.Sequence.Message("no result")}
+		} else {
+			result <- last
+		}
+	}
+
+	close(result)
+	return result
+}
+
+func pipeResults(target, src chan *Result) {
+	for r := range src {
+		target <- r
+	}
+}
+
+func produceAndPipeResults(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip, additionalSync *sync.Map) {
+	outreq := req.WithContext(ctx)
+	defer close(results)
+	rs := rt.Produce(outreq, additionalSync)
+
+	k := fmt.Sprintf("%v", rt.Names())
+	var additionalChs []chan *Result
+	if val, ok := additionalSync.Load(k); ok {
+		additionalChs = val.([]chan *Result)
+	}
+	for _, ach := range additionalChs {
+		defer close(ach)
+	}
+
+	for r := range rs {
+		select {
+		case <-ctx.Done():
+			e := &Result{Err: ctx.Err()}
+			results <- e
+			for _, ach := range additionalChs {
+				ach <- e
+			}
+			return
+		case results <- r:
+			for _, ach := range additionalChs {
+				ach <- r
+			}
+		}
+	}
 }

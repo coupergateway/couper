@@ -24,7 +24,7 @@ type Proxy struct {
 
 type Proxies []*Proxy
 
-func (pr Proxies) Produce(clientReq *http.Request, results chan<- *Result) {
+func (pr Proxies) Produce(clientReq *http.Request, _ *sync.Map) chan *Result {
 	var currentName string // at least pre roundtrip
 	wg := &sync.WaitGroup{}
 	ctx := clientReq.Context()
@@ -32,6 +32,9 @@ func (pr Proxies) Produce(clientReq *http.Request, results chan<- *Result) {
 	if len(pr) > 0 {
 		ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "proxies", trace.WithSpanKind(trace.SpanKindProducer))
 	}
+
+	results := make(chan *Result, pr.Len())
+	defer close(results)
 
 	defer func() {
 		if rp := recover(); rp != nil {
@@ -83,8 +86,18 @@ func (pr Proxies) Produce(clientReq *http.Request, results chan<- *Result) {
 	}
 
 	wg.Wait()
+
+	return results
 }
 
 func (pr Proxies) Len() int {
 	return len(pr)
+}
+
+func (pr Proxies) Names() []string {
+	var names []string
+	for _, i := range pr {
+		names = append(names, i.Name)
+	}
+	return names
 }

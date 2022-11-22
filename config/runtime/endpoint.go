@@ -83,7 +83,7 @@ func newEndpointMap(srvConf *config.Server, serverOptions *server.Options) (endp
 	return endpoints, nil
 }
 
-func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint, apiConf *config.API,
+func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint, apiConf *config.API,
 	serverOptions *server.Options, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*handler.EndpointOptions, error) {
 	var errTpl *errors.Template
 
@@ -146,7 +146,7 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
 	}
 
-	sequences, requests, proxies := newSequences(allProxies, allRequests, endpointConf.Sequences...)
+	sequences, requests, proxies := resolveDependencies(allProxies, allRequests, endpointConf.Sequences...)
 
 	// TODO: redirect
 	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
@@ -191,20 +191,21 @@ func newEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}, nil
 }
 
-// newSequences lookups any request related dependency and sort them into a sequence.
+// resolveDependencies lookups any request related dependency and sort them into a sequence.
 // Also return left-overs for parallel usage.
-func newSequences(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
-	items ...*sequence.Item) (producer.Sequences, producer.Requests, producer.Proxies) {
+func resolveDependencies(proxies map[string]*producer.Proxy, requests map[string]*producer.Request,
+	items ...*sequence.Item) (producer.Parallel, producer.Requests, producer.Proxies) {
 
 	allDeps := sequence.Dependencies(items)
 
 	var reqs producer.Requests
 	var ps producer.Proxies
-	var seqs producer.Sequences
+	var seqs producer.Parallel
+	roundtrips := map[string]producer.Roundtrip{}
 
 	// read from prepared config sequences
 	for _, seq := range items {
-		seqs = append(seqs, newSequence(seq, proxies, requests))
+		seqs = append(seqs, newRoundtrip(seq, roundtrips, proxies, requests))
 	}
 
 proxyLeftovers:
@@ -234,7 +235,8 @@ reqLeftovers:
 	return seqs, reqs, ps
 }
 
-func newSequence(seq *sequence.Item,
+func newRoundtrip(seq *sequence.Item,
+	roundtrips map[string]producer.Roundtrip,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
 
@@ -243,44 +245,66 @@ func newSequence(seq *sequence.Item,
 
 	var previous []string
 	if len(deps) > 1 { // more deps per item can be parallelized
-		var seqs producer.Sequences
+		var names []string
 		for _, d := range deps {
-			seqs = append(seqs, newSequence(d, proxies, requests))
+			names = append(names, d.Name)
+		}
+		k := fmt.Sprintf("%v", names)
+		for _, d := range deps {
 			previous = append(previous, d.Name)
 		}
-		rt = seqs
+		if np, ok := roundtrips[k]; ok {
+			rt = np
+		} else {
+			var pl producer.Parallel
+			for _, d := range deps {
+				pl = append(pl, newRoundtrip(d, roundtrips, proxies, requests))
+			}
+			rt = &pl
+			roundtrips[k] = &pl
+		}
 	} else if len(deps) == 1 {
-		rt = newSequence(deps[0], proxies, requests)
+		rt = newRoundtrip(deps[0], roundtrips, proxies, requests)
 		previous = append(previous, deps[0].Name)
 	}
 
-	item := newSequenceItem(seq.Name, strings.Join(previous, ","), proxies, requests)
+	leaf := newLeafRoundtrip(seq.Name, strings.Join(previous, ","), roundtrips, proxies, requests)
 	if rt != nil {
-		return producer.Sequence{rt, item}
+		var names []string
+		names = append(names, rt.Names()...)
+		names = append(names, leaf.Names()...)
+		k := fmt.Sprintf("%v", names)
+		if ns, ok := roundtrips[k]; ok {
+			return ns
+		}
+		s := &producer.Sequence{rt, leaf}
+		roundtrips[k] = s
+		return s
 	}
-	return item
+	return leaf
 }
 
-func newSequenceItem(name, previous string,
+// newLeafRoundtrip creates a "leaf" Roundtrip, i.e. one of
+// producer.Proxies or producer.Requests,
+// no producer.Parallel or producer.Sequence
+func newLeafRoundtrip(name, previous string,
+	roundtrips map[string]producer.Roundtrip,
 	proxies map[string]*producer.Proxy,
 	requests map[string]*producer.Request) producer.Roundtrip {
+	if rt, ok := roundtrips[name]; ok {
+		return rt
+	}
 	if p, ok := proxies[name]; ok {
-		return producer.Proxies{
-			&producer.Proxy{
-				Content:          p.Content,
-				Name:             p.Name,
-				RoundTrip:        p.RoundTrip,
-				PreviousSequence: previous,
-			}}
+		p.PreviousSequence = previous
+		ps := &producer.Proxies{p}
+		roundtrips[name] = ps
+		return ps
 	}
 	if r, ok := requests[name]; ok {
-		return producer.Requests{
-			&producer.Request{
-				Backend:          r.Backend,
-				Context:          r.Context,
-				Name:             r.Name,
-				PreviousSequence: previous,
-			}}
+		r.PreviousSequence = previous
+		rs := &producer.Requests{r}
+		roundtrips[name] = rs
+		return rs
 	}
 	return nil
 }

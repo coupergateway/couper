@@ -20,6 +20,10 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Proper handling of empty [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac)/[`oidc`](https://docs.couper.io/configuration/block/oidc) `scope` ([#593](https://github.com/avenga/couper/pull/593))
   * Throwing [sequence errors](https://docs.couper.io/configuration/error-handling#endpoint-error-types) and selecting appropriate [error handlers](https://docs.couper.io/configuration/error-handling) ([#595](https://github.com/avenga/couper/pull/595))
   * Allow setting of the `typ` JWT header in [`jwt_signing_profile`s](https://docs.couper.io/configuration/block/jwt_signing_profile) ([#616](https://github.com/avenga/couper/pull/616))
+  * CVE-2021-3538 related to our `request_id_format` option if switched to `uuid4`: replaced the underlying package to `github.com/google/uuid` ([#611](https://github.com/avenga/couper/pull/611))
+  * Possible panic for nested [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#618](https://github.com/avenga/couper/pull/618))
+  * Cycle check for [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#623](https://github.com/avenga/couper/pull/623))
+  * In [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) send requests only once ([#624](https://github.com/avenga/couper/pull/624))
 
 ---
 
