@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/hashicorp/hcl/v2"
 
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/errors"
@@ -23,7 +24,7 @@ type OidcClient struct {
 }
 
 // NewOidcClient creates a new OIDC client.
-func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
+func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClient, error) {
 	var algorithms []string
 	for _, a := range append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...) {
 		algorithms = append(algorithms, a.String())
@@ -39,7 +40,7 @@ func NewOidcClient(oidcConfig *oidc.Config) (*OidcClient, error) {
 		jwtParser: jwt.NewParser(options...),
 	}
 
-	acClient, err := NewAuthCodeClient(oidcConfig, oidcConfig, o.backends["token_backend"])
+	acClient, err := NewAuthCodeClient(evalCtx, oidcConfig, oidcConfig, o.backends["token_backend"])
 	if err != nil {
 		return nil, err
 	}

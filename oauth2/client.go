@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/hashicorp/hcl/v2"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 
 	"github.com/avenga/couper/config"
@@ -41,7 +42,7 @@ type Client struct {
 	authnTTL     int64
 }
 
-func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
+func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
 	var authnMethod string
 	teAuthMethod := clientConfig.GetTokenEndpointAuthMethod()
 	if teAuthMethod == nil {
@@ -124,7 +125,7 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 			algorithm = jwtSigningProfile.SignatureAlgorithm
 
 			if jwtSigningProfile.Headers != nil {
-				v, err := eval.Value(nil, jwtSigningProfile.Headers)
+				v, err := eval.Value(evalCtx, jwtSigningProfile.Headers)
 				if err != nil {
 					return nil, err
 				}
@@ -144,7 +145,7 @@ func NewClient(grantType string, asConfig config.OAuth2AS, clientConfig config.O
 			}
 			// get claims from signing profile
 			if jwtSigningProfile.Claims != nil {
-				cl, err := eval.Value(nil, jwtSigningProfile.Claims)
+				cl, err := eval.Value(evalCtx, jwtSigningProfile.Claims)
 				if err != nil {
 					return nil, err
 				}

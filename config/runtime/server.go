@@ -524,7 +524,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			oauth2Client, err := oauth2.NewAuthCodeClient(oauth2Conf, oauth2Conf, backend)
+			oauth2Client, err := oauth2.NewAuthCodeClient(confCtx, oauth2Conf, oauth2Conf, backend)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -537,7 +537,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 		for _, oidcConf := range conf.Definitions.OIDC {
 			confErr := errors.Configuration.Label(oidcConf.Name)
 			oidcConfig := oidcConfigs[oidcConf.Name]
-			oidcClient, err := oauth2.NewOidcClient(oidcConfig)
+			oidcClient, err := oauth2.NewOidcClient(confCtx, oidcConfig)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
