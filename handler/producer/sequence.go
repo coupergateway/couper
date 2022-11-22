@@ -113,9 +113,14 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalSync *sync.M
 		}
 
 		if err != nil {
+			// only wrap if Error is not already an errors.Sequence
+			cErr, ok := err.(*errors.Error)
+			if !ok || !hasSequenceKind(cErr) {
+				err = errors.Sequence.With(err)
+			}
 			result <- &Result{Err: err}
 		} else if last == nil {
-			result <- &Result{Err: errors.Sequence.Message("no result")}
+			result <- &Result{Err: errors.Sequence.With(errors.New().Message("no result"))}
 		} else {
 			result <- last
 		}
@@ -123,6 +128,15 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalSync *sync.M
 
 	close(result)
 	return result
+}
+
+func hasSequenceKind(cerr *errors.Error) bool {
+	for _, kind := range cerr.Kinds() {
+		if kind == "sequence" {
+			return true
+		}
+	}
+	return false
 }
 
 func pipeResults(target, src chan *Result) {
