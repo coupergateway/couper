@@ -9,8 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -28,67 +26,19 @@ import (
 
 var _ Cmd = &Run{}
 var RunCmdTestCallback func()
+var RunCmdConfigTestCallback func(*config.Settings)
 
 // Run starts the frontend gateway server and listen
 // for requests on the configured hosts and ports.
 type Run struct {
-	context  context.Context
-	flagSet  *flag.FlagSet
-	settings *config.Settings
-
-	// required for testing purposes
-	// TODO: provide a testable interface
-	settingsMu sync.Mutex
+	context context.Context
+	flagSet *flag.FlagSet
 }
 
 func NewRun(ctx context.Context) *Run {
-	settings := config.DefaultSettings
-	set := flag.NewFlagSet("run", flag.ContinueOnError)
-	set.StringVar(&settings.CAFile, "ca-file", settings.CAFile, "-ca-file certificate.pem")
-	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
-	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
-	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
-	set.Var(&AcceptForwardedValue{settings: &settings}, "accept-forwarded-url", "-accept-forwarded-url [proto][,host][,port]")
-	set.Var(&settings.TLSDevProxy, "https-dev-proxy", "-https-dev-proxy 8443:8080,9443:9000")
-	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
-	set.StringVar(&settings.RequestIDAcceptFromHeader, "request-id-accept-from-header", settings.RequestIDAcceptFromHeader, "-request-id-accept-from-header X-UID")
-	set.StringVar(&settings.RequestIDBackendHeader, "request-id-backend-header", settings.RequestIDBackendHeader, "-request-id-backend-header Couper-Request-ID")
-	set.StringVar(&settings.RequestIDClientHeader, "request-id-client-header", settings.RequestIDClientHeader, "-request-id-client-header Couper-Request-ID")
-	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
-	set.StringVar(&settings.SecureCookies, "secure-cookies", settings.SecureCookies, "-secure-cookies strip")
-	set.BoolVar(&settings.TelemetryMetrics, "beta-metrics", settings.TelemetryMetrics, "-beta-metrics")
-	set.IntVar(&settings.TelemetryMetricsPort, "beta-metrics-port", settings.TelemetryMetricsPort, "-beta-metrics-port 9090")
-	set.StringVar(&settings.TelemetryMetricsEndpoint, "beta-metrics-endpoint", settings.TelemetryMetricsEndpoint, "-beta-metrics-endpoint [host:port]")
-	set.StringVar(&settings.TelemetryMetricsExporter, "beta-metrics-exporter", settings.TelemetryMetricsExporter, "-beta-metrics-exporter [name]")
-	set.StringVar(&settings.TelemetryServiceName, "beta-service-name", settings.TelemetryServiceName, "-beta-service-name [name]")
-	set.BoolVar(&settings.TelemetryTraces, "beta-traces", settings.TelemetryTraces, "-beta-traces")
-	set.StringVar(&settings.TelemetryTracesEndpoint, "beta-traces-endpoint", settings.TelemetryTracesEndpoint, "-beta-traces-endpoint [host:port]")
 	return &Run{
-		context:  ctx,
-		flagSet:  set,
-		settings: &settings,
+		context: ctx,
 	}
-}
-
-type AcceptForwardedValue struct {
-	settings *config.Settings
-}
-
-func (a AcceptForwardedValue) String() string {
-	if a.settings == nil || a.settings.AcceptForwarded == nil {
-		return ""
-	}
-	return a.settings.AcceptForwarded.String()
-}
-
-func (a AcceptForwardedValue) Set(s string) error {
-	forwarded := strings.Split(s, ",")
-	err := a.settings.AcceptForwarded.Set(forwarded)
-	if err != nil {
-		return err
-	}
-	a.settings.AcceptForwardedURL = forwarded
-	return nil
 }
 
 // limitFn depends on current OS, set via build flags
@@ -97,20 +47,17 @@ var limitFn func(entry *logrus.Entry)
 func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
 	logEntry.WithField("files", config.Files.AsList()).Debug("loaded files")
 
-	r.settingsMu.Lock()
-	*r.settings = *config.Settings
-	r.settingsMu.Unlock()
-
 	// apply command context
 	config.Context = config.Context.(*eval.Context).WithContext(r.context)
 
-	if f := r.flagSet.Lookup("accept-forwarded-url"); f != nil {
-		if afv, ok := f.Value.(*AcceptForwardedValue); ok {
-			afv.settings = r.settings
-		}
+	// apply cli flags to file settings obj
+	r.flagSet = newFlagSet(config.Settings, "run")
+	if err := r.flagSet.Parse(args.Filter(r.flagSet)); err != nil {
+		return err
 	}
 
-	if err := r.flagSet.Parse(args.Filter(r.flagSet)); err != nil {
+	if err := config.Settings.AcceptForwarded.
+		Set(config.Settings.AcceptForwardedURL); err != nil {
 		return err
 	}
 
@@ -120,18 +67,13 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", config.Settings.SecureCookies)
 	}
 
-	// Some remapping due to flag set pre-definition
-	env.Decode(r.settings)
-	err := r.settings.SetAcceptForwarded()
+	// finally apply environment variables to settings obj
+	env.Decode(config.Settings)
+
+	err := config.Settings.ApplyAcceptForwarded()
 	if err != nil {
 		return err
 	}
-	r.settingsMu.Lock()
-	config.Settings = r.settings
-	r.settingsMu.Unlock()
-
-	timings := runtime.DefaultTimings
-	env.Decode(&timings)
 
 	if config.Settings.CAFile != "" {
 		config.Settings.Certificate, err = readCertificateFile(config.Settings.CAFile)
@@ -140,6 +82,13 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		}
 		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
 	}
+
+	if RunCmdConfigTestCallback != nil {
+		RunCmdConfigTestCallback(config.Settings.Clone())
+	}
+
+	timings := runtime.DefaultTimings
+	env.Decode(&timings)
 
 	memStore := cache.New(logEntry, r.context.Done())
 	// logEntry has still the 'daemon' type which can be used for config related load errors.
@@ -151,13 +100,13 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	telemetry.InitExporter(r.context, &telemetry.Options{
 		MetricsCollectPeriod: time.Second * 2,
-		Metrics:              r.settings.TelemetryMetrics,
-		MetricsEndpoint:      r.settings.TelemetryMetricsEndpoint,
-		MetricsExporter:      r.settings.TelemetryMetricsExporter,
-		MetricsPort:          r.settings.TelemetryMetricsPort,
-		ServiceName:          r.settings.TelemetryServiceName,
-		Traces:               r.settings.TelemetryTraces,
-		TracesEndpoint:       r.settings.TelemetryTracesEndpoint,
+		Metrics:              config.Settings.TelemetryMetrics,
+		MetricsEndpoint:      config.Settings.TelemetryMetricsEndpoint,
+		MetricsExporter:      config.Settings.TelemetryMetricsExporter,
+		MetricsPort:          config.Settings.TelemetryMetricsPort,
+		ServiceName:          config.Settings.TelemetryServiceName,
+		Traces:               config.Settings.TelemetryTraces,
+		TracesEndpoint:       config.Settings.TelemetryTracesEndpoint,
 	}, memStore, logEntry)
 
 	if limitFn != nil {
@@ -250,4 +199,29 @@ func readCertificateFile(file string) ([]byte, error) {
 
 func (r *Run) Usage() {
 	r.flagSet.Usage()
+}
+
+func newFlagSet(settings *config.Settings, cmdName string) *flag.FlagSet {
+	set := flag.NewFlagSet(cmdName, flag.ContinueOnError)
+	set.StringVar(&settings.CAFile, "ca-file", settings.CAFile, "-ca-file certificate.pem")
+	set.StringVar(&settings.HealthPath, "health-path", settings.HealthPath, "-health-path /healthz")
+	set.IntVar(&settings.DefaultPort, "p", settings.DefaultPort, "-p 8080")
+	set.BoolVar(&settings.XForwardedHost, "xfh", settings.XForwardedHost, "-xfh")
+	set.Var(&settings.AcceptForwardedURL, "accept-forwarded-url", "-accept-forwarded-url [proto][,host][,port]")
+	set.Var(&settings.TLSDevProxy, "https-dev-proxy", "-https-dev-proxy 8443:8080,9443:9000")
+	set.BoolVar(&settings.NoProxyFromEnv, "no-proxy-from-env", settings.NoProxyFromEnv, "-no-proxy-from-env")
+	set.StringVar(&settings.RequestIDAcceptFromHeader, "request-id-accept-from-header", settings.RequestIDAcceptFromHeader, "-request-id-accept-from-header X-UID")
+	set.StringVar(&settings.RequestIDBackendHeader, "request-id-backend-header", settings.RequestIDBackendHeader, "-request-id-backend-header Couper-Request-ID")
+	set.StringVar(&settings.RequestIDClientHeader, "request-id-client-header", settings.RequestIDClientHeader, "-request-id-client-header Couper-Request-ID")
+	set.StringVar(&settings.RequestIDFormat, "request-id-format", settings.RequestIDFormat, "-request-id-format uuid4")
+	set.StringVar(&settings.SecureCookies, "secure-cookies", settings.SecureCookies, "-secure-cookies strip")
+	set.BoolVar(&settings.TelemetryMetrics, "beta-metrics", settings.TelemetryMetrics, "-beta-metrics")
+	set.IntVar(&settings.TelemetryMetricsPort, "beta-metrics-port", settings.TelemetryMetricsPort, "-beta-metrics-port 9090")
+	set.StringVar(&settings.TelemetryMetricsEndpoint, "beta-metrics-endpoint", settings.TelemetryMetricsEndpoint, "-beta-metrics-endpoint [host:port]")
+	set.StringVar(&settings.TelemetryMetricsExporter, "beta-metrics-exporter", settings.TelemetryMetricsExporter, "-beta-metrics-exporter [cmdName]")
+	set.StringVar(&settings.TelemetryServiceName, "beta-service-cmdName", settings.TelemetryServiceName, "-beta-service-cmdName [cmdName]")
+	set.BoolVar(&settings.TelemetryTraces, "beta-traces", settings.TelemetryTraces, "-beta-traces")
+	set.StringVar(&settings.TelemetryTracesEndpoint, "beta-traces-endpoint", settings.TelemetryTracesEndpoint, "-beta-traces-endpoint [host:port]")
+
+	return set
 }

@@ -319,7 +319,7 @@ func LoadConfig(body *hclsyntax.Body, src [][]byte, environment string) (*config
 				return nil, diags
 			}
 
-			if err = helper.config.Settings.SetAcceptForwarded(); err != nil {
+			if err = helper.config.Settings.ApplyAcceptForwarded(); err != nil {
 				return nil, newDiagErr(&outerBlock.DefRange, fmt.Sprintf("invalid accept_forwarded_url: %q", err))
 			}
 		}
