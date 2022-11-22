@@ -18,8 +18,8 @@ type Sequence []Roundtrip
 // Parallel holds a list of items which get executed in parallel.
 type Parallel []Roundtrip
 
-func (p Parallel) Produce(req *http.Request, additionalChs *sync.Map) chan *Result {
-	return pipe(req, p, "parallel", additionalChs)
+func (p Parallel) Produce(req *http.Request, additionalSync *sync.Map) chan *Result {
+	return pipe(req, p, "parallel", additionalSync)
 }
 
 func (p Parallel) Len() int {
@@ -34,8 +34,8 @@ func (p Parallel) Names() []string {
 	return names
 }
 
-func (s Sequence) Produce(req *http.Request, additionalChs *sync.Map) chan *Result {
-	return pipe(req, s, "sequence", additionalChs)
+func (s Sequence) Produce(req *http.Request, additionalSync *sync.Map) chan *Result {
+	return pipe(req, s, "sequence", additionalSync)
 }
 
 func (s Sequence) Len() int {
@@ -56,7 +56,7 @@ func (s Sequence) Names() []string {
 
 // pipe calls the Roundtrip Interface on each given item and distinguishes between parallelism and trace kind.
 // The returned channel will be closed if this chain part has been ended.
-func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs *sync.Map) chan *Result {
+func pipe(req *http.Request, rt []Roundtrip, kind string, additionalSync *sync.Map) chan *Result {
 	var rootSpan trace.Span
 	ctx := req.Context()
 	if len(rt) > 0 {
@@ -71,31 +71,31 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalChs *sync.Ma
 		rch := make(chan *Result, srt.Len())
 		allResults = append(allResults, rch)
 		k := fmt.Sprintf("%v", srt.Names())
-		if val, ok := additionalChs.Load(k); ok {
-			additional := val.([]chan *Result)
+		if val, ok := additionalSync.Load(k); ok {
+			additionalChs := val.([]chan *Result)
 			// srt is already prepared to Produce(), so we can here just listen to the result(s)
-			rch2 := make(chan *Result, srt.Len())
-			additional = append(additional, rch2)
-			additionalChs.Store(k, additional)
+			ach := make(chan *Result, srt.Len())
+			additionalChs = append(additionalChs, ach)
+			additionalSync.Store(k, additionalChs)
 			switch kind {
 			case "parallel": // execute each sequence branch in parallel
 				go func() {
-					pipeResults(rch, rch2)
+					pipeResults(rch, ach)
 					close(rch)
 				}()
 			case "sequence": // one by one
-				pipeResults(rch, rch2)
+				pipeResults(rch, ach)
 				close(rch)
 			}
 			continue
 		}
-		additionalChs.Store(k, []chan *Result{})
+		additionalSync.Store(k, []chan *Result{})
 
 		switch kind {
 		case "parallel": // execute each sequence branch in parallel
-			go produceAndPipeResults(ctx, req, rch, srt, additionalChs)
+			go produceAndPipeResults(ctx, req, rch, srt, additionalSync)
 		case "sequence": // one by one
-			produceAndPipeResults(ctx, req, rch, srt, additionalChs)
+			produceAndPipeResults(ctx, req, rch, srt, additionalSync)
 		}
 	}
 
@@ -131,17 +131,17 @@ func pipeResults(target, src chan *Result) {
 	}
 }
 
-func produceAndPipeResults(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip, additionalChs *sync.Map) {
+func produceAndPipeResults(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip, additionalSync *sync.Map) {
 	outreq := req.WithContext(ctx)
 	defer close(results)
-	rs := rt.Produce(outreq, additionalChs)
+	rs := rt.Produce(outreq, additionalSync)
 
 	k := fmt.Sprintf("%v", rt.Names())
-	var additional []chan *Result
-	if val, ok := additionalChs.Load(k); ok {
-		additional = val.([]chan *Result)
+	var additionalChs []chan *Result
+	if val, ok := additionalSync.Load(k); ok {
+		additionalChs = val.([]chan *Result)
 	}
-	for _, ach := range additional {
+	for _, ach := range additionalChs {
 		defer close(ach)
 	}
 
@@ -150,12 +150,12 @@ func produceAndPipeResults(ctx context.Context, req *http.Request, results chan 
 		case <-ctx.Done():
 			e := &Result{Err: ctx.Err()}
 			results <- e
-			for _, ach := range additional {
+			for _, ach := range additionalChs {
 				ach <- e
 			}
 			return
 		case results <- r:
-			for _, ach := range additional {
+			for _, ach := range additionalChs {
 				ach <- r
 			}
 		}
