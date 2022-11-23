@@ -13,7 +13,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
@@ -191,7 +190,8 @@ func TestDefaultEnvVariables(t *testing.T) {
 		t.Run(tt.name, func(subT *testing.T) {
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				subT.Fatal(err)
+				subT.Error(err)
+				return
 			}
 
 			hclContext := cf.Context.(*eval.Context).HCLContext()
@@ -236,13 +236,7 @@ func TestCouperVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			hclBody, err := parser.Load([]byte(tt.hcl), "couper.hcl")
-			if err != nil {
-				subT.Error(err)
-				return
-			}
-
-			cf, err := configload.LoadConfig(hclBody)
+			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
 				subT.Error(err)
 				return
