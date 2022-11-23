@@ -236,7 +236,7 @@ func TestCouperVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
+			cf, err := configload.LoadBytesEnv([]byte(tt.hcl), "couper.hcl", tt.env)
 			if err != nil {
 				subT.Error(err)
 				return
