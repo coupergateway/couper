@@ -236,14 +236,13 @@ func TestCouperVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			bytes := []byte(tt.hcl)
-			hclBody, err := parser.Load(bytes, "couper.hcl")
+			hclBody, err := parser.Load([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
 				subT.Error(err)
 				return
 			}
 
-			cf, err := configload.LoadConfig(hclBody, [][]byte{bytes}, tt.env)
+			cf, err := configload.LoadConfig(hclBody)
 			if err != nil {
 				subT.Error(err)
 				return

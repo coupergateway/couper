@@ -12,7 +12,6 @@ import (
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
 )
 
 type helper struct {
@@ -40,7 +39,7 @@ func newHelper(body hcl.Body) (*helper, error) {
 	return &helper{
 		config:       couperConfig,
 		content:      content,
-		context:      couperConfig.Context.(*eval.Context).HCLContext(),
+		context:      evalContext.HCLContext(),
 		defsBackends: make(map[string]*hclsyntax.Body),
 	}, nil
 }

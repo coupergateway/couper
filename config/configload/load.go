@@ -268,7 +268,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, err
 	}
 
-	return LoadConfig(hclBody)
+	return bodiesToConfig([]*hclsyntax.Body{hclBody}, [][]byte{src}, "")
 }
 
 func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
