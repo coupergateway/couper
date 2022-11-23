@@ -56,11 +56,6 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		return err
 	}
 
-	if err := config.Settings.AcceptForwarded.
-		Set(config.Settings.AcceptForwardedURL); err != nil {
-		return err
-	}
-
 	// TODO: move to config validation
 	if config.Settings.SecureCookies != "" &&
 		config.Settings.SecureCookies != writer.SecureCookiesStrip {
@@ -70,12 +65,12 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	// finally apply environment variables to settings obj
 	env.Decode(config.Settings)
 
-	err := config.Settings.ApplyAcceptForwarded()
-	if err != nil {
+	if err := config.Settings.ApplyAcceptForwarded(); err != nil {
 		return err
 	}
 
 	if config.Settings.CAFile != "" {
+		var err error
 		config.Settings.Certificate, err = readCertificateFile(config.Settings.CAFile)
 		if err != nil {
 			return err
