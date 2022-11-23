@@ -518,6 +518,41 @@ func TestHTTPServer_EnvVars(t *testing.T) {
 	}
 }
 
+func TestHTTPServer_DefaultEnvVars(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	env.SetTestOsEnviron(func() []string {
+		return []string{"VALUE_4=value4"}
+	})
+	defer env.SetTestOsEnviron(os.Environ)
+
+	shutdown, hook := newCouper("testdata/integration/env/02_couper.hcl", test.New(t))
+	defer shutdown()
+
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(err)
+
+	var result []string
+	helper.Must(json.Unmarshal(b, &result))
+
+	if diff := cmp.Diff(result, []string{"value1", "", "default_value_3", "value4"}); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestHTTPServer_XFHHeader(t *testing.T) {
 	client := newClient()
 
