@@ -548,7 +548,7 @@ func TestHTTPServer_DefaultEnvVars(t *testing.T) {
 	var result []string
 	helper.Must(json.Unmarshal(b, &result))
 
-	if diff := cmp.Diff(result, []string{"value1", "", "default_value_3", "value4"}); diff != "" {
+	if diff := cmp.Diff(result, []string{"value1", "", "default_value_3", "value4", "value5"}); diff != "" {
 		t.Error(diff)
 	}
 }

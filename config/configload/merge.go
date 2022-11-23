@@ -563,28 +563,45 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	attrs := make(hclsyntax.Attributes)
-	envVars := make(map[string]hcl.Expression)
+	envVars := make(map[string]hclsyntax.Expression)
 
 	for _, body := range bodies {
 		for _, block := range body.Blocks {
-			if block.Type == defaults {
-				for name, attr := range block.Body.Attributes {
-					if name == environmentVars {
-						expObj, ok := attr.Expr.(*hclsyntax.ObjectConsExpr)
-						if !ok {
-							r := attr.Expr.Range()
-							return nil, newDiagErr(&r, fmt.Sprintf("error: %s must be object type", environmentVars))
-						}
+			if block.Type != defaults {
+				continue
+			}
 
-						for _, kv := range expObj.ExprMap() {
-							k := kv.Key.(*hclsyntax.ObjectConsKeyExpr)
-							uk := k.UnwrapExpression().(*hclsyntax.ScopeTraversalExpr)
-							keyName := uk.Traversal.RootName()
-							envVars[keyName] = kv.Value
+			for name, attr := range block.Body.Attributes {
+				if name != environmentVars {
+					attrs[name] = attr // Currently not used
+					continue
+				}
+
+				expObj, ok := attr.Expr.(*hclsyntax.ObjectConsExpr)
+				if !ok {
+					r := attr.Expr.Range()
+					return nil, newDiagErr(&r, fmt.Sprintf("%s must be object type", environmentVars))
+				}
+
+				for _, item := range expObj.Items {
+					k := item.KeyExpr.(*hclsyntax.ObjectConsKeyExpr)
+					r := item.KeyExpr.Range()
+					var keyName string
+					switch exp := k.Wrapped.(type) {
+					case *hclsyntax.ScopeTraversalExpr:
+						keyName = exp.Traversal.RootName()
+					case *hclsyntax.TemplateExpr:
+						if !exp.IsStringLiteral() {
+							return nil, newDiagErr(&r, "unsupported key template expression")
 						}
-					} else {
-						attrs[name] = attr // Currently not used
+						v, _ := exp.Value(nil)
+						keyName = v.AsString()
+					default:
+						r := item.KeyExpr.Range()
+						return nil, newDiagErr(&r, "unsupported key expression")
 					}
+
+					envVars[keyName] = item.ValueExpr
 				}
 			}
 		}
@@ -600,7 +617,7 @@ func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					},
 					ForceNonLiteral: false,
 				},
-				ValueExpr: v.(hclsyntax.Expression),
+				ValueExpr: v,
 			})
 		}
 
