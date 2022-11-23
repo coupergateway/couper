@@ -107,10 +107,12 @@ func (s *Settings) AcceptsForwardedHost() bool {
 
 type AcceptForwarded struct {
 	port, protocol, host bool
+	forwarded            []string
 }
 
 func (a *AcceptForwarded) Set(forwarded []string) error {
-	for _, part := range forwarded {
+	a.forwarded = forwarded
+	for _, part := range a.forwarded {
 		switch strings.TrimSpace(part) {
 		case "":
 			continue
@@ -128,17 +130,5 @@ func (a *AcceptForwarded) Set(forwarded []string) error {
 }
 
 func (a *AcceptForwarded) String() string {
-	var parts []string
-
-	if a.protocol {
-		parts = append(parts, "proto")
-	}
-	if a.host {
-		parts = append(parts, "host")
-	}
-	if a.port {
-		parts = append(parts, "port")
-	}
-
-	return strings.Join(parts, ",")
+	return strings.Join(a.forwarded, ",")
 }
