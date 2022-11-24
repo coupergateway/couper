@@ -104,8 +104,9 @@ func TestHTTPSServer_TLS_ServerClientCertificate(t *testing.T) {
 
 	var RemoteFailedCertCheck = func(err error) bool {
 		prefix := `Get "https://localhost:4443/": `
-		return err != nil && (err.Error() == prefix+"readLoopPeekFailLocked: remote error: tls: bad certificate" ||
-			err.Error() == prefix+"remote error: tls: bad certificate")
+		suffix := "remote error: tls: bad certificate"
+		return err != nil && (err.Error() == prefix+"readLoopPeekFailLocked: "+suffix ||
+			err.Error() == prefix+suffix)
 	}
 
 	if !RemoteFailedCertCheck(err) {
