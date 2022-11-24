@@ -12,7 +12,7 @@ The `defaults` block lets you define default values.
 values: [
   {
     "default": "",
-    "description": "One or more environment variable assignments",
+    "description": "One or more environment variable assignments. Keys must be either identifiers or simple string expressions.",
     "name": "environment_variables",
     "type": "object"
   }
