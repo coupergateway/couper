@@ -1,8 +1,9 @@
 package config
 
 type ServerTLS struct {
-	Ocsp               bool                 `hcl:"ocsp,optional"`
-	OcspTTL            string               `hcl:"ocsp_ttl,optional" type:"duration" default:"12h"`
+	// TBA
+	//Ocsp               bool                 `hcl:"ocsp,optional"`
+	//OcspTTL            string               `hcl:"ocsp_ttl,optional" type:"duration" default:"12h"`
 	ClientCertificate  []*ClientCertificate `hcl:"client_certificate,block"`
 	ServerCertificates []*ServerCertificate `hcl:"server_certificate,block"`
 }
