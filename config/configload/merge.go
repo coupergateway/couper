@@ -54,7 +54,7 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 
 		tlsDefinition struct {
 			*hclsyntax.Block
-			blocks namedBlocks
+			blocks []*hclsyntax.Block
 		}
 
 		namedAPIs  map[string]*apiDefinition
@@ -308,8 +308,7 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 				} else if block.Type == tls {
 					if results[serverKey].tls == nil {
 						results[serverKey].tls = &tlsDefinition{
-							Block:  block,
-							blocks: make(namedBlocks),
+							Block: block,
 						}
 					}
 
@@ -317,12 +316,28 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 						results[serverKey].tls.Body.Attributes[name] = attr
 					}
 
-					for _, subBlock := range block.Body.Blocks {
-						blockKey := ""
+					preserveNamed := namedBlocks{}
+					for _, subBlock := range results[serverKey].tls.blocks {
 						if len(subBlock.Labels) > 0 {
-							blockKey = subBlock.Labels[0]
+							preserveNamed[subBlock.Type+"_"+subBlock.Labels[0]] = subBlock
 						}
-						results[serverKey].tls.blocks[blockKey] = subBlock
+					}
+
+					results[serverKey].tls.blocks = nil // reset (per file)
+
+					for _, subBlock := range block.Body.Blocks {
+						blockKey := subBlock.Type
+						if len(subBlock.Labels) > 0 {
+							blockKey += "_" + subBlock.Labels[0]
+						}
+						if _, exist := preserveNamed[blockKey]; exist {
+							preserveNamed[blockKey] = subBlock // override
+						} else {
+							results[serverKey].tls.blocks = append(results[serverKey].tls.blocks, subBlock)
+						}
+					}
+					for _, subBlock := range getSortedMapKeys(preserveNamed) {
+						results[serverKey].tls.blocks = append(results[serverKey].tls.blocks, preserveNamed[subBlock])
 					}
 				} else {
 					results[serverKey].blocks[block.Type] = block
@@ -425,8 +440,8 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 
 		if serverBlock.tls != nil {
 			var tlsCertificateBlocks hclsyntax.Blocks
-			for _, blockName := range getSortedMapKeys(serverBlock.tls.blocks) {
-				tlsCertificateBlocks = append(tlsCertificateBlocks, serverBlock.tls.blocks[blockName])
+			for _, certBlock := range serverBlock.tls.blocks {
+				tlsCertificateBlocks = append(tlsCertificateBlocks, certBlock)
 			}
 			serverBlocks = append(serverBlocks, &hclsyntax.Block{
 				Type: tls,
