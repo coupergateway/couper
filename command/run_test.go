@@ -44,7 +44,6 @@ func TestNewRun(t *testing.T) {
 		{"defaults from file", "01_defaults.hcl", nil, nil, defaultSettings},
 		{"overrides from file", "02_changed_defaults.hcl", nil, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
-			AcceptForwardedURL:       []string{},
 			DefaultPort:              9090,
 			HealthPath:               "/status/health",
 			LogFormat:                defaultSettings.LogFormat,
@@ -63,7 +62,6 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag port", "01_defaults.hcl", Args{"-p", "9876"}, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
-			AcceptForwardedURL:       []string{},
 			DefaultPort:              9876,
 			HealthPath:               defaultSettings.HealthPath,
 			LogFormat:                defaultSettings.LogFormat,
@@ -80,7 +78,6 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag and env port", "01_defaults.hcl", Args{"-p", "9876"}, []string{"COUPER_DEFAULT_PORT=4561"}, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
-			AcceptForwardedURL:       []string{},
 			DefaultPort:              4561,
 			HealthPath:               defaultSettings.HealthPath,
 			LogFormat:                defaultSettings.LogFormat,
