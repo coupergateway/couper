@@ -54,7 +54,8 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 
 		tlsDefinition struct {
 			*hclsyntax.Block
-			blocks []*hclsyntax.Block
+			blocks          []*hclsyntax.Block
+			preservedBlocks namedBlocks
 		}
 
 		namedAPIs  map[string]*apiDefinition
@@ -308,7 +309,8 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 				} else if block.Type == tls {
 					if results[serverKey].tls == nil {
 						results[serverKey].tls = &tlsDefinition{
-							Block: block,
+							Block:           block,
+							preservedBlocks: namedBlocks{},
 						}
 					}
 
@@ -316,13 +318,11 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 						results[serverKey].tls.Body.Attributes[name] = attr
 					}
 
-					preserveNamed := namedBlocks{}
 					for _, subBlock := range results[serverKey].tls.blocks {
 						if len(subBlock.Labels) > 0 {
-							preserveNamed[subBlock.Type+"_"+subBlock.Labels[0]] = subBlock
+							results[serverKey].tls.preservedBlocks[subBlock.Type+"_"+subBlock.Labels[0]] = subBlock
 						}
 					}
-
 					results[serverKey].tls.blocks = nil // reset (per file)
 
 					for _, subBlock := range block.Body.Blocks {
@@ -330,14 +330,16 @@ func mergeServers(bodies []*hclsyntax.Body, proxies map[string]*hclsyntax.Block)
 						if len(subBlock.Labels) > 0 {
 							blockKey += "_" + subBlock.Labels[0]
 						}
-						if _, exist := preserveNamed[blockKey]; exist {
-							preserveNamed[blockKey] = subBlock // override
+						if _, exist := results[serverKey].tls.preservedBlocks[blockKey]; exist {
+							results[serverKey].tls.preservedBlocks[blockKey] = subBlock // override
 						} else {
 							results[serverKey].tls.blocks = append(results[serverKey].tls.blocks, subBlock)
 						}
 					}
-					for _, subBlock := range getSortedMapKeys(preserveNamed) {
-						results[serverKey].tls.blocks = append(results[serverKey].tls.blocks, preserveNamed[subBlock])
+
+					for _, subBlock := range getSortedMapKeys(results[serverKey].tls.preservedBlocks) {
+						results[serverKey].tls.blocks = append(results[serverKey].tls.blocks,
+							results[serverKey].tls.preservedBlocks[subBlock])
 					}
 				} else {
 					results[serverKey].blocks[block.Type] = block

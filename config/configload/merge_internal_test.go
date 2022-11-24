@@ -58,11 +58,29 @@ func Test_mergeServers_ServerTLS(t *testing.T) {
     server_certificate "named" {
       attr1 = "val3"
     }
+    client_certificate {
+      attr1 = "val1"
+    }
+    client_certificate {
+      attr1 = "val2"
+    }
+    client_certificate "named" {
+      attr1 = "val3"
+    }
   }
 }`, `server {
   tls {
     server_certificate {
       attr2 = "val4"
+    }
+    server_certificate "named" {
+      attr2 = "val5"
+    }
+    client_certificate {
+      attr2 = "val6"
+    }
+    client_certificate "named" {
+      attr2 = "val7"
     }
   }
 }`}, `server {
@@ -70,8 +88,14 @@ func Test_mergeServers_ServerTLS(t *testing.T) {
     server_certificate {
       attr2 = "val4"
     }
+    client_certificate {
+      attr2 = "val6"
+    }
+    client_certificate "named" {
+      attr2 = "val7"
+    }
     server_certificate "named" {
-      attr1 = "val3"
+      attr2 = "val5"
     }
   }
 }
@@ -267,7 +291,7 @@ func appendSorted(parent *hclwrite.Body, blocks hclsyntax.Blocks) {
 	named := namedBlocks{}
 	for _, block := range blocks {
 		if len(block.Labels) > 0 {
-			named[block.Labels[0]] = block
+			named[block.Type+"_"+block.Labels[0]] = block
 		} else {
 			appendBlock(parent, block)
 		}
