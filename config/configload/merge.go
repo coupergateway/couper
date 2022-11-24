@@ -589,6 +589,9 @@ func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 					var keyName string
 					switch exp := k.Wrapped.(type) {
 					case *hclsyntax.ScopeTraversalExpr:
+						if len(exp.Traversal) > 1 {
+							return nil, newDiagErr(&r, "unsupported key scope traversal expression")
+						}
 						keyName = exp.Traversal.RootName()
 					case *hclsyntax.TemplateExpr:
 						if !exp.IsStringLiteral() {
