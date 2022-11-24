@@ -69,18 +69,20 @@ func realmain(ctx context.Context, arguments []string) int {
 	}
 	var flags globalFlags
 
+	defaultSettings := config.NewDefaultSettings()
+
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
 	set.BoolVar(&flags.DebugEndpoint, "pprof", false, "-pprof")
-	set.IntVar(&flags.DebugPort, "pprof-port", config.DefaultSettings.PProfPort, "-pprof-port 1234")
+	set.IntVar(&flags.DebugPort, "pprof-port", defaultSettings.PProfPort, "-pprof-port 1234")
 	set.Var(&filesList, "f", "-f /path/to/couper.hcl ...")
 	set.Var(&filesList, "d", "-d /path/to/couper.d/ ...")
 	set.StringVar(&flags.Environment, "e", "", "-e stage")
 	set.BoolVar(&flags.FileWatch, "watch", false, "-watch")
 	set.DurationVar(&flags.FileWatchRetryDelay, "watch-retry-delay", time.Millisecond*500, "-watch-retry-delay 1s")
 	set.IntVar(&flags.FileWatchRetries, "watch-retries", 5, "-watch-retries 10")
-	set.StringVar(&flags.LogFormat, "log-format", config.DefaultSettings.LogFormat, "-log-format=json")
-	set.StringVar(&flags.LogLevel, "log-level", config.DefaultSettings.LogLevel, "-log-level info")
-	set.BoolVar(&flags.LogPretty, "log-pretty", config.DefaultSettings.LogPretty, "-log-pretty")
+	set.StringVar(&flags.LogFormat, "log-format", defaultSettings.LogFormat, "-log-format=json")
+	set.StringVar(&flags.LogLevel, "log-level", defaultSettings.LogLevel, "-log-level info")
+	set.BoolVar(&flags.LogPretty, "log-pretty", defaultSettings.LogPretty, "-log-pretty")
 
 	if len(args) == 0 || command.NewCommand(ctx, args[0]) == nil {
 		command.Synopsis()
@@ -145,13 +147,13 @@ func realmain(ctx context.Context, arguments []string) int {
 
 	// The file gets initialized with the default settings, flag args are preferred over file settings.
 	// Only override file settings if the flag value differ from the default.
-	if flags.LogFormat != config.DefaultSettings.LogFormat {
+	if flags.LogFormat != defaultSettings.LogFormat {
 		confFile.Settings.LogFormat = flags.LogFormat
 	}
-	if flags.LogLevel != config.DefaultSettings.LogLevel {
+	if flags.LogLevel != defaultSettings.LogLevel {
 		confFile.Settings.LogLevel = flags.LogLevel
 	}
-	if flags.LogPretty != config.DefaultSettings.LogPretty {
+	if flags.LogPretty != defaultSettings.LogPretty {
 		confFile.Settings.LogPretty = flags.LogPretty
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
@@ -266,7 +268,7 @@ func realmain(ctx context.Context, arguments []string) int {
 }
 
 // newLogger creates a log instance with the configured formatter.
-// Since the format option may required to be correct in early states
+// Since the format option may require to be correct in early states
 // we parse the env configuration on every call.
 func newLogger(format, level string, pretty bool) *logrus.Entry {
 	logger := logrus.New()

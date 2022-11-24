@@ -32,7 +32,7 @@ func TestNewRun(t *testing.T) {
 	log, hook := logrustest.NewNullLogger()
 	//log.Out = os.Stdout
 
-	defaultSettings := config.DefaultSettings
+	defaultSettings := config.NewDefaultSettings()
 
 	tests := []struct {
 		name     string
@@ -41,7 +41,7 @@ func TestNewRun(t *testing.T) {
 		envs     []string
 		settings *config.Settings
 	}{
-		{"defaults from file", "01_defaults.hcl", nil, nil, &defaultSettings},
+		{"defaults from file", "01_defaults.hcl", nil, nil, defaultSettings},
 		{"overrides from file", "02_changed_defaults.hcl", nil, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
 			AcceptForwardedURL:       []string{},

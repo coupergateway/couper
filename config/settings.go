@@ -8,8 +8,7 @@ import (
 
 const otelCollectorEndpoint = "localhost:4317"
 
-// DefaultSettings defines the <DefaultSettings> object.
-var DefaultSettings = Settings{
+var defaultSettings = Settings{
 	DefaultPort:              8080,
 	Environment:              "",
 	HealthPath:               "/healthz",
@@ -28,10 +27,6 @@ var DefaultSettings = Settings{
 	TelemetryServiceName:     "couper",
 	TelemetryTracesEndpoint:  otelCollectorEndpoint,
 	XForwardedHost:           false,
-
-	// TODO: refactor
-	AcceptForwardedURL: []string{},
-	AcceptForwarded:    &AcceptForwarded{},
 }
 
 // Settings represents the <Settings> object.
@@ -64,6 +59,12 @@ type Settings struct {
 	TelemetryTraces           bool   `hcl:"beta_traces,optional" docs:"" default:""`
 	TelemetryTracesEndpoint   string `hcl:"beta_traces_endpoint,optional" docs:"" default:""`
 	XForwardedHost            bool   `hcl:"xfh,optional" docs:"whether to use the {X-Forwarded-Host} header as the request host"`
+}
+
+func NewDefaultSettings() *Settings {
+	settings := defaultSettings
+	settings.AcceptForwarded = &AcceptForwarded{}
+	return &settings
 }
 
 var _ flag.Value = &List{}
@@ -100,16 +101,14 @@ func (s *Settings) AcceptsForwardedHost() bool {
 
 type AcceptForwarded struct {
 	port, protocol, host bool
-	forwarded            []string
 }
 
 func (a *AcceptForwarded) Set(forwarded []string) error {
 	if len(forwarded) > 0 {
-		a.forwarded = forwarded
 		a.port, a.protocol, a.host = false, false, false
 	}
 
-	for _, part := range a.forwarded {
+	for _, part := range forwarded {
 		switch strings.TrimSpace(part) {
 		case "":
 			continue
@@ -124,8 +123,4 @@ func (a *AcceptForwarded) Set(forwarded []string) error {
 		}
 	}
 	return nil
-}
-
-func (a *AcceptForwarded) String() string {
-	return strings.Join(a.forwarded, ",")
 }
