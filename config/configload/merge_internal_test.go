@@ -35,14 +35,14 @@ func Test_mergeServers_ServerTLS(t *testing.T) {
   }
 }`}, `server {
   tls {
+    client_certificate {
+      attr1 = "val3"
+    }
     server_certificate {
       attr1 = "val1"
     }
     server_certificate {
       attr1 = "val2"
-    }
-    client_certificate {
-      attr1 = "val3"
     }
   }
 }
@@ -85,11 +85,11 @@ func Test_mergeServers_ServerTLS(t *testing.T) {
   }
 }`}, `server {
   tls {
-    server_certificate {
-      attr2 = "val4"
-    }
     client_certificate {
       attr2 = "val6"
+    }
+    server_certificate {
+      attr2 = "val4"
     }
     client_certificate "named" {
       attr2 = "val7"
@@ -105,6 +105,12 @@ func Test_mergeServers_ServerTLS(t *testing.T) {
     server_certificate "example1.com" {
       attr1 = "val1"
     }
+    client_certificate "a" {
+      attr1 = "val2"
+    }
+    client_certificate {
+      attr1 = "val3"
+    }
   }
 }`, `server {
   tls {
@@ -114,11 +120,23 @@ func Test_mergeServers_ServerTLS(t *testing.T) {
     server_certificate {
       attr2 = "val3"
     }
+    client_certificate "b" {
+      attr2 = "val6"
+    }
   }
 }`}, `server {
   tls {
+    client_certificate {
+      attr1 = "val3"
+    }
     server_certificate {
       attr2 = "val3"
+    }
+    client_certificate "a" {
+      attr1 = "val2"
+    }
+    client_certificate "b" {
+      attr2 = "val6"
     }
     server_certificate "example1.com" {
       attr1 = "val1"
