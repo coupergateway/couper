@@ -616,6 +616,44 @@ func TestConfigErrors(t *testing.T) {
 			}`,
 			`configuration error: referenced backend "as" is not defined`,
 		},
+		{
+			"wrong environment_variables type",
+			`server {}
+			defaults {
+			  environment_variables = "val"
+			}`,
+			"couper.hcl:3,30-35: environment_variables must be object type; ",
+		},
+		{
+			"unsupported key scope traversal expression",
+			`server {}
+			defaults {
+			  environment_variables = {
+			    env.FOO = "val"
+			  }
+			}`,
+			"couper.hcl:4,8-15: unsupported key scope traversal expression; ",
+		},
+		{
+			"unsupported key template expression",
+			`server {}
+			defaults {
+			  environment_variables = {
+			    "key${1 + 0}" = "val"
+			  }
+			}`,
+			"couper.hcl:4,8-21: unsupported key template expression; ",
+		},
+		{
+			"unsupported key expression",
+			`server {}
+			defaults {
+			  environment_variables = {
+			    to_upper("key") = "val"
+			  }
+			}`,
+			"couper.hcl:4,8-23: unsupported key expression; ",
+		},
 	}
 
 	for _, tt := range tests {
