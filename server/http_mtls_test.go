@@ -100,12 +100,15 @@ func TestHTTPSServer_TLS_ServerClientCertificate(t *testing.T) {
 		RootCAs: pool,
 	})
 
-	res, err = client.Do(outreq)
-	if err == nil {
-		t.Fatal("expected a remote tls error")
+	_, err = client.Do(outreq)
+
+	var RemoteFailedCertCheck = func(err error) bool {
+		prefix := `Get "https://localhost:4443/": `
+		return err != nil && (err.Error() == prefix+"readLoopPeekFailLocked: remote error: tls: bad certificate" ||
+			err.Error() == prefix+"remote error: tls: bad certificate")
 	}
 
-	if err.Error() != `Get "https://localhost:4443/": remote error: tls: bad certificate` {
+	if !RemoteFailedCertCheck(err) {
 		t.Errorf("Expected a tls handshake error, got: %v", err)
 	}
 }
