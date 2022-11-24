@@ -79,7 +79,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 
 	if RunCmdConfigTestCallback != nil {
-		RunCmdConfigTestCallback(config.Settings.Clone())
+		RunCmdConfigTestCallback(config.Settings)
 	}
 
 	timings := runtime.DefaultTimings

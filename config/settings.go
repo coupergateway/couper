@@ -66,13 +66,6 @@ type Settings struct {
 	XForwardedHost            bool   `hcl:"xfh,optional" docs:"whether to use the {X-Forwarded-Host} header as the request host"`
 }
 
-func (s *Settings) Clone() *Settings {
-	c := *s
-	afp := *s.AcceptForwarded
-	c.AcceptForwarded = &afp
-	return &c
-}
-
 var _ flag.Value = &List{}
 
 type List []string
@@ -111,7 +104,9 @@ type AcceptForwarded struct {
 }
 
 func (a *AcceptForwarded) Set(forwarded []string) error {
-	a.forwarded = forwarded
+	if len(forwarded) > 0 {
+		a.forwarded = forwarded
+	}
 	for _, part := range a.forwarded {
 		switch strings.TrimSpace(part) {
 		case "":
