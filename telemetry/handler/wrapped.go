@@ -16,7 +16,7 @@ import (
 func NewWrappedHandler(log *logrus.Entry, handler http.Handler) http.Handler {
 	accessLog := logging.NewAccessLog(nil, log)
 
-	uidHandler := middleware.NewUIDHandler(&config.DefaultSettings, "")(handler)
+	uidHandler := middleware.NewUIDHandler(config.NewDefaultSettings(), "")(handler)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := context.WithValue(req.Context(), request.LogDebugLevel, true)
 		ctx = context.WithValue(ctx, request.StartTime, time.Now())

@@ -500,7 +500,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 
 			health, err := config.
 				NewHealthCheck("http://origin:8080/foo", tc.health, &config.Couper{
-					Settings: &config.DefaultSettings,
+					Settings: config.NewDefaultSettings(),
 				})
 			h.Must(err)
 

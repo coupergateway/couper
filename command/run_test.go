@@ -32,7 +32,7 @@ func TestNewRun(t *testing.T) {
 	log, hook := logrustest.NewNullLogger()
 	//log.Out = os.Stdout
 
-	defaultSettings := config.DefaultSettings
+	defaultSettings := config.NewDefaultSettings()
 
 	tests := []struct {
 		name     string
@@ -41,10 +41,9 @@ func TestNewRun(t *testing.T) {
 		envs     []string
 		settings *config.Settings
 	}{
-		{"defaults from file", "01_defaults.hcl", nil, nil, &defaultSettings},
+		{"defaults from file", "01_defaults.hcl", nil, nil, defaultSettings},
 		{"overrides from file", "02_changed_defaults.hcl", nil, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
-			AcceptForwardedURL:       []string{},
 			DefaultPort:              9090,
 			HealthPath:               "/status/health",
 			LogFormat:                defaultSettings.LogFormat,
@@ -63,7 +62,6 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag port", "01_defaults.hcl", Args{"-p", "9876"}, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
-			AcceptForwardedURL:       []string{},
 			DefaultPort:              9876,
 			HealthPath:               defaultSettings.HealthPath,
 			LogFormat:                defaultSettings.LogFormat,
@@ -80,7 +78,6 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag and env port", "01_defaults.hcl", Args{"-p", "9876"}, []string{"COUPER_DEFAULT_PORT=4561"}, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
-			AcceptForwardedURL:       []string{},
 			DefaultPort:              4561,
 			HealthPath:               defaultSettings.HealthPath,
 			LogFormat:                defaultSettings.LogFormat,
@@ -100,6 +97,13 @@ func TestNewRun(t *testing.T) {
 	defer shutdown()
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			resultSettings := make(chan *config.Settings, 1)
+			RunCmdConfigTestCallback = func(s *config.Settings) {
+				resultSettings <- s
+				close(resultSettings)
+			}
+			defer func() { RunCmdConfigTestCallback = nil }()
+
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
 				subT.Error("create run cmd failed")
@@ -131,15 +135,14 @@ func TestNewRun(t *testing.T) {
 			}()
 			test.WaitForOpenPort(port)
 
-			runCmd.settingsMu.Lock()
-			if !reflect.DeepEqual(couperFile.Settings, tt.settings) {
-				subT.Errorf("Settings differ: %s:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.settings, couperFile.Settings)
+			result := <-resultSettings
+			if !reflect.DeepEqual(result, tt.settings) {
+				subT.Errorf("Settings differ: %s:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.settings, result)
 			}
-			runCmd.settingsMu.Unlock()
 
 			hook.Reset()
 
-			res, err := test.NewHTTPClient().Get("http://localhost:" + strconv.Itoa(couperFile.Settings.DefaultPort) + couperFile.Settings.HealthPath)
+			res, err := test.NewHTTPClient().Get("http://localhost:" + strconv.Itoa(result.DefaultPort) + result.HealthPath)
 			if err != nil {
 				subT.Error(err)
 			}
@@ -150,7 +153,7 @@ func TestNewRun(t *testing.T) {
 
 			uid := hook.LastEntry().Data["uid"].(string)
 			xidLen := len(xid.New().String())
-			if couperFile.Settings.RequestIDFormat == "uuid4" {
+			if result.RequestIDFormat == "uuid4" {
 				if len(uid) <= xidLen {
 					subT.Errorf("expected uuid4 format, got: %s", uid)
 				}
@@ -193,6 +196,13 @@ func TestAcceptForwarded(t *testing.T) {
 			caseCtx, caseCancel := context.WithCancel(ctx)
 			defer caseCancel()
 
+			resultSettings := make(chan *config.Settings, 1)
+			RunCmdConfigTestCallback = func(s *config.Settings) {
+				resultSettings <- s
+				close(resultSettings)
+			}
+			defer func() { RunCmdConfigTestCallback = nil }()
+
 			runCmd := NewRun(caseCtx)
 			if runCmd == nil {
 				t.Error("create run cmd failed")
@@ -211,22 +221,24 @@ func TestAcceptForwarded(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
-			go runCmd.Execute(tc.args, couperFile, log.WithContext(caseCtx))
+			go func(asyncT *testing.T) {
+				err = runCmd.Execute(tc.args, couperFile, log.WithContext(caseCtx))
+				if err != nil {
+					asyncT.Error(err)
+				}
+			}(subT)
 			test.WaitForOpenPort(8080)
 
-			runCmd.settingsMu.Lock()
-
-			if couperFile.Settings.AcceptsForwardedProtocol() != tc.expProto {
-				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expProto, couperFile.Settings.AcceptsForwardedProtocol())
+			settings := <-resultSettings
+			if settings.AcceptsForwardedProtocol() != tc.expProto {
+				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expProto, settings.AcceptsForwardedProtocol())
 			}
-			if couperFile.Settings.AcceptsForwardedHost() != tc.expHost {
-				subT.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expHost, couperFile.Settings.AcceptsForwardedHost())
+			if settings.AcceptsForwardedHost() != tc.expHost {
+				subT.Errorf("%s: AcceptsForwardedHost() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expHost, settings.AcceptsForwardedHost())
 			}
-			if couperFile.Settings.AcceptsForwardedPort() != tc.expPort {
-				subT.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expPort, couperFile.Settings.AcceptsForwardedPort())
+			if settings.AcceptsForwardedPort() != tc.expPort {
+				subT.Errorf("%s: AcceptsForwardedPort() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expPort, settings.AcceptsForwardedPort())
 			}
-
-			runCmd.settingsMu.Unlock()
 		})
 	}
 }
