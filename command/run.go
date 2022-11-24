@@ -213,8 +213,8 @@ func newFlagSet(settings *config.Settings, cmdName string) *flag.FlagSet {
 	set.BoolVar(&settings.TelemetryMetrics, "beta-metrics", settings.TelemetryMetrics, "-beta-metrics")
 	set.IntVar(&settings.TelemetryMetricsPort, "beta-metrics-port", settings.TelemetryMetricsPort, "-beta-metrics-port 9090")
 	set.StringVar(&settings.TelemetryMetricsEndpoint, "beta-metrics-endpoint", settings.TelemetryMetricsEndpoint, "-beta-metrics-endpoint [host:port]")
-	set.StringVar(&settings.TelemetryMetricsExporter, "beta-metrics-exporter", settings.TelemetryMetricsExporter, "-beta-metrics-exporter [cmdName]")
-	set.StringVar(&settings.TelemetryServiceName, "beta-service-cmdName", settings.TelemetryServiceName, "-beta-service-cmdName [cmdName]")
+	set.StringVar(&settings.TelemetryMetricsExporter, "beta-metrics-exporter", settings.TelemetryMetricsExporter, "-beta-metrics-exporter [name]")
+	set.StringVar(&settings.TelemetryServiceName, "beta-service-name", settings.TelemetryServiceName, "-beta-service-name [name]")
 	set.BoolVar(&settings.TelemetryTraces, "beta-traces", settings.TelemetryTraces, "-beta-traces")
 	set.StringVar(&settings.TelemetryTracesEndpoint, "beta-traces-endpoint", settings.TelemetryTracesEndpoint, "-beta-traces-endpoint [host:port]")
 
