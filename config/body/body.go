@@ -46,11 +46,6 @@ func BlocksOfType(body *hclsyntax.Body, blockType string) []*hclsyntax.Block {
 	return blocks
 }
 
-func AttributeByName(body *hclsyntax.Body, needle string) (attr *hclsyntax.Attribute) {
-	attr, _ = body.Attributes[needle]
-	return attr
-}
-
 func RenameAttribute(body *hclsyntax.Body, old, new string) {
 	if attr, ok := body.Attributes[old]; ok {
 		attr.Name = new
