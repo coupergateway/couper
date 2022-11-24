@@ -106,7 +106,9 @@ type AcceptForwarded struct {
 func (a *AcceptForwarded) Set(forwarded []string) error {
 	if len(forwarded) > 0 {
 		a.forwarded = forwarded
+		a.port, a.protocol, a.host = false, false, false
 	}
+
 	for _, part := range a.forwarded {
 		switch strings.TrimSpace(part) {
 		case "":
