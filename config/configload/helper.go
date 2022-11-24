@@ -29,13 +29,11 @@ func newHelper(body hcl.Body, src [][]byte, environment string) (*helper, error)
 		return nil, diags
 	}
 
-	defSettings := config.DefaultSettings
-
 	couperConfig := &config.Couper{
 		Context:     eval.NewContext(src, defaultsBlock.Defaults, environment),
 		Definitions: &config.Definitions{},
 		Defaults:    defaultsBlock.Defaults,
-		Settings:    &defSettings,
+		Settings:    config.NewDefaultSettings(),
 	}
 
 	schema, _ := gohcl.ImpliedBodySchema(couperConfig)

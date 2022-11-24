@@ -262,7 +262,7 @@ func LoadBytes(src []byte, filename string) (*config.Couper, error) {
 		return nil, err
 	}
 
-	if err := validateBody(hclBody, false); err != nil {
+	if err = validateBody(hclBody, false); err != nil {
 		return nil, err
 	}
 
@@ -317,10 +317,6 @@ func LoadConfig(body *hclsyntax.Body, src [][]byte, environment string) (*config
 		case settings:
 			if diags := gohcl.DecodeBody(outerBlock.Body, helper.context, helper.config.Settings); diags.HasErrors() {
 				return nil, diags
-			}
-
-			if err = helper.config.Settings.SetAcceptForwarded(); err != nil {
-				return nil, newDiagErr(&outerBlock.DefRange, fmt.Sprintf("invalid accept_forwarded_url: %q", err))
 			}
 		}
 	}

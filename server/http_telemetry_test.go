@@ -20,7 +20,7 @@ func TestServeMetrics(t *testing.T) {
 
 	client := test.NewHTTPClient()
 	mreq, err := http.NewRequest(http.MethodGet,
-		fmt.Sprintf("http://localhost:%d/metrics", config.DefaultSettings.TelemetryMetricsPort), nil)
+		fmt.Sprintf("http://localhost:%d/metrics", config.NewDefaultSettings().TelemetryMetricsPort), nil)
 	helper.Must(err)
 
 	paths := []string{"/", "/down", "/notfound"}
