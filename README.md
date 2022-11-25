@@ -14,7 +14,6 @@
   * or via [homebrew](https://brew.sh/): `brew tap avenga/couper && brew install couper`
 * The [documentation](https://docs.couper.io/) gives an introduction to Couper.
 * Check out the [example repository](https://github.com/avenga/couper-examples) to learn about Couper's features in detail.
-* Dive into the [Configuration Reference](docs/REFERENCE.md)
 * Use-cases can be found on [couper.io](https://couper.io).
 
 ## Features
@@ -42,9 +41,11 @@ Key features are:
 * **Configurable Service Connectivity**
 * Upstream Validation & CORS
 * SPA & Web Serving
+  * inject server data / environment variables to your SPA
 * Error Handling
 * Observability
   * Prometheus exporter
+* Security with mTLS support as server and for backend services
 
 The full list of features of Couper 1.x is [here](FEATURES.md) or at [couper.io](https://couper.io/en/features).
 
