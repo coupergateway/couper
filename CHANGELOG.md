@@ -1,15 +1,19 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.10.1...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.11.0...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+---
+
+## [1.11.0](https://github.com/avenga/couper/releases/tag/v1.11.0)
+
 * **Added**
-  * [`trim()` function](https://docs.couper.io/configuration/functions) ([#605](https://github.com/avenga/couper/pull/605))
-  * OAuth2 client authentication methods (`token_endpoint_auth_method` values) `"client_secret_jwt"` and `"private_key_jwt"` including `jwt_signing_profile` block for [`oauth2`](https://docs.couper.io/configuration/block/oauth2_req_auth), [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac) and [`oidc`](https://docs.couper.io/configuration/block/oidc) blocks ([#599](https://github.com/avenga/couper/pull/599))
   * **mTLS** Support for [`server`](https://docs.couper.io/configuration/block/server_tls) and [`backend`](https://docs.couper.io/configuration/block/backend_tls) blocks ([#615](https://github.com/avenga/couper/pull/615))
-  * `beta_roles_map_file` and `beta_permissions_map_file` attributes to [`jwt` block](https://docs.couper.io/configuration/block/jwt) ([#613](https://github.com/avenga/couper/pull/613))
   * `spa` block option to inject server-data to the applications `bootstrap_file` with [`bootstrap_data`](https://docs.couper.io/configuration/block/spa#bootstrap-data) ([#626](https://github.com/avenga/couper/issues/626))
+  * OAuth2 client authentication methods (`token_endpoint_auth_method` values) `"client_secret_jwt"` and `"private_key_jwt"` including `jwt_signing_profile` block for [`oauth2`](https://docs.couper.io/configuration/block/oauth2_req_auth), [`beta_oauth2`](https://docs.couper.io/configuration/block/oauth2_ac) and [`oidc`](https://docs.couper.io/configuration/block/oidc) blocks ([#599](https://github.com/avenga/couper/pull/599))
+  * [`trim()` function](https://docs.couper.io/configuration/functions) ([#605](https://github.com/avenga/couper/pull/605))
+  * `beta_roles_map_file` and `beta_permissions_map_file` attributes to [`jwt` block](https://docs.couper.io/configuration/block/jwt) ([#613](https://github.com/avenga/couper/pull/613))
 
 * **Changed**
   * Replaced the JWT library because the former library was no longer maintained ([#612](https://github.com/avenga/couper/pull/612))
@@ -26,7 +30,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Cycle check for [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#623](https://github.com/avenga/couper/pull/623))
   * In [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) send requests only once ([#624](https://github.com/avenga/couper/pull/624))
 
----
 
 ## [1.10.1](https://github.com/avenga/couper/releases/tag/v1.10.1)
 
