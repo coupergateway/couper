@@ -106,13 +106,15 @@ func TestNewRun(t *testing.T) {
 				close(resultSettings)
 			}
 
+			ctx, shutdown := context.WithCancel(context.Background())
 			defer func() {
+				n := time.Now()
+				shutdown()
+				test.WaitForClosedPort(8080)
+				subT.Log("shutdown duration: " + time.Since(n).String())
 				RunCmdTestCallback = nil
 				RunCmdConfigTestCallback = nil
 			}()
-
-			ctx, shutdown := context.WithCancel(context.Background())
-			defer shutdown()
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
