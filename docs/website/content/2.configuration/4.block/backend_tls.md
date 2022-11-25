@@ -24,37 +24,37 @@ attributes allow the backend to present certificate and key during a TLS handsha
 values: [
   {
     "default": "",
-    "description": "Public part of the client certificate in DER or PEM format.",
+    "description": "Public part of the client certificate in DER or PEM format. Mutually exclusive with `client_certificate_file`.",
     "name": "client_certificate",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the client certificate file in DER or PEM format.",
+    "description": "Reference to a file containing the public part of the client certificate file in DER or PEM format. Mutually exclusive with `client_certificate`.",
     "name": "client_certificate_file",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Private part of the client certificate in DER or PEM format. Required to complete an mTLS handshake.",
+    "description": "Private part of the client certificate in DER or PEM format. Required to complete an mTLS handshake. Mutually exclusive with `client_private_key_file`.",
     "name": "client_private_key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Private part of the client certificate file in DER or PEM format. Required to complete an mTLS handshake.",
+    "description": "Reference to a file containing the private part of the client certificate file in DER or PEM format. Required to complete an mTLS handshake. Mutually exclusive with `client_private_key`.",
     "name": "client_private_key_file",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the certificate authority in DER or PEM format.",
+    "description": "Public part of the certificate authority in DER or PEM format. Mutually exclusive with `server_ca_certificate_file`.",
     "name": "server_ca_certificate",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the certificate authority file in DER or PEM format.",
+    "description": "Reference to a file containing the public part of the certificate authority file in DER or PEM format. Mutually exclusive with `server_ca_certificate`.",
     "name": "server_ca_certificate_file",
     "type": "string"
   }
