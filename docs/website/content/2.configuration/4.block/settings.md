@@ -55,10 +55,10 @@ values: [
     "type": "string"
   },
   {
-    "default": "",
+    "default": "[]",
     "description": "TLS port mappings to define the TLS listen port and the target one. Self-signed certificates will be generated on the fly based on the given hostname. Certificates will be held in memory.",
     "name": "https_dev_proxy",
-    "type": "object"
+    "type": "tuple (string)"
   },
   {
     "default": "\"common\"",
