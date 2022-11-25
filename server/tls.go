@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
 	coupertls "github.com/avenga/couper/internal/tls"
 )
@@ -103,12 +104,12 @@ func LoadServerCertificate(config *config.ServerCertificate) (tls.Certificate, e
 	if config == nil {
 		return tls.Certificate{}, nil // currently triggers self signed fallback
 	}
-	cert, err := coupertls.ReadValueOrFile(config.PublicKey, config.PublicKeyFile)
+	cert, err := reader.ReadFromAttrFile("tls", config.PublicKey, config.PublicKeyFile)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
 
-	privateKey, err := coupertls.ReadValueOrFile(config.PrivateKey, config.PrivateKeyFile)
+	privateKey, err := reader.ReadFromAttrFile("tls", config.PrivateKey, config.PrivateKeyFile)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -147,12 +148,12 @@ func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, t
 
 	hasLeaf := config.Leaf != "" || config.LeafFile != ""
 
-	caCert, err := coupertls.ReadValueOrFile(config.CA, config.CAFile)
+	caCert, err := reader.ReadFromAttrFile("tls", config.CA, config.CAFile)
 	if err != nil && !hasLeaf {
 		return fail(err)
 	}
 
-	leafCert, err := coupertls.ReadValueOrFile(config.Leaf, config.LeafFile)
+	leafCert, err := reader.ReadFromAttrFile("tls", config.Leaf, config.LeafFile)
 	if err != nil && hasLeaf { // since its optional, if given
 		return fail(err)
 	}

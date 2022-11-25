@@ -31,25 +31,25 @@ server_certificate "api.example.com" { #optional label
 values: [
   {
     "default": "",
-    "description": "Private part of the certificate in DER or PEM format.",
+    "description": "Private part of the certificate in DER or PEM format. Mutually exclusive with `private_key_file`.",
     "name": "private_key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Private part of the certificate file in DER or PEM format.",
+    "description": "Reference to a file containing the private part of the certificate file in DER or PEM format. Mutually exclusive with `private_key`.",
     "name": "private_key_file",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the certificate in DER or PEM format.",
+    "description": "Public part of the certificate in DER or PEM format. Mutually exclusive with `public_key_file`.",
     "name": "public_key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the certificate file in DER or PEM format.",
+    "description": "Reference to a file containing the public part of the certificate file in DER or PEM format. Mutually exclusive with `public_key`.",
     "name": "public_key_file",
     "type": "string"
   }
