@@ -19,6 +19,21 @@ However, this `tls` block allows a more specific pool configuration per backend 
 Additionally the `client_certificate`(or `client_certificate_file`) and `client_private_key` (or `client_private_key_file`)
 attributes allow the backend to present certificate and key during a TLS handshake to an origin which requires them due to an mTLS setup.
 
+#### Example
+
+```hcl
+backend "secured" {
+    origin = "https://localhost"
+
+    tls {
+      server_ca_certificate_file = "rootCA.crt"
+      # optional
+      client_certificate_file = "client.crt"
+      client_private_key_file = "client.key"
+    }
+  }
+```
+
 ::attributes
 ---
 values: [
