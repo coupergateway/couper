@@ -41,25 +41,25 @@ client_certificate "IOT" {
 values: [
   {
     "default": "",
-    "description": "Public part of the certificate authority in DER or PEM format.",
+    "description": "Public part of the certificate authority in DER or PEM format. Mutually exclusive with `ca_certificate_file`.",
     "name": "ca_certificate",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the certificate authority file in DER or PEM format.",
+    "description": "Reference to a file containing the public part of the certificate authority file in DER or PEM format. Mutually exclusive with `ca_certificate`.",
     "name": "ca_certificate_file",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the client certificate in DER or PEM format.",
+    "description": "Public part of the client certificate in DER or PEM format. Mutually exclusive with `leaf_certificate_file`.",
     "name": "leaf_certificate",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Public part of the client certificate file in DER or PEM format.",
+    "description": "Reference to a file containing the public part of the client certificate file in DER or PEM format. Mutually exclusive with `leaf_certificate`.",
     "name": "leaf_certificate_file",
     "type": "string"
   }

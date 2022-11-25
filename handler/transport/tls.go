@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/errors"
 	coupertls "github.com/avenga/couper/internal/tls"
 )
@@ -34,17 +35,17 @@ func ReadCertificates(conf *config.BackendTLS) (tls.Certificate, tls.Certificate
 
 	var caCertificate, clientCertificate tls.Certificate
 
-	caCert, err := coupertls.ReadValueOrFile(conf.ServerCertificate, conf.ServerCertificateFile)
+	caCert, err := reader.ReadFromAttrFile("tls", conf.ServerCertificate, conf.ServerCertificateFile)
 	if err != nil && hasCA {
 		return fail(err)
 	}
 
-	clientCert, err := coupertls.ReadValueOrFile(conf.ClientCertificate, conf.ClientCertificateFile)
+	clientCert, err := reader.ReadFromAttrFile("tls", conf.ClientCertificate, conf.ClientCertificateFile)
 	if err != nil && hasClient {
 		return fail(err)
 	}
 
-	clientKey, err := coupertls.ReadValueOrFile(conf.ClientPrivateKey, conf.ClientPrivateKeyFile)
+	clientKey, err := reader.ReadFromAttrFile("tls", conf.ClientPrivateKey, conf.ClientPrivateKeyFile)
 	if err != nil && (conf.ClientPrivateKey != "" || conf.ClientPrivateKeyFile != "") {
 		return fail(err)
 	}
