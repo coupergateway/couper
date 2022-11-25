@@ -93,16 +93,28 @@ func TestNewRun(t *testing.T) {
 			TelemetryTracesEndpoint:  defaultSettings.TelemetryTracesEndpoint,
 		}},
 	}
-	ctx, shutdown := context.WithCancel(context.Background())
-	defer shutdown()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			resultSettings := make(chan *config.Settings, 1)
+			listenCh := make(chan struct{})
+			RunCmdTestCallback = func() {
+				close(listenCh)
+			}
 			RunCmdConfigTestCallback = func(s *config.Settings) {
 				resultSettings <- s
 				close(resultSettings)
 			}
-			defer func() { RunCmdConfigTestCallback = nil }()
+
+			ctx, shutdown := context.WithCancel(context.Background())
+			defer func() {
+				n := time.Now()
+				shutdown()
+				test.WaitForClosedPort(8080)
+				subT.Log("shutdown duration: " + time.Since(n).String())
+				RunCmdTestCallback = nil
+				RunCmdConfigTestCallback = nil
+			}()
 
 			runCmd := NewRun(ctx)
 			if runCmd == nil {
@@ -115,9 +127,6 @@ func TestNewRun(t *testing.T) {
 				subT.Error(err)
 			}
 
-			// settings must be locked, so assign port now
-			port := tt.settings.DefaultPort
-
 			if len(tt.envs) > 0 {
 				env.SetTestOsEnviron(func() []string {
 					return tt.envs
@@ -125,15 +134,13 @@ func TestNewRun(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
-			// ensure the previous test aren't listening
-			test.WaitForClosedPort(port)
 			go func() {
 				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
 				if execErr != nil {
 					subT.Error(execErr)
 				}
 			}()
-			test.WaitForOpenPort(port)
+			<-listenCh
 
 			result := <-resultSettings
 			if !reflect.DeepEqual(result, tt.settings) {
