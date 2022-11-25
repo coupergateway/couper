@@ -29,16 +29,16 @@ func ReadFromAttrFileJSONObjectOptional(context string, attributeValue map[strin
 	return attributeValue, nil
 }
 
-func ReadFromAttrFile(context, attributeValue, path string) ([]byte, error) {
+func ReadFromAttrFile(context, attributeValue, filePath string) ([]byte, error) {
 	readErr := errors.Configuration.Label(context + ": read error")
-	if attributeValue != "" && path != "" {
+	if attributeValue != "" && filePath != "" {
 		return nil, readErr.Message("configured attribute and file")
-	} else if attributeValue == "" && path == "" {
+	} else if attributeValue == "" && filePath == "" {
 		return nil, readErr.Message("required: configured attribute or file")
 	}
 
-	if path != "" {
-		return ReadFromFile(context, path)
+	if filePath != "" {
+		return ReadFromFile(context, filePath)
 	}
 
 	return []byte(attributeValue), nil
