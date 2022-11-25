@@ -563,48 +563,82 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 func mergeDefaults(bodies []*hclsyntax.Body) (*hclsyntax.Block, error) {
 	attrs := make(hclsyntax.Attributes)
-	envVars := make(map[string]cty.Value)
+	envVars := make(map[string]hclsyntax.Expression)
 
 	for _, body := range bodies {
 		for _, block := range body.Blocks {
-			if block.Type == defaults {
-				for name, attr := range block.Body.Attributes {
-					if name == environmentVars {
-						v, err := eval.Value(nil, attr.Expr)
-						if err != nil {
-							return nil, err
-						}
+			if block.Type != defaults {
+				continue
+			}
 
-						for k, value := range v.AsValueMap() {
-							if value.Type() != cty.String {
-								return nil, fmt.Errorf("value in 'environment_variables' is not a string")
-							}
+			for name, attr := range block.Body.Attributes {
+				if name != environmentVars {
+					attrs[name] = attr // Currently not used
+					continue
+				}
 
-							envVars[k] = value
+				expObj, ok := attr.Expr.(*hclsyntax.ObjectConsExpr)
+				if !ok {
+					r := attr.Expr.Range()
+					return nil, newDiagErr(&r, fmt.Sprintf("%s must be object type", environmentVars))
+				}
+
+				for _, item := range expObj.Items {
+					k := item.KeyExpr.(*hclsyntax.ObjectConsKeyExpr)
+					r := item.KeyExpr.Range()
+					var keyName string
+					switch exp := k.Wrapped.(type) {
+					case *hclsyntax.ScopeTraversalExpr:
+						if len(exp.Traversal) > 1 {
+							return nil, newDiagErr(&r, "unsupported key scope traversal expression")
 						}
-					} else {
-						attrs[name] = attr // Currently not used
+						keyName = exp.Traversal.RootName()
+					case *hclsyntax.TemplateExpr:
+						if !exp.IsStringLiteral() {
+							return nil, newDiagErr(&r, "unsupported key template expression")
+						}
+						v, _ := exp.Value(nil)
+						keyName = v.AsString()
+					default:
+						r := item.KeyExpr.Range()
+						return nil, newDiagErr(&r, "unsupported key expression")
 					}
+
+					envVars[keyName] = item.ValueExpr
 				}
 			}
 		}
 	}
 
 	if len(envVars) > 0 {
+		items := make([]hclsyntax.ObjectConsItem, 0)
+		for k, v := range envVars {
+			items = append(items, hclsyntax.ObjectConsItem{
+				KeyExpr: &hclsyntax.ObjectConsKeyExpr{
+					Wrapped: &hclsyntax.ScopeTraversalExpr{
+						Traversal: hcl.Traversal{hcl.TraverseRoot{Name: k}},
+					},
+					ForceNonLiteral: false,
+				},
+				ValueExpr: v,
+			})
+		}
+
 		attrs[environmentVars] = &hclsyntax.Attribute{
 			Name: environmentVars,
-			Expr: &hclsyntax.LiteralValueExpr{
-				Val: cty.MapVal(envVars),
+			Expr: &hclsyntax.ObjectConsExpr{
+				Items: items,
 			},
 		}
 	}
 
-	return &hclsyntax.Block{
+	defaultsBlock := &hclsyntax.Block{
 		Type: defaults,
 		Body: &hclsyntax.Body{
 			Attributes: attrs,
 		},
-	}, nil
+	}
+	return defaultsBlock, nil
 }
 
 func mergeSettings(bodies []*hclsyntax.Body) *hclsyntax.Block {

@@ -176,8 +176,7 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 	helper.Must(err)
 
 	error404Content := []byte("<html><body><h1>route not found error: My custom error template</h1></body></html>")
-	spaContent, err := os.ReadFile(conf.Servers[0].SPAs[0].BootstrapFile)
-	helper.Must(err)
+	spaContent := []byte("<html><body><h1>vue.js</h1></body></html>")
 
 	tmpStoreCh := make(chan struct{})
 	defer close(tmpStoreCh)

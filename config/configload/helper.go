@@ -12,7 +12,6 @@ import (
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
 )
 
 type helper struct {
@@ -23,16 +22,11 @@ type helper struct {
 }
 
 // newHelper creates a container with some methods to keep things simple here and there.
-func newHelper(body hcl.Body, src [][]byte, environment string) (*helper, error) {
-	defaultsBlock := &config.DefaultsBlock{}
-	if diags := gohcl.DecodeBody(body, nil, defaultsBlock); diags.HasErrors() {
-		return nil, diags
-	}
-
+func newHelper(body hcl.Body) (*helper, error) {
 	couperConfig := &config.Couper{
-		Context:     eval.NewContext(src, defaultsBlock.Defaults, environment),
+		Context:     evalContext,
 		Definitions: &config.Definitions{},
-		Defaults:    defaultsBlock.Defaults,
+		Defaults:    defaultsConfig,
 		Settings:    config.NewDefaultSettings(),
 	}
 
@@ -45,7 +39,7 @@ func newHelper(body hcl.Body, src [][]byte, environment string) (*helper, error)
 	return &helper{
 		config:       couperConfig,
 		content:      content,
-		context:      couperConfig.Context.(*eval.Context).HCLContext(),
+		context:      evalContext.HCLContext(),
 		defsBackends: make(map[string]*hclsyntax.Body),
 	}, nil
 }
