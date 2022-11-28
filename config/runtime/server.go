@@ -118,14 +118,14 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				ServerErrTpl: errors.DefaultHTML,
 			}
 
-			endpointOptions, err := newEndpointOptions(confCtx, job.Endpoint, nil, serverOptions, log, conf, memStore)
+			endpointOptions, err := NewEndpointOptions(confCtx, job.Endpoint, nil, serverOptions, log, conf, memStore)
 			if err != nil {
 				return nil, err
 			}
 
-			endpointHandler := handler.NewEndpoint(endpointOptions, log, nil)
+			epHandler := handler.NewEndpoint(endpointOptions, log, nil)
 
-			jobs.AddJob(conf.Context, job, endpointHandler, conf.Settings)
+			jobs.AddJob(conf.Context, job, epHandler, conf.Settings)
 		}
 	}
 
