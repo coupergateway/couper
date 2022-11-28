@@ -298,7 +298,7 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 		} else {
 			fileName, _ = url.JoinPath(dt, fileName)
 		}
-		title, description := headerFromMeta(fileContent)
+		title, description, indexTable := headerFromMeta(fileContent)
 		if title == "" && description == "" {
 			matches := mdHeaderRegex.FindSubmatch(fileContent)
 			description = string(bytes.ToLower(matches[3]))
@@ -307,6 +307,7 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 
 		urlPath, _ := url.JoinPath(urlBasePath, fileName)
 		result := &entry{
+			Attributes:  attributesFromTable(fileContent, indexTable),
 			Description: description,
 			ID:          urlPath,
 			Name:        title,
@@ -331,7 +332,7 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 	}
 }
 
-func headerFromMeta(content []byte) (title string, description string) {
+func headerFromMeta(content []byte) (title string, description string, indexTable bool) {
 	var metaSep = []byte(`---`)
 	if !bytes.HasPrefix(content, metaSep) {
 		return
@@ -344,9 +345,47 @@ func headerFromMeta(content []byte) (title string, description string) {
 			title = strings.Split(t, ": ")[1]
 		} else if strings.HasPrefix(t, "description") {
 			description = strings.Split(t, ": ")[1]
+		} else if strings.HasPrefix(t, "indexTable") {
+			indexTable = t == "indexTable: true"
 		}
+
 	}
 	return
+}
+
+var tableEntryRegex = regexp.MustCompile(`^\|\s\x60(.+)\x60\s+\|\s(.+)\s\|\s(.+)\.\s+\|`)
+
+func attributesFromTable(content []byte, parse bool) []attr {
+	if !parse {
+		return nil
+	}
+	attrs := make([]attr, 0)
+	s := bufio.NewScanner(bytes.NewReader(content))
+	var tableHeadSeen bool
+	for s.Scan() {
+		// scan to table header
+		line := s.Text()
+		if !tableHeadSeen {
+			if strings.HasPrefix(line, "|:-") {
+				tableHeadSeen = true
+			}
+			continue
+		}
+		if line[0] != '|' {
+			break
+		}
+		matches := tableEntryRegex.FindStringSubmatch(line)
+		if len(matches) < 4 {
+			continue
+		}
+		attrs = append(attrs, attr{
+			Description: strings.TrimSpace(matches[3]),
+			Name:        strings.TrimSpace(matches[1]),
+			Type:        strings.TrimSpace(matches[2]),
+		})
+	}
+	sort.Sort(byName(attrs))
+	return attrs
 }
 
 type byName []attr
