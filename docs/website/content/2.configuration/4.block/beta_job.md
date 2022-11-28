@@ -33,7 +33,7 @@ values: [
 
 definitions {
   beta_job "update_data" {
-    # Execute once at the start of Couper and than minutely
+    # Execute once at the start of Couper and then every minute
     interval = "1m"
 
     request "origin" {
