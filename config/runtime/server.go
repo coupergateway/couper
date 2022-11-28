@@ -127,6 +127,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			jobs.AddJob(conf.Context, job, epHandler, conf.Settings)
 		}
+		jobs.Start(conf.Context, log)
 	}
 
 	for _, srvConf := range conf.Servers {
