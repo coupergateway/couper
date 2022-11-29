@@ -11,7 +11,6 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
@@ -20,7 +19,7 @@ import (
 
 type Job struct {
 	conf     *config.Job
-	handler  *handler.Endpoint
+	handler  http.Handler
 	interval time.Duration
 	settings *config.Settings
 }
@@ -40,7 +39,7 @@ func (j Jobs) Run(ctx context.Context, log *logrus.Entry) {
 	}
 }
 
-func NewJob(j *config.Job, h *handler.Endpoint, settings *config.Settings) (*Job, error) {
+func NewJob(j *config.Job, h http.Handler, settings *config.Settings) (*Job, error) {
 	interval, err := time.ParseDuration(j.Interval)
 	if err != nil {
 		return nil, err
