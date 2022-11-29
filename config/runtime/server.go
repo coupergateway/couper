@@ -19,12 +19,12 @@ import (
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/accesscontrol/jwk"
 	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/command/jobs"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/definitions"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -113,6 +113,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			}
 		}
 
+		jobs := make(definitions.Jobs, 0)
 		for _, job := range conf.Definitions.Job {
 			serverOptions := &server.Options{
 				ServerErrTpl: errors.DefaultHTML,
@@ -125,9 +126,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			epHandler := handler.NewEndpoint(endpointOptions, log, nil)
 
-			jobs.AddJob(conf.Context, job, epHandler, conf.Settings)
+			j, err := definitions.NewJob(job, epHandler, conf.Settings)
+			if err != nil {
+				return nil, err
+			}
+			jobs = append(jobs, j)
 		}
-		jobs.Start(conf.Context, log)
+		jobs.Run(conf.Context, log)
 	}
 
 	for _, srvConf := range conf.Servers {
