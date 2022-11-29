@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -41,19 +42,20 @@ const (
 	searchIndex     = "docs"
 	searchClientKey = "SEARCH_CLIENT_API_KEY"
 
-	docsBlockPath = "docs/website/content/2.configuration/4.block"
+	configurationPath = "docs/website/content/2.configuration"
+	docsBlockPath     = configurationPath + "/4.block"
+
+	urlBasePath = "/configuration/"
 )
 
 // export md: 1) search for ::attribute, replace if exist or append at end
 func main() {
-	const basePath = "/configuration/block/"
 
 	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
 	index := client.InitIndex(searchIndex)
 
 	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z0-9]+)`)
 	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
-	mdHeaderRegex := regexp.MustCompile(`#(.+)\n(\n(.+)\n)`)
 
 	attributesMap := map[string][]reflect.StructField{
 		"RequestHeadersAttributes":  newFields(&meta.RequestHeadersAttributes{}),
@@ -109,9 +111,10 @@ func main() {
 			blockName = blockNamesMap[blockName]
 		}
 
+		urlPath, _ := url.JoinPath(urlBasePath, "block", blockName)
 		result := entry{
 			Name: blockName,
-			URL:  strings.ToLower(basePath + blockName),
+			URL:  strings.ToLower(urlPath),
 			Type: "block",
 		}
 
@@ -259,7 +262,15 @@ values: %s
 	}
 
 	// index non generated markdown
-	dirEntries, err := os.ReadDir(docsBlockPath)
+	indexDirectory(configurationPath, "", processedFiles, index)
+	indexDirectory(docsBlockPath, "block", processedFiles, index)
+}
+
+var mdHeaderRegex = regexp.MustCompile(`#(.+)\n(\n(.+)\n)`)
+var mdFileRegex = regexp.MustCompile(`\d?\.?(.+)\.md`)
+
+func indexDirectory(dirPath, docType string, processedFiles map[string]struct{}, index *search.Index) {
+	dirEntries, err := os.ReadDir(dirPath)
 	if err != nil {
 		panic(err)
 	}
@@ -268,23 +279,50 @@ values: %s
 		if dirEntry.IsDir() {
 			continue
 		}
-		entryPath := filepath.Join(docsBlockPath, dirEntry.Name())
-		if _, ok := processedFiles[entryPath]; !ok {
-			println("Indexing from file: " + dirEntry.Name())
-			fileContent, rerr := os.ReadFile(entryPath)
-			if rerr != nil {
-				panic(err)
-			}
-			matches := mdHeaderRegex.FindSubmatch(fileContent)
-			urlPath := filepath.Join(basePath, dirEntry.Name()[:len(dirEntry.Name())-3])
-			result := &entry{
-				Description: string(bytes.ToLower(matches[3])),
-				ID:          urlPath,
-				Name:        string(bytes.ToLower(matches[1])),
-				Type:        "block",
-				URL:         urlPath,
-			}
 
+		entryPath := filepath.Join(dirPath, dirEntry.Name())
+		if _, ok := processedFiles[entryPath]; ok {
+			continue
+		}
+
+		println("Indexing from file: " + dirEntry.Name())
+		fileContent, rerr := os.ReadFile(entryPath)
+		if rerr != nil {
+			panic(err)
+		}
+		println(dirEntry.Name())
+		fileName := mdFileRegex.FindStringSubmatch(dirEntry.Name())[1]
+		dt := docType
+		if dt == "" {
+			dt = fileName
+		} else {
+			fileName, _ = url.JoinPath(dt, fileName)
+		}
+		title, description, indexTable := headerFromMeta(fileContent)
+		if title == "" && description == "" {
+			matches := mdHeaderRegex.FindSubmatch(fileContent)
+			description = string(bytes.ToLower(matches[3]))
+			title = string(bytes.ToLower(matches[1]))
+		}
+
+		urlPath, _ := url.JoinPath(urlBasePath, fileName)
+		result := &entry{
+			Attributes:  attributesFromTable(fileContent, indexTable),
+			Description: description,
+			ID:          urlPath,
+			Name:        title,
+			Type:        dt,
+			URL:         urlPath,
+		}
+
+		// debug
+		if index == nil {
+			b, merr := json.Marshal(result)
+			if merr != nil {
+				panic(merr)
+			}
+			println(string(b))
+		} else {
 			_, err = index.SaveObjects(result)
 			if err != nil {
 				panic(err)
@@ -292,6 +330,62 @@ values: %s
 			println("SearchIndex updated")
 		}
 	}
+}
+
+func headerFromMeta(content []byte) (title string, description string, indexTable bool) {
+	var metaSep = []byte(`---`)
+	if !bytes.HasPrefix(content, metaSep) {
+		return
+	}
+	endIdx := bytes.LastIndex(content, metaSep)
+	s := bufio.NewScanner(bytes.NewReader(content[3:endIdx]))
+	for s.Scan() {
+		t := s.Text()
+		if strings.HasPrefix(t, "title") {
+			title = strings.Split(t, ": ")[1]
+		} else if strings.HasPrefix(t, "description") {
+			description = strings.Split(t, ": ")[1]
+		} else if strings.HasPrefix(t, "indexTable") {
+			indexTable = t == "indexTable: true"
+		}
+
+	}
+	return
+}
+
+var tableEntryRegex = regexp.MustCompile(`^\|\s\x60(.+)\x60\s+\|\s(.+)\s\|\s(.+)\.\s+\|`)
+
+func attributesFromTable(content []byte, parse bool) []attr {
+	if !parse {
+		return nil
+	}
+	attrs := make([]attr, 0)
+	s := bufio.NewScanner(bytes.NewReader(content))
+	var tableHeadSeen bool
+	for s.Scan() {
+		// scan to table header
+		line := s.Text()
+		if !tableHeadSeen {
+			if strings.HasPrefix(line, "|:-") {
+				tableHeadSeen = true
+			}
+			continue
+		}
+		if line[0] != '|' {
+			break
+		}
+		matches := tableEntryRegex.FindStringSubmatch(line)
+		if len(matches) < 4 {
+			continue
+		}
+		attrs = append(attrs, attr{
+			Description: strings.TrimSpace(matches[3]),
+			Name:        strings.TrimSpace(matches[1]),
+			Type:        strings.TrimSpace(matches[2]),
+		})
+	}
+	sort.Sort(byName(attrs))
+	return attrs
 }
 
 type byName []attr
