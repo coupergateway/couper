@@ -9,6 +9,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/utils"
@@ -53,19 +54,28 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
 	req.Header.Set("User-Agent", "Couper / "+utils.VersionName+" conf-"+j.conf.Name)
 
-	t := time.NewTicker(j.interval)
+	t := time.NewTicker(time.Millisecond)
 	defer t.Stop()
+
+	firstRun := true
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			outCtx := context.WithValue(ctx, request.LogEntry, logEntry)
+			evalCtx := ctx.(*eval.Context)
+			evalCtx = evalCtx.WithClientRequest(req) // setup syncMap, custom logs
+			outCtx := context.WithValue(evalCtx, request.LogEntry, logEntry)
 			outReq := req.Clone(outCtx)
 
 			w := writer.NewResponseWriter(&noopResponseWriter{}, "")
 			j.handler.ServeHTTP(w, outReq)
+
+			if firstRun {
+				firstRun = false
+				t.Reset(j.interval)
+			}
 		}
 	}
 }
