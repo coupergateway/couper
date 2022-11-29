@@ -54,7 +54,7 @@ func NewJob(j *config.Job, h http.Handler, settings *config.Settings) (*Job, err
 
 func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
-	req.Header.Set("User-Agent", "Couper / "+utils.VersionName+" conf-"+j.conf.Name)
+	req.Header.Set("User-Agent", "Couper / "+utils.VersionName+" job-"+j.conf.Name)
 
 	uidFn := middleware.NewUIDFunc(j.settings.RequestIDBackendHeader)
 
