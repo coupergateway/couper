@@ -29,10 +29,10 @@ func splitHostPort(hp string) (string, string) {
 	return host, port
 }
 
-func roundMS(d time.Duration) float64 {
+func RoundMS(d time.Duration) float64 {
 	const (
 		maxDuration time.Duration = 1<<63 - 1
-		milliSecond float64       = float64(time.Millisecond)
+		milliSecond               = float64(time.Millisecond)
 	)
 
 	if d == maxDuration {

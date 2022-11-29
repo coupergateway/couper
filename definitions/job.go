@@ -11,6 +11,8 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
+	"github.com/avenga/couper/handler/middleware"
+	"github.com/avenga/couper/logging"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/utils"
 )
@@ -54,6 +56,8 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 	req, _ := http.NewRequest(http.MethodGet, "", nil)
 	req.Header.Set("User-Agent", "Couper / "+utils.VersionName+" conf-"+j.conf.Name)
 
+	uidFn := middleware.NewUIDFunc(j.settings.RequestIDBackendHeader)
+
 	t := time.NewTicker(time.Millisecond)
 	defer t.Stop()
 
@@ -64,13 +68,25 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
+			uid := uidFn()
+
 			evalCtx := ctx.(*eval.Context)
 			evalCtx = evalCtx.WithClientRequest(req) // setup syncMap, custom logs
 			outCtx := context.WithValue(evalCtx, request.LogEntry, logEntry)
+			outCtx = context.WithValue(outCtx, request.UID, uid)
 			outReq := req.Clone(outCtx)
 
+			n := time.Now()
 			w := writer.NewResponseWriter(&noopResponseWriter{}, "")
 			j.handler.ServeHTTP(w, outReq)
+			logEntry.WithFields(logrus.Fields{
+				"name": j.conf.Name,
+				"timings": logging.Fields{
+					"total":    logging.RoundMS(time.Since(n)),
+					"interval": logging.RoundMS(j.interval),
+				},
+				"uid": uid,
+			}).Info()
 
 			if firstRun {
 				firstRun = false
