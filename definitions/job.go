@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
@@ -63,6 +64,8 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 
 	firstRun := true
 
+	clh := middleware.NewCustomLogsHandler([]hcl.Body{j.conf.Remain}, j.handler, j.conf.Name)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -71,22 +74,26 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 			uid := uidFn()
 
 			evalCtx := ctx.(*eval.Context)
-			evalCtx = evalCtx.WithClientRequest(req) // setup syncMap, custom logs
+			evalCtx = evalCtx.WithClientRequest(req) // setup syncMap, upstream custom logs
 			outCtx := context.WithValue(evalCtx, request.LogEntry, logEntry)
 			outCtx = context.WithValue(outCtx, request.UID, uid)
+			outCtx = context.WithValue(outCtx, request.LogCustomAccess, []hcl.Body{j.conf.Remain}) // local custom logs
 			outReq := req.Clone(outCtx)
 
 			n := time.Now()
 			w := writer.NewResponseWriter(&noopResponseWriter{}, "")
-			j.handler.ServeHTTP(w, outReq)
-			logEntry.WithFields(logrus.Fields{
-				"name": j.conf.Name,
-				"timings": logging.Fields{
-					"total":    logging.RoundMS(time.Since(n)),
-					"interval": logging.RoundMS(j.interval),
-				},
-				"uid": uid,
-			}).Info()
+			clh.ServeHTTP(w, outReq)
+			logEntry.
+				WithFields(logrus.Fields{
+					"name": j.conf.Name,
+					"timings": logging.Fields{
+						"total":    logging.RoundMS(time.Since(n)),
+						"interval": logging.RoundMS(j.interval),
+					},
+					"uid": uid,
+				}).WithContext(outCtx).
+				WithTime(n).
+				Info()
 
 			if firstRun {
 				firstRun = false
