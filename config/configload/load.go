@@ -437,17 +437,17 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 			return nil, err
 		}
 
-		endpoint := &config.Endpoint{
+		endpointConf := &config.Endpoint{
 			Remain:   job.Remain,
 			Requests: job.Requests,
 		}
 
-		err = refineEndpoints(helper, config.Endpoints{endpoint}, false)
+		err = refineEndpoints(helper, config.Endpoints{endpointConf}, false)
 		if err != nil {
 			return nil, err
 		}
 
-		job.Endpoint = endpoint
+		job.Endpoint = endpointConf
 	}
 
 	if len(helper.config.Servers) == 0 {
