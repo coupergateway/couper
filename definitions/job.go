@@ -2,6 +2,7 @@ package definitions
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -44,6 +45,11 @@ func NewJob(j *config.Job, h http.Handler, settings *config.Settings) (*Job, err
 	if err != nil {
 		return nil, err
 	}
+
+	if interval == 0 {
+		return nil, fmt.Errorf("job: %s: interval must be a positive number", j.Name)
+	}
+
 	return &Job{
 		conf:     j,
 		handler:  h,
@@ -75,12 +81,11 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 		case <-t.C:
 			uid := uidFn()
 
-			evalCtx := ctx.(*eval.Context)
-			evalCtx = evalCtx.WithClientRequest(req) // setup syncMap, upstream custom logs
+			outReq := req.Clone(context.WithValue(ctx, request.UID, uid))
+			evalCtx := eval.ContextFromRequest(outReq).WithClientRequest(outReq) // setup syncMap, upstream custom logs
 			outCtx := context.WithValue(evalCtx, request.LogEntry, logEntry)
-			outCtx = context.WithValue(outCtx, request.UID, uid)
 			outCtx = context.WithValue(outCtx, request.LogCustomAccess, []hcl.Body{j.conf.Remain}) // local custom logs
-			outReq := req.Clone(outCtx)
+			outReq = outReq.WithContext(outCtx)
 
 			n := time.Now()
 			w := writer.NewResponseWriter(&noopResponseWriter{}, "")
@@ -98,8 +103,8 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 				Info()
 
 			if firstRun {
-				firstRun = false
 				t.Reset(j.interval)
+				firstRun = false
 			}
 		}
 	}
