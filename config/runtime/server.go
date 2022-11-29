@@ -116,7 +116,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		jobs := make(definitions.Jobs, 0)
 		for _, job := range conf.Definitions.Job {
 			serverOptions := &server.Options{
-				ServerErrTpl: errors.DefaultHTML,
+				ServerErrTpl: errors.DefaultJSON,
 			}
 
 			endpointOptions, err := NewEndpointOptions(confCtx, job.Endpoint, nil, serverOptions, log, conf, memStore)
