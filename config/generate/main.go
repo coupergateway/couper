@@ -85,6 +85,7 @@ func main() {
 		&config.Health{},
 		&config.JWTSigningProfile{},
 		&config.JWT{},
+		&config.Job{},
 		&config.OAuth2AC{},
 		&config.OAuth2ReqAuth{},
 		&config.OIDC{},
