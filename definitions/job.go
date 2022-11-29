@@ -68,6 +68,9 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 	for {
 		select {
 		case <-ctx.Done():
+			logEntry.WithFields(logrus.Fields{
+				"name": j.conf.Name,
+			}).Errorf("stopping: %v", ctx.Err())
 			return
 		case <-t.C:
 			uid := uidFn()
