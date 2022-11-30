@@ -25,7 +25,8 @@ settings {
 }`)
 
 	helper := test.New(t)
-	shutdown, hook := newCouperWithBytes(couperFile, helper)
+	shutdown, hook, err := newCouperWithBytes(couperFile, helper)
+	helper.Must(err)
 	defer func() {
 		if t.Failed() {
 			for _, e := range hook.AllEntries() {

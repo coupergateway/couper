@@ -108,9 +108,10 @@ func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrus
 //	map[string]interface{}{
 //		"message": "value",
 //	}
-func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]interface{}) (func(), *logrustest.Hook) {
+func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]interface{}) (func(), *logrustest.Hook, error) {
 	if vars == nil {
-		return newCouper(file, helper)
+		s, h := newCouper(file, helper)
+		return s, h, nil
 	}
 
 	tpl, err := template.New(filepath.Base(file)).ParseFiles(file)
@@ -122,11 +123,13 @@ func newCouperWithTemplate(file string, helper *test.Helper, vars map[string]int
 	return newCouperWithBytes(result.Bytes(), helper)
 }
 
-func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook) {
+func newCouperWithBytes(file []byte, helper *test.Helper) (func(), *logrustest.Hook, error) {
 	couperConfig, err := configload.LoadBytes(file, "couper-bytes.hcl")
-	helper.Must(err)
-
-	return newCouperWithConfig(couperConfig, helper)
+	if err != nil {
+		return nil, nil, err
+	}
+	s, h := newCouperWithConfig(couperConfig, helper)
+	return s, h, nil
 }
 
 func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func(), *logrustest.Hook) {
@@ -2805,7 +2808,10 @@ func TestHTTPServer_backend_requests_variables(t *testing.T) {
 	defer ResourceOrigin.Close()
 
 	confPath := path.Join("testdata/integration/endpoint_eval/18_couper.hcl")
-	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": ResourceOrigin.URL})
+	shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"rsOrigin": ResourceOrigin.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer shutdown()
 
 	type expectation struct {
@@ -3145,10 +3151,11 @@ func TestConfigBodyContent(t *testing.T) {
 
 	defer os.RemoveAll(expiredCert.Name())
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/config/01_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/integration/config/01_couper.hcl", helper, map[string]interface{}{
 		"expiredOrigin": expiredOrigin.Addr(),
 		"caFile":        expiredCert.Name(),
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	// default port changed in config
@@ -3376,9 +3383,12 @@ func Test_LoadAccessControl(t *testing.T) {
 	backend := test.NewBackend()
 	defer backend.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/config/07_couper.hcl", test.New(t), map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/integration/config/07_couper.hcl", test.New(t), map[string]interface{}{
 		"asOrigin": backend.Addr(),
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	test.WaitForOpenPort(8080)
 	shutdown()
@@ -3519,8 +3529,9 @@ func TestJWKsMaxStale(t *testing.T) {
 	  }
 	`
 
-	shutdown, hook := newCouperWithBytes([]byte(config), helper)
+	shutdown, hook, err := newCouperWithBytes([]byte(config), helper)
 	defer shutdown()
+	helper.Must(err)
 
 	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
 	helper.Must(err)
@@ -4790,7 +4801,8 @@ func TestOIDCPKCEFunctions(t *testing.T) {
 	}))
 	defer oauthOrigin.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	shutdown, _, err := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pkce", nil)
@@ -4866,7 +4878,8 @@ func TestOIDCNonceFunctions(t *testing.T) {
 	}))
 	defer oauthOrigin.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	shutdown, _, err := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/csrf", nil)
@@ -4937,7 +4950,8 @@ func TestOIDCDefaultPKCEFunctions(t *testing.T) {
 	}))
 	defer oauthOrigin.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	shutdown, _, err := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/default", nil)
@@ -5006,7 +5020,8 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	}))
 	defer oauthOrigin.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	shutdown, _, err := newCouperWithTemplate("testdata/integration/functions/03_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/default", nil)

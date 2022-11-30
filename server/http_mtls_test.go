@@ -48,10 +48,11 @@ func TestHTTPSServer_TLS_ServerCertificate(t *testing.T) {
 		RootCAs: pool,
 	})
 
-	shutdown, _ := newCouperWithTemplate("testdata/mtls/02_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/mtls/02_couper.hcl", helper, map[string]interface{}{
 		"publicKey":  string(selfSigned.ServerCertificate.Certificate), // PEM
 		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),  // PEM
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
@@ -78,11 +79,12 @@ func TestHTTPSServer_TLS_ServerClientCertificate(t *testing.T) {
 		Certificates: []tls.Certificate{*selfSigned.Client},
 	})
 
-	shutdown, _ := newCouperWithTemplate("testdata/mtls/03_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/mtls/03_couper.hcl", helper, map[string]interface{}{
 		"publicKey":  string(selfSigned.ServerCertificate.Certificate),             // PEM
 		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),              // PEM
 		"clientCA":   string(selfSigned.ClientIntermediateCertificate.Certificate), // PEM
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
@@ -127,12 +129,13 @@ func TestHTTPSServer_TLS_ServerClientCertificateLeaf(t *testing.T) {
 		Certificates: []tls.Certificate{*selfSigned.Client},
 	})
 
-	shutdown, _ := newCouperWithTemplate("testdata/mtls/04_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/mtls/04_couper.hcl", helper, map[string]interface{}{
 		"publicKey":  string(selfSigned.ServerCertificate.Certificate),             // PEM
 		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),              // PEM
 		"clientCA":   string(selfSigned.ClientIntermediateCertificate.Certificate), // PEM
 		"clientLeaf": string(selfSigned.ClientCertificate.Certificate),             // PEM
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
@@ -159,12 +162,13 @@ func TestHTTPSServer_TLS_ServerClientCertificateLeafNoMatch(t *testing.T) {
 		Certificates: []tls.Certificate{*selfSigned.Client},
 	})
 
-	shutdown, hook := newCouperWithTemplate("testdata/mtls/04_couper.hcl", helper, map[string]interface{}{
+	shutdown, hook, err := newCouperWithTemplate("testdata/mtls/04_couper.hcl", helper, map[string]interface{}{
 		"publicKey":  string(selfSigned.ServerCertificate.Certificate),             // PEM
 		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),              // PEM
 		"clientCA":   string(selfSigned.ClientIntermediateCertificate.Certificate), // PEM
 		"clientLeaf": string(selfSigned.CACertificate.Certificate),                 // PEM / just a non-matching one
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
@@ -200,11 +204,12 @@ func TestHTTPSServer_TLS_ServerClientLeafOnly(t *testing.T) {
 		Certificates: []tls.Certificate{*selfSigned.Client},
 	})
 
-	shutdown, _ := newCouperWithTemplate("testdata/mtls/06_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/mtls/06_couper.hcl", helper, map[string]interface{}{
 		"publicKey":  string(selfSigned.ServerCertificate.Certificate), // PEM
 		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),  // PEM
 		"clientLeaf": string(selfSigned.ClientCertificate.Certificate), // PEM
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/", nil)
@@ -233,7 +238,7 @@ func TestHTTPSServer_TLS_ServerClientCertificateLeafMixed(t *testing.T) {
 	pool := x509.NewCertPool()
 	pool.AddCert(selfSigned1.CA.Leaf)
 
-	shutdown, _ := newCouperWithTemplate("testdata/mtls/07_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/mtls/07_couper.hcl", helper, map[string]interface{}{
 		"publicKey":    string(selfSigned1.ServerCertificate.Certificate),             // PEM
 		"privateKey":   string(selfSigned1.ServerCertificate.PrivateKey),              // PEM
 		"client1_Leaf": string(selfSigned1.ClientCertificate.Certificate),             // PEM
@@ -241,6 +246,7 @@ func TestHTTPSServer_TLS_ServerClientCertificateLeafMixed(t *testing.T) {
 		"client2_Leaf": string(selfSigned2.ClientCertificate.Certificate),             // PEM
 		"client3_CA":   string(selfSigned3.ClientIntermediateCertificate.Certificate), // PEM
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	for i, clientCert := range []*tls.Certificate{selfSigned1.Client, selfSigned2.Client, selfSigned3.Client} {
@@ -280,7 +286,7 @@ func TestHTTPSServer_TLS_ServerBackendClient(t *testing.T) {
 		Certificates: []tls.Certificate{*selfSigned.Client},
 	})
 
-	shutdown, _ := newCouperWithTemplate("testdata/mtls/05_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, err := newCouperWithTemplate("testdata/mtls/05_couper.hcl", helper, map[string]interface{}{
 		"publicKey":  string(selfSigned.ServerCertificate.Certificate),             // PEM
 		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),              // PEM
 		"clientCA":   string(selfSigned.ClientIntermediateCertificate.Certificate), // PEM
@@ -288,6 +294,7 @@ func TestHTTPSServer_TLS_ServerBackendClient(t *testing.T) {
 		"clientKey":  string(selfSigned.ClientCertificate.PrivateKey),              // PEM
 		"rootCA":     string(selfSigned.CACertificate.Certificate),                 // PEM
 	})
+	helper.Must(err)
 	defer shutdown()
 
 	outreq, err := http.NewRequest(http.MethodGet, "https://localhost:4443/inception", nil)
