@@ -64,7 +64,7 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 
 	uidFn := middleware.NewUIDFunc(j.settings.RequestIDBackendHeader)
 
-	t := time.NewTicker(time.Millisecond)
+	t := time.NewTicker(time.Millisecond * 50)
 	defer t.Stop()
 
 	firstRun := true
