@@ -20,7 +20,6 @@ definitions {
     request "origin" {
       url             = "/api/v1/exports/data"
       backend         = "read"
-      expected_status = [200]
     }
 
     request "update" {
