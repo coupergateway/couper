@@ -337,12 +337,6 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 				return nil, errors.Configuration.Label(profile.Name).With(fmt.Errorf(`"alg" cannot be set via "headers"`))
 			}
 		}
-
-		key, err := reader.ReadFromAttrFile("jwt_signing_profile key", profile.Key, profile.KeyFile)
-		if err != nil {
-			return nil, errors.Configuration.Label(profile.Name).With(err)
-		}
-		profile.KeyBytes = key
 	}
 
 	for _, saml := range helper.config.Definitions.SAML {
@@ -355,7 +349,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 
 	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
 	for _, profile := range helper.config.Definitions.JWTSigningProfile {
-		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile)
+		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile, nil)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
 		}

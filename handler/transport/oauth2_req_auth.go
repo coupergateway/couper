@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -14,6 +15,8 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2"
 )
 
@@ -27,13 +30,97 @@ var (
 	_ RequestAuthorizer = &OAuth2ReqAuth{}
 )
 
+type assertionCreator interface {
+	createAssertion(ctx *hcl.EvalContext) (string, error)
+}
+
+var (
+	_ assertionCreator = &assertionCreatorFromExpr{}
+	_ assertionCreator = &assertionCreatorFromJSP{}
+)
+
+type assertionCreatorFromExpr struct {
+	expr hcl.Expression
+}
+
+func newAssertionCreatorFromExpr(expr hcl.Expression) assertionCreator {
+	return &assertionCreatorFromExpr{
+		expr,
+	}
+}
+
+func (ac *assertionCreatorFromExpr) createAssertion(ctx *hcl.EvalContext) (string, error) {
+	assertionValue, err := eval.Value(ctx, ac.expr)
+	if err != nil {
+		return "", err
+	}
+
+	if assertionValue.IsNull() {
+		return "", fmt.Errorf("assertion expression evaluates to null")
+	}
+	if assertionValue.Type() != cty.String {
+		return "", fmt.Errorf("assertion expression must evaluate to a string")
+	}
+
+	return assertionValue.AsString(), nil
+}
+
+type assertionCreatorFromJSP struct {
+	*lib.JWTSigningConfig
+	headers map[string]interface{}
+	claims  map[string]interface{}
+}
+
+func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigningProfile) (assertionCreator, error) {
+	signingConfig, err := lib.NewJWTSigningConfigFromJWTSigningProfile(jsp, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var headers, claims map[string]interface{}
+
+	if signingConfig.Headers != nil {
+		v, err := eval.Value(evalCtx, signingConfig.Headers)
+		if err != nil {
+			return nil, err
+		}
+		headers = seetie.ValueToMap(v)
+	}
+
+	if signingConfig.Claims != nil {
+		cl, err := eval.Value(evalCtx, signingConfig.Claims)
+		if err != nil {
+			return nil, err
+		}
+		claims = seetie.ValueToMap(cl)
+	}
+
+	return &assertionCreatorFromJSP{
+		signingConfig,
+		headers,
+		claims,
+	}, nil
+}
+
+func (ac *assertionCreatorFromJSP) createAssertion(_ *hcl.EvalContext) (string, error) {
+	claims := make(map[string]interface{})
+	for k, v := range ac.claims {
+		claims[k] = v
+	}
+	now := time.Now().Unix()
+	claims["exp"] = now + ac.TTL
+
+	return lib.CreateJWT(ac.SignatureAlgorithm, ac.Key, claims, ac.headers)
+}
+
 // OAuth2ReqAuth represents the transport <OAuth2ReqAuth> object.
 type OAuth2ReqAuth struct {
-	config       *config.OAuth2ReqAuth
-	mu           sync.Mutex
-	memStore     *cache.MemoryStore
-	oauth2Client *oauth2.Client
-	storageKey   string
+	config           *config.OAuth2ReqAuth
+	mu               sync.Mutex
+	memStore         *cache.MemoryStore
+	oauth2Client     *oauth2.Client
+	storageKey       string
+	assertionCreator assertionCreator
 }
 
 // NewOAuth2ReqAuth implements the http.RoundTripper interface to wrap an existing Backend / http.RoundTripper
@@ -54,25 +141,32 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		}
 	} else {
 		if conf.Username != "" {
-			return nil, fmt.Errorf("username must not be set with grant_type=%s", conf.GrantType)
+			return nil, fmt.Errorf("username attribute must not be set with grant_type=%s", conf.GrantType)
 		}
 		if conf.Password != "" {
-			return nil, fmt.Errorf("password must not be set with grant_type=%s", conf.GrantType)
+			return nil, fmt.Errorf("password attribute must not be set with grant_type=%s", conf.GrantType)
 		}
 	}
 
-	assertionValue, err := eval.Value(evalCtx, conf.AssertionExpr)
-	if err != nil {
-		return nil, err
-	}
-
+	var assertionCreator assertionCreator
+	assertionRange := conf.AssertionExpr.Range()
+	assertionSet := assertionRange.Start != assertionRange.End
 	if conf.GrantType == config.JwtBearer {
-		if assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType {
-			return nil, fmt.Errorf("missing assertion with grant_type=%s", conf.GrantType)
+		if !assertionSet && conf.JWTSigningProfile == nil {
+			return nil, fmt.Errorf("missing assertion attribute or jwt_signing_profile block with grant_type=%s", conf.GrantType)
+		}
+		if assertionSet {
+			assertionCreator = newAssertionCreatorFromExpr(conf.AssertionExpr)
+		} else {
+			var err error
+			assertionCreator, err = newAssertionCreatorFromJSP(evalCtx, conf.JWTSigningProfile)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
-		if !(assertionValue.IsNull() && assertionValue.Type() == cty.DynamicPseudoType) {
-			return nil, fmt.Errorf("assertion must not be set with grant_type=%s", conf.GrantType)
+		if assertionSet {
+			return nil, fmt.Errorf("assertion attribute must not be set with grant_type=%s", conf.GrantType)
 		}
 	}
 
@@ -82,9 +176,10 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 	}
 
 	reqAuth := &OAuth2ReqAuth{
-		config:       conf,
-		oauth2Client: oauth2Client,
-		memStore:     memStore,
+		config:           conf,
+		oauth2Client:     oauth2Client,
+		memStore:         memStore,
+		assertionCreator: assertionCreator,
 	}
 	reqAuth.storageKey = fmt.Sprintf("oauth2-%p", reqAuth)
 	return reqAuth, nil
@@ -111,18 +206,12 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	if oa.config.GrantType == config.JwtBearer {
 		requestContext := eval.ContextFromRequest(req).HCLContext()
-		assertionValue, err := eval.Value(requestContext, oa.config.AssertionExpr)
+		assertion, err := oa.assertionCreator.createAssertion(requestContext)
 		if err != nil {
-			return err
+			return requestError.With(err)
 		}
 
-		if assertionValue.IsNull() {
-			return requestError.Message("assertion expression evaluates to null")
-		} else if assertionValue.Type() != cty.String {
-			return requestError.Message("assertion expression must evaluate to a string")
-		} else {
-			formParams.Set("assertion", assertionValue.AsString())
-		}
+		formParams.Set("assertion", assertion)
 	}
 	if oa.config.Scope != "" {
 		formParams.Set("scope", oa.config.Scope)

@@ -10,6 +10,8 @@ Like all [access control](/configuration/access-control) types, the `oidc` block
 
 > any `backend` attributes: Do not disable the peer certificate validation with `disable_certificate_validation = true`.
 
+A nested `jwt_signing_profile` block is used to create a client assertion if `token_endpoint_auth_method` is either `"client_secret_jwt"` or `"private_key_jwt"`.
+
 ::attributes
 ---
 values: [

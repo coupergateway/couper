@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"regexp"
@@ -283,6 +284,113 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 	}
 }
 
+func TestEndpoints_OAuth2_JWTBearer(t *testing.T) {
+	helper := test.New(t)
+
+	type testCase struct {
+		name       string
+		configFile string
+		assHeader  string
+	}
+	jwtParser := jwt.NewParser()
+	keyFunc := func(_ *jwt.Token) (interface{}, error) {
+		return []byte("asdf"), nil
+	}
+	now := time.Now().Unix()
+	passedAssertion, err := lib.CreateJWT("HS256", []byte("asdf"), jwt.MapClaims{"aud": "https://authz.server/token", "exp": now + 10, "iat": now, "iss": "foo@example.com", "scope": "sc1 sc2"}, nil)
+	helper.Must(err)
+
+	expClaims := map[string]interface{}{"aud": "https://authz.server/token", "exp": nil, "iat": nil, "iss": "foo@example.com", "scope": "sc1 sc2"}
+	expGrantType := "urn:ietf:params:oauth:grant-type:jwt-bearer"
+
+	for _, tc := range []testCase{
+		{
+			"assertion attribute with jwt_sign()",
+			"21_couper.hcl",
+			"",
+		},
+		{
+			"inline jwt_signing_profile",
+			"22_couper.hcl",
+			"",
+		},
+		{
+			"passed assertion",
+			"23_couper.hcl",
+			passedAssertion,
+		},
+	} {
+		var tokenSeenCh chan struct{}
+
+		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			if req.URL.Path == "/token" {
+				reqBody, _ := io.ReadAll(req.Body)
+
+				params, err := url.ParseQuery(string(reqBody))
+				helper.Must(err)
+
+				grantType := params.Get("grant_type")
+				if expGrantType != grantType {
+					t.Errorf("%s: unexpected grant_type: want\n%s\ngot\n%s", tc.name, expGrantType, grantType)
+				}
+
+				assertion := params.Get("assertion")
+				claims := jwt.MapClaims{}
+				_, err = jwtParser.ParseWithClaims(assertion, claims, keyFunc)
+				helper.Must(err)
+				if len(expClaims) != len(claims) {
+					t.Fatalf("%s: unexpected number of claims; want: %d, got: %d", tc.name, len(expClaims), len(claims))
+				}
+				for k, vExp := range expClaims {
+					v, set := claims[k]
+					if !set {
+						t.Errorf("%s: missing claim %q", tc.name, k)
+					} else {
+						if vExp != nil && vExp != v {
+							t.Errorf("%s: unexpected %s claim value; want: %#v, got: %#v", tc.name, k, vExp, v)
+						}
+					}
+				}
+
+				rw.WriteHeader(http.StatusNoContent)
+
+				close(tokenSeenCh)
+				return
+			}
+			rw.WriteHeader(http.StatusBadRequest)
+		}))
+		defer oauthOrigin.Close()
+
+		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
+		shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		defer shutdown()
+
+		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+		helper.Must(err)
+		if tc.assHeader != "" {
+			req.Header.Add("x-assertion", tc.assHeader)
+		}
+
+		hook.Reset()
+
+		tokenSeenCh = make(chan struct{})
+
+		req.URL.Path = "/"
+		_, err = newClient().Do(req)
+		helper.Must(err)
+
+		timer := time.NewTimer(time.Second * 2)
+		select {
+		case <-timer.C:
+			t.Error("OAuth2 request failed")
+		case <-tokenSeenCh:
+		}
+
+		oauthOrigin.Close()
+		shutdown()
+	}
+}
+
 func TestOAuth2_Config_Errors(t *testing.T) {
 	log, _ := test.NewLogger()
 
@@ -340,7 +448,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: username must not be set with grant_type=client_credentials",
+			"configuration error: be: username attribute must not be set with grant_type=client_credentials",
 		},
 		{
 			"password with grant_type client_credentials",
@@ -357,7 +465,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: password must not be set with grant_type=client_credentials",
+			"configuration error: be: password attribute must not be set with grant_type=client_credentials",
 		},
 		{
 			"username with grant_type jwt-bearer",
@@ -372,7 +480,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: username must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+			"configuration error: be: username attribute must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
 		{
 			"password with grant_type jwt-bearer",
@@ -387,7 +495,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: password must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+			"configuration error: be: password attribute must not be set with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
 		{
 			"assertion with grant_type client_credentials",
@@ -404,7 +512,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: assertion must not be set with grant_type=client_credentials",
+			"configuration error: be: assertion attribute must not be set with grant_type=client_credentials",
 		},
 		{
 			"assertion with grant_type password",
@@ -423,7 +531,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: assertion must not be set with grant_type=password",
+			"configuration error: be: assertion attribute must not be set with grant_type=password",
 		},
 		{
 			"missing username with grant_type password",
@@ -470,7 +578,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: missing assertion with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
+			"configuration error: be: missing assertion attribute or jwt_signing_profile block with grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer",
 		},
 
 		{
@@ -632,6 +740,7 @@ definitions {
       authn_key = "a key"
       jwt_signing_profile {
         signature_algorithm = "HS256"
+        key = "a key"
         ttl = "10s"
       }
     }
@@ -789,7 +898,7 @@ definitions {
   }
 }
 `,
-			"configuration error: be: client authentication key: read error: open ",
+			"configuration error: be: jwt_signing_profile key: read error: open ",
 		},
 		{
 			"alg header with client_secret_jwt",

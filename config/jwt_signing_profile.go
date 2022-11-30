@@ -10,7 +10,4 @@ type JWTSigningProfile struct {
 	Name               string         `hcl:"name,label,optional"`
 	SignatureAlgorithm string         `hcl:"signature_algorithm" docs:"algorithm used for signing: {\"RS256\"}, {\"RS384\"}, {\"RS512\"}, {\"HS256\"}, {\"HS384\"}, {\"HS512\"}, {\"ES256\"}, {\"ES384\"}, {\"ES512\"}"`
 	TTL                string         `hcl:"ttl" docs:"The token's time-to-live, creates the {exp} claim"`
-
-	// internally used
-	KeyBytes []byte
 }
