@@ -141,7 +141,7 @@ These fields are defined in the configuration as `custom_log_fields` attribute i
 - [Backend Block](/configuration/block/backend)
 - [Basic Auth Block](/configuration/block/basic_auth)
 - [JWT Block](/configuration/block/jwt)
-- [OAuth2 AC Block (Beta)](/configuration/block/oauth2)
+- [OAuth2 AC (Beta) Block](/configuration/block/beta_oauth2)
 - [OIDC Block](/configuration/block/oidc)
 - [SAML Block](/configuration/block/saml)
 - [Error Handler Block](/configuration/error-handling)
