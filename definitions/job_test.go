@@ -41,13 +41,13 @@ func TestJob_Run(t *testing.T) {
 			conf: &config.Job{Name: "testCase1", Interval: "0s"},
 		}, "job: testCase1: interval must be a positive number", -1, 0},
 		{"job with interval", fields{
-			conf: &config.Job{Name: "testCase2", Interval: "100ms"},
+			conf: &config.Job{Name: "testCase2", Interval: "200ms"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
 					getST(r).Error("expected trigger req with Couper UA")
 				}
 			}),
-		}, "", 2, time.Millisecond * 110}, // two due to initial req
+		}, "", 2, time.Millisecond * 300}, // two due to initial req
 		{"job with greater interval", fields{
 			conf:    &config.Job{Name: "testCase3", Interval: "1s"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}),

@@ -41,9 +41,10 @@ func TestBackend_MaxConnections(t *testing.T) {
 
 	defer origin.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/03_couper.hcl", helper, map[string]interface{}{
+	shutdown, _, cerr := newCouperWithTemplate("testdata/integration/backends/03_couper.hcl", helper, map[string]interface{}{
 		"origin": origin.URL,
 	})
+	helper.Must(cerr)
 	defer shutdown()
 
 	paths := []string{
@@ -94,10 +95,11 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 
 	defer origin.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/04_couper.hcl", helper,
+	shutdown, _, cerr := newCouperWithTemplate("testdata/integration/backends/04_couper.hcl", helper,
 		map[string]interface{}{
 			"origin": origin.URL,
 		})
+	helper.Must(cerr)
 	defer shutdown()
 
 	client := test.NewHTTPClient()
@@ -203,10 +205,11 @@ func TestBackend_LogResponseBytes(t *testing.T) {
 
 	defer origin.Close()
 
-	shutdown, hook := newCouperWithTemplate("testdata/integration/backends/05_couper.hcl", helper,
+	shutdown, hook, cerr := newCouperWithTemplate("testdata/integration/backends/05_couper.hcl", helper,
 		map[string]interface{}{
 			"origin": origin.URL,
 		})
+	helper.Must(cerr)
 	defer shutdown()
 
 	client := test.NewHTTPClient()
@@ -294,10 +297,11 @@ func TestBackend_Unhealthy(t *testing.T) {
 
 	defer origin.Close()
 
-	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/06_couper.hcl", helper,
+	shutdown, _, cerr := newCouperWithTemplate("testdata/integration/backends/06_couper.hcl", helper,
 		map[string]interface{}{
 			"origin": origin.URL,
 		})
+	helper.Must(cerr)
 	defer shutdown()
 
 	client := test.NewHTTPClient()
@@ -355,12 +359,13 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 	defer tokenEndpoint.Close()
 
 	retries := 3
-	shutdown, _ := newCouperWithTemplate("testdata/integration/backends/07_couper.hcl", helper,
+	shutdown, _, cerr := newCouperWithTemplate("testdata/integration/backends/07_couper.hcl", helper,
 		map[string]interface{}{
 			"origin":         origin.URL,
 			"token_endpoint": tokenEndpoint.URL,
 			"retries":        retries,
 		})
+	helper.Must(cerr)
 	defer shutdown()
 
 	client := test.NewHTTPClient()

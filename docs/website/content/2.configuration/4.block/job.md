@@ -6,7 +6,7 @@ purposes.
 
 | Block name | Context                          | Label            | Nested block                |
 |:-----------|:---------------------------------|:-----------------|:----------------------------|
-| `beta_job` | [Definitions Block](definitions) | required         | [Request Block(s)](request) |
+| `beta_job` | [Definitions Block](/configuration/block/definitions) | required         | [Request Block(s)](/configuration/block/request) |
 
 ## Example
 
