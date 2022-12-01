@@ -22,13 +22,13 @@ var (
 // the url with the backend origin definition.
 type OIDC struct {
 	ErrorHandlerSetter
-	BackendName             string             `hcl:"backend,optional" docs:"{backend} block reference, defined in [{definitions}](definitions). Default for OpenID configuration, JWKS, token and userinfo requests."`
+	BackendName             string             `hcl:"backend,optional" docs:"References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration, JWKS, token and userinfo requests."`
 	ClientID                string             `hcl:"client_id" docs:"The client identifier."`
 	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password."`
 	ConfigurationURL        string             `hcl:"configuration_url" docs:"The OpenID configuration URL."`
 	JWKsTTL                 string             `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
 	JWKsMaxStale            string             `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
-	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block"`
+	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"}."`
 	Name                    string             `hcl:"name,label"`
 	Remain                  hcl.Body           `hcl:",remain"`
 	RedirectURI             string             `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [{accept_forwarded_url} attribute](settings) if Couper is running behind a proxy."`
@@ -39,10 +39,10 @@ type OIDC struct {
 	VerifierMethod          string             `hcl:"verifier_method,optional" docs:"The method to verify the integrity of the authorization code flow."`
 
 	// configuration related backends
-	ConfigurationBackendName string `hcl:"configuration_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the OpenID configuration from."`
-	JWKSBackendName          string `hcl:"jwks_uri_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the JWKS from."`
-	TokenBackendName         string `hcl:"token_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the token from."`
-	UserinfoBackendName      string `hcl:"userinfo_backend,optional" docs:"Optional option to configure specific behavior for the backend to request the userinfo from."`
+	ConfigurationBackendName string `hcl:"configuration_backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration requests."`
+	JWKSBackendName          string `hcl:"jwks_uri_backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for JWKS requests."`
+	TokenBackendName         string `hcl:"token_backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests."`
+	UserinfoBackendName      string `hcl:"userinfo_backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for userinfo requests."`
 
 	// internally used
 	Backends map[string]*hclsyntax.Body
@@ -78,16 +78,16 @@ func (o *OIDC) HCLBody() *hclsyntax.Body {
 func (o *OIDC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend       *Backend `hcl:"backend,block"`
+		Backend       *Backend `hcl:"backend,block" docs:"Configures a default [backend](/configuration/block/backend) for OpenID configuration, JWKS, token and userinfo requests."`
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier."`
 
 		AuthorizationBackend       *Backend `hcl:"authorization_backend,block"`
-		ConfigurationBackend       *Backend `hcl:"configuration_backend,block"`
+		ConfigurationBackend       *Backend `hcl:"configuration_backend,block" docs:"Configures a [backend](/configuration/block/backend) for OpenID configuration requests."`
 		DeviceAuthorizationBackend *Backend `hcl:"device_authorization_backend,block"`
-		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block"`
+		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests."`
 		RevocationBackend          *Backend `hcl:"revocation_backend,block"`
-		TokenBackend               *Backend `hcl:"token_backend,block"`
-		UserinfoBackend            *Backend `hcl:"userinfo_backend,block"`
+		TokenBackend               *Backend `hcl:"token_backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests."`
+		UserinfoBackend            *Backend `hcl:"userinfo_backend,block" docs:"Configures a [backend](/configuration/block/backend) for userinfo requests."`
 	}
 
 	return &Inline{}
