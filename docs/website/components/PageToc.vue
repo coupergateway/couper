@@ -19,7 +19,7 @@
 </template>
 
 <script>
-const headlineTags = ["h2", "h3", "h4", "attributes", "duration"]
+const headlineTags = ["h2", "h3", "h4", "attributes", "duration", "blocks"]
 
 function getText(element) {
 	let text = element.value ?? ""
@@ -37,7 +37,7 @@ async function createPageToC() {
 		return headlineTags.includes(element.tag)
 	}).map((element) => {
 		let id, text
-		if (element.tag === "attributes" || element.tag === "duration") {
+		if (element.tag === "attributes" || element.tag === "duration" || element.tag === "blocks") {
 			id = element.tag
 			text = element.tag.substring(0, 1).toUpperCase() + element.tag.substring(1)
 		} else {
