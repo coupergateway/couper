@@ -22,12 +22,13 @@ import (
 )
 
 type entry struct {
-	Attributes  []attr `json:"attributes"`
-	Description string `json:"description"`
-	ID          string `json:"objectID"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	URL         string `json:"url"`
+	Attributes  []interface{} `json:"attributes"`
+	Blocks      []interface{} `json:"blocks"`
+	Description string  `json:"description"`
+	ID          string  `json:"objectID"`
+	Name        string  `json:"name"`
+	Type        string  `json:"type"`
+	URL         string  `json:"url"`
 }
 
 type attr struct {
@@ -35,6 +36,11 @@ type attr struct {
 	Description string `json:"description"`
 	Name        string `json:"name"`
 	Type        string `json:"type"`
+}
+
+type block struct {
+	Description string `json:"description"`
+	Name        string `json:"name"`
 }
 
 const (
@@ -144,6 +150,24 @@ func main() {
 				continue
 			}
 
+			hclParts := strings.Split(field.Tag.Get("hcl"), ",")
+			if len(hclParts) == 0 {
+				continue
+			}
+
+			name := hclParts[0]
+			fieldDescription := field.Tag.Get("docs")
+			fieldDescription = bracesRegex.ReplaceAllString(fieldDescription, "`${1}`")
+
+			if len(hclParts) > 1 && hclParts[1] == "block" {
+				b := block{
+					Description: fieldDescription,
+					Name:        name,
+				}
+				result.Blocks = append(result.Blocks, b)
+				continue
+			}
+
 			fieldType := field.Tag.Get("type")
 			if fieldType == "" {
 				ft := strings.Replace(field.Type.String(), "*", "", 1)
@@ -169,25 +193,31 @@ func main() {
 				fieldDefault = `"` + fieldDefault + `"`
 			}
 
-			fieldDescription := field.Tag.Get("docs")
-			fieldDescription = bracesRegex.ReplaceAllString(fieldDescription, "`${1}`")
-
 			a := attr{
 				Default:     fieldDefault,
 				Description: fieldDescription,
-				Name:        strings.Split(field.Tag.Get("hcl"), ",")[0],
+				Name:        name,
 				Type:        fieldType,
 			}
 			result.Attributes = append(result.Attributes, a)
 		}
 
 		sort.Sort(byName(result.Attributes))
+		sort.Sort(byName(result.Blocks))
 
-		b := &bytes.Buffer{}
-		enc := json.NewEncoder(b)
+		bAttr := &bytes.Buffer{}
+		enc := json.NewEncoder(bAttr)
 		enc.SetEscapeHTML(false)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(result.Attributes); err != nil {
+			panic(err)
+		}
+
+		bBlock := &bytes.Buffer{}
+		enc = json.NewEncoder(bBlock)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(result.Blocks); err != nil {
 			panic(err)
 		}
 
@@ -200,7 +230,7 @@ func main() {
 		fileBytes := &bytes.Buffer{}
 
 		scanner := bufio.NewScanner(file)
-		var skipMode, seen bool
+		var skipMode, seenAttr, seenBlock bool
 		for scanner.Scan() {
 			line := scanner.Text()
 
@@ -210,9 +240,19 @@ func main() {
 values: %s
 ---
 ::
-`, b.String()))
+`, bAttr.String()))
 				skipMode = true
-				seen = true
+				seenAttr = true
+				continue
+			} else if strings.HasPrefix(line, "::blocks") {
+				fileBytes.WriteString(fmt.Sprintf(`::blocks
+---
+values: %s
+---
+::
+`, bBlock.String()))
+				skipMode = true
+				seenBlock = true
 				continue
 			}
 
@@ -227,14 +267,23 @@ values: %s
 			}
 		}
 
-		if !seen { // TODO: from func/template
+		if !seenAttr { // TODO: from func/template
 			fileBytes.WriteString(fmt.Sprintf(`
 ::attributes
 ---
 values: %s
 ---
 ::
-`, b.String()))
+`, bAttr.String()))
+		}
+		if !seenBlock { // TODO: from func/template
+			fileBytes.WriteString(fmt.Sprintf(`
+::blocks
+---
+values: %s
+---
+::
+`, bBlock.String()))
 		}
 
 		size, err := file.WriteAt(fileBytes.Bytes(), 0)
@@ -247,7 +296,7 @@ values: %s
 		}
 
 		processedFiles[file.Name()] = struct{}{}
-		println("Attributes written: "+blockName+":\r\t\t\t\t\t", file.Name())
+		println("Attributes/Blocks written: "+blockName+":\r\t\t\t\t\t", file.Name())
 
 		if os.Getenv(searchClientKey) != "" {
 			_, err = index.SaveObjects(result) //, opt.AutoGenerateObjectIDIfNotExist(true))
@@ -309,6 +358,7 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 		urlPath, _ := url.JoinPath(urlBasePath, fileName)
 		result := &entry{
 			Attributes:  attributesFromTable(fileContent, indexTable),
+			Blocks:      blocksFromTable(fileContent, indexTable),
 			Description: description,
 			ID:          urlPath,
 			Name:        title,
@@ -356,11 +406,11 @@ func headerFromMeta(content []byte) (title string, description string, indexTabl
 
 var tableEntryRegex = regexp.MustCompile(`^\|\s\x60(.+)\x60\s+\|\s(.+)\s\|\s(.+)\.\s+\|`)
 
-func attributesFromTable(content []byte, parse bool) []attr {
+func attributesFromTable(content []byte, parse bool) []interface{} {
 	if !parse {
 		return nil
 	}
-	attrs := make([]attr, 0)
+	attrs := make([]interface{}, 0)
 	s := bufio.NewScanner(bytes.NewReader(content))
 	var tableHeadSeen bool
 	for s.Scan() {
@@ -389,16 +439,50 @@ func attributesFromTable(content []byte, parse bool) []attr {
 	return attrs
 }
 
-type byName []attr
+func blocksFromTable(content []byte, parse bool) []interface{} {
+	if !parse {
+		return nil
+	}
+	blocks := make([]interface{}, 0)
+	s := bufio.NewScanner(bytes.NewReader(content))
+	var tableHeadSeen bool
+	for s.Scan() {
+		// scan to table header
+		line := s.Text()
+		if !tableHeadSeen {
+			if strings.HasPrefix(line, "|:-") {
+				tableHeadSeen = true
+			}
+			continue
+		}
+		if line[0] != '|' {
+			break
+		}
+		matches := tableEntryRegex.FindStringSubmatch(line)
+		if len(matches) < 4 {
+			continue
+		}
+		blocks = append(blocks, block{
+			Description: strings.TrimSpace(matches[3]),
+			Name:        strings.TrimSpace(matches[1]),
+		})
+	}
+	sort.Sort(byName(blocks))
+	return blocks
+}
 
-func (attributes byName) Len() int {
-	return len(attributes)
+type byName []interface{}
+
+func (entries byName) Len() int {
+	return len(entries)
 }
-func (attributes byName) Swap(i, j int) {
-	attributes[i], attributes[j] = attributes[j], attributes[i]
+func (entries byName) Swap(i, j int) {
+	entries[i], entries[j] = entries[j], entries[i]
 }
-func (attributes byName) Less(i, j int) bool {
-	return attributes[i].Name < attributes[j].Name
+func (entries byName) Less(i, j int) bool {
+	left := reflect.ValueOf(entries[i]).FieldByName("Name").String()
+	right := reflect.ValueOf(entries[j]).FieldByName("Name").String()
+	return left < right
 }
 
 func newFields(impl interface{}) []reflect.StructField {
