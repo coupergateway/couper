@@ -365,7 +365,8 @@ func TestEndpoints_OAuth2_JWTBearer(t *testing.T) {
 		defer oauthOrigin.Close()
 
 		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
-		shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		helper.Must(err)
 		defer shutdown()
 
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
