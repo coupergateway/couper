@@ -158,7 +158,7 @@ func TestNewRun(t *testing.T) {
 				subT.Errorf("expected OK, got: %d", res.StatusCode)
 			}
 
-			uid := hook.LastEntry().Data["uid"].(string)
+			uid, _ := hook.LastEntry().Data["uid"].(string)
 			xidLen := len(xid.New().String())
 			if result.RequestIDFormat == "uuid4" {
 				if len(uid) <= xidLen {
