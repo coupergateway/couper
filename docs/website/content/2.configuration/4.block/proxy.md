@@ -39,7 +39,7 @@ values: [
   },
   {
     "default": "",
-    "description": "backend block reference",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the proxy request.",
     "name": "backend",
     "type": "string"
   },
@@ -114,6 +114,22 @@ values: [
     "description": "Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other `proxy` blocks, `request` blocks or `response` blocks are not allowed within the current `endpoint` block.",
     "name": "websockets",
     "type": "bool"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for the proxy request.",
+    "name": "backend"
+  },
+  {
+    "description": "Configures support for [websockets](/configuration/block/websockets) connections.",
+    "name": "websockets"
   }
 ]
 
