@@ -51,7 +51,7 @@ values: [
     "type": "object"
   },
   {
-    "default": "\"60s\"",
+    "default": "",
     "description": "Execution interval",
     "name": "interval",
     "type": "duration"
