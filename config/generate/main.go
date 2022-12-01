@@ -207,18 +207,21 @@ func main() {
 			sort.Sort(byName(result.Blocks))
 		}
 
-		bAttr := &bytes.Buffer{}
-		enc := json.NewEncoder(bAttr)
-		enc.SetEscapeHTML(false)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(result.Attributes); err != nil {
-			panic(err)
+		var bAttr, bBlock *bytes.Buffer
+
+		if result.Attributes != nil {
+			bAttr = &bytes.Buffer{}
+			enc := json.NewEncoder(bAttr)
+			enc.SetEscapeHTML(false)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(result.Attributes); err != nil {
+				panic(err)
+			}
 		}
 
-		var bBlock *bytes.Buffer
 		if result.Blocks != nil {
 			bBlock = &bytes.Buffer{}
-			enc = json.NewEncoder(bBlock)
+			enc := json.NewEncoder(bBlock)
 			enc.SetEscapeHTML(false)
 			enc.SetIndent("", "  ")
 			if err := enc.Encode(result.Blocks); err != nil {
@@ -239,7 +242,7 @@ func main() {
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			if strings.HasPrefix(line, "::attributes") {
+			if bAttr != nil && strings.HasPrefix(line, "::attributes") {
 				fileBytes.WriteString(fmt.Sprintf(`::attributes
 ---
 values: %s
@@ -272,7 +275,7 @@ values: %s
 			}
 		}
 
-		if !seenAttr { // TODO: from func/template
+		if bAttr != nil && !seenAttr { // TODO: from func/template
 			fileBytes.WriteString(fmt.Sprintf(`
 ::attributes
 ---
