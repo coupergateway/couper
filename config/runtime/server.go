@@ -24,6 +24,7 @@ import (
 	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/definitions"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -111,6 +112,27 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 		}
+
+		jobs := make(definitions.Jobs, 0)
+		for _, job := range conf.Definitions.Job {
+			serverOptions := &server.Options{
+				ServerErrTpl: errors.DefaultJSON,
+			}
+
+			endpointOptions, err := NewEndpointOptions(confCtx, job.Endpoint, nil, serverOptions, log, conf, memStore)
+			if err != nil {
+				return nil, err
+			}
+
+			epHandler := handler.NewEndpoint(endpointOptions, log, nil)
+
+			j, err := definitions.NewJob(job, epHandler, conf.Settings)
+			if err != nil {
+				return nil, err
+			}
+			jobs = append(jobs, j)
+		}
+		jobs.Run(conf.Context, log)
 	}
 
 	for _, srvConf := range conf.Servers {

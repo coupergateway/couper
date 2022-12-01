@@ -115,7 +115,7 @@ func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 
 	timingResults := Fields{}
 	fields["timings"] = timingResults
-	timingResults["total"] = roundMS(serveDone.Sub(startTime))
+	timingResults["total"] = RoundMS(serveDone.Sub(startTime))
 	fields["status"] = statusCode
 	requestFields["status"] = statusCode
 

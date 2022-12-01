@@ -17,7 +17,7 @@ func TestHelper_roundMS(t *testing.T) {
 		{123456 * time.Microsecond, 123.456000},
 		{123 * time.Millisecond, 123.0},
 	} {
-		if got := roundMS(tc.dur); got != tc.exp {
+		if got := RoundMS(tc.dur); got != tc.exp {
 			t.Errorf("expected '%#v', got '%#v'", tc.exp, got)
 		}
 	}

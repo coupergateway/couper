@@ -89,7 +89,8 @@ func TestEndpoints_OAuth2(t *testing.T) {
 		defer ResourceOrigin.Close()
 
 		confPath := fmt.Sprintf("testdata/oauth2/%d_retries_couper.hcl", i)
-		shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL, "rsOrigin": ResourceOrigin.URL})
+		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL, "rsOrigin": ResourceOrigin.URL})
+		helper.Must(err)
 		defer shutdown()
 
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
@@ -171,7 +172,8 @@ func Test_OAuth2_no_retry(t *testing.T) {
 	defer ResourceOrigin.Close()
 
 	confPath := "testdata/oauth2/0_retries_couper.hcl"
-	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL, "rsOrigin": ResourceOrigin.URL})
+	shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL, "rsOrigin": ResourceOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
@@ -258,7 +260,8 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 		defer oauthOrigin.Close()
 
 		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
-		shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		helper.Must(err)
 		defer shutdown()
 
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
@@ -362,7 +365,8 @@ func TestEndpoints_OAuth2_JWTBearer(t *testing.T) {
 		defer oauthOrigin.Close()
 
 		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
-		shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+		helper.Must(err)
 		defer shutdown()
 
 		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
@@ -1019,7 +1023,8 @@ func TestOAuth2_AuthnJWT(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/20_couper.hcl", h, map[string]interface{}{"rsOrigin": rsOrigin.URL})
+			shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/20_couper.hcl", h, map[string]interface{}{"rsOrigin": rsOrigin.URL})
+			h.Must(err)
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
@@ -1081,7 +1086,8 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": asOrigin.URL})
+			shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": asOrigin.URL})
+			h.Must(err)
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
@@ -1323,7 +1329,8 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			h := test.New(subT)
 
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": oauthOrigin.URL})
+			shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": oauthOrigin.URL})
+			h.Must(err)
 			defer shutdown()
 
 			req, err := http.NewRequest(tc.method, "http://back.end:8080"+tc.path, nil)
@@ -1453,7 +1460,8 @@ func TestOAuth2_AC_Backend(t *testing.T) {
 	}))
 	defer asOrigin.Close()
 
-	shutdown, hook := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL})
+	shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/11_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	type backendExpectation struct {
@@ -1580,7 +1588,8 @@ func TestOAuth2_CC_Backend(t *testing.T) {
 	}))
 	defer rsOrigin.Close()
 
-	shutdown, hook := newCouperWithTemplate("testdata/oauth2/14_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+	shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/14_couper.hcl", helper, map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	type testCase struct {
@@ -1682,12 +1691,13 @@ func TestOAuth2_Locking(t *testing.T) {
 	defer ResourceOrigin.Close()
 
 	confPath := "testdata/oauth2/1_retries_couper.hcl"
-	shutdown, hook := newCouperWithTemplate(
+	shutdown, hook, err := newCouperWithTemplate(
 		confPath, helper, map[string]interface{}{
 			"asOrigin": oauthOrigin.URL,
 			"rsOrigin": ResourceOrigin.URL,
 		},
 	)
+	helper.Must(err)
 	defer shutdown()
 
 	req, rerr := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
@@ -1953,7 +1963,8 @@ func TestTokenRequest(t *testing.T) {
 	defer vaultOrigin.Close()
 
 	confPath := "testdata/oauth2/token_request.hcl"
-	shutdown, hook := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL, "vaultOrigin": vaultOrigin.URL})
+	shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "rsOrigin": rsOrigin.URL, "vaultOrigin": vaultOrigin.URL})
+	helper.Must(err)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
@@ -2156,7 +2167,8 @@ func TestTokenRequest_Runtime_Errors(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
-			shutdown, hook := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": asOrigin.URL})
+			shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": asOrigin.URL})
+			h.Must(err)
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)

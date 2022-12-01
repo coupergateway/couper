@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -422,6 +423,25 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		}
 
 		helper.config.Servers = append(helper.config.Servers, serverConfig)
+	}
+
+	for _, job := range helper.config.Definitions.Job {
+		_, err = time.ParseDuration(job.Interval)
+		if err != nil {
+			return nil, err
+		}
+
+		endpointConf := &config.Endpoint{
+			Remain:   job.Remain,
+			Requests: job.Requests,
+		}
+
+		err = refineEndpoints(helper, config.Endpoints{endpointConf}, false)
+		if err != nil {
+			return nil, err
+		}
+
+		job.Endpoint = endpointConf
 	}
 
 	if len(helper.config.Servers) == 0 {

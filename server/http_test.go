@@ -365,7 +365,8 @@ server "zipzip" {
 	}))
 	defer origin.Close()
 
-	shutdown, loghook := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL)), helper)
+	shutdown, loghook, err := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL)), helper)
+	helper.Must(err)
 	defer shutdown()
 
 	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080", nil)
@@ -464,7 +465,8 @@ server "zipzip" {
 	} {
 		t.Run(testcase.name, func(st *testing.T) {
 			h := test.New(st)
-			shutdown, _ := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL, testcase.attributes)), h)
+			shutdown, _, err := newCouperWithBytes([]byte(fmt.Sprintf(configFile, origin.URL, testcase.attributes)), h)
+			h.Must(err)
 			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080", nil)
