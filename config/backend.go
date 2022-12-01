@@ -18,14 +18,14 @@ var (
 type Backend struct {
 	DisableCertValidation  bool        `hcl:"disable_certificate_validation,optional" docs:"Disables the peer certificate validation. Must not be used in backend refinement."`
 	DisableConnectionReuse bool        `hcl:"disable_connection_reuse,optional" docs:"Disables reusage of connections to the origin. Must not be used in backend refinement."`
-	Health                 *Health     `hcl:"beta_health,block"`
+	Health                 *Health     `hcl:"beta_health,block" docs:"Configures a [health check](/configuration/block/health)."`
 	HTTP2                  bool        `hcl:"http2,optional" docs:"Enables the HTTP2 support. Must not be used in backend refinement."`
 	MaxConnections         int         `hcl:"max_connections,optional" docs:"The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. Must not be used in backend refinement." default:"0"`
 	Name                   string      `hcl:"name,label,optional"`
-	OpenAPI                *OpenAPI    `hcl:"openapi,block"`
-	RateLimits             RateLimits  `hcl:"beta_rate_limit,block"`
+	OpenAPI                *OpenAPI    `hcl:"openapi,block" docs:"Configures [OpenAPI validation](/configuration/block/openapi)."`
+	RateLimits             RateLimits  `hcl:"beta_rate_limit,block" docs:"Configures [rate limiting](/configuration/block/rate_limit)."`
 	Remain                 hcl.Body    `hcl:",remain"`
-	TLS                    *BackendTLS `hcl:"tls,block"`
+	TLS                    *BackendTLS `hcl:"tls,block" docs:"Configures [backend TLS](/configuration/block/backend_tls)."`
 }
 
 // Reference implements the <BackendReference> interface.

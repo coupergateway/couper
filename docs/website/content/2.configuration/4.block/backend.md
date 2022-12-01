@@ -195,6 +195,30 @@ values: [
 ---
 ::
 
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [health check](/configuration/block/health).",
+    "name": "beta_health"
+  },
+  {
+    "description": "Configures [rate limiting](/configuration/block/rate_limit).",
+    "name": "beta_rate_limit"
+  },
+  {
+    "description": "Configures [OpenAPI validation](/configuration/block/openapi).",
+    "name": "openapi"
+  },
+  {
+    "description": "Configures [backend TLS](/configuration/block/backend_tls).",
+    "name": "tls"
+  }
+]
+
+---
+::
+
 ## Refining a referenced backend
 
 Referenced backends may be "refined" by using a labeled `backend` block in places where an unlabeled `backend` block would also be allowed, e.g. in a `proxy` block:
