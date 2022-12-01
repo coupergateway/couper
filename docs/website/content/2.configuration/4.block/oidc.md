@@ -137,10 +137,3 @@ The HTTP header field `Accept: application/json` is automatically added to the t
 
 
 ::duration
-
-::blocks
----
-values: null
-
----
-::

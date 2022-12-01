@@ -119,10 +119,3 @@ values: [
 
 ---
 ::
-
-::blocks
----
-values: null
-
----
-::

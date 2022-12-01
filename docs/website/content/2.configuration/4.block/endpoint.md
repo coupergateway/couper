@@ -170,10 +170,3 @@ values: [
 
 ---
 ::
-
-::blocks
----
-values: null
-
----
-::

@@ -136,10 +136,3 @@ values: [
 
 ---
 ::
-
-::blocks
----
-values: null
-
----
-::

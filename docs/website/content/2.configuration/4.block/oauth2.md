@@ -87,10 +87,3 @@ values: [
 ::
 
 The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](/configuration/modifiers#request-header) in a [backend block](/configuration/block/backend).
-
-::blocks
----
-values: null
-
----
-::

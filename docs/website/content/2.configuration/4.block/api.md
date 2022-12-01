@@ -98,10 +98,3 @@ values: [
 
 ---
 ::
-
-::blocks
----
-values: null
-
----
-::

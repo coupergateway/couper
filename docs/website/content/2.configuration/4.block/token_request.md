@@ -74,10 +74,3 @@ values: [
 
 ---
 ::
-
-::blocks
----
-values: null
-
----
-::

@@ -39,10 +39,3 @@ values: [
 
 ---
 ::
-
-::blocks
----
-values: null
-
----
-::
