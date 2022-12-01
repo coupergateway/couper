@@ -22,7 +22,7 @@ type Spa struct {
 	BootStrapDataName    string         `hcl:"bootstrap_data_placeholder,optional" docs:"String which will be replaced with {bootstrap_data}." default:"__BOOTSTRAP_DATA__"`
 	BootstrapData        hcl.Expression `hcl:"bootstrap_data,optional" docs:"JSON object which replaces the placeholder from {bootstrap_file} content."`
 	BootstrapFile        string         `hcl:"bootstrap_file" docs:"Location of the bootstrap file."`
-	CORS                 *CORS          `hcl:"cors,block" docs:"Configure [CORS](cors) settings."`
+	CORS                 *CORS          `hcl:"cors,block" docs:"Configures [CORS](/configuration/block/cors) settings."`
 	DisableAccessControl []string       `hcl:"disable_access_control,optional" docs:"Disables access controls by name."`
 	Name                 string         `hcl:"name,label,optional"`
 	Paths                []string       `hcl:"paths" docs:"List of SPA paths that need the bootstrap file."`

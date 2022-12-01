@@ -151,7 +151,7 @@ values: [
 ---
 values: [
   {
-    "description": "Configure [CORS](cors) settings.",
+    "description": "Configures [CORS](/configuration/block/cors) settings.",
     "name": "cors"
   }
 ]
