@@ -15,7 +15,7 @@ The `request` block creates and executes a request to a backend service.
 values: [
   {
     "default": "",
-    "description": "`backend` block reference, defined in [`definitions`](definitions). Required, if no [`backend` block](backend) or `url` is defined within.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Required, if no [`backend` block](backend) or `url` is defined within.",
     "name": "backend",
     "type": "string"
   },
@@ -66,6 +66,18 @@ values: [
     "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the used backend.",
     "name": "url",
     "type": "string"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for the request.",
+    "name": "backend"
   }
 ]
 
