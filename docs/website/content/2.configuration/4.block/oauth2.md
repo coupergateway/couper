@@ -23,7 +23,7 @@ values: [
   },
   {
     "default": "",
-    "description": "[`backend` block](backend) reference.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests.",
     "name": "backend",
     "type": "string"
   },
@@ -87,3 +87,19 @@ values: [
 ::
 
 The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](/configuration/modifiers#request-header) in a [backend block](/configuration/block/backend).
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for token requests.",
+    "name": "backend"
+  },
+  {
+    "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"`, or to create an assertion if `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"` and no `assertion` attribute is set.",
+    "name": "jwt_signing_profile"
+  }
+]
+
+---
+::
