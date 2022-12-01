@@ -102,7 +102,7 @@ values: [
   },
   {
     "default": "",
-    "description": "`proxy` block reference.",
+    "description": "References a [`proxy` block](/configuration/block/proxy) in the [definitions](/configuration/block/definitions).",
     "name": "proxy",
     "type": "string"
   },
@@ -165,6 +165,26 @@ values: [
     "description": "Modifies the response status code.",
     "name": "set_response_status",
     "type": "number"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [proxy](/configuration/block/proxy).",
+    "name": "proxy"
+  },
+  {
+    "description": "Configures a [request](/configuration/block/request).",
+    "name": "request"
+  },
+  {
+    "description": "Configures the [response](/configuration/block/response).",
+    "name": "response"
   }
 ]
 
