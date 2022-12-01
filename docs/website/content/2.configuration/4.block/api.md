@@ -98,3 +98,19 @@ values: [
 
 ---
 ::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures [CORS](/configuration/block/cors) settings.",
+    "name": "cors"
+  },
+  {
+    "description": "Configures [endpoints](/configuration/block/endpoint) in this API.",
+    "name": "endpoint"
+  }
+]
+
+---
+::
