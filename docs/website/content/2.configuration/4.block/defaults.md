@@ -24,3 +24,10 @@ values: [
 Examples:
 
 - [`environment_variables`](https://github.com/avenga/couper-examples/blob/master/env-var/README.md)
+
+::blocks
+---
+values: null
+
+---
+::

@@ -173,3 +173,10 @@ The `jwt` block may also be referenced by the [`jwt_sign()` function](/configura
 > **Note:** A `jwt` block with `signing_ttl` cannot have the same label as a `jwt_signing_profile` block.
 
 ::duration
+
+::blocks
+---
+values: null
+
+---
+::

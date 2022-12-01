@@ -67,3 +67,10 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
   - the `NameID` of the assertion's `Subject` (`request.context.<label>.sub`)
   - the session expiry date `SessionNotOnOrAfter` (as UNIX timestamp: `request.context.<label>.exp`)
   - the attributes (`request.context.<label>.attributes.<name>`)
+
+::blocks
+---
+values: null
+
+---
+::

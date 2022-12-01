@@ -69,12 +69,6 @@ values: [
   },
   {
     "default": "",
-    "description": "[`proxy`](proxy) block definition.",
-    "name": "proxy",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "list of names to remove form parameters from the upstream request body",
     "name": "remove_form_params",
     "type": "object"
@@ -99,18 +93,6 @@ values: [
   },
   {
     "default": "",
-    "description": "[`request`](request) block definition.",
-    "name": "request",
-    "type": "object"
-  },
-  {
-    "default": "",
-    "description": "[`response`](response) block definition.",
-    "name": "response",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "key/value pairs to set query parameters in the upstream request URL",
     "name": "set_form_params",
     "type": "object"
@@ -132,6 +114,26 @@ values: [
     "description": "key/value pairs to set as response headers in the client response",
     "name": "set_response_headers",
     "type": "object"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "[`proxy`](proxy) block definition.",
+    "name": "proxy"
+  },
+  {
+    "description": "[`request`](request) block definition.",
+    "name": "request"
+  },
+  {
+    "description": "[`response`](response) block definition.",
+    "name": "response"
   }
 ]
 

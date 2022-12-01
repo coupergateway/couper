@@ -226,3 +226,10 @@ If an attribute is set in both the _referenced_ and the _refining_ block, the va
 * `disable_connection_reuse`,
 * `http2` and
 * `max_connections`.
+
+::blocks
+---
+values: null
+
+---
+::

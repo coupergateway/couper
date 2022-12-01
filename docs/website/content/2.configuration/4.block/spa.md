@@ -114,12 +114,6 @@ values: [
   },
   {
     "default": "",
-    "description": "Configure [CORS](cors) settings.",
-    "name": "cors",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
@@ -147,6 +141,18 @@ values: [
     "description": "key/value pairs to set as response headers in the client response",
     "name": "set_response_headers",
     "type": "object"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configure [CORS](cors) settings.",
+    "name": "cors"
   }
 ]
 

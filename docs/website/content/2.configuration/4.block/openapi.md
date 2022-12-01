@@ -51,3 +51,10 @@ openapi {
 ```
 
 You can find a detailed example [here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
+
+::blocks
+---
+values: null
+
+---
+::

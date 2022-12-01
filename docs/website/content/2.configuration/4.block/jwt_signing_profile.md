@@ -83,3 +83,10 @@ jwt_signing_profile "myjwt" {
 ```
 
 A detailed example can be found [here](https://github.com/avenga/couper-examples/blob/master/creating-jwt/README.md).
+
+::blocks
+---
+values: null
+
+---
+::
