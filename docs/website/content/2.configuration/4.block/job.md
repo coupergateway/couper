@@ -55,12 +55,6 @@ values: [
     "description": "Execution interval",
     "name": "interval",
     "type": "duration"
-  },
-  {
-    "default": "",
-    "description": "[`request`](request) block definition.",
-    "name": "request",
-    "type": "object"
   }
 ]
 
