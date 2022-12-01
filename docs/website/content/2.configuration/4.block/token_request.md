@@ -12,7 +12,7 @@ The `beta_token_request` block in the [Backend Block](/configuration/block/backe
 values: [
   {
     "default": "",
-    "description": "backend block reference is required if no backend block is defined",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request.",
     "name": "backend",
     "type": "string"
   },
@@ -69,6 +69,18 @@ values: [
     "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the `backend` block (if defined).",
     "name": "url",
     "type": "string"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for the token request.",
+    "name": "backend"
   }
 ]
 
