@@ -31,7 +31,7 @@ const props = defineProps({
     required: false,
     default: [
       {
-        name: "Attributes",
+        name: "Name",
         value: "name",
       },
       {
