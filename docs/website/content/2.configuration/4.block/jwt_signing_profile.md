@@ -6,7 +6,9 @@ by its required _label_.
 
 It can also be used (without _label_) in [`oauth2`](oauth2), [`oidc`](oidc) or
 [`beta_oauth2`](beta_oauth2) blocks for `token_endpoint_auth_method`s `"client_secret_jwt"`
-or `"private_key_jwt"`.
+or `"private_key_jwt"` or in [`oauth2`](oauth2) blocks with
+`grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"`, in the absence of an
+`assertion` attribute, for configuring a self-signed JWT assertion.
 
 | Block name            | Context                                                                                                             | Label                              | Nested block(s) |
 |:----------------------|:--------------------------------------------------------------------------------------------------------------------|:-----------------------------------|:----------------|

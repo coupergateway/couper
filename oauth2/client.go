@@ -9,12 +9,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 
+	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
@@ -35,11 +34,9 @@ type Client struct {
 	clientConfig config.OAuth2Client
 	grantType    string
 	authnMethod  string
-	authnAlgo    string
+	authnJSC     *lib.JWTSigningConfig
 	authnClaims  map[string]interface{}
 	authnHeaders map[string]interface{}
-	authnKey     interface{}
-	authnTTL     int64
 }
 
 func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
@@ -52,11 +49,9 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 	}
 
 	var (
-		algorithm string
-		claims    map[string]interface{}
-		headers   map[string]interface{}
-		key       interface{}
-		ttl       int64
+		signingConfig *lib.JWTSigningConfig
+		claims        map[string]interface{}
+		headers       map[string]interface{}
 	)
 	switch authnMethod {
 	case clientSecretBasic, clientSecretJwt, clientSecretPost, privateKeyJwt:
@@ -90,42 +85,34 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 			if jwtSigningProfile == nil {
 				return nil, fmt.Errorf("jwt_signing_profile block must be set with %s", authnMethod)
 			}
-			dur, algo, err := lib.CheckData(jwtSigningProfile.TTL, jwtSigningProfile.SignatureAlgorithm)
-			if err != nil {
-				return nil, err
-			}
-			if authnMethod == clientSecretJwt && !algo.IsHMAC() || authnMethod == privateKeyJwt && algo.IsHMAC() {
-				return nil, fmt.Errorf("inappropriate signature algorithm with %s", authnMethod)
-			}
-
-			ttl = int64(dur.Seconds())
-			var keyBytes []byte
 			if authnMethod == privateKeyJwt {
 				if jwtSigningProfile.Key == "" && jwtSigningProfile.KeyFile == "" {
 					return nil, fmt.Errorf("key and key_file must not both be empty with %s", authnMethod)
 				}
-				keyBytes, err = reader.ReadFromAttrFile("client authentication key", jwtSigningProfile.Key, jwtSigningProfile.KeyFile)
-				if err != nil {
-					return nil, err
-				}
 			} else { // clientSecretJwt
-				keyBytes = []byte(clientSecret)
 				if jwtSigningProfile.Key != "" {
 					return nil, fmt.Errorf("key must not be set with %s", authnMethod)
 				}
 				if jwtSigningProfile.KeyFile != "" {
 					return nil, fmt.Errorf("key_file must not be set with %s", authnMethod)
 				}
+				jwtSigningProfile.Key = clientSecret
 			}
 
-			key, err = lib.GetKey(keyBytes, jwtSigningProfile.SignatureAlgorithm)
+			algCheckFunc := func(algo acjwt.Algorithm) error {
+				if authnMethod == clientSecretJwt && !algo.IsHMAC() || authnMethod == privateKeyJwt && algo.IsHMAC() {
+					return fmt.Errorf("inappropriate signature algorithm with %s", authnMethod)
+				}
+				return nil
+			}
+			var err error
+			signingConfig, err = lib.NewJWTSigningConfigFromJWTSigningProfile(jwtSigningProfile, algCheckFunc)
 			if err != nil {
 				return nil, err
 			}
-			algorithm = jwtSigningProfile.SignatureAlgorithm
 
-			if jwtSigningProfile.Headers != nil {
-				v, err := eval.Value(evalCtx, jwtSigningProfile.Headers)
+			if signingConfig.Headers != nil {
+				v, err := eval.Value(evalCtx, signingConfig.Headers)
 				if err != nil {
 					return nil, err
 				}
@@ -135,23 +122,22 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 				}
 			}
 
-			tokenEndpoint, err := asConfig.GetTokenEndpoint()
-			if err != nil {
-				return nil, err
-			}
-			claims = map[string]interface{}{
-				// default audience
-				"aud": tokenEndpoint,
-			}
 			// get claims from signing profile
-			if jwtSigningProfile.Claims != nil {
-				cl, err := eval.Value(evalCtx, jwtSigningProfile.Claims)
+			if signingConfig.Claims != nil {
+				cl, err := eval.Value(evalCtx, signingConfig.Claims)
 				if err != nil {
 					return nil, err
 				}
-				for k, v := range seetie.ValueToMap(cl) {
-					claims[k] = v
+				claims = seetie.ValueToMap(cl)
+			} else {
+				claims = make(map[string]interface{}, 3)
+			}
+			if _, set := claims["aud"]; !set {
+				tokenEndpoint, err := asConfig.GetTokenEndpoint()
+				if err != nil {
+					return nil, err
 				}
+				claims["aud"] = tokenEndpoint
 			}
 			claims["iss"] = clientID
 			claims["sub"] = clientID
@@ -168,11 +154,9 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 		clientConfig,
 		grantType,
 		authnMethod,
-		algorithm,
+		signingConfig,
 		claims,
 		headers,
-		key,
-		ttl,
 	}, nil
 }
 
@@ -245,15 +229,15 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 			return err
 		}
 
-		claims := jwt.MapClaims{}
+		claims := make(map[string]interface{})
 		for k, v := range c.authnClaims {
 			claims[k] = v
 		}
 		now := time.Now().Unix()
 		claims["iat"] = now
-		claims["exp"] = now + c.authnTTL
+		claims["exp"] = now + c.authnJSC.TTL
 		claims["jti"] = identifier.String()
-		clientAssertion, err := lib.CreateJWT(c.authnAlgo, c.authnKey, claims, c.authnHeaders)
+		clientAssertion, err := lib.CreateJWT(c.authnJSC.SignatureAlgorithm, c.authnJSC.Key, claims, c.authnHeaders)
 		if err != nil {
 			return err
 		}
