@@ -104,6 +104,7 @@ func main() {
 		&config.Server{},
 		&config.ClientCertificate{},
 		&config.ServerCertificate{},
+		&config.ServerTLS{},
 		&config.Settings{},
 		&config.Spa{},
 		&config.TokenRequest{},

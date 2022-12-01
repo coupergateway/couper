@@ -43,3 +43,19 @@ server "couper" {
     }
   }
 ```
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [client certificate](/configuration/block/client_certificate).",
+    "name": "client_certificate"
+  },
+  {
+    "description": "Configures a [server certificate](/configuration/block/server_certificate).",
+    "name": "server_certificate"
+  }
+]
+
+---
+::
