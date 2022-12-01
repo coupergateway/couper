@@ -24,11 +24,11 @@ import (
 type entry struct {
 	Attributes  []interface{} `json:"attributes"`
 	Blocks      []interface{} `json:"blocks"`
-	Description string  `json:"description"`
-	ID          string  `json:"objectID"`
-	Name        string  `json:"name"`
-	Type        string  `json:"type"`
-	URL         string  `json:"url"`
+	Description string        `json:"description"`
+	ID          string        `json:"objectID"`
+	Name        string        `json:"name"`
+	Type        string        `json:"type"`
+	URL         string        `json:"url"`
 }
 
 type attr struct {
@@ -203,7 +203,9 @@ func main() {
 		}
 
 		sort.Sort(byName(result.Attributes))
-		sort.Sort(byName(result.Blocks))
+		if result.Blocks != nil {
+			sort.Sort(byName(result.Blocks))
+		}
 
 		bAttr := &bytes.Buffer{}
 		enc := json.NewEncoder(bAttr)
@@ -213,12 +215,15 @@ func main() {
 			panic(err)
 		}
 
-		bBlock := &bytes.Buffer{}
-		enc = json.NewEncoder(bBlock)
-		enc.SetEscapeHTML(false)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(result.Blocks); err != nil {
-			panic(err)
+		var bBlock *bytes.Buffer
+		if result.Blocks != nil {
+			bBlock = &bytes.Buffer{}
+			enc = json.NewEncoder(bBlock)
+			enc.SetEscapeHTML(false)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(result.Blocks); err != nil {
+				panic(err)
+			}
 		}
 
 		// TODO: write func
@@ -244,7 +249,7 @@ values: %s
 				skipMode = true
 				seenAttr = true
 				continue
-			} else if strings.HasPrefix(line, "::blocks") {
+			} else if bBlock != nil && strings.HasPrefix(line, "::blocks") {
 				fileBytes.WriteString(fmt.Sprintf(`::blocks
 ---
 values: %s
@@ -276,7 +281,7 @@ values: %s
 ::
 `, bAttr.String()))
 		}
-		if !seenBlock { // TODO: from func/template
+		if bBlock != nil && !seenBlock { // TODO: from func/template
 			fileBytes.WriteString(fmt.Sprintf(`
 ::blocks
 ---
