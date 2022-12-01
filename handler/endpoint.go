@@ -164,11 +164,6 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Jobs case
-	if clientres == nil {
-		return
-	}
-
 	// copy/write like a reverseProxy
 	copyHeader(rw.Header(), clientres.Header)
 
