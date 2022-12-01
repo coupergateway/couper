@@ -21,7 +21,7 @@ values: [
   },
   {
     "default": "",
-    "description": "[`backend` block](backend) reference.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests.",
     "name": "backend",
     "type": "string"
   },
@@ -93,3 +93,19 @@ values: [
 If the authorization server supports the `code_challenge_method` `S256` (a.k.a. PKCE, see RFC 7636), we recommend `verifier_method = "ccm_s256"`.
 
 The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](/configuration/modifiers#request-header) in a [backend block](/configuration/block/backend).
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for token requests.",
+    "name": "backend"
+  },
+  {
+    "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"`.",
+    "name": "jwt_signing_profile"
+  }
+]
+
+---
+::
