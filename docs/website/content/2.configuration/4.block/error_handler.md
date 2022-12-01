@@ -124,15 +124,15 @@ values: [
 ---
 values: [
   {
-    "description": "[`proxy`](proxy) block definition.",
+    "description": "Configures a [proxy](/configuration/block/proxy).",
     "name": "proxy"
   },
   {
-    "description": "[`request`](request) block definition.",
+    "description": "Configures a [request](/configuration/block/request).",
     "name": "request"
   },
   {
-    "description": "[`response`](response) block definition.",
+    "description": "Configures the [response](/configuration/block/response).",
     "name": "response"
   }
 ]
