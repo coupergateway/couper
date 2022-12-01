@@ -65,3 +65,15 @@ values: [
 ---
 ---
 ::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [request](/configuration/block/request).",
+    "name": "request"
+  }
+]
+
+---
+::
