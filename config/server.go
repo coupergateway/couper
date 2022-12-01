@@ -12,18 +12,18 @@ var _ Inline = &Server{}
 // Server represents the <Server> object.
 type Server struct {
 	AccessControl        []string    `hcl:"access_control,optional" docs:"[access controls](../access-control) to protect the server. Inherited by nested blocks."`
-	APIs                 APIs        `hcl:"api,block"`
+	APIs                 APIs        `hcl:"api,block" docs:"Configures an API."`
 	BasePath             string      `hcl:"base_path,optional" docs:"the path prefix for all requests"`
-	CORS                 *CORS       `hcl:"cors,block"`
+	CORS                 *CORS       `hcl:"cors,block" docs:"Configures [CORS](/configuration/block/cors) settings."`
 	DisableAccessControl []string    `hcl:"disable_access_control,optional" docs:"disables access controls by name"`
-	Endpoints            Endpoints   `hcl:"endpoint,block"`
+	Endpoints            Endpoints   `hcl:"endpoint,block" docs:"Configures a free [endpoint](/configuration/block/endpoint)."`
 	ErrorFile            string      `hcl:"error_file,optional" docs:"location of the error file template"`
-	Files                FilesBlocks `hcl:"files,block"`
+	Files                FilesBlocks `hcl:"files,block" docs:"Configures file serving."`
 	Hosts                []string    `hcl:"hosts,optional" docs:""`
 	Name                 string      `hcl:"name,label,optional"`
 	Remain               hcl.Body    `hcl:",remain"`
-	SPAs                 SPAs        `hcl:"spa,block"`
-	TLS                  *ServerTLS  `hcl:"tls,block"`
+	SPAs                 SPAs        `hcl:"spa,block" docs:"Configures an SPA."`
+	TLS                  *ServerTLS  `hcl:"tls,block" docs:"Configures [server TLS](/configuration/block/server_tls)."`
 }
 
 // Servers represents a list of <Server> objects.

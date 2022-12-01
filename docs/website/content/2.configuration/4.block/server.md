@@ -61,3 +61,35 @@ values: [
 
 ---
 ::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures an API.",
+    "name": "api"
+  },
+  {
+    "description": "Configures [CORS](/configuration/block/cors) settings.",
+    "name": "cors"
+  },
+  {
+    "description": "Configures a free [endpoint](/configuration/block/endpoint).",
+    "name": "endpoint"
+  },
+  {
+    "description": "Configures file serving.",
+    "name": "files"
+  },
+  {
+    "description": "Configures an SPA.",
+    "name": "spa"
+  },
+  {
+    "description": "Configures [server TLS](/configuration/block/server_tls).",
+    "name": "tls"
+  }
+]
+
+---
+::
