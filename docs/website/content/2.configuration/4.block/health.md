@@ -4,9 +4,9 @@ Defines a recurring health check request for its backend. Results can be obtaine
 Changes in health states and related requests will be logged. Default User-Agent will be `Couper / <version> health-check` if not provided
 via `headers` attribute. An unhealthy backend will return with a [`backend_unhealthy`](/configuration/error-handling#api-error-types) error.
 
-| Block name    | Context                           | Label | Nested block |
-|:--------------|:----------------------------------|:------|:-------------|
-| `beta_health` | [`backend` block](/configuration/block/backend) | –     |              |
+| Block name    | Context                                         | Label    |
+|:--------------|:------------------------------------------------|:---------|
+| `beta_health` | [`backend` block](/configuration/block/backend) | no label |
 
 ::attributes
 ---

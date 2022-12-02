@@ -10,9 +10,9 @@ or `"private_key_jwt"` or in [`oauth2`](oauth2) blocks with
 `grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"`, in the absence of an
 `assertion` attribute, for configuring a self-signed JWT assertion.
 
-| Block name            | Context                                                                                                             | Label                              | Nested block(s) |
-|:----------------------|:--------------------------------------------------------------------------------------------------------------------|:-----------------------------------|:----------------|
-| `jwt_signing_profile` | [Definitions Block](/configuration/block/definitions), [OAuth2 Block](oauth2), [OAuth2 AC (Beta) Block](beta_oauth2), [OIDC Block](oidc) | required if defined in defititions | -               |
+| Block name            | Context                                                                                                                                  | Label                              |
+|:----------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------|
+| `jwt_signing_profile` | [Definitions Block](/configuration/block/definitions), [OAuth2 Block](oauth2), [OAuth2 AC (Beta) Block](beta_oauth2), [OIDC Block](oidc) | required if defined in defititions |
 
 
 ::attributes

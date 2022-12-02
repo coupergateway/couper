@@ -2,9 +2,9 @@
 
 The `defaults` block lets you define default values.
 
-| Block name | Context | Label | Nested block(s) |
-|:-----------|:--------|:------|:----------------|
-| `defaults` | -       | -     | -               |
+| Block name | Context | Label    |
+|:-----------|:--------|:---------|
+| `defaults` | -       | no label |
 
 
 ::attributes
