@@ -4,9 +4,9 @@ The `oauth2` block in the [Backend Block](/configuration/block/backend) context 
 
 **Note:** The token received from the authorization server's token endpoint is stored **per backend**. So even with flows where a user's account characteristics like username/password or email address are involved, there is no way to "switch" from one user to another depending on the client request.
 
-| Block name | Context                  | Label    | Nested block(s)                                                            |
-|:-----------|:-------------------------|:---------|:---------------------------------------------------------------------------|
-| `oauth2`   | [Backend Block](/configuration/block/backend) | no label | [Backend Block](/configuration/block/backend), [JWT Signing Profile Block](jwt_signing_profile) |
+| Block name | Context                                       | Label    |
+|:-----------|:----------------------------------------------|:---------|
+| `oauth2`   | [Backend Block](/configuration/block/backend) | no label |
 
 A nested `jwt_signing_profile` block is used in two cases:
 * to create a client assertion if `token_endpoint_auth_method` is either `"client_secret_jwt"` or `"private_key_jwt"`; or
@@ -92,11 +92,11 @@ The HTTP header field `Accept: application/json` is automatically added to the t
 ---
 values: [
   {
-    "description": "Configures a [backend](/configuration/block/backend) for token requests. Mutually exclusive with `backend` attribute.",
+    "description": "Configures a [backend](/configuration/block/backend) for token requests (zero or one). Mutually exclusive with `backend` attribute.",
     "name": "backend"
   },
   {
-    "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"`, or to create an assertion if `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"` and no `assertion` attribute is set.",
+    "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"`, or to create an assertion if `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"` and no `assertion` attribute is set (zero or one).",
     "name": "jwt_signing_profile"
   }
 ]

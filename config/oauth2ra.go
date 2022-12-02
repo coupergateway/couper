@@ -36,7 +36,7 @@ type OAuth2ReqAuth struct {
 	ClientID                string             `hcl:"client_id,optional" docs:"The client identifier. Required unless the {grant_type} is {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"}."`
 	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password. Required unless the {grant_type} is {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"}."`
 	GrantType               string             `hcl:"grant_type" docs:"Required, valid values: {\"client_credentials\"}, {\"password\"}, {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"}"`
-	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"}, or to create an assertion if {grant_type} is {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"} and no {assertion} attribute is set."`
+	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"}, or to create an assertion if {grant_type} is {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"} and no {assertion} attribute is set (zero or one)."`
 	Password                string             `hcl:"password,optional" docs:"The (service account's) password (for password flow). Required if grant_type is {\"password\"}."`
 	Remain                  hcl.Body           `hcl:",remain"`
 	Retries                 *uint8             `hcl:"retries,optional" default:"1" docs:"The number of retries to get the token and resource, if the resource-request responds with {401 Unauthorized} HTTP status code."`
@@ -59,7 +59,7 @@ func (oa *OAuth2ReqAuth) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (oa *OAuth2ReqAuth) Inline() interface{} {
 	type Inline struct {
-		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests. Mutually exclusive with {backend} attribute."`
+		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests (zero or one). Mutually exclusive with {backend} attribute."`
 	}
 
 	return &Inline{}
