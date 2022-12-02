@@ -80,14 +80,6 @@ func (o *OIDC) Inline() interface{} {
 		meta.LogFieldsAttribute
 		Backend       *Backend `hcl:"backend,block" docs:"Configures a default [backend](/configuration/block/backend) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with {backend} attribute."`
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier."`
-
-		AuthorizationBackend       *Backend `hcl:"authorization_backend,block"`
-		ConfigurationBackend       *Backend `hcl:"configuration_backend,block" docs:"Configures a [backend](/configuration/block/backend) for OpenID configuration requests."`
-		DeviceAuthorizationBackend *Backend `hcl:"device_authorization_backend,block"`
-		JWKSBackend                *Backend `hcl:"jwks_uri_backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests."`
-		RevocationBackend          *Backend `hcl:"revocation_backend,block"`
-		TokenBackend               *Backend `hcl:"token_backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests."`
-		UserinfoBackend            *Backend `hcl:"userinfo_backend,block" docs:"Configures a [backend](/configuration/block/backend) for userinfo requests."`
 	}
 
 	return &Inline{}

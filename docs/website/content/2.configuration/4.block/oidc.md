@@ -149,24 +149,8 @@ values: [
     "name": "backend"
   },
   {
-    "description": "Configures a [backend](/configuration/block/backend) for OpenID configuration requests.",
-    "name": "configuration_backend"
-  },
-  {
-    "description": "Configures a [backend](/configuration/block/backend) for JWKS requests.",
-    "name": "jwks_uri_backend"
-  },
-  {
     "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"`.",
     "name": "jwt_signing_profile"
-  },
-  {
-    "description": "Configures a [backend](/configuration/block/backend) for token requests.",
-    "name": "token_backend"
-  },
-  {
-    "description": "Configures a [backend](/configuration/block/backend) for userinfo requests.",
-    "name": "userinfo_backend"
   }
 ]
 
