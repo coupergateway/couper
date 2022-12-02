@@ -37,7 +37,7 @@ type Health struct {
 	Interval         string   `hcl:"interval,optional" docs:"time interval for recheck" default:"1s"`
 	Timeout          string   `hcl:"timeout,optional" docs:"maximum allowed time limit which is	bounded by {interval}" default:"1s"`
 	Path             string   `hcl:"path,optional" docs:"URL path with query on backend host"`
-	ExpectedStatus   []int    `hcl:"expected_status,optional" docs:"one of wanted response status code" default:"[200, 204, 301]"`
+	ExpectedStatus   []int    `hcl:"expected_status,optional" docs:"one of wanted response status codes" default:"[200, 204, 301]"`
 	ExpectedText     string   `hcl:"expected_text,optional" docs:"text which the response body must contain"`
 	Headers          Headers  `hcl:"headers,optional" docs:"request headers"`
 	Remain           hcl.Body `hcl:",remain"`

@@ -13,7 +13,7 @@ via `headers` attribute. An unhealthy backend will return with a [`backend_unhea
 values: [
   {
     "default": "[200, 204, 301]",
-    "description": "one of wanted response status code",
+    "description": "one of wanted response status codes",
     "name": "expected_status",
     "type": "tuple (int)"
   },
