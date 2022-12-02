@@ -9,6 +9,7 @@ import (
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -87,15 +88,7 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry, wg
 		return err
 	}
 
-	hostname, err := os.Hostname()
-	otel.Handle(err)
-
-	resources := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.HostNameKey.String(hostname),
-		semconv.ServiceNameKey.String(opts.ServiceName),
-		semconv.ServiceVersionKey.String(utils.VersionName),
-	)
+	resources := newResource(opts.ServiceName)
 
 	bsp := sdktrace.NewBatchSpanProcessor(traceExp)
 	tracerProvider := sdktrace.NewTracerProvider(
@@ -104,7 +97,7 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry, wg
 		sdktrace.WithSpanProcessor(bsp),
 	)
 
-	// set global propagator to tracecontext (the default is no-op).
+	// set global propagator to TraceContext (the default is no-op).
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	otel.SetTracerProvider(tracerProvider)
 
@@ -125,7 +118,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 	}
 
 	if exporter == ExporterPrometheus {
-		promExporter, promRegisterer, err := newPromExporter(opts)
+		promExporter, promRegistry, err := newPromExporter(opts)
 		if err != nil {
 			return err
 		}
@@ -137,7 +130,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 		provider.SetMeterProvider(meterProvider)
 
 		go func() {
-			metrics := NewMetricsServer(log, promRegisterer, opts.MetricsPort)
+			metrics := NewMetricsServer(log, promRegistry, opts.MetricsPort)
 			go metrics.ListenAndServe()
 			<-ctx.Done()
 			otel.Handle(metrics.Close())
@@ -200,23 +193,36 @@ func pushOnShutdown(ctx context.Context, shutdownFdn func(ctx context.Context) e
 	otel.Handle(shutdownFdn(shtctx))
 }
 
-func newPromExporter(opts *Options) (*otelprom.Exporter, *prom.Registry, error) {
-	registry := prom.NewRegistry()
+func newPromExporter(opts *Options) (*otelprom.Exporter, *WrappedRegistry, error) {
+	strPtr := func(s string) *string { return &s }
 
-	registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewGoCollector()))
-	registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewProcessCollector(
+	registry := NewWrappedRegistry(prom.NewRegistry(), &dto.LabelPair{
+		Name:  strPtr("service_name"),
+		Value: strPtr(opts.ServiceName),
+	}, &dto.LabelPair{
+		Name:  strPtr("service_version"),
+		Value: strPtr(utils.VersionName),
+	})
+
+	registry.MustRegister(collectors.NewGoCollector())
+	registry.MustRegister(collectors.NewProcessCollector(
 		collectors.ProcessCollectorOpts{
 			Namespace: "couper", // name prefix
 		},
-	)))
+	))
 
 	promExporter, err := otelprom.New(otelprom.WithRegisterer(registry))
+
 	return promExporter, registry, err
 }
 
 func newResource(serviceName string) *resource.Resource {
+	hostname, err := os.Hostname()
+	otel.Handle(err)
+
 	return resource.NewWithAttributes(
 		semconv.SchemaURL,
+		semconv.HostNameKey.String(hostname),
 		semconv.ServiceNameKey.String(serviceName),
 		semconv.ServiceVersionKey.String(utils.VersionName),
 	)
