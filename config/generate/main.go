@@ -85,6 +85,7 @@ func main() {
 		&config.BasicAuth{},
 		&config.CORS{},
 		&config.Defaults{},
+		&config.Definitions{},
 		&config.Endpoint{},
 		&config.ErrorHandler{},
 		&config.Files{},
