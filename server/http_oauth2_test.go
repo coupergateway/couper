@@ -741,7 +741,6 @@ definitions {
       client_id      = "my_client"
       grant_type     = "client_credentials"
       token_endpoint_auth_method = "private_key_jwt"
-      authn_key = "a key"
       jwt_signing_profile {
         signature_algorithm = "HS256"
         key = "a key"

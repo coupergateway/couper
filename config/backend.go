@@ -26,6 +26,10 @@ type Backend struct {
 	RateLimits             RateLimits  `hcl:"beta_rate_limit,block" docs:"Configures [rate limiting](/configuration/block/rate_limit)."`
 	Remain                 hcl.Body    `hcl:",remain"`
 	TLS                    *BackendTLS `hcl:"tls,block" docs:"Configures [backend TLS](/configuration/block/backend_tls)."`
+
+	// used for validation and documentation
+	OAuth2       *OAuth2ReqAuth  `hcl:"oauth2,block" docs:"Configures an [OAuth2 authorization](/configuration/block/oauth2)."`
+	TokenRequest []*TokenRequest `hcl:"beta_token_request,block" docs:"Configures a [token request authorization](/configuration/block/token_request)."`
 }
 
 // Reference implements the <BackendReference> interface.

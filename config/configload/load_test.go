@@ -572,6 +572,9 @@ func TestConfigErrors(t *testing.T) {
 			    oauth2 {
 			      token_endpoint = "https://as/token"
 			      backend = "as"
+			      grant_type = "client_credentials"
+			      client_id = "asdf"
+			      client_secret = "asdf"
 			    }
 			  }
 			}`,
@@ -585,6 +588,9 @@ func TestConfigErrors(t *testing.T) {
 			    oauth2 {
 			      token_endpoint = "https://as/token"
 			      backend "as" {}
+			      grant_type = "client_credentials"
+			      client_id = "asdf"
+			      client_secret = "asdf"
 			    }
 			  }
 			}`,
@@ -598,6 +604,8 @@ func TestConfigErrors(t *testing.T) {
 			    beta_token_request {
 			      url = "https://as/token"
 			      backend = "as"
+			      token = "asdf"
+			      ttl = "1s"
 			    }
 			  }
 			}`,
@@ -611,6 +619,8 @@ func TestConfigErrors(t *testing.T) {
 			    beta_token_request {
 			      url = "https://as/token"
 			      backend = "as"
+			      token = "asdf"
+			      ttl = "1s"
 			    }
 			  }
 			}`,

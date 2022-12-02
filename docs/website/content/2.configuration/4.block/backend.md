@@ -207,6 +207,14 @@ values: [
     "name": "beta_rate_limit"
   },
   {
+    "description": "Configures a [token request authorization](/configuration/block/token_request).",
+    "name": "beta_token_request"
+  },
+  {
+    "description": "Configures an [OAuth2 authorization](/configuration/block/oauth2).",
+    "name": "oauth2"
+  },
+  {
     "description": "Configures [OpenAPI validation](/configuration/block/openapi).",
     "name": "openapi"
   },
