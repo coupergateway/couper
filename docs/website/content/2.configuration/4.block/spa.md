@@ -2,9 +2,9 @@
 
 The `spa` blocks configure the Web serving for SPA assets. Can be defined multiple times as long as the `base_path`+`paths` is unique.
 
-| Block name | Context                       | Label    | Nested block(s)           |
-|:-----------|:------------------------------|:---------|:--------------------------|
-| `spa`      | [Server Block](/configuration/block/server) | Optional | [CORS Block](/configuration/block/cors) |
+| Block name | Context                                     | Label    |
+|:-----------|:--------------------------------------------|:---------|
+| `spa`      | [Server Block](/configuration/block/server) | Optional |
 
 ```hcl
 spa {
@@ -151,7 +151,7 @@ values: [
 ---
 values: [
   {
-    "description": "Configures [CORS](/configuration/block/cors) settings.",
+    "description": "Configures [CORS](/configuration/block/cors) settings (zero or one).",
     "name": "cors"
   }
 ]
