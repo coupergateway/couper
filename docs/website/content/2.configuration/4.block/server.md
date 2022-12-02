@@ -2,9 +2,9 @@
 
 The `server` block is one of the root configuration blocks of Couper's configuration file.
 
-| Block name | Context | Label    | Nested block(s)                                                                                                                                       |
-|:-----------|:--------|:---------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `server`   | -       | optional | [CORS Block](/configuration/block/cors), [Files Block](/configuration/block/files), [SPA Block(s)](/configuration/block/spa) , [API Block(s)](/configuration/block/api), [Endpoint Block(s)](/configuration/block/endpoint) |
+| Block name | Context | Label    |
+|:-----------|:--------|:---------|
+| `server`   | -       | optional |
 
 ::attributes
 ---
@@ -66,27 +66,27 @@ values: [
 ---
 values: [
   {
-    "description": "Configures an API.",
+    "description": "Configures an API (zero or more).",
     "name": "api"
   },
   {
-    "description": "Configures [CORS](/configuration/block/cors) settings.",
+    "description": "Configures [CORS](/configuration/block/cors) settings (zero or one).",
     "name": "cors"
   },
   {
-    "description": "Configures a free [endpoint](/configuration/block/endpoint).",
+    "description": "Configures a free [endpoint](/configuration/block/endpoint) (zero or more).",
     "name": "endpoint"
   },
   {
-    "description": "Configures file serving.",
+    "description": "Configures file serving (zero or more).",
     "name": "files"
   },
   {
-    "description": "Configures an SPA.",
+    "description": "Configures an SPA (zero or more).",
     "name": "spa"
   },
   {
-    "description": "Configures [server TLS](/configuration/block/server_tls).",
+    "description": "Configures [server TLS](/configuration/block/server_tls) (zero or one).",
     "name": "tls"
   }
 ]
