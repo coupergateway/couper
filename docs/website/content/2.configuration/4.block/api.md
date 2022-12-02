@@ -109,6 +109,10 @@ values: [
   {
     "description": "Configures [endpoints](/configuration/block/endpoint) in this API.",
     "name": "endpoint"
+  },
+  {
+    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "name": "error_handler"
   }
 ]
 

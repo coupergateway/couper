@@ -183,6 +183,10 @@ values: [
   {
     "description": "Configures a [backend](/configuration/block/backend) for JWKS requests. Mutually exclusive with `backend` attribute.",
     "name": "backend"
+  },
+  {
+    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "name": "error_handler"
   }
 ]
 

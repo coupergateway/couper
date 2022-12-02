@@ -129,9 +129,7 @@ func main() {
 		result.ID = result.URL
 
 		var fields []reflect.StructField
-		for i := 0; i < t.NumField(); i++ {
-			fields = append(fields, t.Field(i))
-		}
+		fields = collectFields(t, fields)
 
 		inlineType, ok := impl.(config.Inline)
 		if ok {
@@ -323,6 +321,18 @@ values: %s
 	// index non generated markdown
 	indexDirectory(configurationPath, "", processedFiles, index)
 	indexDirectory(docsBlockPath, "block", processedFiles, index)
+}
+
+func collectFields(t reflect.Type, fields []reflect.StructField) []reflect.StructField {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.Anonymous {
+			fields = append(fields, collectFields(field.Type, fields)...)
+		} else {
+			fields = append(fields, field)
+		}
+	}
+	return fields
 }
 
 var mdHeaderRegex = regexp.MustCompile(`#(.+)\n(\n(.+)\n)`)

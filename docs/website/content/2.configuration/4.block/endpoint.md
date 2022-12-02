@@ -175,6 +175,10 @@ values: [
 ---
 values: [
   {
+    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "name": "error_handler"
+  },
+  {
     "description": "Configures a [proxy](/configuration/block/proxy).",
     "name": "proxy"
   },

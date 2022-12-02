@@ -149,6 +149,10 @@ values: [
     "name": "backend"
   },
   {
+    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "name": "error_handler"
+  },
+  {
     "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"`.",
     "name": "jwt_signing_profile"
   }

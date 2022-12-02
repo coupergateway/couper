@@ -57,3 +57,15 @@ values: [
 
 ---
 ::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "name": "error_handler"
+  }
+]
+
+---
+::
