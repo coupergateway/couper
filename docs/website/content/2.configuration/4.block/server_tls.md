@@ -6,9 +6,9 @@ draft: false
 
 # TLS (Server)
 
-| Block name   | Context                                     | Label    | Nested block(s)                              |
-|:-------------|:--------------------------------------------|:---------|:---------------------------------------------|
-| `tls`        | [Server Block](/configuration/block/server) | no       | [Server Certificate(s)](/configuration/block/server_certificate), [Client Certificate(s)](/configuration/block/client_certificate) |
+| Block name   | Context                                     | Label    |
+|:-------------|:--------------------------------------------|:---------|
+| `tls`        | [Server Block](/configuration/block/server) | no       |
 
 The `tls` block allows to configure one or more server certificates in the first place.
 The certificates will be served on all ports within the `hosts` list. Enabling `tls` also enables the upgrade option to the `HTTP2` protocol.
@@ -48,11 +48,11 @@ server "couper" {
 ---
 values: [
   {
-    "description": "Configures a [client certificate](/configuration/block/client_certificate).",
+    "description": "Configures a [client certificate](/configuration/block/client_certificate) (zero or more).",
     "name": "client_certificate"
   },
   {
-    "description": "Configures a [server certificate](/configuration/block/server_certificate).",
+    "description": "Configures a [server certificate](/configuration/block/server_certificate) (zero or more).",
     "name": "server_certificate"
   }
 ]
