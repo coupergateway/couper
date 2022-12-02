@@ -25,7 +25,7 @@ var TokenRequestBlockSchema = &hcl.BodySchema{
 }
 
 type TokenRequest struct {
-	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request."`
+	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request. Mutually exclusive with {backend} block."`
 	Name        string   `hcl:"name,label,optional"`
 	URL         string   `hcl:"url,optional" docs:"If defined, the host part of the URL must be the same as the {origin} attribute of the {backend} block (if defined)."`
 	Remain      hcl.Body `hcl:",remain"`
@@ -47,7 +47,7 @@ func (t *TokenRequest) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (t *TokenRequest) Inline() interface{} {
 	type Inline struct {
-		Backend        *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the token request."`
+		Backend        *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the token request. Mutually exclusive with {backend} attribute."`
 		Body           string               `hcl:"body,optional" docs:"Creates implicit default {Content-Type: text/plain} header field"`
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a {beta_backend_token_request} error can be handled with an {error_handler}"`
 		FormBody       string               `hcl:"form_body,optional" docs:"Creates implicit default {Content-Type: application/x-www-form-urlencoded} header field."`

@@ -21,7 +21,7 @@ values: [
   },
   {
     "default": "",
-    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -98,7 +98,7 @@ The HTTP header field `Accept: application/json` is automatically added to the t
 ---
 values: [
   {
-    "description": "Configures a [backend](/configuration/block/backend) for token requests.",
+    "description": "Configures a [backend](/configuration/block/backend) for token requests. Mutually exclusive with `backend` attribute.",
     "name": "backend"
   },
   {

@@ -17,7 +17,7 @@ A nested `jwt_signing_profile` block is used to create a client assertion if `to
 values: [
   {
     "default": "",
-    "description": "References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration, JWKS, token and userinfo requests.",
+    "description": "References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -145,7 +145,7 @@ The HTTP header field `Accept: application/json` is automatically added to the t
 ---
 values: [
   {
-    "description": "Configures a default [backend](/configuration/block/backend) for OpenID configuration, JWKS, token and userinfo requests.",
+    "description": "Configures a default [backend](/configuration/block/backend) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with `backend` attribute.",
     "name": "backend"
   },
   {

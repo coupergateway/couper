@@ -12,7 +12,7 @@ The `beta_token_request` block in the [Backend Block](/configuration/block/backe
 values: [
   {
     "default": "",
-    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -79,7 +79,7 @@ values: [
 ---
 values: [
   {
-    "description": "Configures a [backend](/configuration/block/backend) for the token request.",
+    "description": "Configures a [backend](/configuration/block/backend) for the token request. Mutually exclusive with `backend` attribute.",
     "name": "backend"
   }
 ]

@@ -23,7 +23,7 @@ type Claims hcl.Expression
 // JWT represents the <JWT> object.
 type JWT struct {
 	ErrorHandlerSetter
-	BackendName           string              `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for JWKS requests."`
+	BackendName           string              `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for JWKS requests. Mutually exclusive with {backend} block."`
 	Claims                Claims              `hcl:"claims,optional" docs:"Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request."`
 	ClaimsRequired        []string            `hcl:"required_claims,optional" docs:"List of claim names that must be given for a valid token."`
 	Cookie                string              `hcl:"cookie,optional" docs:"Read token value from a cookie. Cannot be used together with {header} or {token_value}"`
@@ -80,7 +80,7 @@ func (j *JWT) HCLBody() *hclsyntax.Body {
 func (j *JWT) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests."`
+		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests. Mutually exclusive with {backend} attribute."`
 	}
 
 	return &Inline{}

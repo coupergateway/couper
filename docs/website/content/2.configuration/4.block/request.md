@@ -15,7 +15,7 @@ The `request` block creates and executes a request to a backend service.
 values: [
   {
     "default": "",
-    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Required, if no [`backend` block](backend) or `url` is defined within.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Mutually exclusive with `backend` block. Required, if no [`backend` block](backend) or `url` is defined within.",
     "name": "backend",
     "type": "string"
   },
@@ -76,7 +76,7 @@ values: [
 ---
 values: [
   {
-    "description": "Configures a [backend](/configuration/block/backend) for the request.",
+    "description": "Configures a [backend](/configuration/block/backend) for the request. Mutually exclusive with `backend` attribute.",
     "name": "backend"
   }
 ]

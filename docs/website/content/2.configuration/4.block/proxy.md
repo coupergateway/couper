@@ -39,7 +39,7 @@ values: [
   },
   {
     "default": "",
-    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the proxy request.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the proxy request. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -111,7 +111,7 @@ values: [
   },
   {
     "default": "false",
-    "description": "Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other `proxy` blocks, `request` blocks or `response` blocks are not allowed within the current `endpoint` block.",
+    "description": "Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other `proxy` blocks, `request` blocks or `response` blocks are not allowed within the current `endpoint` block. Mutually exclusive with `websockets` block.",
     "name": "websockets",
     "type": "bool"
   }
@@ -124,11 +124,11 @@ values: [
 ---
 values: [
   {
-    "description": "Configures a [backend](/configuration/block/backend) for the proxy request.",
+    "description": "Configures a [backend](/configuration/block/backend) for the proxy request. Mutually exclusive with `backend` attribute.",
     "name": "backend"
   },
   {
-    "description": "Configures support for [websockets](/configuration/block/websockets) connections.",
+    "description": "Configures support for [websockets](/configuration/block/websockets) connections. Mutually exclusive with `websockets` attribute.",
     "name": "websockets"
   }
 ]

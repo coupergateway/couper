@@ -22,7 +22,7 @@ var (
 // the url with the backend origin definition.
 type OIDC struct {
 	ErrorHandlerSetter
-	BackendName             string             `hcl:"backend,optional" docs:"References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration, JWKS, token and userinfo requests."`
+	BackendName             string             `hcl:"backend,optional" docs:"References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with {backend} block."`
 	ClientID                string             `hcl:"client_id" docs:"The client identifier."`
 	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password."`
 	ConfigurationURL        string             `hcl:"configuration_url" docs:"The OpenID configuration URL."`
@@ -78,7 +78,7 @@ func (o *OIDC) HCLBody() *hclsyntax.Body {
 func (o *OIDC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend       *Backend `hcl:"backend,block" docs:"Configures a default [backend](/configuration/block/backend) for OpenID configuration, JWKS, token and userinfo requests."`
+		Backend       *Backend `hcl:"backend,block" docs:"Configures a default [backend](/configuration/block/backend) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with {backend} attribute."`
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier."`
 
 		AuthorizationBackend       *Backend `hcl:"authorization_backend,block"`

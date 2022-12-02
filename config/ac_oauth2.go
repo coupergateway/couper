@@ -24,7 +24,7 @@ type OAuth2AC struct {
 	ErrorHandlerSetter
 	// AuthorizationEndpoint is used for lib.FnOAuthAuthorizationURL
 	AuthorizationEndpoint   string             `hcl:"authorization_endpoint" docs:"The authorization server endpoint URL used for authorization."`
-	BackendName             string             `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests."`
+	BackendName             string             `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests. Mutually exclusive with {backend} block."`
 	ClientID                string             `hcl:"client_id" docs:"The client identifier."`
 	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password."`
 	GrantType               string             `hcl:"grant_type" docs:"The grant type. Required, to be set to: {\"authorization_code\"}"`
@@ -60,7 +60,7 @@ func (oa *OAuth2AC) HCLBody() *hclsyntax.Body {
 func (oa *OAuth2AC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend       *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests."`
+		Backend       *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests. Mutually exclusive with {backend} attribute."`
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier. E.g. using cookie value created with {oauth2_verifier()} function](../functions)"`
 	}
 

@@ -32,7 +32,7 @@ var (
 // OAuth2ReqAuth represents the oauth2 block in a backend block.
 type OAuth2ReqAuth struct {
 	AssertionExpr           hcl.Expression     `hcl:"assertion,optional" docs:"The assertion (JWT for jwt-bearer flow). Required if {grant_type} is {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"} and no nested {jwt_signing_profile} block is present." type:"string"`
-	BackendName             string             `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests."`
+	BackendName             string             `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests. Mutually exclusive with {backend} block."`
 	ClientID                string             `hcl:"client_id,optional" docs:"The client identifier. Required unless the {grant_type} is {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"}."`
 	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password. Required unless the {grant_type} is {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"}."`
 	GrantType               string             `hcl:"grant_type" docs:"Required, valid values: {\"client_credentials\"}, {\"password\"}, {\"urn:ietf:params:oauth:grant-type:jwt-bearer\"}"`
@@ -59,7 +59,7 @@ func (oa *OAuth2ReqAuth) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (oa *OAuth2ReqAuth) Inline() interface{} {
 	type Inline struct {
-		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests."`
+		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests. Mutually exclusive with {backend} attribute."`
 	}
 
 	return &Inline{}
