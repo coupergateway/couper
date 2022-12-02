@@ -3,9 +3,11 @@ package telemetry
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
-	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 
 	"github.com/avenga/couper/telemetry/handler"
 )
@@ -15,10 +17,15 @@ type MetricsServer struct {
 	server *http.Server
 }
 
-func NewMetricsServer(log *logrus.Entry, exporter *otelprom.Exporter, port int) *MetricsServer {
+func NewMetricsServer(log *logrus.Entry, registerer *prom.Registry, port int) *MetricsServer {
 	server := &http.Server{
-		Addr:    ":" + strconv.Itoa(port),
-		Handler: handler.NewWrappedHandler(log, nil), // TODO: how to promhttp export
+		Addr: ":" + strconv.Itoa(port),
+		Handler: handler.NewWrappedHandler(log, promhttp.HandlerFor(registerer, promhttp.HandlerOpts{
+			EnableOpenMetrics: true,
+			ErrorLog:          log,
+			Registry:          registerer,
+			Timeout:           time.Second * 2,
+		})),
 	}
 
 	return &MetricsServer{

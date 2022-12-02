@@ -125,7 +125,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 	}
 
 	if exporter == ExporterPrometheus {
-		promExporter, err := newPromExporter(opts)
+		promExporter, promRegisterer, err := newPromExporter(opts)
 		if err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ func initMetricExporter(ctx context.Context, opts *Options, log *logrus.Entry, w
 		provider.SetMeterProvider(meterProvider)
 
 		go func() {
-			metrics := NewMetricsServer(log, promExporter, opts.MetricsPort)
+			metrics := NewMetricsServer(log, promRegisterer, opts.MetricsPort)
 			go metrics.ListenAndServe()
 			<-ctx.Done()
 			otel.Handle(metrics.Close())
@@ -200,7 +200,7 @@ func pushOnShutdown(ctx context.Context, shutdownFdn func(ctx context.Context) e
 	otel.Handle(shutdownFdn(shtctx))
 }
 
-func newPromExporter(opts *Options) (*otelprom.Exporter, error) {
+func newPromExporter(opts *Options) (*otelprom.Exporter, *prom.Registry, error) {
 	registry := prom.NewRegistry()
 
 	registry.MustRegister(NewServiceNameCollector(opts.ServiceName, collectors.NewGoCollector()))
@@ -211,7 +211,7 @@ func newPromExporter(opts *Options) (*otelprom.Exporter, error) {
 	)))
 
 	promExporter, err := otelprom.New(otelprom.WithRegisterer(registry))
-	return promExporter, err
+	return promExporter, registry, err
 }
 
 func newResource(serviceName string) *resource.Resource {
