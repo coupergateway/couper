@@ -17,10 +17,10 @@ var (
 type ErrorHandler struct {
 	Kinds     []string
 	ErrorFile string    `hcl:"error_file,optional" docs:"Location of the error file template."`
-	Proxies   Proxies   `hcl:"proxy,block" docs:"Configures a [proxy](/configuration/block/proxy)."`
+	Proxies   Proxies   `hcl:"proxy,block" docs:"Configures a [proxy](/configuration/block/proxy) (zero or more)."`
 	Remain    hcl.Body  `hcl:",remain"`
-	Requests  Requests  `hcl:"request,block" docs:"Configures a [request](/configuration/block/request)."`
-	Response  *Response `hcl:"response,block" docs:"Configures the [response](/configuration/block/response)."`
+	Requests  Requests  `hcl:"request,block" docs:"Configures a [request](/configuration/block/request) (zero or more)."`
+	Response  *Response `hcl:"response,block" docs:"Configures the [response](/configuration/block/response) (zero or one)."`
 }
 
 // ErrorHandlerGetter defines the <ErrorHandlerGetter> interface.

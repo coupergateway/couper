@@ -6,9 +6,9 @@ The error handler label specifies which [error type](/configuration/error-handli
 
 Concerning child blocks and attributes, the `error_handler` block is similar to an [Endpoint Block](/configuration/block/endpoint).
 
-| Block name  |Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-| `error_handler` | [API Block](/configuration/block/api), [Endpoint Block](/configuration/block/endpoint), [Basic Auth Block](/configuration/block/basic_auth), [JWT Block](/configuration/block/jwt), [OAuth2 AC (Beta) Block](/configuration/block/beta_oauth2), [OIDC Block](/configuration/block/oidc), [SAML Block](/configuration/block/saml) | optional | [Proxy Block(s)](/configuration/block/proxy),  [Request Block(s)](/configuration/block/request), [Response Block](/configuration/block/response) |
+| Block name      | Context                                                                                                                                                                                                                                                                                                                          | Label    |
+| :---------------| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| :--------|
+| `error_handler` | [API Block](/configuration/block/api), [Endpoint Block](/configuration/block/endpoint), [Basic Auth Block](/configuration/block/basic_auth), [JWT Block](/configuration/block/jwt), [OAuth2 AC (Beta) Block](/configuration/block/beta_oauth2), [OIDC Block](/configuration/block/oidc), [SAML Block](/configuration/block/saml) | optional |
 
 ## Example
 
@@ -124,15 +124,15 @@ values: [
 ---
 values: [
   {
-    "description": "Configures a [proxy](/configuration/block/proxy).",
+    "description": "Configures a [proxy](/configuration/block/proxy) (zero or more).",
     "name": "proxy"
   },
   {
-    "description": "Configures a [request](/configuration/block/request).",
+    "description": "Configures a [request](/configuration/block/request) (zero or more).",
     "name": "request"
   },
   {
-    "description": "Configures the [response](/configuration/block/response).",
+    "description": "Configures the [response](/configuration/block/response) (zero or one).",
     "name": "response"
   }
 ]
