@@ -15,7 +15,7 @@ var (
 
 // Request represents the <Request> object.
 type Request struct {
-	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Mutually exclusive with {backend} block. Required, if no [{backend} block](backend) or {url} is defined within."`
+	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Mutually exclusive with {backend} block."`
 	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 
@@ -47,7 +47,7 @@ func (r Request) Inline() interface{} {
 		JSONBody       string               `hcl:"json_body,optional" docs:"JSON request body, implicitly sets {Content-Type: application/json} header field."`
 		Method         string               `hcl:"method,optional" docs:"the request method" default:"GET"`
 		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"Key/value pairs to set query parameters for this request"`
-		URL            string               `hcl:"url,optional" docs:"If defined, the host part of the URL must be the same as the {origin} attribute of the used backend."`
+		URL            string               `hcl:"url,optional" docs:"URL of the resource to request. May be relative to an origin specified in a referenced or nested {backend} block."`
 	}
 
 	return &Inline{}

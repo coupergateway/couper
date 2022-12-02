@@ -6,7 +6,7 @@ The `request` block creates and executes a request to a backend service.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                                                      | Nested block(s)                                                                                                             |
 |:-----------|:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|
-| `request`  | [Endpoint Block](/configuration/block/endpoint) | &#9888; A [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. | [Backend Block](/configuration/block/backend) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set. |
+| `request`  | [Endpoint Block](/configuration/block/endpoint) | &#9888; A [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. | [Backend Block](/configuration/block/backend) |
 <!-- TODO: add available http methods -->
 
 
@@ -15,7 +15,7 @@ The `request` block creates and executes a request to a backend service.
 values: [
   {
     "default": "",
-    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Mutually exclusive with `backend` block. Required, if no [`backend` block](backend) or `url` is defined within.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -63,7 +63,7 @@ values: [
   },
   {
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the used backend.",
+    "description": "URL of the resource to request. May be relative to an origin specified in a referenced or nested `backend` block.",
     "name": "url",
     "type": "string"
   }
@@ -71,6 +71,8 @@ values: [
 
 ---
 ::
+
+If the `url` attribute is specified and its value is an absolute URL, the protocol and host parts must be the same as in the value of the {origin} attribute of the used backend.
 
 ::blocks
 ---

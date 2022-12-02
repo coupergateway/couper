@@ -6,7 +6,7 @@ The `proxy` block creates and executes a proxy request to a backend service.
 
 | Block name | Context                           | Label                                                                                                                                                                                                                                          | Nested block(s)                                                                                                                                                                                                                                |
 |:-----------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `proxy`    | [Endpoint Block](/configuration/block/endpoint) | See `Label` description below. | [Backend Block](/configuration/block/backend) (&#9888; required, if no [Backend Block](/configuration/block/backend) reference is defined or no `url` attribute is set.), [Websockets Block](/configuration/block/websockets) (&#9888; Either websockets attribute or block is allowed.) |
+| `proxy`    | [Endpoint Block](/configuration/block/endpoint) | See `Label` description below. | [Backend Block](/configuration/block/backend), [Websockets Block](/configuration/block/websockets) |
 
 **Label:** If defined in an [Endpoint Block](/configuration/block/endpoint), a `proxy` block or [Request Block](/configuration/block/request) w/o a label has an implicit name `"default"`. If defined in the [Definitions Block](/configuration/block/definitions), the label of `proxy` is used as reference in [Endpoint Blocks](/configuration/block/endpoint) and the name can be defined via `name` attribute. Only **one** `proxy` block or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. 
 
@@ -105,7 +105,7 @@ values: [
   },
   {
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the corresponding backend.",
+    "description": "URL of the resource to request. May be relative to an origin specified in a referenced or nested `backend` block.",
     "name": "url",
     "type": "string"
   },
@@ -119,6 +119,8 @@ values: [
 
 ---
 ::
+
+If the `url` attribute is specified and its value is an absolute URL, the protocol and host parts must be the same as in the value of the {origin} attribute of the used backend.
 
 ::blocks
 ---

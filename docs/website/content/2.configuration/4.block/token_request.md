@@ -66,7 +66,7 @@ values: [
   },
   {
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the `backend` block (if defined).",
+    "description": "URL of the resource to request the token from. May be relative to an origin specified in a referenced or nested `backend` block.",
     "name": "url",
     "type": "string"
   }
@@ -74,6 +74,8 @@ values: [
 
 ---
 ::
+
+If the `url` attribute is specified and its value is an absolute URL, the protocol and host parts must be the same as in the value of the {origin} attribute of the used backend.
 
 ::blocks
 ---
