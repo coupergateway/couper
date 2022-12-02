@@ -39,7 +39,7 @@ func (r Request) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (r Request) Inline() interface{} {
 	type Inline struct {
-		Backend        *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the request. Mutually exclusive with {backend} attribute."`
+		Backend        *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the request (zero or one). Mutually exclusive with {backend} attribute."`
 		Body           string               `hcl:"body,optional" docs:"plain text request body, implicitly sets {Content-Type: text/plain} header field."`
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of codes. If the status code is not included in this list an [{unexpected_status} error](../error-handling#endpoint-error-types) will be thrown which can be handled with an [{error_handler}](../error-handling#endpoint-related-error_handler)."`
 		FormBody       string               `hcl:"form_body,optional" docs:"form request body, implicitly sets {Content-Type: application/x-www-form-urlencoded} header field."`

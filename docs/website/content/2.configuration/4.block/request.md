@@ -4,9 +4,9 @@ The `request` block creates and executes a request to a backend service.
 
 > 📝 Multiple [`proxy`](/configuration/block/proxy) and `request` blocks are executed in parallel.
 
-| Block name | Context                           | Label                                                                                                                                                                                                                                                                      | Nested block(s)                                                                                                             |
-|:-----------|:----------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------|
-| `request`  | [Endpoint Block](/configuration/block/endpoint) | &#9888; A [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. | [Backend Block](/configuration/block/backend) |
+| Block name | Context                                         | Label                                                                                                                                                                                                                                                                                                                                            |
+|:-----------|:------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `request`  | [Endpoint Block](/configuration/block/endpoint) | &#9888; A [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/o a label has an implicit label `"default"`. Only **one** [Proxy Block](/configuration/block/proxy) or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. |
 <!-- TODO: add available http methods -->
 
 
@@ -78,7 +78,7 @@ If the `url` attribute is specified and its value is an absolute URL, the protoc
 ---
 values: [
   {
-    "description": "Configures a [backend](/configuration/block/backend) for the request. Mutually exclusive with `backend` attribute.",
+    "description": "Configures a [backend](/configuration/block/backend) for the request (zero or one). Mutually exclusive with `backend` attribute.",
     "name": "backend"
   }
 ]
