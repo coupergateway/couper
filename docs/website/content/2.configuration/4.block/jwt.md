@@ -7,9 +7,9 @@ required _label_.
 
 Since responses from endpoints protected by JWT access controls are not publicly cacheable, a `Cache-Control: private` header field is added to the response, unless this feature is disabled with `disable_private_caching = true`.
 
-| Block name | Context                                 | Label            | Nested block(s)                                                                  |
-|:-----------|:----------------------------------------|:-----------------|:---------------------------------------------------------------------------------|
-| `jwt`      | [Definitions Block](/configuration/block/definitions) | &#9888; required | [JWKS `backend`](/configuration/block/backend), [Error Handler Block(s)](/configuration/block/error_handler) |
+| Block name | Context                                               | Label            |
+|:-----------|:------------------------------------------------------|:-----------------|
+| `jwt`      | [Definitions Block](/configuration/block/definitions) | &#9888; required |
 
 ::attributes
 ---
@@ -181,11 +181,11 @@ The `jwt` block may also be referenced by the [`jwt_sign()` function](/configura
 ---
 values: [
   {
-    "description": "Configures a [backend](/configuration/block/backend) for JWKS requests. Mutually exclusive with `backend` attribute.",
+    "description": "Configures a [backend](/configuration/block/backend) for JWKS requests (zero or one). Mutually exclusive with `backend` attribute.",
     "name": "backend"
   },
   {
-    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
   }
 ]

@@ -6,7 +6,7 @@ import (
 )
 
 type ErrorHandlerSetter struct {
-	ErrorHandler []*ErrorHandler `hcl:"error_handler,block" docs:"Configures an [error handler](/configuration/block/error_handler)."`
+	ErrorHandler []*ErrorHandler `hcl:"error_handler,block" docs:"Configures an [error handler](/configuration/block/error_handler) (zero or more)."`
 }
 
 func (ehs *ErrorHandlerSetter) Set(ehConf *ErrorHandler) {

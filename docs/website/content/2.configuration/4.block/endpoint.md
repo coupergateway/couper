@@ -4,9 +4,9 @@
 defines the path suffix for the incoming client request. Each `endpoint` block must
 produce an explicit or implicit client response.
 
-| Block name | Context                                                | Label                                                                  | Nested block(s)                                                                                                                                        |
-|:-----------|:-------------------------------------------------------|:-----------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `endpoint` | [Server Block](/configuration/block/server), [API Block](/configuration/block/api) | &#9888; required, defines the path suffix for incoming client requests | [Proxy Block(s)](/configuration/block/proxy),  [Request Block(s)](/configuration/block/request), [Response Block](/configuration/block/response), [Error Handler Block(s)](/configuration/block/error_handler) |
+| Block name | Context                                                                            | Label                                                                  |
+|:-----------|:-----------------------------------------------------------------------------------|:-----------------------------------------------------------------------|
+| `endpoint` | [Server Block](/configuration/block/server), [API Block](/configuration/block/api) | &#9888; required, defines the path suffix for incoming client requests |
 
 ## Endpoint Sequence
 
@@ -175,19 +175,19 @@ values: [
 ---
 values: [
   {
-    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
   },
   {
-    "description": "Configures a [proxy](/configuration/block/proxy).",
+    "description": "Configures a [proxy](/configuration/block/proxy) (zero or more).",
     "name": "proxy"
   },
   {
-    "description": "Configures a [request](/configuration/block/request).",
+    "description": "Configures a [request](/configuration/block/request) (zero or more).",
     "name": "request"
   },
   {
-    "description": "Configures the [response](/configuration/block/response).",
+    "description": "Configures the [response](/configuration/block/response) (zero or one).",
     "name": "response"
   }
 ]

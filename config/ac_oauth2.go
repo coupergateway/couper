@@ -28,7 +28,7 @@ type OAuth2AC struct {
 	ClientID                string             `hcl:"client_id" docs:"The client identifier."`
 	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password."`
 	GrantType               string             `hcl:"grant_type" docs:"The grant type. Required, to be set to: {\"authorization_code\"}"`
-	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"}."`
+	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"} (zero or one)."`
 	Name                    string             `hcl:"name,label"`
 	RedirectURI             string             `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [{accept_forwarded_url} attribute](settings) if Couper is running behind a proxy."`
 	Remain                  hcl.Body           `hcl:",remain"`
@@ -60,7 +60,7 @@ func (oa *OAuth2AC) HCLBody() *hclsyntax.Body {
 func (oa *OAuth2AC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend       *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests. Mutually exclusive with {backend} attribute."`
+		Backend       *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests (zero or one). Mutually exclusive with {backend} attribute."`
 		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier. E.g. using cookie value created with {oauth2_verifier()} function](../functions)"`
 	}
 

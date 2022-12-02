@@ -4,9 +4,9 @@ The `oidc` block lets you configure the [`oauth2_authorization_url()` function](
 control for an OIDC **Authorization Code Grant Flow** redirect endpoint.
 Like all [access control](/configuration/access-control) types, the `oidc` block is defined in the [`definitions` Block](/configuration/block/definitions) and can be referenced in all configuration blocks by its required _label_.
 
-| Block name | Context                                 | Label            | Nested block(s)                                                                                                  |
-|:-----------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
-| `oidc`     | [Definitions Block](/configuration/block/definitions)        | &#9888; required | [Backend Block](/configuration/block/backend), [Error Handler Block](/configuration/block/error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
+| Block name | Context                                                      | Label            |
+|:-----------|:-------------------------------------------------------------|:-----------------|
+| `oidc`     | [Definitions Block](/configuration/block/definitions)        | &#9888; required |
 
 > any `backend` attributes: Do not disable the peer certificate validation with `disable_certificate_validation = true`.
 
@@ -149,7 +149,7 @@ values: [
     "name": "backend"
   },
   {
-    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
   },
   {

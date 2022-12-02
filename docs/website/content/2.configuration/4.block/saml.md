@@ -6,9 +6,9 @@ Like all [access control](/configuration/access-control) types, the `saml` block
 the [`definitions` block](/configuration/block/definitions) and can be referenced in all configuration blocks by its
 required _label_.
 
-| Block name | Context                                 | Label            | Nested block(s)                             |
-|:-----------|:----------------------------------------|:-----------------|:--------------------------------------------|
-| `saml`     | [Definitions Block](/configuration/block/definitions) | &#9888; required | [Error Handler Block](/configuration/block/error_handler) |
+| Block name | Context                                               | Label            |
+|:-----------|:------------------------------------------------------|:-----------------|
+| `saml`     | [Definitions Block](/configuration/block/definitions) | &#9888; required |
 
 ## Example
 
@@ -72,7 +72,7 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 ---
 values: [
   {
-    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
   }
 ]

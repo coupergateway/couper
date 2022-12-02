@@ -80,7 +80,7 @@ func (j *JWT) HCLBody() *hclsyntax.Body {
 func (j *JWT) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests. Mutually exclusive with {backend} attribute."`
+		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests (zero or one). Mutually exclusive with {backend} attribute."`
 	}
 
 	return &Inline{}

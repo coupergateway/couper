@@ -5,9 +5,9 @@ The `api` block bundles endpoints under a certain `base_path`.
 > If an error occurred for api endpoints the response gets processed
 as JSON error with an error body payload. This can be customized via `error_file`.
 
-| Block name | Context                       | Label    | Nested block(s)                                                                                                 |
-|:-----------|:------------------------------|:---------|:----------------------------------------------------------------------------------------------------------------|
-| `api`      | [Server Block](/configuration/block/server) | Optional | [Endpoint Block(s)](/configuration/block/endpoint), [CORS Block](/configuration/block/cors), [Error Handler Block(s)](/configuration/block/error_handler) |
+| Block name | Context                                     | Label    |
+|:-----------|:--------------------------------------------|:---------|
+| `api`      | [Server Block](/configuration/block/server) | Optional |
 
 
 ### Attribute `allowed_methods`
@@ -103,15 +103,15 @@ values: [
 ---
 values: [
   {
-    "description": "Configures [CORS](/configuration/block/cors) settings.",
+    "description": "Configures [CORS](/configuration/block/cors) settings (zero or one).",
     "name": "cors"
   },
   {
-    "description": "Configures [endpoints](/configuration/block/endpoint) in this API.",
+    "description": "Configures an [endpoint](/configuration/block/endpoint) (zero or more).",
     "name": "endpoint"
   },
   {
-    "description": "Configures an [error handler](/configuration/block/error_handler).",
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
   }
 ]
