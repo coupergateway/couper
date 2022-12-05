@@ -116,7 +116,7 @@ func run(req *http.Request, h http.Handler, log *logrus.Entry) {
 	w := writer.NewResponseWriter(&noopResponseWriter{}, "")
 	h.ServeHTTP(w, req)
 
-	if w.StatusCode() > 499 {
+	if w.StatusCode() == 0 || w.StatusCode() > 499 {
 		log.Error()
 		return
 	}
