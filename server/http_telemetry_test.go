@@ -57,7 +57,7 @@ func TestServeMetrics(t *testing.T) {
 		`couper_client_request_total{code="404",host="localhost:8080",method="GET",service_name="my-service",service_version="0"} 1`,
 		`couper_client_request_error_types_total{error="route_not_found_error",service_name="my-service",service_version="0"} 1`,
 		`couper_client_connections_total{service_name="my-service",service_version="0"} 3`,
-		`go_goroutines{service_name="my-service"}`,
+		`go_goroutines{service_name="my-service",service_version="0"}`,
 	}
 
 	for _, expMetric := range expMetrics {

@@ -65,10 +65,12 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	meter := provider.Meter("couper/server")
 
 	counter, _ := meter.SyncInt64().
-		Counter(instrumentation.ClientRequest, instrument.WithDescription(string(unit.Dimensionless)))
+		Counter(instrumentation.ClientRequest,
+			instrument.WithDescription(string(unit.Dimensionless)))
 	duration, _ := meter.SyncFloat64().
-		Histogram(instrumentation.ClientRequestDuration, instrument.WithDescription(string(unit.Dimensionless)))
+		Histogram(instrumentation.ClientRequestDuration,
+			instrument.WithDescription(string(unit.Dimensionless)))
 
-	counter.Add(req.Context(), 1)
-	duration.Record(req.Context(), end.Seconds())
+	counter.Add(req.Context(), 1, metricsAttrs...)
+	duration.Record(req.Context(), end.Seconds(), metricsAttrs...)
 }
