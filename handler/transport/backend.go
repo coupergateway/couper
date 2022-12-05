@@ -314,9 +314,13 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	endSeconds := time.Since(start).Seconds()
 
 	statusKey := attribute.Key("code")
+	if beresp != nil {
+		attrs = append(attrs, statusKey.Int(beresp.StatusCode))
+	}
+	defer counter.Observe(req.Context(), 1, attrs...)
+	defer duration.Record(req.Context(), endSeconds, attrs...)
+
 	if err != nil {
-		defer counter.Observe(req.Context(), 1, attrs...)
-		defer duration.Record(req.Context(), endSeconds, attrs...)
 		select {
 		case derr := <-deadlineErr:
 			if derr != nil {
@@ -330,10 +334,6 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}
-
-	attrs = append(attrs, statusKey.Int(beresp.StatusCode))
-	defer counter.Observe(req.Context(), 1, attrs...)
-	defer duration.Record(req.Context(), endSeconds, attrs...)
 
 	return beresp, nil
 }
