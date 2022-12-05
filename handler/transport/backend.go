@@ -291,7 +291,7 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	counter, _ := meter.AsyncInt64().Counter(
+	counter, _ := meter.SyncInt64().Counter(
 		instrumentation.BackendRequest,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)
@@ -317,7 +317,8 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	if beresp != nil {
 		attrs = append(attrs, statusKey.Int(beresp.StatusCode))
 	}
-	defer counter.Observe(req.Context(), 1, attrs...)
+
+	defer counter.Add(req.Context(), 1, attrs...)
 	defer duration.Record(req.Context(), endSeconds, attrs...)
 
 	if err != nil {

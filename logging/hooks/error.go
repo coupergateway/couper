@@ -44,13 +44,13 @@ func (l *Error) Fire(entry *logrus.Entry) error {
 
 	meter := provider.Meter("couper/errors")
 
-	counter, _ := meter.AsyncInt64().
+	counter, _ := meter.SyncInt64().
 		Counter(
-			instrumentation.Prefix+"client_request_error_types_total",
+			instrumentation.Prefix+"client_request_error_types",
 			instrument.WithDescription(string(unit.Dimensionless)),
 		)
 
-	counter.Observe(entry.Context, 1, attribute.String("error", kind))
+	counter.Add(entry.Context, 1, attribute.String("error", kind))
 
 	entry.Message = errors.AppendMsg(entry.Message, gerr.LogError())
 	return nil

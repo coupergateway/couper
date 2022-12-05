@@ -314,7 +314,7 @@ func (s *HTTPServer) cleanHostAppendPort(host string) string {
 
 func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 	meter := provider.Meter("couper/server")
-	counter, _ := meter.AsyncInt64().
+	counter, _ := meter.SyncInt64().
 		Counter(instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
 	gauge, _ := meter.SyncFloat64().UpDownCounter(
 		instrumentation.ClientConnections,
@@ -322,7 +322,7 @@ func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 	)
 
 	if state == http.StateNew {
-		counter.Observe(context.Background(), 1)
+		counter.Add(context.Background(), 1)
 		gauge.Add(context.Background(), 1)
 		// we have no callback for closing a hijacked one, so count them down too.
 		// TODO: if required we COULD override given conn ptr value with own obj.

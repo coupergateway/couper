@@ -10,8 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/asyncint64"
 	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
+	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
@@ -69,7 +69,7 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 
 	counter, gauge := newMeterCounter()
 
-	counter.Observe(ctx, 1, o.labels...)
+	counter.Add(ctx, 1, o.labels...)
 	gauge.Add(ctx, 1, o.labels...)
 
 	return o
@@ -119,10 +119,10 @@ func (o *OriginConn) Close() error {
 	return o.Conn.Close()
 }
 
-func newMeterCounter() (asyncint64.Counter, syncfloat64.UpDownCounter) {
+func newMeterCounter() (syncint64.Counter, syncfloat64.UpDownCounter) {
 	meter := provider.Meter("couper/connection")
 
-	counter, _ := meter.AsyncInt64().
+	counter, _ := meter.SyncInt64().
 		Counter(instrumentation.BackendConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
 	gauge, _ := meter.SyncFloat64().UpDownCounter(
 		instrumentation.BackendConnections,
