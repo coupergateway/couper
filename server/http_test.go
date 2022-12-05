@@ -21,6 +21,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
@@ -914,4 +915,32 @@ func TestHTTPServer_RateLimiterBlock(t *testing.T) {
 	}
 
 	mu.Unlock()
+}
+
+func TestHTTPServer_CVE_2022_2880(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	confPath := "testdata/integration/validation/03_couper.hcl"
+	shutdown, logHook := newCouper(confPath, test.New(t))
+	defer shutdown()
+
+	logHook.Reset()
+
+	// See https://github.com/golang/go/issues/54663
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/q?a=%x&b=ok", nil)
+	helper.Must(err)
+
+	_, err = client.Do(req)
+	helper.Must(err)
+
+	// Wait for log
+	time.Sleep(300 * time.Millisecond)
+
+	got := logHook.AllEntries()[0].Data["custom"].(logrus.Fields)["TEST"]
+	exp := logrus.Fields{"b": []interface{}{"ok"}}
+
+	if !cmp.Equal(got, exp) {
+		t.Error(cmp.Diff(got, exp))
+	}
 }
