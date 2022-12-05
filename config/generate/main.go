@@ -378,7 +378,6 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 		urlPath, _ := url.JoinPath(urlBasePath, fileName)
 		result := &entry{
 			Attributes:  attributesFromTable(fileContent, indexTable),
-			Blocks:      blocksFromTable(fileContent, indexTable),
 			Description: description,
 			ID:          urlPath,
 			Name:        title,
@@ -457,38 +456,6 @@ func attributesFromTable(content []byte, parse bool) []interface{} {
 	}
 	sort.Sort(byName(attrs))
 	return attrs
-}
-
-func blocksFromTable(content []byte, parse bool) []interface{} {
-	if !parse {
-		return nil
-	}
-	blocks := make([]interface{}, 0)
-	s := bufio.NewScanner(bytes.NewReader(content))
-	var tableHeadSeen bool
-	for s.Scan() {
-		// scan to table header
-		line := s.Text()
-		if !tableHeadSeen {
-			if strings.HasPrefix(line, "|:-") {
-				tableHeadSeen = true
-			}
-			continue
-		}
-		if line[0] != '|' {
-			break
-		}
-		matches := tableEntryRegex.FindStringSubmatch(line)
-		if len(matches) < 4 {
-			continue
-		}
-		blocks = append(blocks, block{
-			Description: strings.TrimSpace(matches[3]),
-			Name:        strings.TrimSpace(matches[1]),
-		})
-	}
-	sort.Sort(byName(blocks))
-	return blocks
 }
 
 type byName []interface{}
