@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/definitions"
 	"github.com/avenga/couper/eval"
@@ -55,7 +53,7 @@ func TestJob_Run(t *testing.T) {
 					getST(r).Error("expected trigger req with Couper UA")
 				}
 			}),
-		}, "", 5, time.Millisecond * 460}, // five due to initial req
+		}, "", 5, time.Millisecond * 410}, // five due to initial req
 		{"job with greater interval", fields{
 			conf:    &config.Job{Name: "testCase4", Interval: "1s"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}),
@@ -93,15 +91,11 @@ func TestJob_Run(t *testing.T) {
 
 			go j.Run(ctx, logger.WithContext(ctx))
 
-			time.Sleep(tt.waitFor)
+			// 50ms are the initial ticker delay
+			time.Sleep(tt.waitFor + (time.Millisecond * 50))
 
 			logEntries := hook.AllEntries()
-			cnt := 0
 			for _, entry := range logEntries {
-				if entry.Level != logrus.InfoLevel { // ctx cancel filter
-					continue
-				}
-				cnt++
 				msg, _ := entry.String()
 
 				if !reflect.DeepEqual(entry.Data["name"], tt.fields.conf.Name) {
@@ -119,7 +113,7 @@ func TestJob_Run(t *testing.T) {
 				}()
 			}
 
-			if cnt != tt.expLogs {
+			if len(logEntries) != tt.expLogs {
 				st.Errorf("expected %d log entries, got: %d", tt.expLogs, len(logEntries))
 			}
 		})
