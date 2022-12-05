@@ -48,12 +48,20 @@ func TestJob_Run(t *testing.T) {
 				}
 			}),
 		}, "", 2, time.Millisecond * 300}, // two due to initial req
+		{"job with small interval", fields{
+			conf: &config.Job{Name: "testCase3", Interval: "100ms"},
+			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
+					getST(r).Error("expected trigger req with Couper UA")
+				}
+			}),
+		}, "", 5, time.Millisecond * 460}, // five due to initial req
 		{"job with greater interval", fields{
-			conf:    &config.Job{Name: "testCase3", Interval: "1s"},
+			conf:    &config.Job{Name: "testCase4", Interval: "1s"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}),
 		}, "", 2, time.Millisecond * 1100}, // two due to initial req
 		{"job with greater origin delay than interval", fields{
-			conf: &config.Job{Name: "testCase4", Interval: "1500ms"},
+			conf: &config.Job{Name: "testCase5", Interval: "1500ms"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				time.Sleep(time.Second)
 			}),
