@@ -2,14 +2,11 @@ package definitions_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/sirupsen/logrus"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/definitions"
@@ -37,23 +34,28 @@ func TestJob_Run(t *testing.T) {
 		expLogs int
 		waitFor time.Duration
 	}{
-		{"job with zero interval", fields{
-			conf: &config.Job{Name: "testCase1", Interval: "0s"},
-		}, "job: testCase1: interval must be a positive number", -1, 0},
 		{"job with interval", fields{
-			conf: &config.Job{Name: "testCase2", Interval: "200ms"},
+			conf: &config.Job{Name: "testCase1", IntervalDuration: time.Millisecond * 200},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
 					getST(r).Error("expected trigger req with Couper UA")
 				}
 			}),
 		}, "", 2, time.Millisecond * 300}, // two due to initial req
+		{"job with small interval", fields{
+			conf: &config.Job{Name: "testCase2", IntervalDuration: time.Millisecond * 100},
+			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
+					getST(r).Error("expected trigger req with Couper UA")
+				}
+			}),
+		}, "", 5, time.Millisecond * 480}, // five due to initial req
 		{"job with greater interval", fields{
-			conf:    &config.Job{Name: "testCase3", Interval: "1s"},
+			conf:    &config.Job{Name: "testCase3", IntervalDuration: time.Second},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}),
 		}, "", 2, time.Millisecond * 1100}, // two due to initial req
 		{"job with greater origin delay than interval", fields{
-			conf: &config.Job{Name: "testCase4", Interval: "1500ms"},
+			conf: &config.Job{Name: "testCase4", IntervalDuration: time.Millisecond * 1500},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				time.Sleep(time.Second)
 			}),
@@ -61,20 +63,7 @@ func TestJob_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
-			h := test.New(st)
-			j, err := definitions.NewJob(tt.fields.conf, tt.fields.handler, config.NewDefaultSettings())
-			if tt.expErr != "" {
-				if err == nil {
-					h.Must(fmt.Errorf("expected an error: %v", err))
-				}
-				if err.Error() != tt.expErr {
-					st.Errorf("\nwant err:\t%s\ngot err:\t%v", tt.expErr, err)
-					return
-				}
-				return
-			} else {
-				h.Must(err)
-			}
+			j := definitions.NewJob(tt.fields.conf, tt.fields.handler, config.NewDefaultSettings())
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -85,22 +74,23 @@ func TestJob_Run(t *testing.T) {
 
 			go j.Run(ctx, logger.WithContext(ctx))
 
-			time.Sleep(tt.waitFor)
+			// 50ms are the initial ticker delay
+			time.Sleep(tt.waitFor + (time.Millisecond * 50))
 
 			logEntries := hook.AllEntries()
-			cnt := 0
+			var cnt int
 			for _, entry := range logEntries {
-				if entry.Level != logrus.InfoLevel { // ctx cancel filter
+				msg, _ := entry.String()
+				if strings.Contains(msg, "context canceled") {
 					continue
 				}
 				cnt++
-				msg, _ := entry.String()
 
 				if !reflect.DeepEqual(entry.Data["name"], tt.fields.conf.Name) {
 					st.Error("expected the job name in log fields")
 				}
 
-				if entry.Data["uid"].(string) == "" {
+				if uid, _ := entry.Data["uid"].(string); uid == "" {
 					st.Error("expected an uid log field")
 				}
 

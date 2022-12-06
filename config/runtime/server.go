@@ -121,15 +121,21 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 
 			endpointOptions, err := NewEndpointOptions(confCtx, job.Endpoint, nil, serverOptions, log, conf, memStore)
 			if err != nil {
+				if diags, ok := err.(hcl.Diagnostics); ok {
+					derr := diags[0]
+					derr.Summary = strings.Replace(derr.Summary, "endpoint:", "beta_job:", 1)
+					if strings.Contains(derr.Summary, "requires at least") {
+						derr.Summary = strings.Join(append([]string{},
+							strings.SplitAfter(derr.Summary, `" `)[0], "requires at least one request block"), "")
+					}
+					return nil, derr
+				}
 				return nil, err
 			}
 
 			epHandler := handler.NewEndpoint(endpointOptions, log, nil)
 
-			j, err := definitions.NewJob(job, epHandler, conf.Settings)
-			if err != nil {
-				return nil, err
-			}
+			j := definitions.NewJob(job, epHandler, conf.Settings)
 			jobs = append(jobs, j)
 		}
 		jobs.Run(conf.Context, log)
