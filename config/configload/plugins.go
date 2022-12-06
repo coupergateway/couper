@@ -47,7 +47,7 @@ func LoadPlugins(ctx *hcl.EvalContext, body hcl.Body) error {
 			return err
 		}
 
-		sym, err := loadedPlugin.Lookup("CouperPlugin")
+		sym, err := loadedPlugin.Lookup("Plugin")
 		if err != nil {
 			return err
 		}
