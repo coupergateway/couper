@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	_ Body   = &Spa{}
-	_ Inline = &Spa{}
+	_ Body = &Spa{}
+	//_ Inline = &Spa{}
 )
 
 type SPAs []*Spa

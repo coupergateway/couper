@@ -8,7 +8,7 @@ import (
 	"github.com/avenga/couper/config/meta"
 )
 
-var _ Inline = &Files{}
+//var _ Inline = &Files{}
 
 type FilesBlocks []*Files
 

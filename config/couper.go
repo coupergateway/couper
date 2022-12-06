@@ -3,7 +3,10 @@ package config
 import (
 	"context"
 
+	"github.com/hashicorp/hcl/v2/gohcl"
+
 	"github.com/avenga/couper/config/configload/file"
+	"github.com/avenga/couper/config/schema"
 )
 
 // DefaultFilename defines the default filename for a couper config file.
@@ -14,8 +17,30 @@ type Couper struct {
 	Context     context.Context
 	Environment string
 	Files       file.Files
+	Defaults    *Defaults    `hcl:"defaults,block"`
 	Definitions *Definitions `hcl:"definitions,block"`
 	Servers     Servers      `hcl:"server,block"`
 	Settings    *Settings    `hcl:"settings,block"`
-	Defaults    *Defaults    `hcl:"defaults,block"`
+}
+
+func init() {
+	couperSchema, _ := gohcl.ImpliedBodySchema(&Couper{})
+	for _, block := range couperSchema.Blocks {
+		var err error
+		b := block
+
+		switch block.Type {
+		case "defaults":
+			err = schema.Registry.Add("", &b, Defaults{})
+		case "definitions":
+			err = schema.Registry.Add("", &b, Definitions{})
+		case "server":
+			err = schema.Registry.Add("", &b, Server{})
+		case "settings":
+			err = schema.Registry.Add("", &b, &Settings{})
+		}
+		if err != nil {
+			panic(err)
+		}
+	}
 }

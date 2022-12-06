@@ -17,11 +17,6 @@ import (
 	"github.com/avenga/couper/internal/seetie"
 )
 
-const (
-	noLabelForErrorHandler = "No labels are expected for error_handler blocks."
-	summUnsupportedAttr    = "Unsupported argument"
-)
-
 var reFetchUnexpectedArg = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
 
 func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
@@ -40,7 +35,8 @@ func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
 	_, isEndpoint := obj.(*config.Endpoint)
 	_, isProxy := obj.(*config.Proxy)
 	for _, err := range diags {
-		if err.Summary == summUnsupportedAttr && (isEndpoint || isProxy) {
+		const summaryUnsupportedAttr = "Unsupported argument"
+		if err.Summary == summaryUnsupportedAttr && (isEndpoint || isProxy) {
 			if matches := reFetchUnexpectedArg.FindStringSubmatch(err.Detail); matches != nil && matches[1] == `"path"` {
 				err.Detail = err.Detail + ` Use the "path" attribute in a backend block instead.`
 			}
@@ -131,9 +127,9 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 	}
 
 	if !checked {
-		if i, ok := obj.(config.Inline); ok {
-			errors = errors.Extend(checkObjectFields(block, i.Inline()))
-		}
+		//if i, ok := obj.(config.Inline); ok {
+		//	errors = errors.Extend(checkObjectFields(block, i.Inline()))
+		//}
 	}
 
 	return errors
@@ -161,11 +157,11 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 		schema = config.WithErrorHandlerSchema(schema)
 	}
 
-	if i, ok := obj.(config.Inline); ok {
-		inlineSchema := i.Schema(true)
-		schema.Attributes = append(schema.Attributes, inlineSchema.Attributes...)
-		schema.Blocks = append(schema.Blocks, inlineSchema.Blocks...)
-	}
+	//if i, ok := obj.(config.Inline); ok {
+	//	inlineSchema := i.Schema(true)
+	//	schema.Attributes = append(schema.Attributes, inlineSchema.Attributes...)
+	//	schema.Blocks = append(schema.Blocks, inlineSchema.Blocks...)
+	//}
 
 	blocks, errors = completeSchemaComponents(body, schema, blocks, errors)
 
@@ -181,6 +177,7 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema,
 
 	for _, diag := range diags {
 		// TODO: How to implement this block automatically?
+		const noLabelForErrorHandler = "No labels are expected for error_handler blocks."
 		if diag.Detail == noLabelForErrorHandler {
 			if errorHandlerCompleted {
 				continue

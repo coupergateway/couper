@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	_ Inline = &Job{}
+// _ Inline = &Job{}
 )
 
 // Job represents the <Job> object.

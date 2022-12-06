@@ -24,9 +24,9 @@ var OAuthBlockSchema = &hcl.BodySchema{
 var (
 	_ BackendReference = &OAuth2ReqAuth{}
 	_ Body             = &OAuth2ReqAuth{}
-	_ Inline           = &OAuth2ReqAuth{}
-	_ OAuth2Client     = &OAuth2ReqAuth{}
-	_ OAuth2AS         = &OAuth2ReqAuth{}
+	//_ Inline           = &OAuth2ReqAuth{}
+	_ OAuth2Client = &OAuth2ReqAuth{}
+	_ OAuth2AS     = &OAuth2ReqAuth{}
 )
 
 // OAuth2ReqAuth represents the oauth2 block in a backend block.

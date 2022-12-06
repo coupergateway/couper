@@ -14,7 +14,7 @@ var (
 	_ BackendReference      = &OIDC{}
 	_ BackendInitialization = &OIDC{}
 	_ Body                  = &OIDC{}
-	_ Inline                = &OIDC{}
+	//_ Inline                = &OIDC{}
 )
 
 // OIDC represents an oidc block. The backend block will be used as backend template for all

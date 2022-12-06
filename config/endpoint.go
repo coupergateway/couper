@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	_ Body   = &Endpoint{}
-	_ Inline = &Endpoint{}
+	_ Body = &Endpoint{}
+	//_ Inline = &Endpoint{}
 )
 
 // Endpoint represents the <Endpoint> object.

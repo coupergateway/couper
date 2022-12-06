@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	_ Inline = &Websockets{}
+	//_ Inline = &Websockets{}
 
 	WebsocketsInlineSchema = Websockets{}.Schema(true)
 )

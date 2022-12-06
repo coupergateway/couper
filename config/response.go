@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	_ Body   = &Response{}
-	_ Inline = &Response{}
+	_ Body = &Response{}
+	//_ Inline = &Response{}
 
 	ResponseInlineSchema = Response{}.Schema(true)
 )

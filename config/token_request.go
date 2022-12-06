@@ -10,7 +10,7 @@ import (
 var (
 	_ BackendReference = &TokenRequest{}
 	_ Body             = &TokenRequest{}
-	_ Inline           = &TokenRequest{}
+	//_ Inline           = &TokenRequest{}
 )
 
 var tokenRequestBlockHeaderSchema = hcl.BlockHeaderSchema{

@@ -11,7 +11,7 @@ import (
 var (
 	_ BackendReference = &Proxy{}
 	_ Body             = &Proxy{}
-	_ Inline           = &Proxy{}
+	//_ Inline           = &Proxy{}
 )
 
 // Proxy represents the <Proxy> object.

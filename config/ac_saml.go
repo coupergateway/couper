@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	_ Body   = &SAML{}
-	_ Inline = &SAML{}
+	_ Body = &SAML{}
+	//_ Inline = &SAML{}
 )
 
 // SAML represents the <SAML> object.

@@ -1,5 +1,14 @@
 package config
 
+import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
+
+	"github.com/avenga/couper/config/schema"
+)
+
+var _ schema.BodySchema = Definitions{}
+
 // Definitions represents the <Definitions> object.
 type Definitions struct {
 	Backend           []*Backend           `hcl:"backend,block" docs:"Configure a [backend](/configuration/block/backend) (zero or more)."`
@@ -15,4 +24,9 @@ type Definitions struct {
 	Proxy []*Proxy `hcl:"proxy,block" docs:"Configure a [proxy](/configuration/block/proxy) (zero or more)."`
 	// PoC
 	Plugins []*Plugin `hcl:"plugin,block"`
+}
+
+func (d Definitions) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(d)
+	return s
 }

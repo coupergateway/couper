@@ -5,10 +5,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/plugins"
 )
-
-type blockSchema map[*hcl.BlockHeaderSchema]*hcl.BodySchema
 
 var pluginBlockSchema = &hcl.BodySchema{
 	Blocks: []hcl.BlockHeaderSchema{
@@ -19,8 +18,6 @@ var pluginBlockSchema = &hcl.BodySchema{
 		},
 	},
 }
-
-var pluginSchemaExtensions = make(map[string][]blockSchema)
 
 func LoadPlugins(ctx *hcl.EvalContext, body hcl.Body) error {
 	pluginContent, _, diagnostics := body.PartialContent(pluginBlockSchema)
@@ -51,12 +48,12 @@ func LoadPlugins(ctx *hcl.EvalContext, body hcl.Body) error {
 			return err
 		}
 
-		if schema, impl := sym.(plugins.Config); impl {
-			parentBlock, header, schemaBody := schema.Definition()
+		if conf, impl := sym.(plugins.Config); impl {
+			parentBlock, header, schemaBody := conf.Definition()
 			if parentBlock != "" && schemaBody != nil {
-				pluginSchemaExtensions[parentBlock] = append(pluginSchemaExtensions[parentBlock], blockSchema{
-					header: schemaBody,
-				})
+				if err = schema.Registry.Add(parentBlock, header, schemaBody); err != nil {
+					return err
+				}
 			}
 		}
 	}

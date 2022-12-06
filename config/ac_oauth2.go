@@ -13,10 +13,10 @@ import (
 var (
 	_ BackendReference      = &OAuth2AC{}
 	_ BackendInitialization = &OAuth2AC{}
-	_ Inline                = &OAuth2AC{}
-	_ OAuth2AS              = &OAuth2AC{}
-	_ OAuth2AcClient        = &OAuth2AC{}
-	_ OAuth2Authorization   = &OAuth2AC{}
+	//_ Inline                = &OAuth2AC{}
+	_ OAuth2AS            = &OAuth2AC{}
+	_ OAuth2AcClient      = &OAuth2AC{}
+	_ OAuth2Authorization = &OAuth2AC{}
 )
 
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.

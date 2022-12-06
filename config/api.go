@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	_ Body   = &API{}
-	_ Inline = &API{}
+	_ Body = &API{}
+	//_ Inline = &API{}
 )
 
 // API represents the <API> object.

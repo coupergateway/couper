@@ -11,7 +11,6 @@ import (
 var (
 	_ BackendReference = &Backend{}
 	_ Body             = &Backend{}
-	_ Inline           = &Backend{}
 )
 
 // Backend represents the <Backend> object.

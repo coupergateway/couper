@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	_ Body   = &BasicAuth{}
-	_ Inline = &BasicAuth{}
+	_ Body = &BasicAuth{}
+	//_ Inline = &BasicAuth{}
 )
 
 // BasicAuth represents the "basic_auth" config block

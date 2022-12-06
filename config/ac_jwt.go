@@ -14,7 +14,7 @@ import (
 var (
 	_ BackendInitialization = &JWT{}
 	_ Body                  = &JWT{}
-	_ Inline                = &JWT{}
+	//_ Inline                = &JWT{}
 )
 
 // Claims represents the <Claims> object.

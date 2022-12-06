@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	_ Body   = &ErrorHandler{}
-	_ Inline = &ErrorHandler{}
+	_ Body = &ErrorHandler{}
+	//_ Inline = &ErrorHandler{}
 )
 
 // ErrorHandler represents a subset of Endpoint.

@@ -10,7 +10,7 @@ import (
 var (
 	_ BackendReference = &Request{}
 	_ Body             = &Request{}
-	_ Inline           = &Request{}
+	//_ Inline           = &Request{}
 )
 
 // Request represents the <Request> object.
