@@ -26,3 +26,6 @@ docs/website/.vite
 # tls
 /*.crt
 /*.key
+
+#plugins
+*.so

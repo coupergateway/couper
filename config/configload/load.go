@@ -35,8 +35,8 @@ const (
 	environmentVars = "environment_variables"
 	errorHandler    = "error_handler"
 	files           = "files"
-	nameLabel       = "name"
 	oauth2          = "oauth2"
+	plugin          = "plugin"
 	proxy           = "proxy"
 	request         = "request"
 	server          = "server"
@@ -288,6 +288,10 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	for _, outerBlock := range helper.content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
+			if err = LoadPlugins(helper.context, outerBlock.Body); err != nil {
+				return nil, err
+			}
+
 			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
 			if diags.HasErrors() {
 				return nil, diags

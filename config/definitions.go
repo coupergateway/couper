@@ -13,4 +13,6 @@ type Definitions struct {
 
 	// used for documentation
 	Proxy []*Proxy `hcl:"proxy,block" docs:"Configure a [proxy](/configuration/block/proxy) (zero or more)."`
+	// PoC
+	Plugins []*Plugin `hcl:"plugin,block"`
 }
