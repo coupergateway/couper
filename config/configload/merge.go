@@ -483,64 +483,66 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 	for _, body := range bodies {
 		for _, outerBlock := range body.Blocks {
-			if outerBlock.Type == definitions {
-				for _, innerBlock := range outerBlock.Body.Blocks {
-					if definitionsBlock[innerBlock.Type] == nil {
-						definitionsBlock[innerBlock.Type] = make(namedBlocks)
-					}
+			if outerBlock.Type != definitions {
+				continue
+			}
 
-					if innerBlock.Type == backend {
-						if err := checkForMultipleBackendsInBackend(innerBlock); err != nil {
+			for _, innerBlock := range outerBlock.Body.Blocks {
+				if definitionsBlock[innerBlock.Type] == nil {
+					definitionsBlock[innerBlock.Type] = make(namedBlocks)
+				}
+
+				if innerBlock.Type == backend {
+					if err := checkForMultipleBackendsInBackend(innerBlock); err != nil {
+						return nil, nil, err
+					}
+				}
+
+				// Count the "backend" blocks and "backend" attributes to
+				// forbid multiple backend definitions.
+
+				var backends int
+
+				for _, block := range innerBlock.Body.Blocks {
+					if block.Type == errorHandler {
+						if err := checkForMultipleBackends(block); err != nil {
+							return nil, nil, err
+						}
+					} else if block.Type == backend {
+						backends++
+						if err := checkForMultipleBackendsInBackend(block); err != nil {
 							return nil, nil, err
 						}
 					}
+				}
 
-					// Count the "backend" blocks and "backend" attributes to
-					// forbid multiple backend definitions.
+				if _, ok := innerBlock.Body.Attributes[backend]; ok {
+					backends++
+				}
 
-					var backends int
+				if backends > 1 {
+					return nil, nil, newMergeError(errMultipleBackends, innerBlock)
+				}
 
-					for _, block := range innerBlock.Body.Blocks {
-						if block.Type == errorHandler {
-							if err := checkForMultipleBackends(block); err != nil {
-								return nil, nil, err
-							}
-						} else if block.Type == backend {
-							backends++
-							if err := checkForMultipleBackendsInBackend(block); err != nil {
-								return nil, nil, err
-							}
+				if innerBlock.Type != proxy {
+					definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
+				} else {
+					label := innerBlock.Labels[0]
+
+					if attr, ok := innerBlock.Body.Attributes["name"]; ok {
+						name, err := attrStringValue(attr)
+						if err != nil {
+							return nil, nil, err
 						}
-					}
 
-					if _, ok := innerBlock.Body.Attributes[backend]; ok {
-						backends++
-					}
+						innerBlock.Labels[0] = name
 
-					if backends > 1 {
-						return nil, nil, newMergeError(errMultipleBackends, innerBlock)
-					}
-
-					if innerBlock.Type != proxy {
-						definitionsBlock[innerBlock.Type][innerBlock.Labels[0]] = innerBlock
+						delete(innerBlock.Body.Attributes, "name")
 					} else {
-						label := innerBlock.Labels[0]
-
-						if attr, ok := innerBlock.Body.Attributes["name"]; ok {
-							name, err := attrStringValue(attr)
-							if err != nil {
-								return nil, nil, err
-							}
-
-							innerBlock.Labels[0] = name
-
-							delete(innerBlock.Body.Attributes, "name")
-						} else {
-							innerBlock.Labels[0] = config.DefaultNameLabel
-						}
-
-						proxiesList[label] = innerBlock
+						innerBlock.Labels[0] = config.DefaultNameLabel
 					}
+
+					proxiesList[label] = innerBlock
 				}
 			}
 		}
