@@ -102,7 +102,7 @@ func TestJob_Run(t *testing.T) {
 					st.Error("expected the job name in log fields")
 				}
 
-				if entry.Data["uid"].(string) == "" {
+				if uid, _ := entry.Data["uid"].(string); uid == "" {
 					st.Error("expected an uid log field")
 				}
 
