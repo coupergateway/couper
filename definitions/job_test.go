@@ -49,7 +49,7 @@ func TestJob_Run(t *testing.T) {
 					getST(r).Error("expected trigger req with Couper UA")
 				}
 			}),
-		}, "", 5, time.Millisecond * 410}, // five due to initial req
+		}, "", 5, time.Millisecond * 480}, // five due to initial req
 		{"job with greater interval", fields{
 			conf:    &config.Job{Name: "testCase3", IntervalDuration: time.Second},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}),
@@ -78,11 +78,13 @@ func TestJob_Run(t *testing.T) {
 			time.Sleep(tt.waitFor + (time.Millisecond * 50))
 
 			logEntries := hook.AllEntries()
+			var cnt int
 			for _, entry := range logEntries {
 				msg, _ := entry.String()
 				if strings.Contains(msg, "context canceled") {
 					continue
 				}
+				cnt++
 
 				if !reflect.DeepEqual(entry.Data["name"], tt.fields.conf.Name) {
 					st.Error("expected the job name in log fields")
@@ -99,7 +101,7 @@ func TestJob_Run(t *testing.T) {
 				}()
 			}
 
-			if len(logEntries) != tt.expLogs {
+			if cnt != tt.expLogs {
 				st.Errorf("expected %d log entries, got: %d", tt.expLogs, len(logEntries))
 			}
 		})
