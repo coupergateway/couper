@@ -53,7 +53,7 @@ func LoadPlugins(ctx *hcl.EvalContext, body hcl.Body) error {
 		}
 
 		if schemaRegisterer, impl := sym.(plugins.Config); impl {
-			parentBlock, header, schema := schemaRegisterer.Register()
+			parentBlock, header, schema := schemaRegisterer.Definition()
 			if parentBlock != "" && schema != nil {
 
 				pluginSchemaExtensions[parentBlock] = append(pluginSchemaExtensions[parentBlock], blockSchema{

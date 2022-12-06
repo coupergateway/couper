@@ -21,12 +21,12 @@ var Plugin = Example{}
 
 type Example struct{}
 
-// Register returns a hcl-schema which will be loaded while reading a defined parent block.
-func (ep *Example) Register() (parent string, header *hcl.BlockHeaderSchema, schema *hcl.BodySchema) {
+// Definition returns a hcl-schema which will be loaded while reading a defined parent block.
+func (ep *Example) Definition() (parent string, header *hcl.BlockHeaderSchema, schema *hcl.BodySchema) {
+	// TODO: Couper validate step
 	return "definitions", &hcl.BlockHeaderSchema{
-			Type:          "poc",
-			LabelNames:    nil,
-			LabelOptional: false,
+			Type:       "poc",
+			LabelNames: []string{"name"},
 		}, &hcl.BodySchema{
 			Attributes: []hcl.AttributeSchema{
 				{
