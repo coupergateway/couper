@@ -43,7 +43,6 @@ func LoadPlugins(ctx *hcl.EvalContext, body hcl.Body) error {
 
 		loadedPlugin, err := goplugin.Open(f.AsString())
 		if err != nil {
-			println(err.Error())
 			return err
 		}
 
@@ -52,12 +51,11 @@ func LoadPlugins(ctx *hcl.EvalContext, body hcl.Body) error {
 			return err
 		}
 
-		if schemaRegisterer, impl := sym.(plugins.Config); impl {
-			parentBlock, header, schema := schemaRegisterer.Definition()
-			if parentBlock != "" && schema != nil {
-
+		if schema, impl := sym.(plugins.Config); impl {
+			parentBlock, header, schemaBody := schema.Definition()
+			if parentBlock != "" && schemaBody != nil {
 				pluginSchemaExtensions[parentBlock] = append(pluginSchemaExtensions[parentBlock], blockSchema{
-					header: schema,
+					header: schemaBody,
 				})
 			}
 		}
