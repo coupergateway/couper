@@ -2,7 +2,6 @@ package definitions_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -35,11 +34,8 @@ func TestJob_Run(t *testing.T) {
 		expLogs int
 		waitFor time.Duration
 	}{
-		{"job with zero interval", fields{
-			conf: &config.Job{Name: "testCase1", Interval: "0s"},
-		}, "job: testCase1: interval must be a positive number", -1, 0},
 		{"job with interval", fields{
-			conf: &config.Job{Name: "testCase2", Interval: "200ms"},
+			conf: &config.Job{Name: "testCase1", Interval: "200ms"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
 					getST(r).Error("expected trigger req with Couper UA")
@@ -47,7 +43,7 @@ func TestJob_Run(t *testing.T) {
 			}),
 		}, "", 2, time.Millisecond * 300}, // two due to initial req
 		{"job with small interval", fields{
-			conf: &config.Job{Name: "testCase3", Interval: "100ms"},
+			conf: &config.Job{Name: "testCase2", Interval: "100ms"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
 					getST(r).Error("expected trigger req with Couper UA")
@@ -55,11 +51,11 @@ func TestJob_Run(t *testing.T) {
 			}),
 		}, "", 5, time.Millisecond * 410}, // five due to initial req
 		{"job with greater interval", fields{
-			conf:    &config.Job{Name: "testCase4", Interval: "1s"},
+			conf:    &config.Job{Name: "testCase3", Interval: "1s"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}),
 		}, "", 2, time.Millisecond * 1100}, // two due to initial req
 		{"job with greater origin delay than interval", fields{
-			conf: &config.Job{Name: "testCase5", Interval: "1500ms"},
+			conf: &config.Job{Name: "testCase4", Interval: "1500ms"},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				time.Sleep(time.Second)
 			}),
@@ -67,20 +63,7 @@ func TestJob_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
-			h := test.New(st)
-			j, err := definitions.NewJob(tt.fields.conf, tt.fields.handler, config.NewDefaultSettings())
-			if tt.expErr != "" {
-				if err == nil {
-					h.Must(fmt.Errorf("expected an error: %v", err))
-				}
-				if err.Error() != tt.expErr {
-					st.Errorf("\nwant err:\t%s\ngot err:\t%v", tt.expErr, err)
-					return
-				}
-				return
-			} else {
-				h.Must(err)
-			}
+			j := definitions.NewJob(tt.fields.conf, tt.fields.handler, config.NewDefaultSettings())
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

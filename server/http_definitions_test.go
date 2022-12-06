@@ -32,7 +32,8 @@ func TestDefinitions_Jobs(t *testing.T) {
 	for _, tc := range []testcase{
 		{"without label", "01_job.hcl", http.HandlerFunc(nil), true, nil},
 		{"without interval", "02_job.hcl", http.HandlerFunc(nil), true, nil},
-		{"variable reference", "03_job.hcl", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		{"with negative interval", "03_job.hcl", http.HandlerFunc(nil), true, nil},
+		{"variable reference", "04_job.hcl", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			payload := map[string]string{
 				"prop1": "val1",
 				"prop2": "val2",

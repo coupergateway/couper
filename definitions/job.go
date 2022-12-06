@@ -2,7 +2,6 @@ package definitions
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -40,22 +39,13 @@ func (j Jobs) Run(ctx context.Context, log *logrus.Entry) {
 	}
 }
 
-func NewJob(j *config.Job, h http.Handler, settings *config.Settings) (*Job, error) {
-	interval, err := time.ParseDuration(j.Interval)
-	if err != nil {
-		return nil, err
-	}
-
-	if interval == 0 {
-		return nil, fmt.Errorf("job: %s: interval must be a positive number", j.Name)
-	}
-
+func NewJob(j *config.Job, h http.Handler, settings *config.Settings) *Job {
 	return &Job{
 		conf:     j,
 		handler:  h,
-		interval: interval,
+		interval: j.IntervalDuration,
 		settings: settings,
-	}, nil
+	}
 }
 
 func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {

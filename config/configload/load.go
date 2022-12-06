@@ -6,7 +6,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -426,12 +425,18 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	}
 
 	for _, job := range helper.config.Definitions.Job {
-		_, err = time.ParseDuration(job.Interval)
+		attrs := job.Remain.(*hclsyntax.Body).Attributes
+		r := attrs["interval"].Expr.Range()
+
+		job.IntervalDuration, err = config.ParseDuration("interval", job.Interval, -1)
 		if err != nil {
-			return nil, err
+			return nil, newDiagErr(&r, err.Error())
+		} else if job.IntervalDuration == -1 {
+			return nil, newDiagErr(&r, "invalid duration")
 		}
 
 		endpointConf := &config.Endpoint{
+			Pattern:  job.Name, // for error messages
 			Remain:   job.Remain,
 			Requests: job.Requests,
 		}

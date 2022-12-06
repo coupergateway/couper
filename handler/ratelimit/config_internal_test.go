@@ -46,7 +46,7 @@ func TestConfig_Errors(t *testing.T) {
 			[]*config.RateLimit{
 				{Period: neg, PerPeriod: num, PeriodWindow: ""},
 			},
-			`period: cannot be negative: "-1s"`,
+			`period: cannot be negative: '-1s'`,
 		},
 		{
 			[]*config.RateLimit{

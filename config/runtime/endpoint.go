@@ -151,7 +151,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	// TODO: redirect
 	if endpointConf.Response == nil && len(proxies)+len(requests)+len(sequences) == 0 { // && redirect == nil
 		r := endpointConf.HCLBody().SrcRange
-		m := fmt.Sprintf("configuration error: endpoint %q requires at least one proxy, request, response or redirect block", endpointConf.Pattern)
+		m := fmt.Sprintf("configuration error: endpoint: %q requires at least one proxy, request or response block", endpointConf.Pattern)
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  m,
@@ -164,7 +164,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		r := endpointConf.HCLBody().SrcRange
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
-			Summary:  "parsing endpoint request body limit: " + endpointConf.Pattern,
+			Summary:  fmt.Sprintf("endpoint: %q: parsing request body limit" + endpointConf.Pattern),
 			Subject:  &r,
 		}}
 	}

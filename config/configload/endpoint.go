@@ -25,44 +25,44 @@ func newCatchAllEndpoint() *config.Endpoint {
 	}
 }
 
-func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) error {
+func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPattern bool) error {
 	var err error
 
-	for _, endpoint := range endpoints {
-		if check && endpoint.Pattern == "" {
+	for _, ep := range endpoints {
+		if checkPathPattern && ep.Pattern == "" {
 			var r *hcl.Range
-			if endpoint.Remain != nil {
-				r = getRange(endpoint.HCLBody())
+			if ep.Remain != nil {
+				r = getRange(ep.HCLBody())
 			}
 			return newDiagErr(r, "endpoint: missing path pattern")
 		}
 
-		endpointBody := endpoint.HCLBody()
+		endpointBody := ep.HCLBody()
 		rp := endpointBody.Attributes["beta_required_permission"]
 		if rp != nil {
-			endpoint.RequiredPermission = rp.Expr
+			ep.RequiredPermission = rp.Expr
 		}
 
-		if check && endpoint.AllowedMethods != nil && len(endpoint.AllowedMethods) > 0 {
-			if err = validMethods(endpoint.AllowedMethods, endpointBody.Attributes["allowed_methods"]); err != nil {
+		if checkPathPattern && ep.AllowedMethods != nil && len(ep.AllowedMethods) > 0 {
+			if err = validMethods(ep.AllowedMethods, endpointBody.Attributes["allowed_methods"]); err != nil {
 				return err
 			}
 		}
 
-		if check && len(endpoint.Proxies)+len(endpoint.Requests) == 0 && endpoint.Response == nil {
+		if checkPathPattern && len(ep.Proxies)+len(ep.Requests) == 0 && ep.Response == nil {
 			r := endpointBody.SrcRange
 			return newDiagErr(&r,
-				"missing 'default' proxy or request block, or a response definition",
+				"endpoint: missing 'default' proxy or request block, or a response definition",
 			)
 		}
 
-		proxyRequestLabelRequired := len(endpoint.Proxies)+len(endpoint.Requests) > 1
+		proxyRequestLabelRequired := len(ep.Proxies)+len(ep.Requests) > 1
 
 		names := map[string]*hclsyntax.Body{}
 		unique := map[string]struct{}{}
-		subject := endpoint.HCLBody().SrcRange
+		subject := ep.HCLBody().SrcRange
 
-		for _, proxyConfig := range endpoint.Proxies {
+		for _, proxyConfig := range ep.Proxies {
 			if proxyConfig.Name == "" {
 				proxyConfig.Name = defaultNameLabel
 			}
@@ -89,7 +89,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 				if proxyConfig.Name != defaultNameLabel {
 					return errors.Configuration.Message("websockets attribute or block is only allowed in a 'default' proxy block")
 				}
-				if proxyRequestLabelRequired || endpoint.Response != nil {
+				if proxyRequestLabelRequired || ep.Response != nil {
 					return errors.Configuration.Message("websockets are allowed in the endpoint; other 'proxy', 'request' or 'response' blocks are not allowed")
 				}
 
@@ -104,7 +104,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			}
 		}
 
-		for _, reqConfig := range endpoint.Requests {
+		for _, reqConfig := range ep.Requests {
 			if reqConfig.Name == "" {
 				reqConfig.Name = defaultNameLabel
 			}
@@ -137,21 +137,21 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, check bool) err
 			}
 		}
 
-		if endpoint.Response != nil {
-			if err = verifyResponseBodyAttrs(endpoint.Response.HCLBody()); err != nil {
+		if ep.Response != nil {
+			if err = verifyResponseBodyAttrs(ep.Response.HCLBody()); err != nil {
 				return err
 			}
 		}
 
-		if _, ok := names[defaultNameLabel]; check && !ok && endpoint.Response == nil {
+		if _, ok := names[defaultNameLabel]; checkPathPattern && !ok && ep.Response == nil {
 			return newDiagErr(&subject, "Missing a 'default' proxy or request definition, or a response block")
 		}
 
-		if err = buildSequences(names, endpoint); err != nil {
+		if err = buildSequences(names, ep); err != nil {
 			return err
 		}
 
-		epErrorHandler := collect.ErrorHandlerSetters(endpoint)
+		epErrorHandler := collect.ErrorHandlerSetters(ep)
 		if err = configureErrorHandler(epErrorHandler, helper); err != nil {
 			return err
 		}
