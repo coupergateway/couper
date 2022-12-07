@@ -45,13 +45,14 @@ type JWT struct {
 	rolesMap              map[string][]string
 	permissionsClaim      string
 	permissionsMap        map[string][]string
+	introspector          *Introspector
 	jwks                  *jwk.JWKS
 	memStore              *cache.MemoryStore
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(jwtConf *config.JWT, key []byte, memStore *cache.MemoryStore) (*JWT, error) {
-	jwtAC, err := newJWT(jwtConf, memStore)
+func NewJWT(jwtConf *config.JWT, introspector *Introspector, key []byte, memStore *cache.MemoryStore) (*JWT, error) {
+	jwtAC, err := newJWT(jwtConf, introspector, memStore)
 	if err != nil {
 		return nil, err
 	}
@@ -115,12 +116,12 @@ func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
 	return pubKey, nil
 }
 
-func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS, memStore *cache.MemoryStore) (*JWT, error) {
+func NewJWTFromJWKS(jwtConf *config.JWT, introspector *Introspector, jwks *jwk.JWKS, memStore *cache.MemoryStore) (*JWT, error) {
 	if jwks == nil {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	jwtAC, err := newJWT(jwtConf, memStore)
+	jwtAC, err := newJWT(jwtConf, introspector, memStore)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +163,7 @@ func (p parserConfig) newParser() *jwt.Parser {
 	return jwt.NewParser(options...)
 }
 
-func newJWT(jwtConf *config.JWT, memStore *cache.MemoryStore) (*JWT, error) {
+func newJWT(jwtConf *config.JWT, introspector *Introspector, memStore *cache.MemoryStore) (*JWT, error) {
 	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Dpop, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
 	if err != nil {
 		return nil, err
@@ -176,6 +177,7 @@ func newJWT(jwtConf *config.JWT, memStore *cache.MemoryStore) (*JWT, error) {
 		claims:                jwtConf.Claims,
 		claimsRequired:        jwtConf.ClaimsRequired,
 		disablePrivateCaching: jwtConf.DisablePrivateCaching,
+		introspector:          introspector,
 		memStore:              memStore,
 		name:                  jwtConf.Name,
 		rolesClaim:            jwtConf.RolesClaim,
@@ -260,6 +262,19 @@ func (j *JWT) Validate(req *http.Request) error {
 	}
 
 	ctx := req.Context()
+	if j.introspector != nil {
+		exp, _ := tokenClaims["exp"].(float64)
+		nbf, _ := tokenClaims["nbf"].(float64)
+		introspectionResponse, err := j.introspector.Introspect(ctx, tokenValue, int64(exp), int64(nbf))
+		if err != nil {
+			return err
+		}
+
+		if !introspectionResponse.Active() {
+			return errors.JwtTokenExpired.Message("token inactive")
+		}
+	}
+
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
 	if !ok {
 		acMap = make(map[string]interface{})

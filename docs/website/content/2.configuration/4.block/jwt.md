@@ -201,6 +201,10 @@ values: [
   {
     "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
+  },
+  {
+    "description": "Configures a [client for OAuth2 token introspection](/configuration/block/introspection).",
+    "name": "introspection"
   }
 ]
 
