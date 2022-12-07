@@ -49,15 +49,8 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 	var errors hcl.Diagnostics
 	var checked bool
 
-	typ := reflect.TypeOf(obj)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-
-	val := reflect.ValueOf(obj)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
+	typ := elemType(reflect.TypeOf(obj))
+	val := elemValue(reflect.ValueOf(obj))
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
@@ -92,28 +85,20 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 				tp = tp.Elem()
 			}
 
-			vl := reflect.ValueOf(tp)
-			if vl.Kind() == reflect.Ptr {
-				vl = vl.Elem()
-			}
+			vl := elemValue(reflect.ValueOf(tp))
 
 			if vl.Kind() == reflect.Struct {
-				var elem reflect.Type
+				et := elemType(tp)
 
-				if tp.Kind() == reflect.Struct {
-					elem = tp
-				} else if tp.Kind() == reflect.Ptr {
-					elem = tp.Elem()
-				} else {
+				if et.Kind() != reflect.Struct {
 					errors = errors.Append(&hcl.Diagnostic{
 						Severity: hcl.DiagError,
 						Summary:  "Unsupported type.Kind '" + tp.Kind().String() + "' for: " + field.Name,
 					})
-
 					continue
 				}
 
-				o := reflect.New(elem).Interface()
+				o := reflect.New(et).Interface()
 				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
 
 				continue
@@ -143,10 +128,7 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 
 	schema, _ := gohcl.ImpliedBodySchema(obj)
 
-	typ := reflect.TypeOf(obj)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
+	typ := elemType(reflect.TypeOf(obj))
 
 	// TODO: How to implement this automatically?
 	if typ.String() == "config.Backend" {
@@ -302,4 +284,18 @@ func getRange(body *hclsyntax.Body) *hcl.Range {
 	}
 
 	return &body.SrcRange
+}
+
+func elemValue(value reflect.Value) reflect.Value {
+	if value.Kind() == reflect.Ptr {
+		return value.Elem()
+	}
+	return value
+}
+
+func elemType(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Ptr {
+		return t.Elem()
+	}
+	return t
 }
