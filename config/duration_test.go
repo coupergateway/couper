@@ -20,7 +20,7 @@ func TestParseDuration(t *testing.T) {
 		{"", time.Hour, time.Hour, ""},
 		{"invalid", time.Hour, 0, `my-duration: time: invalid duration "invalid"`},
 		{"1sec", time.Hour, 0, `my-duration: time: unknown unit "sec" in duration "1sec"`},
-		{"-3s", time.Hour, 0, `my-duration: cannot be negative: "-3s"`},
+		{"-3s", time.Hour, 0, `my-duration: cannot be negative: '-3s'`},
 	}
 	for _, tt := range tests {
 		t.Run("", func(subT *testing.T) {

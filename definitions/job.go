@@ -2,7 +2,6 @@ package definitions
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -40,22 +39,13 @@ func (j Jobs) Run(ctx context.Context, log *logrus.Entry) {
 	}
 }
 
-func NewJob(j *config.Job, h http.Handler, settings *config.Settings) (*Job, error) {
-	interval, err := time.ParseDuration(j.Interval)
-	if err != nil {
-		return nil, err
-	}
-
-	if interval == 0 {
-		return nil, fmt.Errorf("job: %s: interval must be a positive number", j.Name)
-	}
-
+func NewJob(j *config.Job, h http.Handler, settings *config.Settings) *Job {
 	return &Job{
 		conf:     j,
 		handler:  h,
-		interval: interval,
+		interval: j.IntervalDuration,
 		settings: settings,
-	}, nil
+	}
 }
 
 func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
@@ -91,9 +81,7 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 			outReq = outReq.WithContext(outCtx)
 
 			n := time.Now()
-			w := writer.NewResponseWriter(&noopResponseWriter{}, "")
-			clh.ServeHTTP(w, outReq)
-			logEntry.
+			log := logEntry.
 				WithFields(logrus.Fields{
 					"name": j.conf.Name,
 					"timings": logging.Fields{
@@ -102,8 +90,9 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 					},
 					"uid": uid,
 				}).WithContext(outCtx).
-				WithTime(n).
-				Info()
+				WithTime(n)
+
+			go run(outReq, clh, log)
 
 			if firstRun {
 				t.Reset(j.interval)
@@ -113,21 +102,32 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 	}
 }
 
+func run(req *http.Request, h http.Handler, log *logrus.Entry) {
+	w := writer.NewResponseWriter(&noopResponseWriter{}, "")
+	h.ServeHTTP(w, req)
+
+	if w.StatusCode() == 0 || w.StatusCode() > 499 {
+		log.Error()
+		return
+	}
+	log.Info()
+}
+
 var _ http.ResponseWriter = &noopResponseWriter{}
 
 type noopResponseWriter struct {
 	header http.Header
 }
 
-func (n noopResponseWriter) Header() http.Header {
+func (n *noopResponseWriter) Header() http.Header {
 	if n.header == nil {
 		n.header = make(http.Header)
 	}
 	return n.header
 }
 
-func (n noopResponseWriter) Write(bytes []byte) (int, error) {
+func (n *noopResponseWriter) Write(bytes []byte) (int, error) {
 	return len(bytes), nil
 }
 
-func (n noopResponseWriter) WriteHeader(_ int) {}
+func (n *noopResponseWriter) WriteHeader(_ int) {}

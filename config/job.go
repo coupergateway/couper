@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
@@ -19,7 +21,8 @@ type Job struct {
 	Requests Requests `hcl:"request,block" docs:"Configures a [request](/configuration/block/request) (zero or more)."`
 
 	// Internally used
-	Endpoint *Endpoint
+	Endpoint         *Endpoint
+	IntervalDuration time.Duration
 }
 
 // Inline implements the <Inline> interface.
