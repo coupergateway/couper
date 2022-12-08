@@ -14,7 +14,7 @@ type BlockHeader struct {
 
 type Registerer map[string]map[BlockHeader]*hcl.BodySchema
 
-func (r Registerer) Add(parentType any, header *hcl.BlockHeaderSchema, bs BodySchema) error {
+func (r Registerer) Add(parentType any, header *hcl.BlockHeaderSchema, bs BodySchema) {
 	pt := whichParentType(parentType)
 
 	if _, exist := r[pt]; !exist {
@@ -27,13 +27,13 @@ func (r Registerer) Add(parentType any, header *hcl.BlockHeaderSchema, bs BodySc
 	}
 	// just once per parent
 	if _, exist := r[pt][blockHeader]; exist {
-		return nil //fmt.Errorf("schema for %s already exists", header.Type)
+		return // TODO: required check to prevent plugin overrides system ones
 	}
 
 	r[pt][blockHeader] = bs.Schema()
 
 	// additionally self register
-	return r.Add(header.Type, header, bs)
+	r.Add(header.Type, header, bs)
 }
 
 func (r Registerer) GetFor(obj any) *hcl.BodySchema {

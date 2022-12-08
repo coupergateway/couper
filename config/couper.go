@@ -29,21 +29,17 @@ func init() {
 
 	// register block headers and body schema
 	for _, block := range couperSchema.Blocks {
-		var err error
 		b := block
 
 		switch block.Type {
 		case "defaults":
-			err = schema.Registry.Add(couper, &b, Defaults{})
+			schema.Registry.Add(couper, &b, Defaults{})
 		case "definitions":
-			err = schema.Registry.Add(couper, &b, Definitions{})
+			schema.Registry.Add(couper, &b, Definitions{})
 		case "server":
-			err = schema.Registry.Add(couper, &b, Server{})
+			schema.Registry.Add(couper, &b, Server{})
 		case "settings":
-			err = schema.Registry.Add(couper, &b, &Settings{})
-		}
-		if err != nil {
-			panic(err)
+			schema.Registry.Add(couper, &b, &Settings{})
 		}
 	}
 }
