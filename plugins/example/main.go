@@ -3,7 +3,7 @@
 package main
 
 import (
-	"net/http"
+	"context"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -14,8 +14,8 @@ import (
 
 // Ensures interface compatibility
 var (
-	_ plugins.Config        = &Example{}
-	_ plugins.RoundtripHook = &Example{}
+	_ plugins.Config         = &Example{}
+	_ plugins.ConnectionHook = &Example{}
 
 	_ schema.BodySchema = &Example{}
 )
@@ -27,21 +27,25 @@ type Example struct {
 	Test string `hcl:"test"`
 }
 
+func (ep *Example) Connect(ctx context.Context, args ...any) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Definition returns a hcl-schema which will be loaded while reading a defined parent block.
+func (ep *Example) Definition() (parent plugins.MountPoint, header *hcl.BlockHeaderSchema, schema schema.BodySchema) {
+	return plugins.Endpoint, &hcl.BlockHeaderSchema{
+		Type:       "ldap_connector",
+		LabelNames: []string{"name"},
+	}, ep
+}
+
 func (ep *Example) Schema() *hcl.BodySchema {
 	s, _ := gohcl.ImpliedBodySchema(ep)
 	return s
 }
 
-// Definition returns a hcl-schema which will be loaded while reading a defined parent block.
-func (ep *Example) Definition() (parent string, header *hcl.BlockHeaderSchema, schema schema.BodySchema) {
-	// TODO: Couper validate step
-	return "definitions", &hcl.BlockHeaderSchema{
-		Type:       "poc",
-		LabelNames: []string{"name"},
-	}, ep
-}
-
-func (ep *Example) RegisterRoundtripFunc(kind plugins.HookKind, rt http.RoundTripper) {
+func (ep *Example) Validate(ctx *hcl.EvalContext, body hcl.Body) {
 	//TODO implement me
 	panic("implement me")
 }

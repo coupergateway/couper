@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/internal/seetie"
 )
 
@@ -126,26 +126,19 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 		errors hcl.Diagnostics
 	)
 
-	schema, _ := gohcl.ImpliedBodySchema(obj)
-
+	bodySchema := schema.Registry.GetFor(obj)
 	typ := elemType(reflect.TypeOf(obj))
 
 	// TODO: How to implement this automatically?
 	if typ.String() == "config.Backend" {
-		meta.MergeSchemas(schema, config.OAuthBlockSchema, config.TokenRequestBlockSchema)
+		meta.MergeSchemas(bodySchema, config.OAuthBlockSchema, config.TokenRequestBlockSchema)
 	}
 
 	if _, ok := obj.(collect.ErrorHandlerSetter); ok {
-		schema = config.WithErrorHandlerSchema(schema)
+		bodySchema = config.WithErrorHandlerSchema(bodySchema)
 	}
 
-	//if i, ok := obj.(config.Inline); ok {
-	//	inlineSchema := i.Schema(true)
-	//	schema.Attributes = append(schema.Attributes, inlineSchema.Attributes...)
-	//	schema.Blocks = append(schema.Blocks, inlineSchema.Blocks...)
-	//}
-
-	blocks, errors = completeSchemaComponents(body, schema, blocks, errors)
+	blocks, errors = completeSchemaComponents(body, bodySchema, blocks, errors)
 
 	return blocks, errors
 }

@@ -1,7 +1,8 @@
 package schema
 
 import (
-	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 )
@@ -10,22 +11,58 @@ type BlockHeader struct {
 	Name   string
 	Header *hcl.BlockHeaderSchema
 }
+
 type Registerer map[string]map[BlockHeader]*hcl.BodySchema
 
-func (r Registerer) Add(parentType string, header *hcl.BlockHeaderSchema, bs BodySchema) error {
-	if _, exist := r[parentType]; !exist {
-		r[parentType] = make(map[BlockHeader]*hcl.BodySchema)
+func (r Registerer) Add(parentType any, header *hcl.BlockHeaderSchema, bs BodySchema) error {
+	pt := whichParentType(parentType)
+
+	if _, exist := r[pt]; !exist {
+		r[pt] = make(map[BlockHeader]*hcl.BodySchema)
 	}
+
 	blockHeader := BlockHeader{
 		Name:   header.Type,
 		Header: header,
 	}
 	// just once per parent
-	if _, exist := r[parentType][blockHeader]; exist {
-		return fmt.Errorf("schema for %s already exists", header.Type)
+	if _, exist := r[pt][blockHeader]; exist {
+		return nil //fmt.Errorf("schema for %s already exists", header.Type)
 	}
 
-	r[parentType][blockHeader] = bs.Schema()
+	r[pt][blockHeader] = bs.Schema()
 
-	return nil
+	// additionally self register
+	return r.Add(header.Type, header, bs)
+}
+
+func (r Registerer) GetFor(obj any) *hcl.BodySchema {
+	needle := whichParentType(obj)
+	result, exist := r[needle]
+	if !exist {
+		return nil
+	}
+
+	schema := &hcl.BodySchema{}
+	for bh := range result {
+		schema.Blocks = append(schema.Blocks, *bh.Header)
+	}
+	if len(schema.Blocks) == 0 {
+		panic("missing schema for " + reflect.TypeOf(obj).String())
+	}
+	return schema
+}
+
+func whichParentType(pt any) string {
+	switch v := pt.(type) {
+	case string:
+		return v
+	case any:
+		pType := reflect.TypeOf(v)
+		if pType.Kind() == reflect.Ptr {
+			pType = pType.Elem()
+		}
+		return strings.ToLower(strings.SplitAfter(pType.String(), ".")[1])
+	}
+	return ""
 }

@@ -24,20 +24,23 @@ type Couper struct {
 }
 
 func init() {
-	couperSchema, _ := gohcl.ImpliedBodySchema(&Couper{})
+	couper := Couper{}
+	couperSchema, _ := gohcl.ImpliedBodySchema(couper)
+
+	// register block headers and body schema
 	for _, block := range couperSchema.Blocks {
 		var err error
 		b := block
 
 		switch block.Type {
 		case "defaults":
-			err = schema.Registry.Add("", &b, Defaults{})
+			err = schema.Registry.Add(couper, &b, Defaults{})
 		case "definitions":
-			err = schema.Registry.Add("", &b, Definitions{})
+			err = schema.Registry.Add(couper, &b, Definitions{})
 		case "server":
-			err = schema.Registry.Add("", &b, Server{})
+			err = schema.Registry.Add(couper, &b, Server{})
 		case "settings":
-			err = schema.Registry.Add("", &b, &Settings{})
+			err = schema.Registry.Add(couper, &b, &Settings{})
 		}
 		if err != nil {
 			panic(err)

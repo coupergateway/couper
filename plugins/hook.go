@@ -6,5 +6,7 @@ type HookKind uint8
 const (
 	Unknown HookKind = iota
 	AccessControl
-	Roundtrip
+	ProducerRequest
+	ProducerProxy
+	Connection
 )
