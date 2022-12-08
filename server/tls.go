@@ -13,8 +13,9 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/reader"
+	coupertls "github.com/avenga/couper/connection/tls"
 	"github.com/avenga/couper/errors"
-	coupertls "github.com/avenga/couper/internal/tls"
+	internaltls "github.com/avenga/couper/internal/tls"
 )
 
 func requireClientAuth(config *config.ServerTLS) tls.ClientAuthType {
@@ -161,7 +162,7 @@ func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, t
 	// try PEM encoded
 	var leafCertificate tls.Certificate
 	if len(leafCert) > 0 {
-		leafCertificate, err = coupertls.ParseCertificate(leafCert, nil)
+		leafCertificate, err = internaltls.ParseCertificate(leafCert, nil)
 		if err != nil {
 			return fail(err)
 		}
@@ -171,7 +172,7 @@ func LoadClientCertificate(config *config.ClientCertificate) (tls.Certificate, t
 		return tls.Certificate{}, leafCertificate, nil
 	}
 
-	caCertificate, err := coupertls.ParseCertificate(caCert, nil)
+	caCertificate, err := internaltls.ParseCertificate(caCert, nil)
 
 	return caCertificate, leafCertificate, err
 }

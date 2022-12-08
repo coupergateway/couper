@@ -1,4 +1,4 @@
-package transport
+package connection
 
 import (
 	"context"
@@ -24,14 +24,14 @@ const (
 	eventClose = "close"
 )
 
-// OriginConn wraps the original net.Conn created by net.DialContext or transport.DialTLS for debug purposes.
-type OriginConn struct {
+// Conn wraps the original net.Conn created by net.DialContext or transport.DialTLS for metrics and debug log purposes.
+type Conn struct {
 	net.Conn
 
 	connClosedMu sync.Mutex
 	connClosed   bool
 
-	conf *Config
+	conf *Configuration
 
 	createdAt    time.Time
 	initialReqID string
@@ -40,14 +40,14 @@ type OriginConn struct {
 	tlsState     *tls.ConnectionState
 }
 
-// NewOriginConn creates a new wrapper with logging context.
-func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logrus.Entry) *OriginConn {
+// NewConn creates a new net.Conn wrapper with metrics and log context.
+func NewConn(ctx context.Context, conn net.Conn, conf *Configuration, entry *logrus.Entry) *Conn {
 	var reqID string
 	if uid, ok := ctx.Value(request.UID).(string); ok {
 		reqID = uid
 	}
 
-	o := &OriginConn{
+	o := &Conn{
 		Conn:         conn,
 		conf:         conf,
 		createdAt:    time.Now(),
@@ -55,7 +55,7 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 		labels: []attribute.KeyValue{
 			attribute.String("origin", conf.Origin),
 			attribute.String("host", conf.Hostname),
-			attribute.String("backend", conf.BackendName),
+			attribute.String("backend", conf.ContextName),
 		},
 		log:      entry,
 		tlsState: nil,
@@ -75,13 +75,16 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 	return o
 }
 
-func (o *OriginConn) logFields(event string) logrus.Fields {
+func (o *Conn) logFields(event string) logrus.Fields {
 	fields := logrus.Fields{
 		"event":       event,
 		"initial_uid": o.initialReqID,
 		"localAddr":   o.LocalAddr().String(),
 		"origin":      o.conf.Origin,
 		"remoteAddr":  o.RemoteAddr().String(),
+	}
+	if o.conf.ContextType != "" && o.conf.ContextName != "" {
+		fields[o.conf.ContextType] = o.conf.ContextName
 	}
 
 	if event == eventClose {
@@ -102,7 +105,7 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 	}
 }
 
-func (o *OriginConn) Close() error {
+func (o *Conn) Close() error {
 	o.connClosedMu.Lock()
 	if o.connClosed {
 		o.connClosedMu.Unlock()
