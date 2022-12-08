@@ -6,9 +6,9 @@ The error handler label specifies which [error type](/configuration/error-handli
 
 Concerning child blocks and attributes, the `error_handler` block is similar to an [Endpoint Block](/configuration/block/endpoint).
 
-| Block name  |Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-| `error_handler` | [API Block](/configuration/block/api), [Endpoint Block](/configuration/block/endpoint), [Basic Auth Block](/configuration/block/basic_auth), [JWT Block](/configuration/block/jwt), [OAuth2 AC (Beta) Block](/configuration/block/beta_oauth2), [OIDC Block](/configuration/block/oidc), [SAML Block](/configuration/block/saml) | optional | [Proxy Block(s)](/configuration/block/proxy),  [Request Block(s)](/configuration/block/request), [Response Block](/configuration/block/response), [Error Handler Block(s)](/configuration/block/error_handler) |
+| Block name      | Context                                                                                                                                                                                                                                                                                                                          | Label    |
+| :---------------| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| :--------|
+| `error_handler` | [API Block](/configuration/block/api), [Endpoint Block](/configuration/block/endpoint), [Basic Auth Block](/configuration/block/basic_auth), [JWT Block](/configuration/block/jwt), [OAuth2 AC (Beta) Block](/configuration/block/beta_oauth2), [OIDC Block](/configuration/block/oidc), [SAML Block](/configuration/block/saml) | optional |
 
 ## Example
 
@@ -69,12 +69,6 @@ values: [
   },
   {
     "default": "",
-    "description": "[`proxy`](proxy) block definition.",
-    "name": "proxy",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "list of names to remove form parameters from the upstream request body",
     "name": "remove_form_params",
     "type": "object"
@@ -99,18 +93,6 @@ values: [
   },
   {
     "default": "",
-    "description": "[`request`](request) block definition.",
-    "name": "request",
-    "type": "object"
-  },
-  {
-    "default": "",
-    "description": "[`response`](response) block definition.",
-    "name": "response",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "key/value pairs to set query parameters in the upstream request URL",
     "name": "set_form_params",
     "type": "object"
@@ -132,6 +114,26 @@ values: [
     "description": "key/value pairs to set as response headers in the client response",
     "name": "set_response_headers",
     "type": "object"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [proxy](/configuration/block/proxy) (zero or more).",
+    "name": "proxy"
+  },
+  {
+    "description": "Configures a [request](/configuration/block/request) (zero or more).",
+    "name": "request"
+  },
+  {
+    "description": "Configures the [response](/configuration/block/response) (zero or one).",
+    "name": "response"
   }
 ]
 

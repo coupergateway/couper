@@ -1,8 +1,8 @@
 # Basic Auth
 
-| Block name   | Context                                 | Label    | Nested block(s)                                |
-|:-------------|:----------------------------------------|:---------|:-----------------------------------------------|
-| `basic_auth` | [Definitions Block](/configuration/block/definitions) | required | [Error Handler Block(s)](/configuration/block/error_handler) |
+| Block name   | Context                                               | Label    |
+|:-------------|:------------------------------------------------------|:---------|
+| `basic_auth` | [Definitions Block](/configuration/block/definitions) | required |
 
 The  `basic_auth` block lets you configure basic auth for your gateway. Like all
 [access control](/configuration/access-control) types, the `basic_auth` block is defined in the
@@ -52,6 +52,18 @@ values: [
     "description": "The user name.",
     "name": "user",
     "type": "string"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
+    "name": "error_handler"
   }
 ]
 

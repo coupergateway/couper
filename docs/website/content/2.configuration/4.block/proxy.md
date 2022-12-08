@@ -4,9 +4,9 @@ The `proxy` block creates and executes a proxy request to a backend service.
 
 > 📝 Multiple `proxy` and [`request`](/configuration/block/request) blocks are executed in parallel.
 
-| Block name | Context                           | Label                                                                                                                                                                                                                                          | Nested block(s)                                                                                                                                                                                                                                |
-|:-----------|:----------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `proxy`    | [Endpoint Block](/configuration/block/endpoint) | See `Label` description below. | [Backend Block](/configuration/block/backend) (&#9888; required, if no [Backend Block](/configuration/block/backend) reference is defined or no `url` attribute is set.), [Websockets Block](/configuration/block/websockets) (&#9888; Either websockets attribute or block is allowed.) |
+| Block name | Context                                         | Label                          |
+|:-----------|:------------------------------------------------|:-------------------------------|
+| `proxy`    | [Endpoint Block](/configuration/block/endpoint) | See `Label` description below. |
 
 **Label:** If defined in an [Endpoint Block](/configuration/block/endpoint), a `proxy` block or [Request Block](/configuration/block/request) w/o a label has an implicit name `"default"`. If defined in the [Definitions Block](/configuration/block/definitions), the label of `proxy` is used as reference in [Endpoint Blocks](/configuration/block/endpoint) and the name can be defined via `name` attribute. Only **one** `proxy` block or [Request Block](/configuration/block/request) w/ label `"default"` per [Endpoint Block](/configuration/block/endpoint) is allowed. 
 
@@ -39,7 +39,7 @@ values: [
   },
   {
     "default": "",
-    "description": "backend block reference",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the proxy request. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -105,15 +105,33 @@ values: [
   },
   {
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the corresponding backend.",
+    "description": "URL of the resource to request. May be relative to an origin specified in a referenced or nested `backend` block.",
     "name": "url",
     "type": "string"
   },
   {
     "default": "false",
-    "description": "Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other `proxy` blocks, `request` blocks or `response` blocks are not allowed within the current `endpoint` block.",
+    "description": "Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other `proxy` blocks, `request` blocks or `response` blocks are not allowed within the current `endpoint` block. Mutually exclusive with `websockets` block.",
     "name": "websockets",
     "type": "bool"
+  }
+]
+
+---
+::
+
+If the `url` attribute is specified and its value is an absolute URL, the protocol and host parts must be the same as in the value of the {origin} attribute of the used backend.
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for the proxy request (zero or one). Mutually exclusive with `backend` attribute.",
+    "name": "backend"
+  },
+  {
+    "description": "Configures support for [websockets](/configuration/block/websockets) connections (zero or one). Mutually exclusive with `websockets` attribute.",
+    "name": "websockets"
   }
 ]
 

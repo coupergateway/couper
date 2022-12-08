@@ -10,9 +10,9 @@ the definitions from a given document defined with the `file` attribute.
 lead to a non-matching _route_ which is still required for response validations.
 In this case the response validation will fail if not ignored, too.
 
-|Block name|Context|Label|Nested block(s)|
-| :-----------| :-----------| :-----------| :-----------|
-|`openapi`| [Backend Block](/configuration/block/backend)|-|-|
+| Block name | Context                                       | Label    |
+|:-----------|:----------------------------------------------|:---------|
+|`openapi`   | [Backend Block](/configuration/block/backend) | no label |
 
 
 ::attributes

@@ -10,9 +10,9 @@ The `backend` block defines the connection to a local/remote backend service.
 
 Backends can be defined in the [Definitions Block](/configuration/block/definitions) and referenced by _label_.
 
-| Block name | Context                                                                                                                                                                                                                                   | Label                                                                     | Nested block(s)                                                                                                                       |
-|:-----------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------|
-| `backend`  | [Definitions Block](/configuration/block/definitions), [Proxy Block](/configuration/block/proxy), [Request Block](/configuration/block/request), [OAuth2 CC Block](/configuration/block/oauth2req_auth), [JWT Block](/configuration/block/jwt), [OAuth2 AC (Beta) Block](/configuration/block/beta_oauth2), [OIDC Block](/configuration/block/oidc)                                               | &#9888; required, when defined in [Definitions Block](/configuration/block/definitions)        | [OpenAPI Block](/configuration/block/openapi), [OAuth2 CC Block](/configuration/block/oauth2req_auth), [Health Block](/configuration/block/health), [Token Request (Beta) Block](/configuration/block/token_request), [Rate Limit Block (beta)](/configuration/block/rate_limit), [TLS Block](/configuration/block/backend_tls) |
+| Block name | Context                                                                                                                                                                                                                                                                                                                                             | Label                                                                                 |
+|:-----------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------|
+| `backend`  | [Definitions Block](/configuration/block/definitions), [Proxy Block](/configuration/block/proxy), [Request Block](/configuration/block/request), [OAuth2 CC Block](/configuration/block/oauth2req_auth), [JWT Block](/configuration/block/jwt), [OAuth2 AC (Beta) Block](/configuration/block/beta_oauth2), [OIDC Block](/configuration/block/oidc) | &#9888; required, if defined in [Definitions Block](/configuration/block/definitions) |
 
 ::attributes
 ---
@@ -192,6 +192,38 @@ values: [
 
 ::duration
 ---
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [health check](/configuration/block/health) (zero or one).",
+    "name": "beta_health"
+  },
+  {
+    "description": "Configures [rate limiting](/configuration/block/rate_limit) (zero or one).",
+    "name": "beta_rate_limit"
+  },
+  {
+    "description": "Configures a [token request authorization](/configuration/block/token_request) (zero or more).",
+    "name": "beta_token_request"
+  },
+  {
+    "description": "Configures an [OAuth2 authorization](/configuration/block/oauth2) (zero or one).",
+    "name": "oauth2"
+  },
+  {
+    "description": "Configures [OpenAPI validation](/configuration/block/openapi) (zero or one).",
+    "name": "openapi"
+  },
+  {
+    "description": "Configures [backend TLS](/configuration/block/backend_tls) (zero or one).",
+    "name": "tls"
+  }
+]
+
 ---
 ::
 

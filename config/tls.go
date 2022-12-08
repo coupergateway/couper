@@ -4,8 +4,8 @@ type ServerTLS struct {
 	// TBA
 	//Ocsp               bool                 `hcl:"ocsp,optional"`
 	//OcspTTL            string               `hcl:"ocsp_ttl,optional" type:"duration" default:"12h"`
-	ClientCertificate  []*ClientCertificate `hcl:"client_certificate,block"`
-	ServerCertificates []*ServerCertificate `hcl:"server_certificate,block"`
+	ClientCertificate  []*ClientCertificate `hcl:"client_certificate,block" docs:"Configures a [client certificate](/configuration/block/client_certificate) (zero or more)."`
+	ServerCertificates []*ServerCertificate `hcl:"server_certificate,block" docs:"Configures a [server certificate](/configuration/block/server_certificate) (zero or more)."`
 }
 
 type BackendTLS struct {

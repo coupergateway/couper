@@ -2,9 +2,9 @@
 
 The `files` blocks configure the file serving. Can be defined multiple times as long as the `base_path` is unique.
 
-| Block name | Context                       | Label    | Nested block(s)           |
-|:-----------|:------------------------------|:---------|:--------------------------|
-| `files`    | [Server Block](/configuration/block/server) | Optional | [CORS Block](/configuration/block/cors) |
+| Block name | Context                                     | Label    |
+|:-----------|:--------------------------------------------|:---------|
+| `files`    | [Server Block](/configuration/block/server) | Optional |
 
 
 ::attributes
@@ -57,6 +57,18 @@ values: [
     "description": "key/value pairs to set as response headers in the client response",
     "name": "set_response_headers",
     "type": "object"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures [CORS](/configuration/block/cors) settings (zero or one).",
+    "name": "cors"
   }
 ]
 

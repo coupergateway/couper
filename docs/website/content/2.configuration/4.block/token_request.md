@@ -2,9 +2,9 @@
 
 The `beta_token_request` block in the [Backend Block](/configuration/block/backend) context configures a request to get a token used to authorize backend requests.
 
-| Block name            | Context                           | Label                                                                                                                                                                                                                       | Nested block(s)                                                                                                      |
-|:----------------------|:----------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------|
-| `beta_token_request`  | [Backend Block](/configuration/block/backend)          | &#9888; A [Token Request (Beta) Block](/configuration/block/token_request) w/o a label has an implicit label `"default"`. Only **one** [Token Request (Beta) Block](/configuration/block/token_request) w/ label `"default"` per [Backend Block](/configuration/block/backend) is allowed. | [Backend Block](/configuration/block/backend) (&#9888; required, if no `backend` block reference is defined or no `url` attribute is set. |
+| Block name            | Context                                       | Label                                                                                                                                                                                                                                                                                      |
+|:----------------------|:----------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `beta_token_request`  | [Backend Block](/configuration/block/backend) | &#9888; A [Token Request (Beta) Block](/configuration/block/token_request) w/o a label has an implicit label `"default"`. Only **one** [Token Request (Beta) Block](/configuration/block/token_request) w/ label `"default"` per [Backend Block](/configuration/block/backend) is allowed. |
 <!-- TODO: add available http methods -->
 
 ::attributes
@@ -12,7 +12,7 @@ The `beta_token_request` block in the [Backend Block](/configuration/block/backe
 values: [
   {
     "default": "",
-    "description": "backend block reference is required if no backend block is defined",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -66,9 +66,23 @@ values: [
   },
   {
     "default": "",
-    "description": "If defined, the host part of the URL must be the same as the `origin` attribute of the `backend` block (if defined).",
+    "description": "URL of the resource to request the token from. May be relative to an origin specified in a referenced or nested `backend` block.",
     "name": "url",
     "type": "string"
+  }
+]
+
+---
+::
+
+If the `url` attribute is specified and its value is an absolute URL, the protocol and host parts must be the same as in the value of the {origin} attribute of the used backend.
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for the token request (zero or one). Mutually exclusive with `backend` attribute.",
+    "name": "backend"
   }
 ]
 

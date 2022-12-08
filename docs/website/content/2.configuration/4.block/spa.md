@@ -2,9 +2,9 @@
 
 The `spa` blocks configure the Web serving for SPA assets. Can be defined multiple times as long as the `base_path`+`paths` is unique.
 
-| Block name | Context                       | Label    | Nested block(s)           |
-|:-----------|:------------------------------|:---------|:--------------------------|
-| `spa`      | [Server Block](/configuration/block/server) | Optional | [CORS Block](/configuration/block/cors) |
+| Block name | Context                                     | Label    |
+|:-----------|:--------------------------------------------|:---------|
+| `spa`      | [Server Block](/configuration/block/server) | Optional |
 
 ```hcl
 spa {
@@ -114,12 +114,6 @@ values: [
   },
   {
     "default": "",
-    "description": "Configure [CORS](cors) settings.",
-    "name": "cors",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
@@ -147,6 +141,18 @@ values: [
     "description": "key/value pairs to set as response headers in the client response",
     "name": "set_response_headers",
     "type": "object"
+  }
+]
+
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures [CORS](/configuration/block/cors) settings (zero or one).",
+    "name": "cors"
   }
 ]
 

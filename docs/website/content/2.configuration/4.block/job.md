@@ -4,9 +4,9 @@ The `beta_job` block lets you define recurring requests or sequences with an giv
 and for every interval and has an own log type: `job` which represents the starting point with an uid for tracing
 purposes.
 
-| Block name | Context                          | Label            | Nested block                |
-|:-----------|:---------------------------------|:-----------------|:----------------------------|
-| `beta_job` | [Definitions Block](/configuration/block/definitions) | required         | [Request Block(s)](/configuration/block/request) |
+| Block name | Context                                               | Label    |
+|:-----------|:------------------------------------------------------|:---------|
+| `beta_job` | [Definitions Block](/configuration/block/definitions) | required |
 
 ## Example
 
@@ -63,5 +63,17 @@ values: [
 
 ::duration
 ---
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [request](/configuration/block/request) (zero or more).",
+    "name": "request"
+  }
+]
+
 ---
 ::

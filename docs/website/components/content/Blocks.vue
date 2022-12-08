@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h3 id="attributes"><a href="#attributes">Attributes</a></h3>
+    <h3 id="blocks"><a href="#blocks">Nested Blocks</a></h3>
     <table class="table-auto">
       <thead>
       <tr>
@@ -13,7 +13,6 @@
       <tr v-for="value in values" :key="value.name">
         <td v-for="head in header" :key="head.value+value.name">
           <code v-if="head.value === 'name'">{{ value[head.value] ? value[head.value] : '-' }}</code>
-          <code v-else-if="head.value === 'default' && value[head.value] != ''">{{ value[head.value] }}</code>
           <div v-else-if="head.value === 'description'" v-html="micromark(value[head.value])"/>
           <div v-else v-html="value[head.value] ? value[head.value] : '-'" />
         </td>
@@ -33,14 +32,6 @@ const props = defineProps({
       {
         name: "Name",
         value: "name",
-      },
-      {
-        name: "Type",
-        value: "type",
-      },
-      {
-        name: "Default",
-        value: "default",
       },
       {
         name: "Description",

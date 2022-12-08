@@ -15,7 +15,7 @@ type FilesBlocks []*Files
 type Files struct {
 	AccessControl        []string `hcl:"access_control,optional" docs:"Sets predefined access control for this block context."`
 	BasePath             string   `hcl:"base_path,optional" docs:"Configures the path prefix for all requests."`
-	CORS                 *CORS    `hcl:"cors,block"`
+	CORS                 *CORS    `hcl:"cors,block" docs:"Configures [CORS](/configuration/block/cors) settings (zero or one)."`
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
 	DocumentRoot         string   `hcl:"document_root" docs:"Location of the document root (directory)."`
 	ErrorFile            string   `hcl:"error_file,optional" docs:"Location of the error file template."`

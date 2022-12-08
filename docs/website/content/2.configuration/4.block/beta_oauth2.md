@@ -4,9 +4,9 @@ The `beta_oauth2` block lets you configure the [`oauth2_authorization_url()` fun
 control for an OAuth2 **Authorization Code Grant Flow** redirect endpoint.
 Like all [access control](/configuration/access-control) types, the `beta_oauth2` block is defined in the [`definitions` block](/configuration/block/definitions) and can be referenced in all configuration blocks by its required _label_.
 
-| Block name    | Context                                 | Label            | Nested block(s)                                                                                                  |
-|:--------------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
-| `beta_oauth2` | [Definitions Block](/configuration/block/definitions)        | &#9888; required | [Backend Block](/configuration/block/backend), [Error Handler Block](/configuration/block/error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
+| Block name    | Context                                                      | Label            |
+|:--------------|:-------------------------------------------------------------|:-----------------|
+| `beta_oauth2` | [Definitions Block](/configuration/block/definitions)        | &#9888; required |
 
 A nested `jwt_signing_profile` block is used to create a client assertion if `token_endpoint_auth_method` is either `"client_secret_jwt"` or `"private_key_jwt"`.
 
@@ -21,7 +21,7 @@ values: [
   },
   {
     "default": "",
-    "description": "[`backend` block](backend) reference.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -93,3 +93,23 @@ values: [
 If the authorization server supports the `code_challenge_method` `S256` (a.k.a. PKCE, see RFC 7636), we recommend `verifier_method = "ccm_s256"`.
 
 The HTTP header field `Accept: application/json` is automatically added to the token request. This can be modified with [request header modifiers](/configuration/modifiers#request-header) in a [backend block](/configuration/block/backend).
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for token requests (zero or one). Mutually exclusive with `backend` attribute.",
+    "name": "backend"
+  },
+  {
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
+    "name": "error_handler"
+  },
+  {
+    "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"` (zero or one).",
+    "name": "jwt_signing_profile"
+  }
+]
+
+---
+::

@@ -4,9 +4,9 @@ The `oidc` block lets you configure the [`oauth2_authorization_url()` function](
 control for an OIDC **Authorization Code Grant Flow** redirect endpoint.
 Like all [access control](/configuration/access-control) types, the `oidc` block is defined in the [`definitions` Block](/configuration/block/definitions) and can be referenced in all configuration blocks by its required _label_.
 
-| Block name | Context                                 | Label            | Nested block(s)                                                                                                  |
-|:-----------|:----------------------------------------|:-----------------|:-----------------------------------------------------------------------------------------------------------------|
-| `oidc`     | [Definitions Block](/configuration/block/definitions)        | &#9888; required | [Backend Block](/configuration/block/backend), [Error Handler Block](/configuration/block/error_handler), [JWT Signing Profile Block](jwt_signing_profile) |
+| Block name | Context                                                      | Label            |
+|:-----------|:-------------------------------------------------------------|:-----------------|
+| `oidc`     | [Definitions Block](/configuration/block/definitions)        | &#9888; required |
 
 > any `backend` attributes: Do not disable the peer certificate validation with `disable_certificate_validation = true`.
 
@@ -17,7 +17,7 @@ A nested `jwt_signing_profile` block is used to create a client assertion if `to
 values: [
   {
     "default": "",
-    "description": "`backend` block reference, defined in [`definitions`](definitions). Default for OpenID configuration, JWKS, token and userinfo requests.",
+    "description": "References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
   },
@@ -35,7 +35,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for the backend to request the OpenID configuration from.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration requests.",
     "name": "configuration_backend",
     "type": "string"
   },
@@ -77,7 +77,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for the backend to request the JWKS from.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for JWKS requests.",
     "name": "jwks_uri_backend",
     "type": "string"
   },
@@ -95,7 +95,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for the backend to request the token from.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests.",
     "name": "token_backend",
     "type": "string"
   },
@@ -107,7 +107,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Optional option to configure specific behavior for the backend to request the userinfo from.",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for userinfo requests.",
     "name": "userinfo_backend",
     "type": "string"
   },
@@ -137,3 +137,26 @@ The HTTP header field `Accept: application/json` is automatically added to the t
 
 
 ::duration
+---
+---
+::
+
+::blocks
+---
+values: [
+  {
+    "description": "Configures a default [backend](/configuration/block/backend) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with `backend` attribute.",
+    "name": "backend"
+  },
+  {
+    "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
+    "name": "error_handler"
+  },
+  {
+    "description": "Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if `token_endpoint_auth_method` is either `\"client_secret_jwt\"` or `\"private_key_jwt\"`.",
+    "name": "jwt_signing_profile"
+  }
+]
+
+---
+::

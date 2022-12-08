@@ -19,9 +19,9 @@ type API struct {
 	AccessControl        []string  `hcl:"access_control,optional" docs:"Sets predefined [access control](../access-control) for this block."`
 	AllowedMethods       []string  `hcl:"allowed_methods,optional" docs:"Sets allowed methods as _default_ for all contained endpoints. Requests with a method that is not allowed result in an error response with a {405 Method Not Allowed} status." default:"*"`
 	BasePath             string    `hcl:"base_path,optional" docs:"Configures the path prefix for all requests."`
-	CORS                 *CORS     `hcl:"cors,block"`
+	CORS                 *CORS     `hcl:"cors,block" docs:"Configures [CORS](/configuration/block/cors) settings (zero or one)."`
 	DisableAccessControl []string  `hcl:"disable_access_control,optional" docs:"Disables access controls by name."`
-	Endpoints            Endpoints `hcl:"endpoint,block"`
+	Endpoints            Endpoints `hcl:"endpoint,block" docs:"Configures an [endpoint](/configuration/block/endpoint) (zero or more)."`
 	ErrorFile            string    `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Name                 string    `hcl:"name,label,optional"`
 	Remain               hcl.Body  `hcl:",remain"`
