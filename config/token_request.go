@@ -5,12 +5,15 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ BackendReference = &TokenRequest{}
-	_ Body             = &TokenRequest{}
-	//_ Inline           = &TokenRequest{}
+	_ BackendReference  = &TokenRequest{}
+	_ Body              = &TokenRequest{}
+	_ schema.BodySchema = &TokenRequest{}
 )
 
 var tokenRequestBlockHeaderSchema = hcl.BlockHeaderSchema{
@@ -25,13 +28,11 @@ var TokenRequestBlockSchema = &hcl.BodySchema{
 }
 
 type TokenRequest struct {
+	Backend     *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the token request (zero or one). Mutually exclusive with {backend} attribute."`
 	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request. Mutually exclusive with {backend} block."`
 	Name        string   `hcl:"name,label,optional"`
 	URL         string   `hcl:"url,optional" docs:"URL of the resource to request the token from. May be relative to an origin specified in a referenced or nested {backend} block."`
 	Remain      hcl.Body `hcl:",remain"`
-
-	// Internally used
-	Backend hcl.Body
 }
 
 // Reference implements the <BackendReference> interface.
@@ -47,7 +48,6 @@ func (t *TokenRequest) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (t *TokenRequest) Inline() interface{} {
 	type Inline struct {
-		Backend        *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the token request (zero or one). Mutually exclusive with {backend} attribute."`
 		Body           string               `hcl:"body,optional" docs:"Creates implicit default {Content-Type: text/plain} header field."`
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a {beta_backend_token_request} error can be handled with an {error_handler}."`
 		FormBody       string               `hcl:"form_body,optional" docs:"Creates implicit default {Content-Type: application/x-www-form-urlencoded} header field."`
@@ -63,13 +63,8 @@ func (t *TokenRequest) Inline() interface{} {
 }
 
 // Schema implements the <Inline> interface.
-func (t *TokenRequest) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(t)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(t.Inline())
-
-	return schema
+func (t *TokenRequest) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(t)
+	inline, _ := gohcl.ImpliedBodySchema(t.Inline())
+	return meta.MergeSchemas(s, inline)
 }

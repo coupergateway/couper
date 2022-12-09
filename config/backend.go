@@ -6,11 +6,13 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ BackendReference = &Backend{}
-	_ Body             = &Backend{}
+	_ BackendReference  = &Backend{}
+	_ Body              = &Backend{}
+	_ schema.BodySchema = &Backend{}
 )
 
 // Backend represents the <Backend> object.
@@ -44,11 +46,6 @@ func (b Backend) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (b Backend) Inline() interface{} {
 	type Inline struct {
-		meta.RequestHeadersAttributes
-		meta.ResponseHeadersAttributes
-		meta.FormParamsAttributes
-		meta.QueryParamsAttributes
-		meta.LogFieldsAttribute
 		BasicAuth      string `hcl:"basic_auth,optional" docs:"Basic auth for the upstream request with format {user:pass}."`
 		ConnectTimeout string `hcl:"connect_timeout,optional" docs:"The total timeout for dialing and connect to the origin." type:"duration" default:"10s"`
 		Hostname       string `hcl:"hostname,optional" docs:"Value of the HTTP host header field for the origin request. Since hostname replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin."`
@@ -69,13 +66,9 @@ func (b Backend) Inline() interface{} {
 }
 
 // Schema implements the <Inline> interface.
-func (b Backend) Schema(inline bool) *hcl.BodySchema {
-	schema, _ := gohcl.ImpliedBodySchema(b)
-	if !inline {
-		return schema
-	}
+func (b Backend) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(b)
+	i, _ := gohcl.ImpliedBodySchema(b.Inline())
 
-	schema, _ = gohcl.ImpliedBodySchema(b.Inline())
-
-	return meta.MergeSchemas(schema, meta.ModifierAttributesSchema, meta.LogFieldsAttributeSchema)
+	return meta.MergeSchemas(s, i, meta.ModifierAttributesSchema, meta.LogFieldsAttributeSchema)
 }

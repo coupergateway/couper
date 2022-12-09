@@ -7,9 +7,13 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 
+	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/utils"
 )
+
+var _ schema.BodySchema = &Health{}
 
 var defaultHealthCheck = &HealthCheck{
 	FailureThreshold: 2,
@@ -41,6 +45,11 @@ type Health struct {
 	ExpectedText     string   `hcl:"expected_text,optional" docs:"Text which the response body must contain."`
 	Headers          Headers  `hcl:"headers,optional" docs:"Request HTTP header fields."`
 	Remain           hcl.Body `hcl:",remain"`
+}
+
+func (h Health) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(h)
+	return s
 }
 
 func NewHealthCheck(baseURL string, options *Health, conf *Couper) (*HealthCheck, error) {

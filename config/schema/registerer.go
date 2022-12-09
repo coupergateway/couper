@@ -1,39 +1,57 @@
 package schema
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
-type BlockHeader struct {
+type BlockSchema struct {
 	Name   string
 	Header *hcl.BlockHeaderSchema
+	Body   *hcl.BodySchema
 }
 
-type Registerer map[string]map[BlockHeader]*hcl.BodySchema
+type schemaMap map[string]any
+type blockMap map[string]*BlockSchema
 
-func (r Registerer) Add(parentType any, header *hcl.BlockHeaderSchema, bs BodySchema) {
+type Registerer schemaMap
+
+func (r Registerer) Add(parentType any, header *hcl.BlockHeaderSchema, bs BodySchema) bool {
 	pt := whichParentType(parentType)
 
-	if _, exist := r[pt]; !exist {
-		r[pt] = make(map[BlockHeader]*hcl.BodySchema)
+	if bs == nil {
+		panic("missing reference in " + pt + " struct object: " + header.Type)
 	}
 
-	blockHeader := BlockHeader{
-		Name:   header.Type,
-		Header: header,
-	}
-	// just once per parent
-	if _, exist := r[pt][blockHeader]; exist {
-		return // TODO: required check to prevent plugin overrides system ones
-	}
+	if pt == header.Type && len(bs.Schema().Blocks) == 0 {
+		if _, exist := r[pt]; exist {
+			return true
+		}
 
-	r[pt][blockHeader] = bs.Schema()
+		r[pt] = &BlockSchema{
+			Name:   header.Type,
+			Header: header,
+			Body:   bs.Schema(),
+		}
+	} else {
+		if _, exist := r[pt]; !exist {
+			r[pt] = make(blockMap)
+		} else if _, exist = r[pt].(blockMap)[header.Type]; exist {
+			return true
+		}
+		r[pt].(blockMap)[header.Type] = &BlockSchema{
+			Name:   header.Type,
+			Header: header,
+			Body:   bs.Schema(),
+		}
+	}
 
 	// additionally self register
-	r.Add(header.Type, header, bs)
+	return r.Add(header.Type, header, bs)
 }
 
 func (r Registerer) GetFor(obj any) *hcl.BodySchema {
@@ -44,13 +62,53 @@ func (r Registerer) GetFor(obj any) *hcl.BodySchema {
 	}
 
 	schema := &hcl.BodySchema{}
-	for bh := range result {
-		schema.Blocks = append(schema.Blocks, *bh.Header)
+	if isBlock(result) {
+		for _, bh := range result.(blockMap) {
+			schema.Blocks = append(schema.Blocks, *bh.Header)
+		}
+	} else {
+		schema = result.(*BlockSchema).Body
 	}
-	if len(schema.Blocks) == 0 {
+	if len(schema.Attributes) == 0 && len(schema.Blocks) == 0 {
+		fmt.Printf("%#v\n", result)
 		panic("missing schema for " + reflect.TypeOf(obj).String())
 	}
 	return schema
+}
+
+func (r Registerer) AddRecursive(obj any) {
+	bs := obj.(BodySchema).Schema()
+	for _, block := range bs.Blocks {
+		instance := NewFromFieldType(block.Type, obj)
+		if _, ok := instance.(BodySchema); !ok {
+			instance = wrappedBody{instance}
+		}
+		if known := r.Add(obj, &block, instance.(BodySchema)); !known || reflect.TypeOf(obj).Name() == "Couper" {
+			r.AddRecursive(instance)
+		}
+	}
+}
+
+func NewFromFieldType(name string, obj any) any {
+	t := elemType(reflect.TypeOf(obj))
+
+	for i := 0; i < t.NumField(); i++ {
+		tagValue, exist := t.Field(i).Tag.Lookup("hcl")
+		if !exist || tagValue != name+",block" {
+			continue
+		}
+		field := t.Field(i)
+		et := elemType(field.Type)
+		return reflect.New(et).Interface()
+	}
+	return nil
+}
+
+func elemType(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+	return t
 }
 
 func whichParentType(pt any) string {
@@ -65,4 +123,18 @@ func whichParentType(pt any) string {
 		return strings.ToLower(strings.SplitAfter(pType.String(), ".")[1])
 	}
 	return ""
+}
+
+func isBlock(obj any) bool {
+	_, is := obj.(blockMap)
+	return is
+}
+
+type wrappedBody struct {
+	obj any
+}
+
+func (wb wrappedBody) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(wb.obj)
+	return s
 }

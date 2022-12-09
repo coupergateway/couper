@@ -12,7 +12,6 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
-	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -127,12 +126,6 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 	)
 
 	bodySchema := schema.Registry.GetFor(obj)
-	typ := elemType(reflect.TypeOf(obj))
-
-	// TODO: How to implement this automatically?
-	if typ.String() == "config.Backend" {
-		meta.MergeSchemas(bodySchema, config.OAuthBlockSchema, config.TokenRequestBlockSchema)
-	}
 
 	if _, ok := obj.(collect.ErrorHandlerSetter); ok {
 		bodySchema = config.WithErrorHandlerSchema(bodySchema)
