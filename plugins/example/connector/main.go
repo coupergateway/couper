@@ -1,4 +1,4 @@
-//go:generate go build -v -buildmode=plugin -o example_plugin.so -gcflags "all=-N -l" ./
+//go:generate go build -v -buildmode=plugin -o example.so -gcflags "all=-N -l" ./
 
 package main
 
@@ -35,7 +35,7 @@ func (ep *Example) Connect(ctx context.Context, args ...any) {
 // Definition returns a hcl-schema which will be loaded while reading a defined parent block.
 func (ep *Example) Definition() (parent plugins.MountPoint, header *hcl.BlockHeaderSchema, schema schema.BodySchema) {
 	return plugins.Endpoint, &hcl.BlockHeaderSchema{
-		Type:       "ldap_connector",
+		Type:       "my_connector",
 		LabelNames: []string{"name"},
 	}, ep
 }
