@@ -7,10 +7,11 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-// _ Inline = &Job{}
+	_ schema.BodySchema = &Job{}
 )
 
 // Job represents the <Job> object.
@@ -34,14 +35,9 @@ func (j Job) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (j Job) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(j)
-		return schema
-	}
+func (j Job) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(j)
+	i, _ := gohcl.ImpliedBodySchema(j.Inline())
 
-	schema, _ := gohcl.ImpliedBodySchema(j.Inline())
-
-	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
+	return meta.MergeSchemas(s, i, meta.LogFieldsAttributeSchema)
 }

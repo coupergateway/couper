@@ -29,6 +29,10 @@ func TypeToSnake(t interface{}) string {
 	if strings.Contains(typeStr, ".") { // package name removal
 		typeStr = strings.Split(typeStr, ".")[1]
 	}
+	return TypeToSnakeString(typeStr)
+}
+
+func TypeToSnakeString(typeStr string) string {
 	var result []rune
 	var previous rune
 	for i, r := range typeStr {

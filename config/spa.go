@@ -6,11 +6,12 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ Body = &Spa{}
-	//_ Inline = &Spa{}
+	_ Body              = &Spa{}
+	_ schema.BodySchema = &Spa{}
 )
 
 type SPAs []*Spa
@@ -44,13 +45,8 @@ func (s Spa) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (s Spa) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(s)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(s.Inline())
-	return meta.MergeSchemas(schema, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
+func (s Spa) Schema() *hcl.BodySchema {
+	sh, _ := gohcl.ImpliedBodySchema(s)
+	i, _ := gohcl.ImpliedBodySchema(s.Inline())
+	return meta.MergeSchemas(sh, i, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
 }

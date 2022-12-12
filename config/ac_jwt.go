@@ -8,13 +8,14 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/errors"
 )
 
 var (
 	_ BackendInitialization = &JWT{}
 	_ Body                  = &JWT{}
-	//_ Inline                = &JWT{}
+	_ schema.BodySchema     = &JWT{}
 )
 
 // Claims represents the <Claims> object.
@@ -23,6 +24,7 @@ type Claims hcl.Expression
 // JWT represents the <JWT> object.
 type JWT struct {
 	ErrorHandlerSetter
+	Backend               *Backend            `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests (zero or one). Mutually exclusive with {backend} attribute."`
 	BackendName           string              `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for JWKS requests. Mutually exclusive with {backend} block."`
 	Claims                Claims              `hcl:"claims,optional" docs:"Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request."`
 	ClaimsRequired        []string            `hcl:"required_claims,optional" docs:"List of claim names that must be given for a valid token."`
@@ -49,12 +51,12 @@ type JWT struct {
 	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}." type:"string"`
 
 	// Internally used
-	Backend *hclsyntax.Body
+	BackendBody *hclsyntax.Body
 }
 
 func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if j.JWKsURL != "" {
-		j.Backend, err = backendFunc("jwks_url", j.JWKsURL, j)
+		j.BackendBody, err = backendFunc("jwks_url", j.JWKsURL, j)
 		if err != nil {
 			return err
 		}
@@ -80,22 +82,16 @@ func (j *JWT) HCLBody() *hclsyntax.Body {
 func (j *JWT) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for JWKS requests (zero or one). Mutually exclusive with {backend} attribute."`
 	}
 
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (j *JWT) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(j)
-		return schema
-	}
+func (j *JWT) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(j)
+	i, _ := gohcl.ImpliedBodySchema(j.Inline())
 
-	schema, _ := gohcl.ImpliedBodySchema(j.Inline())
-
-	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
+	return meta.MergeSchemas(s, i, meta.LogFieldsAttributeSchema)
 }
 
 func (j *JWT) check() error {
@@ -103,9 +99,9 @@ func (j *JWT) check() error {
 		return fmt.Errorf("signature_algorithm or jwks_url attribute required")
 	}
 
-	if j.JWKsURL == "" && (j.BackendName != "" || j.Backend != nil) {
+	if j.JWKsURL == "" && (j.BackendName != "" || j.BackendBody != nil) {
 		return fmt.Errorf("backend is obsolete without jwks_url attribute")
-	} else if j.BackendName != "" && j.Backend == nil {
+	} else if j.BackendName != "" && j.BackendBody == nil {
 		return fmt.Errorf("backend must be either a block or an attribute")
 	}
 

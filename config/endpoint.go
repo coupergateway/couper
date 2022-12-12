@@ -6,12 +6,13 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/config/sequence"
 )
 
 var (
-	_ Body = &Endpoint{}
-	//_ Inline = &Endpoint{}
+	_ Body              = &Endpoint{}
+	_ schema.BodySchema = &Endpoint{}
 )
 
 // Endpoint represents the <Endpoint> object.
@@ -57,14 +58,9 @@ func (e Endpoint) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (e Endpoint) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(e)
-		return schema
-	}
+func (e Endpoint) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(e)
+	i, _ := gohcl.ImpliedBodySchema(e.Inline())
 
-	schema, _ := gohcl.ImpliedBodySchema(e.Inline())
-
-	return meta.MergeSchemas(schema, meta.ModifierAttributesSchema, meta.LogFieldsAttributeSchema)
+	return meta.MergeSchemas(s, i, meta.ModifierAttributesSchema, meta.LogFieldsAttributeSchema)
 }

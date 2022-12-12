@@ -4,13 +4,14 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ Body = &Response{}
-	//_ Inline = &Response{}
-
-	ResponseInlineSchema = Response{}.Schema(true)
+	_ Body              = &Response{}
+	_ schema.BodySchema = &Response{}
 )
 
 // Response represents the <Response> object.
@@ -35,14 +36,8 @@ func (r Response) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (r Response) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(r)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(r.Inline())
-
-	return schema
+func (r Response) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(r)
+	i, _ := gohcl.ImpliedBodySchema(r.Inline())
+	return meta.MergeSchemas(s, i)
 }

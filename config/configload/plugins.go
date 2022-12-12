@@ -55,7 +55,8 @@ func LoadPlugins(ctx *hcl.EvalContext, body hcl.Body) error {
 				return fmt.Errorf("extending the %s block type is not supported", parentBlock)
 			}
 			if parentBlock != "" && schemaBody != nil {
-				schema.Registry.Add(parentBlock, header, schemaBody)
+				//schema.Registry.Add(parentBlock, header, schemaBody)
+				schema.Registry.Add(header, schemaBody)
 			}
 		}
 	}

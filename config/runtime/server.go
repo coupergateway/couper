@@ -543,7 +543,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
 			confErr := errors.Configuration.Label(oauth2Conf.Name)
-			backend, err := NewBackend(confCtx, oauth2Conf.Backend, log, conf, memStore)
+			backend, err := NewBackend(confCtx, oauth2Conf.BackendBody, log, conf, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -612,7 +612,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 }
 
 func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*jwk.JWKS, error) {
-	backend, err := NewBackend(confContext, jwtConf.Backend, log, conf, memStore)
+	backend, err := NewBackend(confContext, jwtConf.BackendBody, log, conf, memStore)
 	if err != nil {
 		return nil, err
 	}

@@ -6,11 +6,12 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ Body = &API{}
-	//_ Inline = &API{}
+	_ Body              = &API{}
+	_ schema.BodySchema = &API{}
 )
 
 // API represents the <API> object.
@@ -50,13 +51,8 @@ func (a API) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (a API) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(a)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(a.Inline())
-	return meta.MergeSchemas(schema, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
+func (a API) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(a)
+	i, _ := gohcl.ImpliedBodySchema(a.Inline())
+	return meta.MergeSchemas(s, i, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
 }

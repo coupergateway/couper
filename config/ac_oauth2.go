@@ -8,15 +8,16 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
 	_ BackendReference      = &OAuth2AC{}
 	_ BackendInitialization = &OAuth2AC{}
-	//_ Inline                = &OAuth2AC{}
-	_ OAuth2AS            = &OAuth2AC{}
-	_ OAuth2AcClient      = &OAuth2AC{}
-	_ OAuth2Authorization = &OAuth2AC{}
+	_ schema.BodySchema     = &OAuth2AC{}
+	_ OAuth2AS              = &OAuth2AC{}
+	_ OAuth2AcClient        = &OAuth2AC{}
+	_ OAuth2Authorization   = &OAuth2AC{}
 )
 
 // OAuth2AC represents an oauth2 block for an OAuth2 client using the authorization code flow.
@@ -24,11 +25,12 @@ type OAuth2AC struct {
 	ErrorHandlerSetter
 	// AuthorizationEndpoint is used for lib.FnOAuthAuthorizationURL
 	AuthorizationEndpoint   string             `hcl:"authorization_endpoint" docs:"The authorization server endpoint URL used for authorization."`
+	Backend                 *Backend           `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests (zero or one). Mutually exclusive with {backend} attribute."`
 	BackendName             string             `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests. Mutually exclusive with {backend} block."`
 	ClientID                string             `hcl:"client_id" docs:"The client identifier."`
 	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password. Required unless {token_endpoint_auth_method} is {\"private_key_jwt\"}."`
 	GrantType               string             `hcl:"grant_type" docs:"The grant type. Required, to be set to: {\"authorization_code\"}"`
-	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"} (zero or one)."`
+	JWTSigningProfile       *JwtSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"} (zero or one)."`
 	Name                    string             `hcl:"name,label"`
 	RedirectURI             string             `hcl:"redirect_uri" docs:"The Couper endpoint for receiving the authorization code. Relative URL references are resolved against the origin of the current request URL. The origin can be changed with the [{accept_forwarded_url} attribute](settings) if Couper is running behind a proxy."`
 	Remain                  hcl.Body           `hcl:",remain"`
@@ -38,11 +40,11 @@ type OAuth2AC struct {
 	VerifierMethod          string             `hcl:"verifier_method" docs:"The method to verify the integrity of the authorization code flow. Available values: {\"ccm_s256\"} ({code_challenge} parameter with {code_challenge_method} {S256}), {\"state\"} ({state} parameter)"`
 
 	// internally used
-	Backend *hclsyntax.Body
+	BackendBody *hclsyntax.Body
 }
 
 func (oa *OAuth2AC) Prepare(backendFunc PrepareBackendFunc) (err error) {
-	oa.Backend, err = backendFunc("token_endpoint", oa.TokenEndpoint, oa)
+	oa.BackendBody, err = backendFunc("token_endpoint", oa.TokenEndpoint, oa)
 	return err
 }
 
@@ -60,23 +62,16 @@ func (oa *OAuth2AC) HCLBody() *hclsyntax.Body {
 func (oa *OAuth2AC) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend       *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for token requests (zero or one). Mutually exclusive with {backend} attribute."`
-		VerifierValue string   `hcl:"verifier_value" docs:"The value of the (unhashed) verifier. E.g. using cookie value created with {oauth2_verifier()} function](../functions)"`
+		VerifierValue string `hcl:"verifier_value" docs:"The value of the (unhashed) verifier. E.g. using cookie value created with {oauth2_verifier()} function](../functions)"`
 	}
 
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (oa *OAuth2AC) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(oa)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(oa.Inline())
-
-	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
+func (oa *OAuth2AC) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(oa)
+	i, _ := gohcl.ImpliedBodySchema(oa.Inline())
+	return meta.MergeSchemas(s, i, meta.LogFieldsAttributeSchema)
 }
 
 func (oa *OAuth2AC) ClientAuthenticationRequired() bool {
@@ -91,7 +86,7 @@ func (oa *OAuth2AC) GetClientSecret() string {
 	return oa.ClientSecret
 }
 
-func (oa *OAuth2AC) GetJWTSigningProfile() *JWTSigningProfile {
+func (oa *OAuth2AC) GetJWTSigningProfile() *JwtSigningProfile {
 	return oa.JWTSigningProfile
 }
 

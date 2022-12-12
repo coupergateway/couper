@@ -1,12 +1,11 @@
 package schema
 
 import (
-	"fmt"
+	"github.com/avenga/couper/errors"
 	"reflect"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
 type BlockSchema struct {
@@ -15,78 +14,52 @@ type BlockSchema struct {
 	Body   *hcl.BodySchema
 }
 
-type schemaMap map[string]any
 type blockMap map[string]*BlockSchema
 
-type Registerer schemaMap
+type Registerer blockMap
 
-func (r Registerer) Add(parentType any, header *hcl.BlockHeaderSchema, bs BodySchema) bool {
-	pt := whichParentType(parentType)
-
+func (r Registerer) Add(header *hcl.BlockHeaderSchema, bs BodySchema) {
 	if bs == nil {
-		panic("missing reference in " + pt + " struct object: " + header.Type)
+		panic("missing reference in struct object: " + header.Type)
 	}
 
-	if pt == header.Type && len(bs.Schema().Blocks) == 0 {
-		if _, exist := r[pt]; exist {
-			return true
+	bodySchema := bs.Schema()
+	if header != nil {
+		if _, exist := r[header.Type]; exist {
+			return
 		}
-
-		r[pt] = &BlockSchema{
+		r[header.Type] = &BlockSchema{
 			Name:   header.Type,
 			Header: header,
-			Body:   bs.Schema(),
-		}
-	} else {
-		if _, exist := r[pt]; !exist {
-			r[pt] = make(blockMap)
-		} else if _, exist = r[pt].(blockMap)[header.Type]; exist {
-			return true
-		}
-		r[pt].(blockMap)[header.Type] = &BlockSchema{
-			Name:   header.Type,
-			Header: header,
-			Body:   bs.Schema(),
+			Body:   bodySchema,
 		}
 	}
 
-	// additionally self register
-	return r.Add(header.Type, header, bs)
+	for _, block := range bodySchema.Blocks {
+		instance := NewFromFieldType(block.Type, bs)
+		if instance == nil {
+			panic(header.Type + ": nil reference for " + block.Type)
+		}
+		b := block
+		r.Add(&b, instance.(BodySchema))
+	}
 }
 
 func (r Registerer) GetFor(obj any) *hcl.BodySchema {
 	needle := whichParentType(obj)
+	if needle == "couper" {
+		result := &hcl.BodySchema{}
+		for _, topLevel := range []string{"server", "definitions", "defaults", "settings"} {
+			result.Blocks = append(result.Blocks, *r[topLevel].Header)
+		}
+		return result
+	}
 	result, exist := r[needle]
 	if !exist {
-		return nil
+		panic("missing schema for: " + needle)
 	}
 
-	schema := &hcl.BodySchema{}
-	if isBlock(result) {
-		for _, bh := range result.(blockMap) {
-			schema.Blocks = append(schema.Blocks, *bh.Header)
-		}
-	} else {
-		schema = result.(*BlockSchema).Body
-	}
-	if len(schema.Attributes) == 0 && len(schema.Blocks) == 0 {
-		fmt.Printf("%#v\n", result)
-		panic("missing schema for " + reflect.TypeOf(obj).String())
-	}
-	return schema
-}
-
-func (r Registerer) AddRecursive(obj any) {
-	bs := obj.(BodySchema).Schema()
-	for _, block := range bs.Blocks {
-		instance := NewFromFieldType(block.Type, obj)
-		if _, ok := instance.(BodySchema); !ok {
-			instance = wrappedBody{instance}
-		}
-		if known := r.Add(obj, &block, instance.(BodySchema)); !known || reflect.TypeOf(obj).Name() == "Couper" {
-			r.AddRecursive(instance)
-		}
-	}
+	return result.Body
 }
 
 func NewFromFieldType(name string, obj any) any {
@@ -120,21 +93,8 @@ func whichParentType(pt any) string {
 		if pType.Kind() == reflect.Ptr {
 			pType = pType.Elem()
 		}
-		return strings.ToLower(strings.SplitAfter(pType.String(), ".")[1])
+		t := strings.SplitAfter(pType.String(), ".")[1] // rm pkg
+		return errors.TypeToSnakeString(t)
 	}
 	return ""
-}
-
-func isBlock(obj any) bool {
-	_, is := obj.(blockMap)
-	return is
-}
-
-type wrappedBody struct {
-	obj any
-}
-
-func (wb wrappedBody) Schema() *hcl.BodySchema {
-	s, _ := gohcl.ImpliedBodySchema(wb.obj)
-	return s
 }

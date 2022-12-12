@@ -90,7 +90,7 @@ func main() {
 		&config.ErrorHandler{},
 		&config.Files{},
 		&config.Health{},
-		&config.JWTSigningProfile{},
+		&config.JwtSigningProfile{},
 		&config.JWT{},
 		&config.Job{},
 		&config.OAuth2AC{},
@@ -98,7 +98,7 @@ func main() {
 		&config.OIDC{},
 		&config.OpenAPI{},
 		&config.Proxy{},
-		&config.RateLimit{},
+		&config.BetaRateLimit{},
 		&config.Request{},
 		&config.Response{},
 		&config.SAML{},
@@ -108,7 +108,7 @@ func main() {
 		&config.ServerTLS{},
 		&config.Settings{},
 		&config.Spa{},
-		&config.TokenRequest{},
+		&config.BetaTokenRequest{},
 		&config.Websockets{},
 	} {
 		t := reflect.TypeOf(impl).Elem()

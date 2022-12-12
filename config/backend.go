@@ -29,8 +29,8 @@ type Backend struct {
 	TLS                    *BackendTLS `hcl:"tls,block" docs:"Configures [backend TLS](/configuration/block/backend_tls) (zero or one)."`
 
 	// used for validation and documentation
-	OAuth2       *OAuth2ReqAuth  `hcl:"oauth2,block" docs:"Configures an [OAuth2 authorization](/configuration/block/oauth2) (zero or one)."`
-	TokenRequest []*TokenRequest `hcl:"beta_token_request,block" docs:"Configures a [token request authorization](/configuration/block/token_request) (zero or more)."`
+	OAuth2       *OAuth2ReqAuth      `hcl:"oauth2,block" docs:"Configures an [OAuth2 authorization](/configuration/block/oauth2) (zero or one)."`
+	TokenRequest []*BetaTokenRequest `hcl:"beta_token_request,block" docs:"Configures a [token request authorization](/configuration/block/token_request) (zero or more)."`
 }
 
 // Reference implements the <BackendReference> interface.

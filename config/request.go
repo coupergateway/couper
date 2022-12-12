@@ -5,22 +5,26 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ BackendReference = &Request{}
-	_ Body             = &Request{}
-	//_ Inline           = &Request{}
+	_ BackendReference  = &Request{}
+	_ Body              = &Request{}
+	_ schema.BodySchema = &Request{}
 )
 
 // Request represents the <Request> object.
 type Request struct {
 	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the request. Mutually exclusive with {backend} block."`
+	Backend     *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the request (zero or one). Mutually exclusive with {backend} attribute."`
 	Name        string   `hcl:"name,label,optional"`
 	Remain      hcl.Body `hcl:",remain"`
 
 	// Internally used
-	Backend *hclsyntax.Body
+	BackendBody *hclsyntax.Body
 }
 
 // Requests represents a list of <Requests> objects.
@@ -39,7 +43,6 @@ func (r Request) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (r Request) Inline() interface{} {
 	type Inline struct {
-		Backend        *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the request (zero or one). Mutually exclusive with {backend} attribute."`
 		Body           string               `hcl:"body,optional" docs:"Plain text request body, implicitly sets {Content-Type: text/plain} header field."`
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of codes. If the status code is not included in this list an [{unexpected_status} error](../error-handling#endpoint-error-types) will be thrown which can be handled with an [{error_handler}](../error-handling#endpoint-related-error_handler)."`
 		FormBody       string               `hcl:"form_body,optional" docs:"Form request body, implicitly sets {Content-Type: application/x-www-form-urlencoded} header field."`
@@ -53,14 +56,8 @@ func (r Request) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (r Request) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(r)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(r.Inline())
-
-	return schema
+func (r Request) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(r)
+	i, _ := gohcl.ImpliedBodySchema(r.Inline())
+	return meta.MergeSchemas(s, i)
 }

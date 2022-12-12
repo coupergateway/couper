@@ -104,7 +104,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 				}
 			}
 
-			proxyConfig.Backend, err = PrepareBackend(helper, "", "", proxyConfig)
+			proxyConfig.BackendBody, err = PrepareBackend(helper, "", "", proxyConfig)
 			if err != nil {
 				return err
 			}
@@ -137,7 +137,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 			hclbody.RenameAttribute(reqBody, "headers", "set_request_headers")
 			hclbody.RenameAttribute(reqBody, "query_params", "set_query_params")
 
-			reqConfig.Backend, err = PrepareBackend(helper, "", "", reqConfig)
+			reqConfig.BackendBody, err = PrepareBackend(helper, "", "", reqConfig)
 			if err != nil {
 				return err
 			}
@@ -168,15 +168,15 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 
 func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, error) {
 	hasWebsocketBlocks := len(hclbody.BlocksOfType(proxyConfig.HCLBody(), "websockets")) > 0
-	if proxyConfig.Websockets != nil && hasWebsocketBlocks {
+	if proxyConfig.WebsocketsEnabled != nil && hasWebsocketBlocks {
 		hr := proxyConfig.HCLBody().Attributes["websockets"].SrcRange
 		return false, nil, newDiagErr(&hr, "either websockets attribute or block is allowed")
 	}
 
-	if proxyConfig.Websockets != nil {
+	if proxyConfig.WebsocketsEnabled != nil {
 		var body *hclsyntax.Body
 
-		if *proxyConfig.Websockets {
+		if *proxyConfig.WebsocketsEnabled {
 			block := &hclsyntax.Block{
 				Type: "websockets",
 				Body: &hclsyntax.Body{},
@@ -185,7 +185,7 @@ func getWebsocketsConfig(proxyConfig *config.Proxy) (bool, *hclsyntax.Body, erro
 			body = &hclsyntax.Body{Blocks: []*hclsyntax.Block{block}}
 		}
 
-		return *proxyConfig.Websockets, body, nil
+		return *proxyConfig.WebsocketsEnabled, body, nil
 	}
 
 	return hasWebsocketBlocks, nil, nil

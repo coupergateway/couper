@@ -5,12 +5,11 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	//_ Inline = &Websockets{}
-
-	WebsocketsInlineSchema = Websockets{}.Schema(true)
+	_ schema.BodySchema = &Websockets{}
 )
 
 type Websockets struct {
@@ -28,14 +27,9 @@ func (w Websockets) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (w Websockets) Schema(inline bool) *hcl.BodySchema {
-	schema, _ := gohcl.ImpliedBodySchema(w)
-	if !inline {
-		return schema
-	}
+func (w Websockets) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(w)
+	i, _ := gohcl.ImpliedBodySchema(w.Inline())
 
-	schema, _ = gohcl.ImpliedBodySchema(w.Inline())
-
-	return meta.MergeSchemas(schema, meta.RequestHeadersAttributesSchema, meta.ResponseHeadersAttributesSchema)
+	return meta.MergeSchemas(s, i, meta.RequestHeadersAttributesSchema, meta.ResponseHeadersAttributesSchema)
 }

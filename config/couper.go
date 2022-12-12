@@ -32,6 +32,5 @@ func (c Couper) Schema() *hcl.BodySchema {
 }
 
 func init() {
-	schema.Registry.AddRecursive(Couper{})
-	println("_")
+	schema.Registry.Add(nil, Couper{})
 }

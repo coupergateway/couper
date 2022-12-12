@@ -6,11 +6,12 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ Body = &SAML{}
-	//_ Inline = &SAML{}
+	_ Body              = &SAML{}
+	_ schema.BodySchema = &SAML{}
 )
 
 // SAML represents the <SAML> object.
@@ -40,13 +41,8 @@ func (s *SAML) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (s *SAML) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(s)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(s.Inline())
-	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
+func (s *SAML) Schema() *hcl.BodySchema {
+	sh, _ := gohcl.ImpliedBodySchema(s)
+	i, _ := gohcl.ImpliedBodySchema(s.Inline())
+	return meta.MergeSchemas(sh, i, meta.LogFieldsAttributeSchema)
 }

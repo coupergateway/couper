@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	_ BackendReference  = &TokenRequest{}
-	_ Body              = &TokenRequest{}
-	_ schema.BodySchema = &TokenRequest{}
+	_ BackendReference  = &BetaTokenRequest{}
+	_ Body              = &BetaTokenRequest{}
+	_ schema.BodySchema = &BetaTokenRequest{}
 )
 
 var tokenRequestBlockHeaderSchema = hcl.BlockHeaderSchema{
@@ -27,7 +27,7 @@ var TokenRequestBlockSchema = &hcl.BodySchema{
 	},
 }
 
-type TokenRequest struct {
+type BetaTokenRequest struct {
 	Backend     *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the token request (zero or one). Mutually exclusive with {backend} attribute."`
 	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request. Mutually exclusive with {backend} block."`
 	Name        string   `hcl:"name,label,optional"`
@@ -36,17 +36,17 @@ type TokenRequest struct {
 }
 
 // Reference implements the <BackendReference> interface.
-func (t *TokenRequest) Reference() string {
+func (t *BetaTokenRequest) Reference() string {
 	return t.BackendName
 }
 
 // HCLBody implements the <Body> interface.
-func (t *TokenRequest) HCLBody() *hclsyntax.Body {
+func (t *BetaTokenRequest) HCLBody() *hclsyntax.Body {
 	return t.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.
-func (t *TokenRequest) Inline() interface{} {
+func (t *BetaTokenRequest) Inline() interface{} {
 	type Inline struct {
 		Body           string               `hcl:"body,optional" docs:"Creates implicit default {Content-Type: text/plain} header field."`
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a {beta_backend_token_request} error can be handled with an {error_handler}."`
@@ -63,7 +63,7 @@ func (t *TokenRequest) Inline() interface{} {
 }
 
 // Schema implements the <Inline> interface.
-func (t *TokenRequest) Schema() *hcl.BodySchema {
+func (t *BetaTokenRequest) Schema() *hcl.BodySchema {
 	s, _ := gohcl.ImpliedBodySchema(t)
 	inline, _ := gohcl.ImpliedBodySchema(t.Inline())
 	return meta.MergeSchemas(s, inline)

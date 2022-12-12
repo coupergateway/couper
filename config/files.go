@@ -6,9 +6,10 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
-//var _ Inline = &Files{}
+var _ schema.BodySchema = &Files{}
 
 type FilesBlocks []*Files
 
@@ -39,13 +40,9 @@ func (f Files) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (f Files) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(f)
-		return schema
-	}
+func (f Files) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(f)
+	i, _ := gohcl.ImpliedBodySchema(f.Inline())
 
-	schema, _ := gohcl.ImpliedBodySchema(f.Inline())
-	return meta.MergeSchemas(schema, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
+	return meta.MergeSchemas(s, i, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
 }

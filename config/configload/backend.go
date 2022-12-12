@@ -221,7 +221,7 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 	// beta_token_request block exists, read out backend configuration
 	for _, tokenRequestBlock := range tokenRequestBlocks {
 		tokenRequestBody := tokenRequestBlock.Body
-		conf := &config.TokenRequest{}
+		conf := &config.BetaTokenRequest{}
 		if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
 			return nil, diags
 		}

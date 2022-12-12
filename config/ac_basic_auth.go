@@ -8,14 +8,14 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/internal/seetie"
-
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var (
-	_ Body = &BasicAuth{}
-	//_ Inline = &BasicAuth{}
+	_ Body              = &BasicAuth{}
+	_ schema.BodySchema = &BasicAuth{}
 )
 
 // BasicAuth represents the "basic_auth" config block
@@ -42,15 +42,10 @@ func (b *BasicAuth) Inline() interface{} {
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (b *BasicAuth) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(b)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(b.Inline())
-	return schema
+func (b *BasicAuth) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(b)
+	i, _ := gohcl.ImpliedBodySchema(b.Inline())
+	return meta.MergeSchemas(s, i)
 }
 
 func (b *BasicAuth) DefaultErrorHandler() *ErrorHandler {
