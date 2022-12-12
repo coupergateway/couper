@@ -23,6 +23,7 @@ import (
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/plugins"
 )
 
 const (
@@ -288,7 +289,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	for _, outerBlock := range helper.content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
-			if err = LoadPlugins(helper.context, outerBlock.Body); err != nil {
+			if err = plugins.Load(helper.context, outerBlock.Body); err != nil {
 				return nil, err
 			}
 

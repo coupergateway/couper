@@ -25,12 +25,16 @@ type Example struct {
 	Test string `hcl:"test"`
 }
 
-// Definition returns a hcl-schema which will be loaded while reading a defined parent block.
-func (ep *Example) Definition() (parent plugins.MountPoint, header *hcl.BlockHeaderSchema, schema schema.BodySchema) {
-	return plugins.Definitions, &hcl.BlockHeaderSchema{
-		Type:       "my_access_control",
-		LabelNames: []string{"name"},
-	}, ep
+// Definition writes multiple hcl-schema to the given channel which will be loaded while reading a defined parent block.
+func (ep *Example) Definition(ch chan<- plugins.SchemaDefinition) {
+	ch <- plugins.SchemaDefinition{
+		Parent: plugins.Definitions,
+		BlockHeader: &hcl.BlockHeaderSchema{
+			Type:       "my_access_control",
+			LabelNames: []string{"name"},
+		},
+		Body: ep,
+	}
 }
 
 func (ep *Example) Schema() *hcl.BodySchema {

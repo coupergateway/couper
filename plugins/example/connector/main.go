@@ -32,12 +32,16 @@ func (ep *Example) Connect(ctx context.Context, args ...any) {
 	panic("implement me")
 }
 
-// Definition returns a hcl-schema which will be loaded while reading a defined parent block.
-func (ep *Example) Definition() (parent plugins.MountPoint, header *hcl.BlockHeaderSchema, schema schema.BodySchema) {
-	return plugins.Endpoint, &hcl.BlockHeaderSchema{
-		Type:       "my_connector",
-		LabelNames: []string{"name"},
-	}, ep
+// Definition writes multiple hcl-schema to the given channel which will be loaded while reading a defined parent block.
+func (ep *Example) Definition(ch chan<- plugins.SchemaDefinition) {
+	ch <- plugins.SchemaDefinition{
+		Parent: plugins.Endpoint,
+		BlockHeader: &hcl.BlockHeaderSchema{
+			Type:       "my_connector",
+			LabelNames: []string{"name"},
+		},
+		Body: ep,
+	}
 }
 
 func (ep *Example) Schema() *hcl.BodySchema {
