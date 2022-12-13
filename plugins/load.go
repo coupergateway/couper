@@ -94,3 +94,10 @@ func Load(ctx *hcl.EvalContext, body hcl.Body) error {
 
 	return nil
 }
+
+func List() (result []string) {
+	for k := range loadedPlugins {
+		result = append(result, k)
+	}
+	return result
+}

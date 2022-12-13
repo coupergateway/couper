@@ -19,6 +19,7 @@ import (
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/plugins"
 	"github.com/avenga/couper/server"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
@@ -152,6 +153,11 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	if RunCmdTestCallback != nil {
 		RunCmdTestCallback()
+	}
+
+	// TODO: inform plugins for shutdown (watch)
+	if loadedPlugins := plugins.List(); len(loadedPlugins) > 0 {
+		logEntry.WithField("plugins", loadedPlugins).Debug("loaded")
 	}
 
 	listenCmdShutdown()
