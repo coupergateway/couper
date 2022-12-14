@@ -318,6 +318,27 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 				return nil, err
 			}
 
+			loadedPlugins := plugins.Get(definitions)
+			for _, lp := range loadedPlugins {
+				var blocks hclsyntax.Blocks
+				leftBody := leftOver.(*hclsyntax.Body)
+				for _, b := range leftBody.Blocks {
+					for _, s := range lp.Schema {
+						if s.BlockHeader.Type == b.Type {
+							blocks = append(blocks, b)
+						}
+					}
+				}
+				err = lp.DecodeBody(helper.context, &hclsyntax.Body{
+					Blocks:   blocks,
+					EndRange: leftBody.EndRange,
+					SrcRange: leftBody.SrcRange,
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			acErrorHandler := collect.ErrorHandlerSetters(helper.config.Definitions)
 			if err = configureErrorHandler(acErrorHandler, helper); err != nil {
 				return nil, err

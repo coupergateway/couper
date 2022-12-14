@@ -27,6 +27,10 @@ type Example struct {
 	Test string `hcl:"test"`
 }
 
+type container struct {
+	Examples []*Example `hcl:"my_connector,block"`
+}
+
 func (ep *Example) Connect(ctx context.Context, args ...any) {
 	//TODO implement me
 	panic("implement me")
@@ -49,7 +53,7 @@ func (ep *Example) Schema() *hcl.BodySchema {
 	return s
 }
 
-func (ep *Example) Validate(ctx *hcl.EvalContext, body hcl.Body) {
-	//TODO implement me
-	panic("implement me")
+func (ep *Example) Decode(f func(ref any) error) error {
+	c := &container{}
+	return f(c) // TODO: manage container content
 }

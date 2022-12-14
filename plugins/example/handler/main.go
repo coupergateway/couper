@@ -25,6 +25,10 @@ type Example struct {
 	Test string `hcl:"test"`
 }
 
+type container struct {
+	Examples []*Example `hcl:"my_access_control,block"`
+}
+
 // Definition writes multiple hcl-schema to the given channel which will be loaded while reading a defined parent block.
 func (ep *Example) Definition(ch chan<- plugins.SchemaDefinition) {
 	ch <- plugins.SchemaDefinition{
@@ -42,7 +46,7 @@ func (ep *Example) Schema() *hcl.BodySchema {
 	return s
 }
 
-func (ep *Example) Validate(ctx *hcl.EvalContext, body hcl.Body) {
-	//TODO implement me
-	panic("implement me")
+func (ep *Example) Decode(f func(ref any) error) error {
+	c := &container{}
+	return f(c) // TODO: manage container content
 }

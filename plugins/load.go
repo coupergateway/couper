@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	goplugin "plugin"
+	"reflect"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 
 	"github.com/avenga/couper/config/schema"
 )
@@ -20,12 +22,12 @@ var pluginBlockSchema = &hcl.BodySchema{
 	},
 }
 
-type loaded struct {
-	impl    interface{}
-	schDefs []SchemaDefinition
+type Loaded struct {
+	impl   interface{}
+	Schema []SchemaDefinition
 }
 
-var loadedPlugins = map[string]loaded{}
+var loadedPlugins = map[string]Loaded{}
 
 func Load(ctx *hcl.EvalContext, body hcl.Body) error {
 	pluginContent, _, diagnostics := body.PartialContent(pluginBlockSchema)
@@ -85,9 +87,9 @@ func Load(ctx *hcl.EvalContext, body hcl.Body) error {
 				}
 			}
 
-			loadedPlugins[fileName] = loaded{
-				impl:    loadedPlugin,
-				schDefs: schemaDefs,
+			loadedPlugins[fileName] = Loaded{
+				impl:   sym,
+				Schema: schemaDefs[:],
 			}
 		}
 	}
@@ -100,4 +102,51 @@ func List() (result []string) {
 		result = append(result, k)
 	}
 	return result
+}
+
+func Get(mp MountPoint) []*Loaded {
+	var filtered []Loaded
+	for _, v := range loadedPlugins {
+		for _, s := range v.Schema {
+			if s.Parent == mp {
+				filtered = append(filtered, v)
+				break
+			}
+		}
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	// DecodeForType Iface
+	var l []*Loaded
+	for _, f := range filtered {
+		var filteredSchema []SchemaDefinition
+		for _, sd := range f.Schema {
+			if sd.Parent == mp {
+				filteredSchema = append(filteredSchema, sd)
+			}
+		}
+		l = append(l, &Loaded{
+			impl:   f.impl,
+			Schema: filteredSchema,
+		})
+	}
+	return l
+}
+
+func (l *Loaded) DecodeBody(ctx *hcl.EvalContext, body hcl.Body) error {
+	decodeFn := func(ref any) error {
+		val := reflect.ValueOf(ref)
+		if val.Kind() != reflect.Pointer || val.IsNil() {
+			return fmt.Errorf("invalid type: %s", reflect.TypeOf(ref))
+		}
+		diags := gohcl.DecodeBody(body, ctx, ref)
+		if diags.HasErrors() {
+			return diags
+		}
+		return nil
+	}
+
+	return l.impl.(Config).Decode(decodeFn)
 }

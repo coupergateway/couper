@@ -24,7 +24,7 @@ type SchemaDefinition struct {
 // Config defines the given configuration to its parent block.
 type Config interface {
 	Definition(chan<- SchemaDefinition)
-	Validate(ctx *hcl.EvalContext, body hcl.Body)
+	Decode(func(ref any) error) error
 }
 
 type HandlerHook interface {
