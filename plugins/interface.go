@@ -2,10 +2,11 @@ package plugins
 
 import (
 	"context"
-	"github.com/avenga/couper/config/schema"
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2"
+
+	"github.com/avenga/couper/config/schema"
 )
 
 type MountPoint string

@@ -1,11 +1,12 @@
 package schema
 
 import (
-	"github.com/avenga/couper/errors"
 	"reflect"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+
+	"github.com/avenga/couper/errors"
 )
 
 type BlockSchema struct {
@@ -18,7 +19,7 @@ type blockMap map[string]*BlockSchema
 
 type Registerer blockMap
 
-func (r Registerer) Add(header *hcl.BlockHeaderSchema, bs BodySchema) {
+func (r Registerer) Add(header *hcl.BlockHeaderSchema, bs BodySchema, parentTypes ...string) {
 	if bs == nil {
 		panic("missing reference in struct object: " + header.Type)
 	}
@@ -32,6 +33,10 @@ func (r Registerer) Add(header *hcl.BlockHeaderSchema, bs BodySchema) {
 			Name:   header.Type,
 			Header: header,
 			Body:   bodySchema,
+		}
+
+		for _, pt := range parentTypes {
+			r[pt].Body.Blocks = append(r[pt].Body.Blocks, *header)
 		}
 	}
 

@@ -14,6 +14,7 @@ import (
 	"github.com/avenga/couper/config/configload/collect"
 	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/plugins"
 )
 
 var reFetchUnexpectedArg = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
@@ -45,6 +46,10 @@ func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
 }
 
 func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
+	if plugins.Defined(block.Type) {
+		return nil // TODO: maybe call validate, skip for now since the type impl is unknown at this point
+	}
+
 	var errors hcl.Diagnostics
 	var checked bool
 

@@ -23,6 +23,7 @@ var Plugin = Example{}
 
 type Example struct {
 	Test string `hcl:"test"`
+	Name string `hcl:"name,label"`
 }
 
 type container struct {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/schema"
 )
@@ -30,66 +31,75 @@ type Loaded struct {
 var loadedPlugins = map[string]Loaded{}
 
 func Load(ctx *hcl.EvalContext, body hcl.Body) error {
-	pluginContent, _, diagnostics := body.PartialContent(pluginBlockSchema)
-	if diagnostics.HasErrors() {
-		return diagnostics
-	}
-	if len(pluginContent.Blocks) == 0 {
-		return nil
-	}
-
-	for _, block := range pluginContent.Blocks {
-		attrs, diags := block.Body.JustAttributes()
-		if diags.HasErrors() {
-			return diags
+	for _, outerBlock := range body.(*hclsyntax.Body).Blocks {
+		if outerBlock.Type != "definitions" {
+			continue
 		}
-		f, diags := attrs["file"].Expr.Value(ctx)
-		if diags.HasErrors() {
-			return diags
+		pluginContent, _, diagnostics := outerBlock.Body.PartialContent(pluginBlockSchema)
+		if diagnostics.HasErrors() {
+			return diagnostics
+		}
+		if len(pluginContent.Blocks) == 0 {
+			return nil
 		}
 
-		fileName := f.AsString()
-		loadedPlugin, err := goplugin.Open(fileName)
-		if err != nil {
-			return err
-		}
-
-		sym, err := loadedPlugin.Lookup("Plugin")
-		if err != nil {
-			return err
-		}
-
-		if conf, impl := sym.(Config); impl {
-			var schemaDefs []SchemaDefinition
-			schemaCh := make(chan SchemaDefinition)
-			readCtx, cancelRead := context.WithCancel(context.Background())
-			go func() {
-				for {
-					select {
-					case s := <-schemaCh:
-						schemaDefs = append(schemaDefs, s)
-					case <-readCtx.Done():
-						return
-					}
-
-				}
-			}()
-
-			conf.Definition(schemaCh)
-			cancelRead()
-
-			for _, def := range schemaDefs {
-				if def.Parent != Definitions && def.Parent != Endpoint {
-					return fmt.Errorf("extending the %s block type is not supported", def.Parent)
-				}
-				if def.Parent != "" && def.Body != nil {
-					schema.Registry.Add(def.BlockHeader, def.Body)
-				}
+		for _, block := range pluginContent.Blocks {
+			attrs, diags := block.Body.JustAttributes()
+			if diags.HasErrors() {
+				return diags
+			}
+			f, diags := attrs["file"].Expr.Value(ctx)
+			if diags.HasErrors() {
+				return diags
 			}
 
-			loadedPlugins[fileName] = Loaded{
-				impl:   sym,
-				Schema: schemaDefs[:],
+			fileName := f.AsString()
+			loadedPlugin, err := goplugin.Open(fileName)
+			if err != nil {
+				return err
+			}
+
+			sym, err := loadedPlugin.Lookup("Plugin")
+			if err != nil {
+				return err
+			}
+
+			if conf, impl := sym.(Config); impl {
+				schemaCh := make(chan SchemaDefinition)
+				schemaResultCh := make(chan []SchemaDefinition)
+				readCtx, cancelRead := context.WithCancel(context.Background())
+				go func() {
+					var schemaDefs []SchemaDefinition
+					defer close(schemaResultCh)
+				ever:
+					for {
+						select {
+						case s := <-schemaCh:
+							schemaDefs = append(schemaDefs, s)
+						case <-readCtx.Done():
+							break ever
+						}
+					}
+					schemaResultCh <- schemaDefs
+				}()
+
+				conf.Definition(schemaCh)
+				cancelRead()
+				schemaDefs := <-schemaResultCh
+
+				for _, def := range schemaDefs {
+					if def.Parent != Definitions && def.Parent != Endpoint {
+						return fmt.Errorf("extending the %s block type is not supported", def.Parent)
+					}
+					if def.Parent != "" && def.Body != nil {
+						schema.Registry.Add(def.BlockHeader, def.Body, string(def.Parent))
+					}
+				}
+
+				loadedPlugins[fileName] = Loaded{
+					impl:   sym,
+					Schema: schemaDefs[:],
+				}
 			}
 		}
 	}
@@ -102,6 +112,17 @@ func List() (result []string) {
 		result = append(result, k)
 	}
 	return result
+}
+
+func Defined(blockType string) bool {
+	for _, l := range loadedPlugins {
+		for _, s := range l.Schema {
+			if s.BlockHeader.Type == blockType {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func Get(mp MountPoint) []*Loaded {

@@ -275,24 +275,23 @@ func LoadBytesEnv(src []byte, filename, env string) (*config.Couper, error) {
 }
 
 func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
-	var err error
+	hlpr, err := newHelper(body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = plugins.Load(hlpr.context, body)
+	if err != nil {
+		return nil, err
+	}
 
 	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
-	helper, err := newHelper(body)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, outerBlock := range helper.content.Blocks {
+	for _, outerBlock := range hlpr.content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
-			if err = plugins.Load(helper.context, outerBlock.Body); err != nil {
-				return nil, err
-			}
-
 			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
 			if diags.HasErrors() {
 				return nil, diags
@@ -301,35 +300,34 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 			// backends first
 			if backendContent != nil {
 				for _, be := range backendContent.Blocks {
-					helper.addBackend(be)
+					hlpr.addBackend(be)
 				}
 
-				if err = helper.configureDefinedBackends(); err != nil {
+				if err = hlpr.configureDefinedBackends(); err != nil {
 					return nil, err
 				}
 			}
 
-			// decode all other blocks into definition struct
-			if diags = gohcl.DecodeBody(leftOver, helper.context, helper.config.Definitions); diags.HasErrors() {
-				return nil, diags
-			}
-
-			if err = helper.configureACBackends(); err != nil {
-				return nil, err
-			}
-
 			loadedPlugins := plugins.Get(definitions)
+			var leftOverBlocks hclsyntax.Blocks
 			for _, lp := range loadedPlugins {
 				var blocks hclsyntax.Blocks
 				leftBody := leftOver.(*hclsyntax.Body)
 				for _, b := range leftBody.Blocks {
+					var added bool
 					for _, s := range lp.Schema {
 						if s.BlockHeader.Type == b.Type {
 							blocks = append(blocks, b)
+							if !added {
+								added = true
+							}
 						}
 					}
+					if !added {
+						leftOverBlocks = append(leftOverBlocks, b)
+					}
 				}
-				err = lp.DecodeBody(helper.context, &hclsyntax.Body{
+				err = lp.DecodeBody(hlpr.context, &hclsyntax.Body{
 					Blocks:   blocks,
 					EndRange: leftBody.EndRange,
 					SrcRange: leftBody.SrcRange,
@@ -339,20 +337,32 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 				}
 			}
 
-			acErrorHandler := collect.ErrorHandlerSetters(helper.config.Definitions)
-			if err = configureErrorHandler(acErrorHandler, helper); err != nil {
+			leftBody := leftOver.(*hclsyntax.Body)
+			leftBody.Blocks = leftOverBlocks
+
+			// decode all other blocks into definition struct but filter out plugin related
+			if diags = gohcl.DecodeBody(leftOver, hlpr.context, hlpr.config.Definitions); diags.HasErrors() {
+				return nil, diags
+			}
+
+			if err = hlpr.configureACBackends(); err != nil {
+				return nil, err
+			}
+
+			acErrorHandler := collect.ErrorHandlerSetters(hlpr.config.Definitions)
+			if err = configureErrorHandler(acErrorHandler, hlpr); err != nil {
 				return nil, err
 			}
 
 		case settings:
-			if diags := gohcl.DecodeBody(outerBlock.Body, helper.context, helper.config.Settings); diags.HasErrors() {
+			if diags := gohcl.DecodeBody(outerBlock.Body, hlpr.context, hlpr.config.Settings); diags.HasErrors() {
 				return nil, diags
 			}
 		}
 	}
 
 	// Prepare dynamic functions
-	for _, profile := range helper.config.Definitions.JWTSigningProfile {
+	for _, profile := range hlpr.config.Definitions.JWTSigningProfile {
 		if profile.Headers != nil {
 			expression, _ := profile.Headers.Value(nil)
 			headers := seetie.ValueToMap(expression)
@@ -363,7 +373,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		}
 	}
 
-	for _, saml := range helper.config.Definitions.SAML {
+	for _, saml := range hlpr.config.Definitions.SAML {
 		metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
 		if err != nil {
 			return nil, errors.Configuration.Label(saml.Name).With(err)
@@ -372,14 +382,14 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	}
 
 	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
-	for _, profile := range helper.config.Definitions.JWTSigningProfile {
+	for _, profile := range hlpr.config.Definitions.JWTSigningProfile {
 		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile, nil)
 		if err != nil {
 			return nil, errors.Configuration.Label(profile.Name).With(err)
 		}
 		jwtSigningConfigs[profile.Name] = signConf
 	}
-	for _, jwt := range helper.config.Definitions.JWT {
+	for _, jwt := range hlpr.config.Definitions.JWT {
 		signConf, err := lib.NewJWTSigningConfigFromJWT(jwt)
 		if err != nil {
 			return nil, errors.Configuration.Label(jwt.Name).With(err)
@@ -389,10 +399,10 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		}
 	}
 
-	helper.config.Context = helper.config.Context.(*eval.Context).
+	hlpr.config.Context = hlpr.config.Context.(*eval.Context).
 		WithJWTSigningConfigs(jwtSigningConfigs).
-		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
-		WithSAML(helper.config.Definitions.SAML)
+		WithOAuth2AC(hlpr.config.Definitions.OAuth2AC).
+		WithSAML(hlpr.config.Definitions.SAML)
 
 	definedACs := make(map[string]struct{})
 	for _, ac := range helper.config.Definitions.BasicAuth {
@@ -414,7 +424,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range hclbody.BlocksOfType(body, server) {
 		serverConfig := &config.Server{}
-		if diags := gohcl.DecodeBody(serverBlock.Body, helper.context, serverConfig); diags.HasErrors() {
+		if diags := gohcl.DecodeBody(serverBlock.Body, hlpr.context, serverConfig); diags.HasErrors() {
 			return nil, diags
 		}
 
@@ -458,7 +468,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 				apiConfig.RequiredPermission = rp.Expr
 			}
 
-			err = refineEndpoints(helper, apiConfig.Endpoints, true, definedACs)
+			err = refineEndpoints(hlpr, apiConfig.Endpoints, true, definedACs)
 			if err != nil {
 				return nil, err
 			}
@@ -471,21 +481,21 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 			apiConfig.CatchAllEndpoint = newCatchAllEndpoint()
 
 			apiErrorHandler := collect.ErrorHandlerSetters(apiConfig)
-			if err = configureErrorHandler(apiErrorHandler, helper); err != nil {
+			if err = configureErrorHandler(apiErrorHandler, hlpr); err != nil {
 				return nil, err
 			}
 		}
 
 		// standalone endpoints
-		err = refineEndpoints(helper, serverConfig.Endpoints, true, definedACs)
+		err = refineEndpoints(hlpr, serverConfig.Endpoints, true, definedACs)
 		if err != nil {
 			return nil, err
 		}
 
-		helper.config.Servers = append(helper.config.Servers, serverConfig)
+		hlpr.config.Servers = append(hlpr.config.Servers, serverConfig)
 	}
 
-	for _, job := range helper.config.Definitions.Job {
+	for _, job := range hlpr.config.Definitions.Job {
 		attrs := job.Remain.(*hclsyntax.Body).Attributes
 		r := attrs["interval"].Expr.Range()
 
@@ -502,7 +512,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 			Requests: job.Requests,
 		}
 
-		err = refineEndpoints(helper, config.Endpoints{endpointConf}, false, nil)
+		err = refineEndpoints(hlpr, config.Endpoints{endpointConf}, false, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -510,11 +520,11 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		job.Endpoint = endpointConf
 	}
 
-	if len(helper.config.Servers) == 0 {
+	if len(hlpr.config.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
 
-	return helper.config, nil
+	return hlpr.config, nil
 }
 
 // checkPermissionMixedConfig checks whether, for api blocks with at least two endpoints,
