@@ -211,7 +211,11 @@ func newPromExporter(opts *Options) (*otelprom.Exporter, *WrappedRegistry, error
 		},
 	))
 
-	promExporter, err := otelprom.New(otelprom.WithRegisterer(registry))
+	promExporter, err := otelprom.New(
+		otelprom.WithRegisterer(registry),
+		otelprom.WithoutScopeInfo(),
+		otelprom.WithoutTargetInfo(),
+	)
 
 	return promExporter, registry, err
 }
