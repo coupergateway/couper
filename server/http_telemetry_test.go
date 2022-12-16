@@ -33,7 +33,7 @@ func TestServeMetrics(t *testing.T) {
 		helper.Must(res.Body.Close())
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 3)
 
 	res, err := client.Do(mreq)
 	if err != nil {
