@@ -79,7 +79,7 @@ func TestDefinitions_Jobs(t *testing.T) {
 			time.Sleep(time.Second / 4)
 
 			for _, entry := range hook.AllEntries() {
-				if entry.Data["type"] == "job" {
+				if entry.Data["type"] == "couper_job" {
 					for k := range tc.wantFields {
 						if diff := cmp.Diff(entry.Data[k], tc.wantFields[k]); diff != "" {
 							st.Errorf("expected log fields %q:\n%v", k, diff)

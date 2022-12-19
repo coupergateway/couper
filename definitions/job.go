@@ -32,7 +32,7 @@ func (j Jobs) Run(ctx context.Context, log *logrus.Entry) {
 	}
 
 	logEntry := log.WithContext(ctx)
-	logEntry.Data["type"] = "job"
+	logEntry.Data["type"] = "couper_job"
 
 	for _, job := range j {
 		go job.Run(ctx, logEntry)

@@ -41,7 +41,7 @@ func (c *CustomLogs) Fire(entry *logrus.Entry) error {
 	if entry.Context != nil {
 		if t, exists := entry.Data["type"]; exists {
 			switch t {
-			case "job":
+			case "couper_job":
 				fallthrough
 			case acTypeField:
 				fireAccess(entry)
