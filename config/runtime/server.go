@@ -133,6 +133,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				return nil, err
 			}
 
+			endpointOptions.IsJob = true
 			epHandler := handler.NewEndpoint(endpointOptions, log, nil)
 
 			j := definitions.NewJob(job, epHandler, conf.Settings)
