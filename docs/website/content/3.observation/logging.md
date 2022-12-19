@@ -14,6 +14,7 @@ Upon the execution of Couper all log events are sent to the standard output. You
 | `couper_access_tls` | Provides information about connections via configured [https_dev_proxy](/configuration/block/settings). Compare [Access Fields](#access-fields).                                                           |
 | `couper_backend`    | Provides information about the backend side of things. Compare [Backend Fields](#backend-fields).                                                                                                          |
 | `couper_daemon`     | Provides background information about the execution of Couper. Each printed log of this type contains a `message` entry describing the current actions of Couper. Compare [Daemon Fields](#daemon-fields). |
+| `couper_job`        | Provides information about [jobs](/configuration/block/job). See [Job Fields](#job-fields).                                                                                                                |
 
 ## Fields
 
@@ -64,7 +65,7 @@ These fields are found in the [Log Types](#log-types) `couper_access` and `coupe
 |               | `}`         |                                                                                                                                                                                                                      |
 | `"server"`    |             | server name (defined in couper file)                                                                                                                                                                                 |
 | `"status"`    |             | response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information                                                                                    |
-| `"timings":`  |             | field regarding timing                                                                                                                                                                                               |
+| `"timings":`  |             | field regarding timing [ms]                                                                                                                                                                                          |
 |               | `{`         |                                                                                                                                                                                                                      |
 |               | `"total"`   | total time taken                                                                                                                                                                                                     |
 |               | `}`         |                                                                                                                                                                                                                      |
@@ -101,7 +102,7 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 |                         | `"status"`  | response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information                                                        |
 |                         | `}`         |                                                                                                                                                                                          |
 | `"status"`              |             | response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information                                                        |
-| `"timings":`            |             | field regarding timing                                                                                                                                                                   |
+| `"timings":`            |             | field regarding timing [ms]                                                                                                                                                              |
 |                         | `{`         |                                                                                                                                                                                          |
 |                         | `"dns"`     | time taken by dns                                                                                                                                                                        |
 |                         | `"tcp"`     | time taken between attempting and establishing tcp connection                                                                                                                            |
@@ -128,6 +129,20 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 |              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                         |
 |              | `"retry-delay"` | configured delay of each retry, see [Global Options](/configuration/command-line#global-options)                                              |
 |              | `}`             |                                                                                                                            |
+
+## Job Fields
+
+The following fields are found in the [log type](#log-types) `couper_daemon` in addition to the [common fields](#common-fields).
+
+| Name         |              | Description                                                                    |
+|:-------------|:-------------|:-------------------------------------------------------------------------------|
+| `"name"`     |              | job name, label of [`beta_job` block](/configuration/block/job)                |
+| `"timings":` |              | field regarding timing [ms]                                                    |
+|              | `{`          |                                                                                |
+|              | `"interval"` | interval, see [`interval` attribute](/configuration/block/job#attributes)      |
+|              | `"total"`    | total time taken                                                               |
+|              | `}`          |                                                                                |
+| `“uid"`      |              | unique request id configurable in [settings](/configuration/block/settings)    |
 
 ## Custom Logging
 
