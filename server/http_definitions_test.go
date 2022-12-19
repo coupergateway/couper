@@ -26,14 +26,15 @@ func TestDefinitions_Jobs(t *testing.T) {
 		wantErr    bool
 		wantFields logrus.Fields
 		wantLevel  logrus.Level
+		wantMsg    string
 	}
 
 	const basePath = "testdata/definitions"
 
 	for _, tc := range []testcase{
-		{"without label", "01_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel},          // wantLevel not used
-		{"without interval", "02_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel},       // wantLevel not used
-		{"with negative interval", "03_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel}, // wantLevel not used
+		{"without label", "01_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel, ""},          // wantLevel not used
+		{"without interval", "02_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel, ""},       // wantLevel not used
+		{"with negative interval", "03_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel, ""}, // wantLevel not used
 		{"variable reference", "04_job.hcl", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			payload := map[string]string{
 				"prop1": "val1",
@@ -56,7 +57,10 @@ func TestDefinitions_Jobs(t *testing.T) {
 		}), false, logrus.Fields{"custom": logrus.Fields{
 			"status_a": float64(http.StatusOK),
 			"status_b": float64(http.StatusOK),
-		}}, logrus.InfoLevel},
+		}}, logrus.InfoLevel, ""},
+		{"unexpected status", "05_job.hcl", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}), false, logrus.Fields{"error_type": "unexpected_status"}, logrus.ErrorLevel, "endpoint error"},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			origin := httptest.NewServer(tc.origin)
@@ -87,6 +91,9 @@ func TestDefinitions_Jobs(t *testing.T) {
 					}
 					if entry.Level != tc.wantLevel {
 						st.Errorf("want level: %d, got: %d", tc.wantLevel, entry.Level)
+					}
+					if entry.Message != tc.wantMsg {
+						st.Errorf("want message: %q, got: %q", tc.wantMsg, entry.Message)
 					}
 					continue
 				}

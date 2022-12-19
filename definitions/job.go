@@ -10,6 +10,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/logging"
@@ -107,6 +108,13 @@ func run(req *http.Request, h http.Handler, log *logrus.Entry) {
 	h.ServeHTTP(w, req)
 
 	if w.StatusCode() == 0 || w.StatusCode() > 499 {
+		if ctxErr, ok := req.Context().Value(request.Error).(*errors.Error); ok {
+			if len(ctxErr.Kinds()) > 0 {
+				log = log.WithFields(logrus.Fields{"error_type": ctxErr.Kinds()[0]})
+			}
+			log.Error(ctxErr.Error())
+			return
+		}
 		log.Error()
 		return
 	}
