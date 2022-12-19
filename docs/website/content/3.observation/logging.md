@@ -114,21 +114,21 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 | `"token_request_retry"` |             | how many `token_request` attempts were made                                                                                                                                              |
 | `"uid"`                 |             | unique request id configurable in [Settings](/configuration/block/settings)                                                                                                              |
 | `"url"`                 |             | complete url (`<proto>://<host>:<port><path>` or `<origin><path>`)                                                                                                                       |
-| `"validation"`          |             | validation result for open api, see [OpenAPI Block](/configuration/block/open-api)                                                                                                        |
+| `"validation"`          |             | validation result for open api, see [OpenAPI Block](/configuration/block/open-api)                                                                                                       |
 
 ### Daemon Fields
 
 These fields are found in the [Log Type](#log-types) `couper_daemon` in addition to the [Common Fields](#common-fields).
 
-| Name         |                 | Description                                                                                                                |
-|:-------------|:----------------|:---------------------------------------------------------------------------------------------------------------------------|
-| `"deadline"` |                 | shutdown parameter, see [Health Check](/observation/health)                                                        |
-| `"delay"`    |                 | shutdown parameter, see [Health Check](/observation/health)                                                        |
+| Name         |                 | Description                                                                                                                                    |
+|:-------------|:----------------|:-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `"deadline"` |                 | shutdown parameter, see [Health Check](/observation/health)                                                                                    |
+| `"delay"`    |                 | shutdown parameter, see [Health Check](/observation/health)                                                                                    |
 | `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings) |
-|              | `{`             |                                                                                                                            |
-|              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                         |
-|              | `"retry-delay"` | configured delay of each retry, see [Global Options](/configuration/command-line#global-options)                                              |
-|              | `}`             |                                                                                                                            |
+|              | `{`             |                                                                                                                                                |
+|              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                          |
+|              | `"retry-delay"` | configured delay of each retry, see [Global Options](/configuration/command-line#global-options)                                               |
+|              | `}`             |                                                                                                                                                |
 
 ## Job Fields
 
