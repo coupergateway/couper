@@ -38,6 +38,7 @@ type EndpointOptions struct {
 	ErrorTemplate  *errors.Template
 	ErrorHandler   http.Handler
 	IsErrorHandler bool
+	IsJob          bool
 	LogHandlerKind string
 	LogPattern     string
 	ReqBodyLimit   int64
@@ -116,6 +117,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// assume configured priority, prefer redirect to response and default ones
 	if e.opts.Redirect != nil {
 		clientres = e.newRedirect()
+	} else if e.opts.IsJob {
+		clientres = &http.Response{StatusCode: http.StatusOK}
 	} else if e.opts.Response != nil {
 		_, span := telemetry.NewSpanFromContext(subCtx, "response", trace.WithSpanKind(trace.SpanKindProducer))
 		defer span.End()
