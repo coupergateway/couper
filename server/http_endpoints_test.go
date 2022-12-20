@@ -980,6 +980,8 @@ func TestEndpointSequenceBreak(t *testing.T) {
 				st.Fatalf("want: %d, got: %d", http.StatusBadGateway, res.StatusCode)
 			}
 
+			time.Sleep(time.Millisecond * 200)
+
 			berNames := make(map[string]struct{})
 			for _, e := range hook.AllEntries() {
 				if e.Data["type"] == "couper_backend" {
