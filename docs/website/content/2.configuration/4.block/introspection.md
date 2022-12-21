@@ -23,8 +23,8 @@ values: [
   },
   {
     "default": "",
-    "description": "The interval after which a new introspection request for a token is sent (= TTL of cached introspection responses).",
-    "name": "interval",
+    "description": "The time-to-live of a cached introspection response.",
+    "name": "ttl",
     "type": "string"
   }
 ]

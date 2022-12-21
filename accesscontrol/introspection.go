@@ -94,7 +94,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		}
 	}
 
-	ttl := i.conf.IntervalSeconds
+	ttl := i.conf.TTLSeconds
 	if exp > 0 {
 		now := time.Now().Unix()
 		maxTTL := exp - now
