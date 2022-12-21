@@ -16,7 +16,7 @@ type Introspection struct {
 	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for introspection requests. Mutually exclusive with {backend} block."`
 	Endpoint    string   `hcl:"endpoint" docs:"The authorization server's {introspection_endpoint}."`
 	Remain      hcl.Body `hcl:",remain"`
-	TTL         string   `hcl:"ttl" docs:"The time-to-live of a cached introspection response."`
+	TTL         string   `hcl:"ttl" docs:"The time-to-live of a cached introspection response." type:"duration"`
 
 	// Internally used
 	Backend    *hclsyntax.Body
