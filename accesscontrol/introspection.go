@@ -47,12 +47,16 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 
 	var introspectionData IntrospectionResponse
 
-	cachedIntrospectionBytes, _ := i.memStore.Get(key).([]byte)
-	if cachedIntrospectionBytes != nil {
-		// cached introspection response is always JSON
-		_ = json.Unmarshal(cachedIntrospectionBytes, &introspectionData)
+	ttl := i.conf.TTLSeconds
 
-		return introspectionData, nil
+	if ttl > 0 {
+		cachedIntrospectionBytes, _ := i.memStore.Get(key).([]byte)
+		if cachedIntrospectionBytes != nil {
+			// cached introspection response is always JSON
+			_ = json.Unmarshal(cachedIntrospectionBytes, &introspectionData)
+
+			return introspectionData, nil
+		}
 	}
 
 	req, _ := http.NewRequest("POST", i.conf.Endpoint, nil)
@@ -88,13 +92,16 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		return nil, fmt.Errorf("introspection response is not JSON: %s", err)
 	}
 
+	if ttl <= 0 {
+		return introspectionData, nil
+	}
+
 	if exp == 0 {
 		if isdExp := introspectionData.Exp(); isdExp > 0 {
 			exp = isdExp
 		}
 	}
 
-	ttl := i.conf.TTLSeconds
 	if exp > 0 {
 		now := time.Now().Unix()
 		maxTTL := exp - now

@@ -23,7 +23,7 @@ values: [
   },
   {
     "default": "",
-    "description": "The time-to-live of a cached introspection response.",
+    "description": "The time-to-live of a cached introspection response. With a non-positive value the introspection endpoint is called each time a token is validated.",
     "name": "ttl",
     "type": "duration"
   }
