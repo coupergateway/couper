@@ -25,7 +25,7 @@ values: [
     "default": "",
     "description": "The time-to-live of a cached introspection response.",
     "name": "ttl",
-    "type": "string"
+    "type": "duration"
   }
 ]
 
