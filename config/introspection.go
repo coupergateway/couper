@@ -15,12 +15,12 @@ var (
 type Introspection struct {
 	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for introspection requests. Mutually exclusive with {backend} block."`
 	Endpoint    string   `hcl:"endpoint" docs:"The authorization server's {introspection_endpoint}."`
-	Interval    string   `hcl:"interval" docs:"The interval after which a new introspection request for a token is sent (= TTL of cached introspection responses)."`
 	Remain      hcl.Body `hcl:",remain"`
+	TTL         string   `hcl:"ttl" docs:"The time-to-live of a cached introspection response."`
 
 	// Internally used
-	Backend         *hclsyntax.Body
-	IntervalSeconds int64
+	Backend    *hclsyntax.Body
+	TTLSeconds int64
 }
 
 // TODO use function from config/configload
@@ -41,16 +41,16 @@ func (i *Introspection) Prepare(backendFunc PrepareBackendFunc) error {
 	i.Backend = b
 
 	attrs := i.Remain.(*hclsyntax.Body).Attributes
-	r := attrs["interval"].Expr.Range()
+	r := attrs["ttl"].Expr.Range()
 
-	dur, err := ParseDuration("interval", i.Interval, -1)
+	dur, err := ParseDuration("ttl", i.TTL, -1)
 	if err != nil {
 		return newDiagErr(&r, err.Error())
 	} else if dur == -1 {
 		return newDiagErr(&r, "invalid duration")
 	}
 
-	i.IntervalSeconds = int64(dur.Seconds())
+	i.TTLSeconds = int64(dur.Seconds())
 
 	return nil
 }
