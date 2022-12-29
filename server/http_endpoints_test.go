@@ -939,6 +939,73 @@ func TestEndpointErrorHandler(t *testing.T) {
 	}
 }
 
+func TestEndpointSequenceBreak(t *testing.T) {
+	client := test.NewHTTPClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper(filepath.Join(testdataPath, "14_couper.hcl"), helper)
+	defer shutdown()
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+		for _, e := range hook.AllEntries() {
+			t.Logf("%#v", e.Data)
+		}
+	}()
+
+	type testcase struct {
+		name              string
+		path              string
+		expectedErrorType string
+		expBERNames       []string
+	}
+
+	for _, tc := range []testcase{
+		{"sequence break unexpected_status", "/sequence-break-unexpected_status", "unexpected_status", []string{"resolve"}},
+		{"sequence break backend_timeout", "/sequence-break-backend_timeout", "backend_timeout", []string{"resolve"}},
+		{"break only one sequence", "/break-only-one-sequence", "unexpected_status", []string{"resolve2", "resolve1", "refl"}},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+			h := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://domain.local:8080"+tc.path, nil)
+			h.Must(err)
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusBadGateway {
+				st.Fatalf("want: %d, got: %d", http.StatusBadGateway, res.StatusCode)
+			}
+
+			time.Sleep(time.Millisecond * 200)
+
+			berNames := make(map[string]struct{})
+			for _, e := range hook.AllEntries() {
+				if e.Data["type"] == "couper_backend" {
+					request := e.Data["request"].(logging.Fields)
+					berNames[fmt.Sprintf("%s", request["name"])] = struct{}{}
+				} else if e.Data["type"] == "couper_access" {
+					if e.Data["error_type"] != tc.expectedErrorType {
+						st.Errorf("want: %q, got: %q", tc.expectedErrorType, e.Data["error_type"])
+					}
+				}
+			}
+			if len(berNames) != len(tc.expBERNames) {
+				st.Errorf("number of BE request names want: %d, got: %d", len(tc.expBERNames), len(berNames))
+			} else {
+				for _, n := range tc.expBERNames {
+					if _, ok := berNames[n]; !ok {
+						st.Errorf("missing BE request %q", n)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestEndpointACBufferOptions(t *testing.T) {
 	client := test.NewHTTPClient()
 	helper := test.New(t)

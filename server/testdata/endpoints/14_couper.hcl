@@ -92,6 +92,72 @@ server { # error_handler
     }
   }
 
+  endpoint "/sequence-break-unexpected_status" {
+    request "resolve" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+
+      expected_status = [418] # break
+    }
+
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      set_request_headers = {
+        x = backend_responses.resolve.headers.content-type
+      }
+      expected_status = [200]
+    }
+  }
+
+  endpoint "/sequence-break-backend_timeout" {
+    request "resolve" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+      backend {
+        timeout = "1ns" # break
+      }
+    }
+
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      set_request_headers = {
+        x = backend_responses.resolve.headers.content-type
+      }
+      expected_status = [200]
+    }
+  }
+
+  endpoint "/break-only-one-sequence" {
+    request "resolve1" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+
+      expected_status = [418] # break
+    }
+
+    proxy {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      set_request_headers = {
+        x = backend_responses.resolve1.headers.content-type
+      }
+      expected_status = [200]
+    }
+
+    request "resolve2" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+      expected_status = [200]
+    }
+
+    proxy "refl" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/reflect"
+      set_request_headers = {
+        x = backend_responses.resolve2.headers.content-type
+      }
+      expected_status = [200]
+    }
+
+    response {
+      status = 200
+    }
+  }
+
   api {
     endpoint "/1.1" {
       request "r1" {

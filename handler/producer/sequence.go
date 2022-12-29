@@ -91,11 +91,15 @@ func pipe(req *http.Request, rt []Roundtrip, kind string, additionalSync *sync.M
 		}
 		additionalSync.Store(k, []chan *Result{})
 
+		toBreak := false
 		switch kind {
 		case "parallel": // execute each sequence branch in parallel
 			go produceAndPipeResults(ctx, req, rch, srt, additionalSync)
 		case "sequence": // one by one
-			produceAndPipeResults(ctx, req, rch, srt, additionalSync)
+			toBreak = produceAndPipeResults(ctx, req, rch, srt, additionalSync)
+		}
+		if toBreak {
+			break
 		}
 	}
 
@@ -145,7 +149,7 @@ func pipeResults(target, src chan *Result) {
 	}
 }
 
-func produceAndPipeResults(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip, additionalSync *sync.Map) {
+func produceAndPipeResults(ctx context.Context, req *http.Request, results chan *Result, rt Roundtrip, additionalSync *sync.Map) bool {
 	outreq := req.WithContext(ctx)
 	defer close(results)
 	rs := rt.Produce(outreq, additionalSync)
@@ -167,11 +171,15 @@ func produceAndPipeResults(ctx context.Context, req *http.Request, results chan 
 			for _, ach := range additionalChs {
 				ach <- e
 			}
-			return
+			return true
 		case results <- r:
 			for _, ach := range additionalChs {
 				ach <- r
 			}
+			if r.Err != nil {
+				return true
+			}
 		}
 	}
+	return false
 }
