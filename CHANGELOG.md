@@ -1,10 +1,16 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.11.0...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.11.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
 ---
+
+## [1.11.1](https://github.com/avenga/couper/releases/tag/v1.11.1)
+* 
+* **Fixed**
+  * [Endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) not being terminated by errors (e.g. `unexpected_status`) (regression; since v1.11.0) ([#648](https://github.com/avenga/couper/pull/648))
+
 
 ## [1.11.0](https://github.com/avenga/couper/releases/tag/v1.11.0)
 
