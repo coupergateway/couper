@@ -41,6 +41,11 @@ func (l *Error) Fire(entry *logrus.Entry) error {
 		entry.Data["error_type"] = kinds[0]
 		kind = kinds[0]
 	}
+	entry.Message = errors.AppendMsg(entry.Message, gerr.LogError())
+
+	if entry.Data["type"] != acTypeField {
+		return nil
+	}
 
 	meter := provider.Meter("couper/errors")
 
@@ -52,6 +57,5 @@ func (l *Error) Fire(entry *logrus.Entry) error {
 
 	counter.Add(entry.Context, 1, attribute.String("error", kind))
 
-	entry.Message = errors.AppendMsg(entry.Message, gerr.LogError())
 	return nil
 }
