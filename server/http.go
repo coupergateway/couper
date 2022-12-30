@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config"
@@ -314,20 +314,20 @@ func (s *HTTPServer) cleanHostAppendPort(host string) string {
 
 func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 	meter := provider.Meter("couper/server")
-	counter := metric.Must(meter).NewInt64Counter(instrumentation.ClientConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
-	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.ClientConnections, metric.WithDescription(string(unit.Dimensionless)))
+	counter, _ := meter.SyncInt64().
+		Counter(instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
+	gauge, _ := meter.SyncFloat64().UpDownCounter(
+		instrumentation.ClientConnections,
+		instrument.WithDescription(string(unit.Dimensionless)),
+	)
 
 	if state == http.StateNew {
-		meter.RecordBatch(context.Background(), nil,
-			counter.Measurement(1),
-			gauge.Measurement(1),
-		)
+		counter.Add(context.Background(), 1)
+		gauge.Add(context.Background(), 1)
 		// we have no callback for closing a hijacked one, so count them down too.
 		// TODO: if required we COULD override given conn ptr value with own obj.
 	} else if state == http.StateClosed || state == http.StateHijacked {
-		meter.RecordBatch(context.Background(), nil,
-			gauge.Measurement(-1),
-		)
+		gauge.Add(context.Background(), -1)
 	}
 }
 

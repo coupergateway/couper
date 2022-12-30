@@ -176,7 +176,7 @@ func (sp *SAMLServiceProvider) decryptAssertions(el *etree.Element) error {
 
 		doc, _, err := parseResponse(raw)
 		if err != nil {
-			return fmt.Errorf("unable to create element from decrypted assertion bytes: %v", derr)
+			return fmt.Errorf("unable to create element from decrypted assertion bytes: %v", err)
 		}
 
 		// Replace the original encrypted assertion with the decrypted one.

@@ -93,7 +93,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 	errors.SetLogger(logEntry)
 
-	telemetry.InitExporter(r.context, &telemetry.Options{
+	err = telemetry.InitExporter(r.context, &telemetry.Options{
 		MetricsCollectPeriod: time.Second * 2,
 		Metrics:              config.Settings.TelemetryMetrics,
 		MetricsEndpoint:      config.Settings.TelemetryMetricsEndpoint,
@@ -103,6 +103,9 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		Traces:               config.Settings.TelemetryTraces,
 		TracesEndpoint:       config.Settings.TelemetryTracesEndpoint,
 	}, memStore, logEntry)
+	if err != nil {
+		return err
+	}
 
 	if limitFn != nil {
 		limitFn(logEntry)

@@ -5,7 +5,8 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/instrument/asyncint64"
 	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/cache"
@@ -13,7 +14,7 @@ import (
 	"github.com/avenga/couper/telemetry/provider"
 )
 
-func newBackendsObserver(memStore *cache.MemoryStore) {
+func newBackendsObserver(memStore *cache.MemoryStore) error {
 	bs := memStore.GetAllWithPrefix("backend_")
 	var backends []interface{ Value() cty.Value }
 	for _, b := range bs {
@@ -22,16 +23,21 @@ func newBackendsObserver(memStore *cache.MemoryStore) {
 		}
 	}
 
-	onObserverFn := func(_ context.Context, result metric.Int64ObserverResult) {
-		backendsObserver(backends, result)
+	meter := provider.Meter(instrumentation.BackendInstrumentationName)
+	gauge, _ := meter.AsyncInt64().
+		Gauge(
+			instrumentation.BackendHealthState,
+			instrument.WithDescription(string(unit.Dimensionless)),
+		)
+
+	onObserverFn := func(ctx context.Context) {
+		backendsObserver(ctx, gauge, backends)
 	}
 
-	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	metric.Must(meter).
-		NewInt64GaugeObserver(instrumentation.BackendHealthState, onObserverFn, metric.WithDescription(string(unit.Dimensionless)))
+	return meter.RegisterCallback([]instrument.Asynchronous{gauge}, onObserverFn)
 }
 
-func backendsObserver(backends []interface{ Value() cty.Value }, result metric.Int64ObserverResult) {
+func backendsObserver(ctx context.Context, gauge asyncint64.Gauge, backends []interface{ Value() cty.Value }) {
 	for _, backend := range backends {
 		v := backend.Value().AsValueMap()
 		attrs := []attribute.KeyValue{
@@ -45,6 +51,6 @@ func backendsObserver(backends []interface{ Value() cty.Value }, result metric.I
 			value = 0
 		}
 
-		result.Observe(value, attrs...)
+		gauge.Observe(ctx, value, attrs...)
 	}
 }

@@ -66,6 +66,8 @@ const (
 //Well-known private key encryption methods
 const (
 	MethodAES128GCM    = "http://www.w3.org/2009/xmlenc11#aes128-gcm"
+	MethodAES192GCM    = "http://www.w3.org/2009/xmlenc11#aes192-gcm"
+	MethodAES256GCM    = "http://www.w3.org/2009/xmlenc11#aes256-gcm"
 	MethodAES128CBC    = "http://www.w3.org/2001/04/xmlenc#aes128-cbc"
 	MethodAES256CBC    = "http://www.w3.org/2001/04/xmlenc#aes256-cbc"
 	MethodTripleDESCBC = "http://www.w3.org/2001/04/xmlenc#tripledes-cbc"

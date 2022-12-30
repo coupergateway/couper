@@ -185,7 +185,7 @@ func (p *Probe) probe(c context.Context) {
 			case StateFailing:
 				log.Warn(message)
 			case StateDown:
-				log.WithError(fmt.Errorf(errorMessage + ": " + message)).Error()
+				log.WithError(errors.BackendUnhealthy.Message(errorMessage + ": " + message)).Error()
 			}
 		}
 

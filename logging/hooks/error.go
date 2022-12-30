@@ -1,20 +1,17 @@
 package hooks
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
-	"github.com/avenga/couper/telemetry/provider"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/unit"
-
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/avenga/couper/telemetry/provider"
 )
 
 var _ logrus.Hook = &Error{}
@@ -44,19 +41,21 @@ func (l *Error) Fire(entry *logrus.Entry) error {
 		entry.Data["error_type"] = kinds[0]
 		kind = kinds[0]
 	}
+	entry.Message = errors.AppendMsg(entry.Message, gerr.LogError())
+
+	if entry.Data["type"] != acTypeField {
+		return nil
+	}
 
 	meter := provider.Meter("couper/errors")
-	counter := metric.Must(meter).
-		NewInt64Counter(instrumentation.Prefix+"client_request_error_types_total",
-			metric.WithDescription(string(unit.Dimensionless)),
-		)
-	meter.RecordBatch(context.Background(), []attribute.KeyValue{
-		attribute.String("error", kind),
-	},
-		counter.Measurement(1),
-	)
 
-	entry.Message = errors.AppendMsg(entry.Message, gerr.LogError())
+	counter, _ := meter.SyncInt64().
+		Counter(
+			instrumentation.Prefix+"client_request_error_types",
+			instrument.WithDescription(string(unit.Dimensionless)),
+		)
+
+	counter.Add(entry.Context, 1, attribute.String("error", kind))
 
 	return nil
 }

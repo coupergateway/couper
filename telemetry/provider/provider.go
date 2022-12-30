@@ -13,7 +13,7 @@ var meterMu sync.RWMutex
 func init() {
 	meterMu.Lock()
 	defer meterMu.Unlock()
-	meterProvider = global.GetMeterProvider() // defaults to noop
+	meterProvider = global.MeterProvider() // defaults to noop
 }
 
 func SetMeterProvider(provider metric.MeterProvider) {

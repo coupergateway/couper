@@ -9,7 +9,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
+	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
@@ -65,13 +67,11 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 	}
 	entry.WithFields(o.logFields(eventOpen)).Debug()
 
-	meter := provider.Meter("couper/connection")
-	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendConnectionsTotal, metric.WithDescription(string(unit.Dimensionless)))
-	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.BackendConnections, metric.WithDescription(string(unit.Dimensionless)))
-	meter.RecordBatch(ctx, o.labels,
-		counter.Measurement(1),
-		gauge.Measurement(1),
-	)
+	counter, gauge := newMeterCounter()
+
+	counter.Add(ctx, 1, o.labels...)
+	gauge.Add(ctx, 1, o.labels...)
+
 	return o
 }
 
@@ -88,9 +88,12 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 		since := time.Since(o.createdAt)
 
 		meter := provider.Meter("couper/connection")
-		duration := metric.Must(meter).
-			NewFloat64Histogram(instrumentation.BackendConnectionsLifetime, metric.WithDescription(string(unit.Dimensionless)))
-		meter.RecordBatch(context.Background(), o.labels, duration.Measurement(since.Seconds()))
+		duration, _ := meter.SyncFloat64().Histogram(
+			instrumentation.BackendConnectionsLifetime,
+			instrument.WithDescription(string(unit.Dimensionless)),
+		)
+		duration.Record(context.Background(), since.Seconds(), o.labels...)
+
 		fields["lifetime"] = since.Milliseconds()
 	}
 
@@ -110,10 +113,20 @@ func (o *OriginConn) Close() error {
 
 	o.log.WithFields(o.logFields(eventClose)).Debug()
 
-	meter := provider.Meter("couper/connection")
-	gauge := metric.Must(meter).NewFloat64UpDownCounter(instrumentation.BackendConnections)
-	meter.RecordBatch(context.Background(), o.labels,
-		gauge.Measurement(-1),
-	)
+	_, gauge := newMeterCounter()
+	gauge.Add(context.Background(), -1, o.labels...)
+
 	return o.Conn.Close()
+}
+
+func newMeterCounter() (syncint64.Counter, syncfloat64.UpDownCounter) {
+	meter := provider.Meter("couper/connection")
+
+	counter, _ := meter.SyncInt64().
+		Counter(instrumentation.BackendConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
+	gauge, _ := meter.SyncFloat64().UpDownCounter(
+		instrumentation.BackendConnections,
+		instrument.WithDescription(string(unit.Dimensionless)),
+	)
+	return counter, gauge
 }

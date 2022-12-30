@@ -17,9 +17,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/avenga/couper/config"
@@ -291,9 +291,15 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	counter := metric.Must(meter).NewInt64Counter(instrumentation.BackendRequest, metric.WithDescription(string(unit.Dimensionless)))
-	duration := metric.Must(meter).
-		NewFloat64Histogram(instrumentation.BackendRequestDuration, metric.WithDescription(string(unit.Dimensionless)))
+	counter, _ := meter.SyncInt64().Counter(
+		instrumentation.BackendRequest,
+		instrument.WithDescription(string(unit.Dimensionless)),
+	)
+	duration, _ := meter.SyncFloat64().Histogram(
+		instrumentation.BackendRequestDuration,
+		instrument.WithDescription(string(unit.Dimensionless)),
+	)
+
 	attrs := []attribute.KeyValue{
 		attribute.String("backend_name", tc.BackendName),
 		attribute.String("hostname", tc.Hostname),
@@ -308,11 +314,14 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	endSeconds := time.Since(start).Seconds()
 
 	statusKey := attribute.Key("code")
+	if beresp != nil {
+		attrs = append(attrs, statusKey.Int(beresp.StatusCode))
+	}
+
+	defer counter.Add(req.Context(), 1, attrs...)
+	defer duration.Record(req.Context(), endSeconds, attrs...)
+
 	if err != nil {
-		defer meter.RecordBatch(req.Context(),
-			append(attrs, statusKey.Int(0)),
-			counter.Measurement(1),
-			duration.Measurement(endSeconds))
 		select {
 		case derr := <-deadlineErr:
 			if derr != nil {
@@ -326,11 +335,6 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 			return nil, errors.Backend.Label(b.name).With(err)
 		}
 	}
-
-	meter.RecordBatch(req.Context(),
-		append(attrs, statusKey.Int(beresp.StatusCode)),
-		counter.Measurement(1),
-		duration.Measurement(endSeconds))
 
 	return beresp, nil
 }

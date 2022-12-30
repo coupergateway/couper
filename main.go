@@ -315,8 +315,8 @@ func getWatchFilesList(watchFiles file.Files) (map[string]struct{}, error) {
 
 	}
 
-	for _, file := range refreshedFiles.AsList() {
-		files[file] = struct{}{}
+	for _, f := range refreshedFiles.AsList() {
+		files[f] = struct{}{}
 	}
 
 	return files, nil

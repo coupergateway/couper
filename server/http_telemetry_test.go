@@ -33,9 +33,13 @@ func TestServeMetrics(t *testing.T) {
 		helper.Must(res.Body.Close())
 	}
 
-	time.Sleep(time.Second * 2)
-
 	res, err := client.Do(mreq)
+	if err != nil {
+		t.Fatalf("metrics endpoint could not be reached: %v", err)
+	}
+
+	time.Sleep(time.Second * 2)
+	res, err = client.Do(mreq)
 	if err != nil {
 		t.Fatalf("metrics endpoint could not be reached: %v", err)
 	}
@@ -57,7 +61,7 @@ func TestServeMetrics(t *testing.T) {
 		`couper_client_request_total{code="404",host="localhost:8080",method="GET",service_name="my-service",service_version="0"} 1`,
 		`couper_client_request_error_types_total{error="route_not_found_error",service_name="my-service",service_version="0"} 1`,
 		`couper_client_connections_total{service_name="my-service",service_version="0"} 3`,
-		`go_goroutines{service_name="my-service"}`,
+		`go_goroutines{service_name="my-service",service_version="0"}`,
 	}
 
 	for _, expMetric := range expMetrics {
