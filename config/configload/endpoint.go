@@ -25,7 +25,7 @@ func newCatchAllEndpoint() *config.Endpoint {
 	}
 }
 
-func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPattern bool) error {
+func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPattern bool, definedACs map[string]struct{}) error {
 	var err error
 
 	for _, ep := range endpoints {
@@ -38,6 +38,12 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 		}
 
 		endpointBody := ep.HCLBody()
+		if definedACs != nil {
+			if err := checkReferencedAccessControls(endpointBody, ep.AccessControl, ep.DisableAccessControl, definedACs); err != nil {
+				return err
+			}
+		}
+
 		rp := endpointBody.Attributes["beta_required_permission"]
 		if rp != nil {
 			ep.RequiredPermission = rp.Expr

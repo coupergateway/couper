@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
 )
@@ -21,6 +22,11 @@ type Files struct {
 	ErrorFile            string   `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Name                 string   `hcl:"name,label,optional"`
 	Remain               hcl.Body `hcl:",remain"`
+}
+
+// HCLBody implements the <Body> interface.
+func (f Files) HCLBody() *hclsyntax.Body {
+	return f.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface.

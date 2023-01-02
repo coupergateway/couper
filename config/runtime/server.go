@@ -646,9 +646,6 @@ func configureProtectedHandler(m ACDefinitions, conf *config.Couper, ctx *hcl.Ev
 	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
-		if e := m.MustExist(acName); e != nil {
-			return nil, e
-		}
 		eh, err := newErrorHandler(ctx, conf, opts, log, m, acName)
 		if err != nil {
 			return nil, err
