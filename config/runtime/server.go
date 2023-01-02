@@ -533,12 +533,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, saml := range conf.Definitions.SAML {
 			confErr := errors.Configuration.Label(saml.Name)
-			metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsURL, saml.SpEntityID, saml.ArrayAttributes)
+			s, err := ac.NewSAML2ACS(saml.MetadataBytes, saml.Name, saml.SpAcsURL, saml.SpEntityID, saml.ArrayAttributes)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
