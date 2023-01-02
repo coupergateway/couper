@@ -14,6 +14,7 @@ import (
 	"github.com/avenga/couper/cache"
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
@@ -419,5 +420,70 @@ definitions {
 			}
 		})
 	}
+}
 
+func TestOAuthAuthorizationURLError(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   string
+		label    string
+		wantErr  string
+	}{
+		{
+			"missing oidc/beta_oauth2 definitions",
+			`
+			server {}
+			definitions {
+			}
+			`,
+			"MyLabel",
+			`missing oidc or beta_oauth2 block with referenced label "MyLabel"`,
+		},
+		{
+			"missing referenced oidc/beta_oauth2",
+			`
+			server {}
+			definitions {
+			  beta_oauth2 "auth-ref" {
+			    grant_type = "authorization_code"
+			    client_id = "test-id"
+			    client_secret = "test-s3cr3t"
+			    authorization_endpoint = "https://a.s./auth"
+			    token_endpoint = "https://a.s./token"
+			    redirect_uri = "/cb"
+			    verifier_method = "ccm_s256"
+			    verifier_value = "asdf"
+			  }
+			}
+			`,
+			"MyLabel",
+			`missing oidc or beta_oauth2 block with referenced label "MyLabel"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			h := test.New(subT)
+			couperConf, err := configload.LoadBytes([]byte(tt.config), "test.hcl")
+			h.Must(err)
+
+			ctx, cancel := context.WithCancel(couperConf.Context)
+			couperConf.Context = ctx
+			defer cancel()
+
+			evalContext := couperConf.Context.Value(request.ContextType).(*eval.Context)
+			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
+			h.Must(err)
+			evalContext = evalContext.WithClientRequest(req)
+
+			_, err = evalContext.HCLContext().Functions[lib.FnOAuthAuthorizationURL].Call([]cty.Value{cty.StringVal(tt.label)})
+			if err == nil {
+				subT.Error("expected an error, got nothing")
+				return
+			}
+			if err.Error() != tt.wantErr {
+				subT.Errorf("\nWant:\t%q\nGot:\t%q", tt.wantErr, err.Error())
+			}
+		})
+	}
 }

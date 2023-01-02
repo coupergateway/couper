@@ -37,7 +37,7 @@ func NewOAuthAuthorizationURLFunction(ctx *hcl.EvalContext, oauth2s map[string]c
 			label := args[0].AsString()
 			oauth2, exist := oauth2s[label]
 			if !exist {
-				return emptyStringVal, fmt.Errorf("undefined reference: %s", label)
+				return emptyStringVal, fmt.Errorf("missing oidc or beta_oauth2 block with referenced label %q", label)
 			}
 
 			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint()

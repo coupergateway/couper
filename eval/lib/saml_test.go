@@ -2,6 +2,7 @@ package lib_test
 
 import (
 	"bytes"
+	"context"
 	"compress/flate"
 	"encoding/base64"
 	"encoding/xml"
@@ -64,24 +65,6 @@ func Test_SamlSsoURL(t *testing.T) {
 			true,
 			"",
 		},
-		{
-			"label mismatch",
-			`
-			server "test" {
-			}
-			definitions {
-				saml "MySAML" {
-					idp_metadata_file = "testdata/idp-metadata.xml"
-					sp_entity_id = "the-sp"
-					sp_acs_url = "https://sp.example.com/saml/acs"
-					array_attributes = ["memberOf"]
-				}
-			}
-			`,
-			"NotThere",
-			true,
-			"",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
@@ -136,5 +119,65 @@ func Test_SamlSsoURL(t *testing.T) {
 			h.Must(err)
 		})
 	}
+}
 
+func TestSamlSsoURLError(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   string
+		label    string
+		wantErr  string
+	}{
+		{
+			"missing saml definitions",
+			`
+			server {}
+			definitions {
+			}
+			`,
+			"MyLabel",
+			`missing saml block with referenced label "MyLabel"`,
+		},
+		{
+			"missing referenced saml",
+			`
+			server {}
+			definitions {
+			  saml "MySAML" {
+			    idp_metadata_file = "testdata/idp-metadata.xml"
+			    sp_entity_id = "the-sp"
+			    sp_acs_url = "https://sp.example.com/saml/acs"
+			  }
+			}
+			`,
+			"MyLabel",
+			`missing saml block with referenced label "MyLabel"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			h := test.New(subT)
+			couperConf, err := configload.LoadBytes([]byte(tt.config), "test.hcl")
+			h.Must(err)
+
+			ctx, cancel := context.WithCancel(couperConf.Context)
+			couperConf.Context = ctx
+			defer cancel()
+
+			evalContext := couperConf.Context.Value(request.ContextType).(*eval.Context)
+			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
+			h.Must(err)
+			evalContext = evalContext.WithClientRequest(req)
+
+			_, err = evalContext.HCLContext().Functions[lib.FnSamlSsoURL].Call([]cty.Value{cty.StringVal(tt.label)})
+			if err == nil {
+				subT.Error("expected an error, got nothing")
+				return
+			}
+			if err.Error() != tt.wantErr {
+				subT.Errorf("\nWant:\t%q\nGot:\t%q", tt.wantErr, err.Error())
+			}
+		})
+	}
 }

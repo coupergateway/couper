@@ -862,56 +862,40 @@ func TestJwtSignError(t *testing.T) {
 		wantErr  string
 	}{
 		{
-			"missing jwt_signing_profile definitions",
+			"missing signing profile definitions",
 			`
-			server "test" {
-				endpoint "/" {
-					response {
-						body = jwt_sign()
-					}
-				}
-			}
+			server {}
 			definitions {
 				jwt "MyToken" {
 					signature_algorithm = "HS256"
 					key = "$3cRe4"
-					claims = {
-					  iss = to_lower("The_Issuer")
-					  aud = to_upper("The_Audience")
-					}
 				}
 			}
 			`,
 			"MyToken",
 			`{"sub": "12345"}`,
-			"missing jwt_signing_profile or jwt (with signing_ttl) definitions",
+			`missing jwt_signing_profile or jwt (with signing_ttl) block with referenced label "MyToken"`,
 		},
 		{
 			"No profile for label",
 			`
-			server "test" {
-			}
+			server {}
 			definitions {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS256"
 					key = "$3cRe4"
 					ttl = "0"
-					claims = {
-					  iss = to_lower("The_Issuer")
-					  aud = to_upper("The_Audience")
-					}
 				}
 			}
 			`,
 			"NoProfileForThisLabel",
 			`{"sub":"12345"}`,
-			`missing jwt_signing_profile or jwt (with signing_ttl) for given label "NoProfileForThisLabel"`,
+			`missing jwt_signing_profile or jwt (with signing_ttl) block with referenced label "NoProfileForThisLabel"`,
 		},
 		{
 			"argument claims no object",
 			`
-			server "test" {
-			}
+			server {}
 			definitions {
 				jwt_signing_profile "MyToken" {
 					signature_algorithm = "HS256"
@@ -927,23 +911,18 @@ func TestJwtSignError(t *testing.T) {
 		{
 			"jwt / No profile for label",
 			`
-			server "test" {
-			}
+			server {}
 			definitions {
 				jwt "MySelfSignedToken" {
 					signature_algorithm = "HS256"
 					key = "$3cRe4"
 					signing_ttl = "0"
-					claims = {
-					  iss = to_lower("The_Issuer")
-					  aud = to_upper("The_Audience")
-					}
 				}
 			}
 			`,
 			"NoProfileForThisLabel",
 			`{"sub": "12345"}`,
-			`missing jwt_signing_profile or jwt (with signing_ttl) for given label "NoProfileForThisLabel"`,
+			`missing jwt_signing_profile or jwt (with signing_ttl) block with referenced label "NoProfileForThisLabel"`,
 		},
 		{
 			"jwt / bad curve for algorithm",
@@ -984,8 +963,8 @@ func TestJwtSignError(t *testing.T) {
 				subT.Error("expected an error, got nothing")
 				return
 			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				subT.Errorf("Want:\t%q\nGot:\t%q", tt.wantErr, err.Error())
+			if err.Error() != tt.wantErr {
+				subT.Errorf("\nWant:\t%q\nGot:\t%q", tt.wantErr, err.Error())
 			}
 		})
 	}

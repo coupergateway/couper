@@ -48,7 +48,7 @@ func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Fun
 			label := args[0].AsString()
 			ent, exist := samlEntities[label]
 			if !exist {
-				return cty.StringVal(""), fmt.Errorf("undefined reference: %s", label)
+				return cty.StringVal(""), fmt.Errorf("missing saml block with referenced label %q", label)
 			}
 
 			metadata := ent.descriptor
