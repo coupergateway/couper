@@ -766,7 +766,7 @@ func addProxy(block *hclsyntax.Block, proxies map[string]*hclsyntax.Block) error
 		if !ok {
 			sr := attr.Expr.StartRange()
 
-			return newDiagErr(&sr, "proxy reference is not defined")
+			return newDiagErr(&sr, fmt.Sprintf("referenced proxy %q is not defined", reference))
 		}
 
 		delete(block.Body.Attributes, proxy)
