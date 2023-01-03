@@ -292,7 +292,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	for _, outerBlock := range hlpr.content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
-			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
+			backendContent, _, diags := outerBlock.Body.PartialContent(backendBlockSchema)
 			if diags.HasErrors() {
 				return nil, diags
 			}
@@ -310,9 +310,9 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 
 			loadedPlugins := plugins.Get(definitions)
 			var leftOverBlocks hclsyntax.Blocks
+			leftBody := outerBlock.Body.(*hclsyntax.Body)
 			for _, lp := range loadedPlugins {
 				var blocks hclsyntax.Blocks
-				leftBody := leftOver.(*hclsyntax.Body)
 				for _, b := range leftBody.Blocks {
 					var added bool
 					for _, s := range lp.Schema {
@@ -337,11 +337,11 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 				}
 			}
 
-			leftBody := leftOver.(*hclsyntax.Body)
-			leftBody.Blocks = leftOverBlocks
-
+			if len(leftOverBlocks) > 0 {
+				leftBody.Blocks = leftOverBlocks
+			}
 			// decode all other blocks into definition struct but filter out plugin related
-			if diags = gohcl.DecodeBody(leftOver, hlpr.context, hlpr.config.Definitions); diags.HasErrors() {
+			if diags = gohcl.DecodeBody(leftBody, hlpr.context, hlpr.config.Definitions); diags.HasErrors() {
 				return nil, diags
 			}
 
