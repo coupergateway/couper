@@ -23,6 +23,12 @@ type helper struct {
 
 // newHelper creates a container with some methods to keep things simple here and there.
 func newHelper(body hcl.Body) (*helper, error) {
+	if evalContext == nil { // testcase
+		if diags := updateContext(body, nil, ""); diags.HasErrors() {
+			return nil, diags
+		}
+	}
+
 	couperConfig := &config.Couper{
 		Context:     evalContext,
 		Definitions: &config.Definitions{},

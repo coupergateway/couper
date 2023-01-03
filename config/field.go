@@ -32,7 +32,11 @@ func AttrValueFromTagField(name string, obj interface{}) string {
 	}
 	for i := t.NumField() - 1; i > 0; i-- {
 		if lookup, _ := t.Field(i).Tag.Lookup("hcl"); strings.HasPrefix(lookup, name) {
-			return valueOf(obj).Field(i).String()
+			fv := valueOf(obj).Field(i)
+			if fv.IsNil() {
+				return ""
+			}
+			return fv.String()
 		}
 	}
 

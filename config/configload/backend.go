@@ -50,6 +50,13 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 	var backendBody *hclsyntax.Body
 	var err error
 
+	if helper == nil { // testcase
+		helper, err = newHelper(block.HCLBody())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	reference, backendBody, err = getBackendReference(block)
 	if err != nil {
 		return nil, err
