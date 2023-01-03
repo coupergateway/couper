@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/coupergateway/couper/cache"
@@ -19,6 +20,7 @@ import (
 type Introspector struct {
 	conf      *config.Introspection
 	memStore  *cache.MemoryStore
+	mu        sync.Mutex
 	transport http.RoundTripper
 }
 
@@ -43,11 +45,15 @@ func (ir IntrospectionResponse) Exp() int64 {
 }
 
 func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf int64) (IntrospectionResponse, error) {
-	key := "ir:" + token
-
-	var introspectionData IntrospectionResponse
+	var (
+		introspectionData IntrospectionResponse
+		key               string
+	)
 
 	if i.conf.TTLSeconds > 0 {
+		key = "ir:" + token
+		i.mu.Lock()
+		defer i.mu.Unlock()
 		cachedIntrospectionBytes, _ := i.memStore.Get(key).([]byte)
 		if cachedIntrospectionBytes != nil {
 			// cached introspection response is always JSON

@@ -2231,3 +2231,206 @@ func TestTokenRequest_Runtime_Errors(t *testing.T) {
 
 	asOrigin.Close()
 }
+
+func Test_OAuth2_Introspection_Caching(t *testing.T) {
+	helper := test.New(t)
+
+	introspectCalled := 0
+	active := true
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/introspect" {
+			introspectCalled++
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"active": ` + strconv.FormatBool(active) + `
+			}`)
+			time.Sleep(time.Millisecond * 100)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	shutdown, _, err := newCouperWithTemplate("testdata/oauth2/25_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "ttl": "2s"})
+	helper.Must(err)
+	defer shutdown()
+
+	client := newClient()
+
+	// get token
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/as/token", nil)
+	helper.Must(err)
+	res, err := client.Do(req)
+	helper.Must(err)
+	token := res.Header.Get("access-token")
+
+	req, err = http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resCh := make(chan int, 2)
+	// get resource
+	go func() {
+		res, err := client.Do(req)
+		helper.Must(err)
+		resCh <- res.StatusCode
+	}()
+	// get resource again "simultaneously"
+	go func() {
+		res, err := client.Do(req)
+		helper.Must(err)
+		resCh <- res.StatusCode
+	}()
+	st0, st1 := <-resCh, <-resCh
+	if st0 != http.StatusNoContent {
+		t.Errorf("expected status NoContent, got: %d", st0)
+	}
+	if st1 != http.StatusNoContent {
+		t.Errorf("expected status NoContent, got: %d", st1)
+	}
+	if introspectCalled != 1 {
+		t.Errorf("expected 1 call to introspection endpoint, got %d", introspectCalled)
+	}
+
+	time.Sleep(time.Millisecond * 2100)
+
+	// get resource again after cache TTL
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status NoContent, got: %d", res.StatusCode)
+	}
+	if introspectCalled != 2 {
+		t.Errorf("expected 2 calls to introspection endpoint, got %d", introspectCalled)
+	}
+
+	// deactivate token
+	active = false
+
+	// get resource again within cache TTL: token still active per cached introspection response
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status NoContent, got: %d", res.StatusCode)
+	}
+	if introspectCalled != 2 {
+		t.Errorf("expected 2 calls to introspection endpoint, got %d", introspectCalled)
+	}
+
+	time.Sleep(time.Millisecond * 2100)
+
+	// get resource again after cache TTL: token inactive
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status StatusUnauthorized, got: %d", res.StatusCode)
+	}
+	if introspectCalled != 3 {
+		t.Errorf("expected 3 calls to introspection endpoint, got %d", introspectCalled)
+	}
+
+	time.Sleep(time.Millisecond * 2100)
+
+	// get resource again after cache TTL: token inactive, but no further introspection request necessary
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status StatusUnauthorized, got: %d", res.StatusCode)
+	}
+	if introspectCalled != 3 {
+		t.Errorf("expected 3 calls to introspection endpoint, got %d", introspectCalled)
+	}
+}
+
+func Test_OAuth2_Introspection_NonCaching(t *testing.T) {
+	helper := test.New(t)
+
+	introspectCalled := 0
+	active := true
+	asOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/introspect" {
+			introspectCalled++
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusOK)
+
+			body := []byte(`{
+				"active": ` + strconv.FormatBool(active) + `
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer asOrigin.Close()
+
+	shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/25_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": asOrigin.URL, "ttl": "0s"})
+	helper.Must(err)
+	defer shutdown()
+
+	client := newClient()
+
+	// get token
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/as/token", nil)
+	helper.Must(err)
+	res, err := client.Do(req)
+	helper.Must(err)
+	token := res.Header.Get("access-token")
+
+	req, err = http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resCh := make(chan int, 2)
+	// get resource
+	go func() {
+		res, err := client.Do(req)
+		helper.Must(err)
+		resCh <- res.StatusCode
+	}()
+	// get resource again "simultaneously"
+	go func() {
+		res, err := client.Do(req)
+		helper.Must(err)
+		resCh <- res.StatusCode
+	}()
+	st0, st1 := <-resCh, <-resCh
+	if st0 != http.StatusNoContent {
+		t.Errorf("expected status NoContent, got: %d", st0)
+	}
+	if st1 != http.StatusNoContent {
+		t.Errorf("expected status NoContent, got: %d", st1)
+	}
+	if introspectCalled != 2 {
+		t.Errorf("expected 2 call to introspection endpoint, got %d", introspectCalled)
+	}
+
+	// deactivate token
+	active = false
+
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status StatusUnauthorized, got: %d", res.StatusCode)
+	}
+	if introspectCalled != 3 {
+		t.Errorf("expected 3 calls to introspection endpoint, got %d", introspectCalled)
+	}
+
+	last := hook.LastEntry()
+	expMsg := "access control error: at: token inactive"
+	if expMsg != last.Message {
+		t.Errorf("Expected error message\nWant:\t%s\nGot:\t%s", expMsg, last.Message)
+	}
+	et := last.Data["error_type"]
+	expErrorType := "jwt_token_expired"
+	if expErrorType != et {
+		t.Errorf("Expected error type\nWant:\t%s\nGot:\t%s", expErrorType, et)
+	}
+}
