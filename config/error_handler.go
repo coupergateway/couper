@@ -6,11 +6,12 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
 var (
-	_ Body = &ErrorHandler{}
-	//_ Inline = &ErrorHandler{}
+	_ Body              = &ErrorHandler{}
+	_ schema.BodySchema = &ErrorHandler{}
 )
 
 // ErrorHandler represents a subset of Endpoint.
@@ -36,24 +37,14 @@ func (e ErrorHandler) HCLBody() *hclsyntax.Body {
 // Inline implements the <Inline> interface.
 func (e ErrorHandler) Inline() interface{} {
 	type Inline struct {
-		meta.RequestHeadersAttributes
-		meta.ResponseHeadersAttributes
-		meta.FormParamsAttributes
-		meta.QueryParamsAttributes
-		meta.LogFieldsAttribute
 		ResponseStatus *uint8 `hcl:"set_response_status,optional"`
 	}
 
 	return &Inline{}
 }
 
-// Schema implements the <Inline> interface.
-func (e ErrorHandler) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(e)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(e.Inline())
-	return meta.MergeSchemas(schema, meta.ModifierAttributesSchema, meta.LogFieldsAttributeSchema)
+func (e ErrorHandler) Schema() *hcl.BodySchema {
+	s, _ := gohcl.ImpliedBodySchema(e)
+	i, _ := gohcl.ImpliedBodySchema(e.Inline())
+	return meta.MergeSchemas(s, i, meta.ModifierAttributesSchema, meta.LogFieldsAttributeSchema)
 }

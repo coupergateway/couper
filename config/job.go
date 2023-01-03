@@ -14,7 +14,6 @@ var (
 	_ schema.BodySchema = &Job{}
 )
 
-// Job represents the <Job> object.
 type Job struct {
 	Interval string   `hcl:"interval" docs:"Execution interval." type:"duration"`
 	Name     string   `hcl:"name,label"`

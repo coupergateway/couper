@@ -33,4 +33,9 @@ func (c Couper) Schema() *hcl.BodySchema {
 
 func init() {
 	schema.Registry.Add(nil, Couper{})
+	// exception due to setter/getter composition
+	schema.Registry.Add(&hcl.BlockHeaderSchema{Type: "error_handler", LabelOptional: true}, ErrorHandler{})
+
+	// TODO: fix naming
+	schema.Registry.Add(&hcl.BlockHeaderSchema{Type: "backend_tls"}, BackendTLS{})
 }

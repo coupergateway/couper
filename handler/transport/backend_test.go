@@ -393,7 +393,7 @@ func TestBackend_director(t *testing.T) {
 func TestBackend_HealthCheck(t *testing.T) {
 	type testCase struct {
 		name        string
-		health      *config.Health
+		health      *config.BetaHealth
 		expectation config.HealthCheck
 	}
 
@@ -404,7 +404,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 	for _, tc := range []testCase{
 		{
 			name:   "health check with default values",
-			health: &config.Health{},
+			health: &config.BetaHealth{},
 			expectation: config.HealthCheck{
 				FailureThreshold: 2,
 				Interval:         time.Second,
@@ -416,7 +416,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 		},
 		{
 			name: "health check with configured values",
-			health: &config.Health{
+			health: &config.BetaHealth{
 				FailureThreshold: toPtr(42),
 				Interval:         "1h",
 				Timeout:          "9m",
@@ -453,7 +453,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 		},
 		{
 			name: "timeout set indirectly by configured interval",
-			health: &config.Health{
+			health: &config.BetaHealth{
 				Interval: "10s",
 			},
 			expectation: config.HealthCheck{
@@ -467,7 +467,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 		},
 		{
 			name: "timeout bounded by configured interval",
-			health: &config.Health{
+			health: &config.BetaHealth{
 				Interval: "5s",
 				Timeout:  "10s",
 			},
@@ -482,7 +482,7 @@ func TestBackend_HealthCheck(t *testing.T) {
 		},
 		{
 			name: "zero threshold",
-			health: &config.Health{
+			health: &config.BetaHealth{
 				FailureThreshold: toPtr(0),
 			},
 			expectation: config.HealthCheck{

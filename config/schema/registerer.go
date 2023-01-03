@@ -89,6 +89,14 @@ func elemType(t reflect.Type) reflect.Type {
 	return t
 }
 
+// lookupMap maps exceptions for (bad) special struct names
+var lookupMap = map[string]string{
+	"oauth2ac":       "beta_oauth2",
+	"oauth2req_auth": "oauth2",
+	"open_api":       "openapi",
+	"server_tls":     "tls",
+}
+
 func whichParentType(pt any) string {
 	switch v := pt.(type) {
 	case string:
@@ -99,7 +107,11 @@ func whichParentType(pt any) string {
 			pType = pType.Elem()
 		}
 		t := strings.SplitAfter(pType.String(), ".")[1] // rm pkg
-		return errors.TypeToSnakeString(t)
+		ttst := errors.TypeToSnakeString(t)
+		if n, exist := lookupMap[ttst]; exist {
+			return n
+		}
+		return ttst
 	}
 	return ""
 }

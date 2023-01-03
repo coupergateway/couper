@@ -19,7 +19,7 @@ import (
 )
 
 type Job struct {
-	conf     *config.Job
+	conf     *config.BetaJob
 	handler  http.Handler
 	interval time.Duration
 	settings *config.Settings
@@ -40,7 +40,7 @@ func (j Jobs) Run(ctx context.Context, log *logrus.Entry) {
 	}
 }
 
-func NewJob(j *config.Job, h http.Handler, settings *config.Settings) *Job {
+func NewJob(j *config.BetaJob, h http.Handler, settings *config.Settings) *Job {
 	return &Job{
 		conf:     j,
 		handler:  h,
