@@ -424,10 +424,10 @@ definitions {
 
 func TestOAuthAuthorizationURLError(t *testing.T) {
 	tests := []struct {
-		name     string
-		config   string
-		label    string
-		wantErr  string
+		name    string
+		config  string
+		label   string
+		wantErr string
 	}{
 		{
 			"missing oidc/beta_oauth2 definitions",

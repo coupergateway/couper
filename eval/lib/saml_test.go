@@ -2,8 +2,8 @@ package lib_test
 
 import (
 	"bytes"
-	"context"
 	"compress/flate"
+	"context"
 	"encoding/base64"
 	"encoding/xml"
 	"io"
@@ -92,10 +92,10 @@ func Test_SamlSsoURL(t *testing.T) {
 
 func TestSamlConfigError(t *testing.T) {
 	tests := []struct {
-		name     string
-		config   string
-		label    string
-		wantErr  string
+		name    string
+		config  string
+		label   string
+		wantErr string
 	}{
 		{
 			"missing referenced saml IdP metadata",
@@ -131,10 +131,10 @@ func TestSamlConfigError(t *testing.T) {
 
 func TestSamlSsoURLError(t *testing.T) {
 	tests := []struct {
-		name     string
-		config   string
-		label    string
-		wantErr  string
+		name    string
+		config  string
+		label   string
+		wantErr string
 	}{
 		{
 			"missing saml definitions",
