@@ -9,6 +9,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Changed**
   * Use nested `jwt_signing_profile` block in [`oauth2` block](https://docs.couper.io/configuration/block/oauth2) for `grant_type` `"urn:ietf:params:oauth:grant-type:jwt-bearer"` in absence of `assertion` attribute ([#619](https://github.com/avenga/couper/pull/619))
+  * Harmonized and improved logged error information for references to undefined blocks ([#651](https://github.com/avenga/couper/pull/651))
 
 * **Fixed**
   * [Endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) not being terminated by errors (e.g. `unexpected_status`) (regression; since v1.11.0) ([#648](https://github.com/avenga/couper/pull/648))
