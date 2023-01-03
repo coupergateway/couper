@@ -47,9 +47,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 
 	var introspectionData IntrospectionResponse
 
-	ttl := i.conf.TTLSeconds
-
-	if ttl > 0 {
+	if i.conf.TTLSeconds > 0 {
 		cachedIntrospectionBytes, _ := i.memStore.Get(key).([]byte)
 		if cachedIntrospectionBytes != nil {
 			// cached introspection response is always JSON
@@ -92,7 +90,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		return nil, fmt.Errorf("introspection response is not JSON: %s", err)
 	}
 
-	if ttl <= 0 {
+	if i.conf.TTLSeconds <= 0 {
 		return introspectionData, nil
 	}
 
@@ -101,6 +99,8 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 			exp = isdExp
 		}
 	}
+
+	ttl := i.conf.TTLSeconds
 
 	if exp > 0 {
 		now := time.Now().Unix()
