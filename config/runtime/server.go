@@ -639,7 +639,7 @@ func configureIntrospector(jwtConf *config.JWT, confContext *hcl.EvalContext, lo
 		return nil, err
 	}
 
-	return ac.NewIntrospector(jwtConf.Introspection, backend, memStore), nil
+	return ac.NewIntrospector(confContext, jwtConf.Introspection, backend, memStore)
 }
 
 type protectedOptions struct {
