@@ -79,6 +79,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	for host, muxOpts := range hosts {
 		mux := NewMux(muxOpts)
 		registerHandler(mux.endpointRoot, []string{http.MethodGet}, settings.HealthPath, handler.NewHealthCheck(settings.HealthPath, shutdownCh))
+		mux.RegisterConfigured()
 		muxersList[host] = mux
 
 		// TODO: refactor (hosts,muxOpts, etc) format type and usage
