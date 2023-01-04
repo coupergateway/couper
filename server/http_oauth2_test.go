@@ -965,7 +965,7 @@ definitions {
 
 func TestOAuth2_AuthnJWT(t *testing.T) {
 	helper := test.New(t)
-	jtiRE, err := regexp.Compile("^[a-zA-Z0-9]{43}$")
+	jtiRE, err := regexp.Compile("^client_assertion-[a-v0-9]{20}$")
 	helper.Must(err)
 
 	rsOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

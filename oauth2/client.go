@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
-	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
+	"github.com/rs/xid"
 
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
 	"github.com/coupergateway/couper/config"
@@ -220,15 +220,6 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 		formParams.Set("client_id", clientID)
 		formParams.Set("client_secret", clientSecret)
 	case clientSecretJwt, privateKeyJwt:
-		// Although this is unrelated to PKCE, it is used to create an identifier as per RFC 7519 section 4.1.7:
-		// The identifier value MUST be assigned in a manner that ensures that
-		// there is a negligible probability that the same value will be
-		// accidentally assigned to a different data object
-		identifier, err := pkce.CreateCodeVerifier()
-		if err != nil {
-			return err
-		}
-
 		claims := make(map[string]interface{})
 		for k, v := range c.authnClaims {
 			claims[k] = v
@@ -236,7 +227,11 @@ func (c *Client) authenticateClient(formParams *url.Values, tokenReq *http.Reque
 		now := time.Now().Unix()
 		claims["iat"] = now
 		claims["exp"] = now + c.authnJSC.TTL
-		claims["jti"] = identifier.String()
+		// Create an identifier as per RFC 7519 section 4.1.7:
+		// The identifier value MUST be assigned in a manner that ensures that
+		// there is a negligible probability that the same value will be
+		// accidentally assigned to a different data object
+		claims["jti"] = "client_assertion-" + xid.New().String()
 		clientAssertion, err := lib.CreateJWT(c.authnJSC.SignatureAlgorithm, c.authnJSC.Key, claims, c.authnHeaders)
 		if err != nil {
 			return err
