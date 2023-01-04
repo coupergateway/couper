@@ -2,7 +2,7 @@ server {
   api "as" {
     base_path = "/as"
 
-    endpoint "/token" {
+    endpoint "/token" { # not proper OAuth2 token endpoint, but token is easier to extract from header
       response {
         headers = {
           access-token = jwt_sign("at", {})
@@ -31,6 +31,8 @@ definitions {
     introspection {
       endpoint = "{{.asOrigin}}/introspect"
       ttl = "{{.ttl}}"
+      client_id = "the_rs"
+      client_secret = "the_rs_asdf"
     }
   }
 }

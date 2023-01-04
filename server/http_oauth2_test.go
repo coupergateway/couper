@@ -2434,3 +2434,45 @@ func Test_OAuth2_Introspection_NonCaching(t *testing.T) {
 		t.Errorf("Expected error type\nWant:\t%s\nGot:\t%s", expErrorType, et)
 	}
 }
+
+func Test_OAuth2_Introspection_AuthnMethods(t *testing.T) {
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/oauth2/26_couper.hcl", test.New(t))
+	defer shutdown()
+
+	client := newClient()
+
+	// get token
+	req, err := http.NewRequest(http.MethodGet, "http://1.1.1.1:9999/token", nil)
+	helper.Must(err)
+	res, err := client.Do(req)
+	helper.Must(err)
+	token := res.Header.Get("access-token")
+
+	type testCase struct {
+		name string
+		path string
+	}
+
+	for _, tc := range []testCase{
+		{"client_secret_basic", "/csb"},
+		{"client_secret_post", "/csp"},
+		{"client_secret_jwt", "/csj"},
+		{"private_key_jwt", "/pkj"},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			// get resource
+			req, err = http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			h.Must(err)
+			req.Header.Set("Authorization", "Bearer "+token)
+			res, err = client.Do(req)
+			h.Must(err)
+			if res.StatusCode != http.StatusNoContent {
+				subT.Errorf("Expected status code 204, got %d", res.StatusCode)
+			}
+		})
+	}
+}
