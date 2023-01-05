@@ -106,6 +106,12 @@ definitions {
     ttl = "60s"
   }
 
+  jwt "at_from_fb" {
+    token_value = request.form_body.token[0]
+    signature_algorithm = "HS256"
+    key = "asdf"
+  }
+
   basic_auth "ba_csb" {
     user = "the_rs"
     password = "the_rs_asdf"
@@ -147,7 +153,7 @@ server "as" {
     }
 
     endpoint "/introspect/csb" {
-      access_control = ["ba_csb"]
+      access_control = ["ba_csb", "at_from_fb"]
 
       response {
         json_body = {active: true}
@@ -155,6 +161,8 @@ server "as" {
     }
 
     endpoint "/introspect/csp" {
+      access_control = ["at_from_fb"]
+
       response {
         status = request.form_body.client_id[0] == "the_rs" && request.form_body.client_secret[0] == "the_rs_asdf" ? 200 : 401
         json_body = {active: true}
@@ -162,7 +170,7 @@ server "as" {
     }
 
     endpoint "/introspect/csj" {
-      access_control = ["jwt_csj"]
+      access_control = ["jwt_csj", "at_from_fb"]
 
       response {
         json_body = {active: true}
@@ -170,7 +178,7 @@ server "as" {
     }
 
     endpoint "/introspect/pkj" {
-      access_control = ["jwt_pkj"]
+      access_control = ["jwt_pkj", "at_from_fb"]
 
       response {
         json_body = {active: true}
