@@ -10,6 +10,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * 
 * **Fixed**
   * [Endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) not being terminated by errors (e.g. `unexpected_status`) (regression; since v1.11.0) ([#648](https://github.com/avenga/couper/pull/648))
+  * [Health route](https://docs.couper.io/observation/health) affected by [access control](https://docs.couper.io/configuration/access-control) (regression; since v1.11.0) ([#654](https://github.com/avenga/couper/pull/654))
 
 
 ## [1.11.0](https://github.com/avenga/couper/releases/tag/v1.11.0)

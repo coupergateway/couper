@@ -913,3 +913,33 @@ func TestHTTPServer_RateLimiterBlock(t *testing.T) {
 
 	mu.Unlock()
 }
+
+func TestHTTPServer_HealthVsAccessControl(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	shutdown, _ := newCouper("testdata/settings/22_couper.hcl", helper)
+	defer shutdown()
+
+	// Call health route
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/healthz", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", res.StatusCode)
+	}
+
+	// Call other route
+	req, err = http.NewRequest(http.MethodGet, "http://example.com:8080/foo", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Expected status 401, got %d", res.StatusCode)
+	}
+}
