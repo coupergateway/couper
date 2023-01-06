@@ -163,7 +163,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		wc = strings.TrimPrefix(wc, "/")
 	}
 
-	if wc != "" {
+	if routeMatch.Route.GetName() == "**" {
 		ctx = context.WithValue(ctx, request.Wildcard, wc)
 	}
 
@@ -237,13 +237,14 @@ func mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailing
 	if strings.HasSuffix(path, wildcardSearch) {
 		path = path[:len(path)-len(wildcardSearch)]
 		if len(path) == 0 {
-			path = "/" // path at least be /
+			root.PathPrefix("/").Name("**").Handler(handler)
+			return
 		}
-		root.Path(path).Handler(handler) // register /path ...
+		root.Path(path).Name("**").Handler(handler) // register /path ...
 		if !strings.HasSuffix(path, "/") {
 			path = path + "/" // ... and /path/**
 		}
-		root.PathPrefix(path).Handler(handler)
+		root.PathPrefix(path).Name("**").Handler(handler)
 		return
 	}
 
