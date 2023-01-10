@@ -70,7 +70,6 @@ func NewSpa(ctx *hcl.EvalContext, config *config.Spa, srvOpts *server.Options, m
 	}
 
 	err = spa.replaceBootstrapData(ctx, file)
-	spa.bootstrapCType = mime.TypeByExtension(filepath.Ext(spa.config.BootstrapFile))
 
 	return spa, err
 }
@@ -79,8 +78,6 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var content io.ReadSeeker
 	var modTime time.Time
 
-	rw.Header().Set("Content-Type", s.bootstrapCType)
-
 	evalContext := eval.ContextFromRequest(req)
 	if r, ok := rw.(*writer.Response); ok {
 		r.AddModifier(evalContext.HCLContext(), s.modifier...)
@@ -88,6 +85,7 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if len(s.bootstrapContent) > 0 {
 		setLastModified(rw, s.bootstrapModTime)
+		rw.Header().Set("Content-Type", s.bootstrapCType)
 		_, _ = rw.Write(s.bootstrapContent)
 		return
 	}
@@ -154,6 +152,14 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) e
 		bootstrapName = defaultName
 	}
 	s.bootstrapContent = bytes.Replace(b, []byte(bootstrapName), escapedData.Bytes(), 1)
+
+	s.bootstrapCType = mime.TypeByExtension(filepath.Ext(s.config.BootstrapFile))
+	if s.bootstrapCType == "" {
+		// read a chunk to decide between utf-8 text and binary
+		var buf [512]byte
+		n, _ := io.ReadFull(bytes.NewBuffer(b), buf[:])
+		s.bootstrapCType = http.DetectContentType(buf[:n])
+	}
 
 	return nil
 }
