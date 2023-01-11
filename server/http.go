@@ -103,7 +103,8 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	accessLog := logging.NewAccessLog(&logConf, log)
 
 	// order matters
-	traceHandler := middleware.NewTraceHandler()(httpSrv)
+	metricsHandler := middleware.NewMetricsHandler()(httpSrv)
+	traceHandler := middleware.NewTraceHandler()(metricsHandler)
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		uidHandler.ServeHTTP(rw, req)
