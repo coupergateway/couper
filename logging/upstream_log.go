@@ -3,6 +3,7 @@ package logging
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -17,6 +18,7 @@ import (
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
+	"github.com/avenga/couper/utils"
 	"github.com/hashicorp/hcl/v2"
 )
 
@@ -94,6 +96,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	close(logCtxCh)
 
+	// FIXME: Can host be empty?
 	if outreq.Host != "" {
 		requestFields["origin"] = outreq.Host
 		requestFields["host"], requestFields["port"] = splitHostPort(outreq.Host)
@@ -149,16 +152,29 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		fields["validation"] = validationErrors
 	}
 
+	serverTimingsVal := make(utils.ServerTimings)
+	serverTimingsKey := u.log.Data["backend"].(string)
+
+	if name, ok := requestFields["name"].(string); ok && name != "default" {
+		serverTimingsKey += "_" + name
+	}
+
 	timingResults := Fields{
 		"total": RoundMS(rtDone.Sub(rtStart)),
 	}
 	timingsMu.RLock()
 	for f, v := range timings { // clone
 		timingResults[f] = v
+
+		serverTimingsVal[fmt.Sprintf(`%s_%s`, serverTimingsKey, f)] = fmt.Sprintf(`dur=%.3f`, v)
 	}
 	timingsMu.RUnlock()
 	fields["timings"] = timingResults
 	//timings["ttlb"] = RoundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
+
+	if beresp != nil {
+		beresp.Request = outreq.WithContext(context.WithValue(outreq.Context(), request.ServerTimings, serverTimingsVal))
+	}
 
 	entry := u.log.
 		WithFields(logrus.Fields(fields)).

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
@@ -20,7 +21,10 @@ import (
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
+	"github.com/avenga/couper/utils"
 )
+
+const serverTimingHeader = "Server-Timing"
 
 var _ http.Handler = &Endpoint{}
 var _ BodyLimit = &Endpoint{}
@@ -170,6 +174,8 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// copy/write like a reverseProxy
 	copyHeader(rw.Header(), clientres.Header)
 
+	rw.Header().Add(serverTimingHeader, getServerTimings(clientres.Header, beresps))
+
 	rw.WriteHeader(clientres.StatusCode)
 
 	if clientres.Body == nil {
@@ -184,6 +190,33 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	_ = clientres.Body.Close()
+}
+
+func getServerTimings(headers http.Header, beresps producer.ResultMap) string {
+	serverTimings := make(utils.ServerTimings)
+
+	for _, h := range headers.Values(serverTimingHeader) {
+		utils.CollectMetricNames(h, serverTimings)
+	}
+
+	for _, r := range beresps {
+		if r == nil || r.Beresp == nil {
+			continue
+		}
+
+		timings, _ := r.Beresp.Request.Context().Value(request.ServerTimings).(utils.ServerTimings)
+
+		utils.MergeMetrics(timings, serverTimings)
+	}
+
+	var parts []string
+	for k, v := range serverTimings {
+		if v != "" {
+			parts = append(parts, k+";"+v)
+		}
+	}
+
+	return strings.Join(parts, ", ")
 }
 
 // withContext binds some endpoint context related values for logging and buffer purposes.
