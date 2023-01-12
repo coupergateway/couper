@@ -189,7 +189,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	return ctx
 }
 
-func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
+func (c *Context) WithBeresp(beresp *http.Response, backendVal cty.Value, readBody bool) *Context {
 	ctx := c.clone()
 	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
 
@@ -203,6 +203,7 @@ func (c *Context) WithBeresp(beresp *http.Response, readBody bool) *Context {
 
 		ctx.eval.Variables[BackendRequest] = bereqVal
 		ctx.eval.Variables[BackendResponse] = berespVal
+		ctx.eval.Variables[Backend] = backendVal
 	}
 
 	// Prevent overriding existing variables with successive calls to this method.

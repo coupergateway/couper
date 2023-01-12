@@ -126,10 +126,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, errors.BetaBackendTokenRequest.Label(b.name).With(err)
 	}
 
+	var backendVal cty.Value
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 	if v, ok := hclCtx.Variables[eval.Backends]; ok {
 		if m, exist := v.AsValueMap()[b.name]; exist {
 			hclCtx.Variables[eval.Backend] = m
+			backendVal = m
 		}
 	}
 
@@ -249,7 +251,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	evalCtx := eval.ContextFromRequest(req)
 	// has own body variable reference?
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
-	evalCtx = evalCtx.WithBeresp(beresp, readBody)
+	evalCtx = evalCtx.WithBeresp(beresp, backendVal, readBody)
 
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
