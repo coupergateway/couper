@@ -82,21 +82,20 @@ func fireUpstream(entry *logrus.Entry) {
 	if !ok {
 		return
 	}
-	bodyCh, _ := entry.Context.Value(request.LogCustomUpstream).(chan hcl.Body)
-	if bodyCh == nil {
+
+	bodies := entry.Context.Value(request.LogCustomUpstream)
+	if bodies == nil {
 		return
 	}
 
-	var bodies []hcl.Body
-	select {
-	case body := <-bodyCh:
-		bodies = append(bodies, body)
-	case <-entry.Context.Done():
+	hclBodies, ok := bodies.(*[]hcl.Body)
+	if !ok {
+		return
 	}
 
 	ctx := syncedUpstreamContext(evalCtx, entry)
 
-	if fields := eval.ApplyCustomLogs(ctx, bodies, entry); len(fields) > 0 {
+	if fields := eval.ApplyCustomLogs(ctx, *hclBodies, entry); len(fields) > 0 {
 		entry.Data[customLogField] = fields
 	}
 }

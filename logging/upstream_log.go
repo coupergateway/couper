@@ -82,10 +82,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fields["request"] = requestFields
 
+	var logBodies []hcl.Body
 	berespBytes := int64(0)
-	logCtxCh := make(chan hcl.Body, 17) // TODO: Will block with oauth2 token retries >= 17
 	tokenRetries := uint8(0)
-	outctx := context.WithValue(req.Context(), request.LogCustomUpstream, logCtxCh)
+	outctx := context.WithValue(req.Context(), request.LogCustomUpstream, &logBodies)
 	outctx = context.WithValue(outctx, request.BackendBytes, &berespBytes)
 	outctx = context.WithValue(outctx, request.TokenRequestRetries, &tokenRetries)
 	oCtx, openAPIContext := validation.NewWithContext(outctx)
@@ -94,8 +94,6 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	rtStart := time.Now()
 	beresp, err := u.next.RoundTrip(outreq)
 	rtDone := time.Now()
-
-	close(logCtxCh)
 
 	// FIXME: Can host be empty?
 	if outreq.Host != "" {

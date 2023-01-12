@@ -139,10 +139,8 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}, err
 	}
 
-	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
-	if logCh != nil {
-		logCh <- ctxBody
-	}
+	logBodies, _ := req.Context().Value(request.LogCustomUpstream).(*[]hcl.Body)
+	*logBodies = append(*logBodies, ctxBody)
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
