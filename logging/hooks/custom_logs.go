@@ -71,9 +71,7 @@ func fireAccess(entry *logrus.Entry) {
 		return
 	}
 
-	ctx := syncedUpstreamContext(evalCtx, entry)
-
-	if fields := eval.ApplyCustomLogs(ctx, hclBodies, entry); len(fields) > 0 {
+	if fields := eval.ApplyCustomLogs(evalCtx.HCLContextSync(), hclBodies, entry); len(fields) > 0 {
 		entry.Data[customLogField] = fields
 	}
 }
@@ -85,43 +83,4 @@ func fireUpstream(entry *logrus.Entry) {
 	if fields := eval.MergeCustomLogs(*logValues, *logErrors, entry); len(fields) > 0 {
 		entry.Data[customLogField] = fields
 	}
-}
-
-// syncedUpstreamContext prepares the local backend variable.
-func syncedUpstreamContext(evalCtx *eval.Context, entry *logrus.Entry) *hcl.EvalContext {
-	ctx := evalCtx.HCLContextSync()
-
-	tr, _ := entry.Context.Value(request.TokenRequest).(string)
-	rtName, _ := entry.Context.Value(request.RoundTripName).(string)
-	isTr := tr != ""
-
-	if rtName == "" {
-		return ctx
-	}
-
-	if _, ok := ctx.Variables[eval.BackendRequests]; ok {
-		for k, v := range ctx.Variables[eval.BackendRequests].AsValueMap() {
-			if isTr && k == eval.TokenRequestPrefix+tr {
-				ctx.Variables[eval.BackendRequest] = v
-				break
-			} else if k == rtName {
-				ctx.Variables[eval.BackendRequest] = v
-				break
-			}
-		}
-	}
-
-	if _, ok := ctx.Variables[eval.BackendResponses]; ok {
-		for k, v := range ctx.Variables[eval.BackendResponses].AsValueMap() {
-			if isTr && k == eval.TokenRequestPrefix+tr {
-				ctx.Variables[eval.BackendResponse] = v
-				break
-			} else if k == rtName {
-				ctx.Variables[eval.BackendResponse] = v
-				break
-			}
-		}
-	}
-
-	return ctx
 }
