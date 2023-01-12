@@ -171,10 +171,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	rw.Header().Add(serverTimingHeader, getServerTimings(clientres.Header, beresps))
+
 	// copy/write like a reverseProxy
 	copyHeader(rw.Header(), clientres.Header)
-
-	rw.Header().Add(serverTimingHeader, getServerTimings(clientres.Header, beresps))
 
 	rw.WriteHeader(clientres.StatusCode)
 
