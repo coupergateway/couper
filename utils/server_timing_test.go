@@ -54,6 +54,7 @@ func TestUtils_MergeMetrics(t *testing.T) {
 		src  utils.ServerTimings
 		dest utils.ServerTimings
 		exp  utils.ServerTimings
+		alt  utils.ServerTimings
 	}
 
 	for _, tc := range []testCase{
@@ -61,16 +62,22 @@ func TestUtils_MergeMetrics(t *testing.T) {
 			utils.ServerTimings{`db`: ``},
 			utils.ServerTimings{`db`: ``},
 			utils.ServerTimings{`db`: ``, `db_1`: ``},
+			nil,
 		},
 		{
 			utils.ServerTimings{`db`: ``, `db_1`: ``},
 			utils.ServerTimings{`db`: ``},
 			utils.ServerTimings{`db`: ``, `db_1`: ``, `db_2`: ``},
+			utils.ServerTimings{`db`: ``, `db_1`: ``, `db_1_1`: ``},
 		},
 	} {
 		utils.MergeMetrics(tc.src, tc.dest)
 
-		if !cmp.Equal(tc.exp, tc.dest) {
+		if tc.alt != nil {
+			if !cmp.Equal(tc.exp, tc.dest) && !cmp.Equal(tc.alt, tc.dest) {
+				t.Errorf(cmp.Diff(tc.exp, tc.dest))
+			}
+		} else if !cmp.Equal(tc.exp, tc.dest) {
 			t.Errorf(cmp.Diff(tc.exp, tc.dest))
 		}
 	}
