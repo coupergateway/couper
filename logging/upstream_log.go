@@ -153,7 +153,14 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	serverTimingsVal := make(utils.ServerTimings)
-	serverTimingsKey := u.log.Data["backend"].(string)
+	serverTimingsKey := ""
+
+	// For test cases: "backend" is sometimes not set
+	if u.log != nil {
+		if key, exists := u.log.Data["backend"]; exists {
+			serverTimingsKey = key.(string)
+		}
+	}
 
 	if name, ok := requestFields["name"].(string); ok && name != "default" {
 		serverTimingsKey += "_" + name
