@@ -441,4 +441,44 @@ func TestBackend_BackendVar(t *testing.T) {
 	if hResponseStatus2 != "200" {
 		t.Errorf("expected x-rs-2 to be %q, got %q", "/200", hResponseStatus2)
 	}
+
+	for _, e := range hook.AllEntries() {
+		if e.Data["type"] != "couper_backend" {
+			continue
+		}
+		custom, _ := e.Data["custom"].(logrus.Fields)
+
+		if lHealthy1, ok := custom["healthy_1"].(bool); !ok {
+			t.Error("expected healthy_1 to be set and bool")
+		} else if lHealthy1 != true {
+			t.Errorf("expected healthy_1 to be true, got %v", lHealthy1)
+		}
+		if lHealthy2, ok := custom["healthy_2"].(bool); !ok {
+			t.Error("expected healthy_2 to be set and bool")
+		} else if lHealthy2 != true {
+			t.Errorf("expected healthy_2 to be true, got %v", lHealthy2)
+		}
+
+		if lRequestPath1, ok := custom["rp_1"].(string); !ok {
+			t.Error("expected rp_1 to be set and string")
+		} else if lRequestPath1 != "/anything" {
+			t.Errorf("expected rp_1 to be %q, got %v", "/anything", lRequestPath1)
+		}
+		if lRequestPath2, ok := custom["rp_2"].(string); !ok {
+			t.Error("expected rp_2 to be set and string")
+		} else if lRequestPath2 != "/anything" {
+			t.Errorf("expected rp_2 to be %q, got %v", "/anything", lRequestPath2)
+		}
+
+		if lResponseStatus1, ok := custom["rs_1"].(float64); !ok {
+			t.Error("expected rs_1 to be set and float64")
+		} else if lResponseStatus1 != 200 {
+			t.Errorf("expected rs_1 to be %d, got %v", 200, lResponseStatus1)
+		}
+		if lResponseStatus2, ok := custom["rs_2"].(float64); !ok {
+			t.Error("expected rs_2 to be set and float64")
+		} else if lResponseStatus2 != 200 {
+			t.Errorf("expected rs_2 to be %d, got %v", 200, lResponseStatus2)
+		}
+	}
 }
