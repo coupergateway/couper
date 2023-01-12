@@ -403,3 +403,42 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 		t.Errorf("unexpected number of requests, want: %d, got: %d", retries+1, requestCount)
 	}
 }
+
+func TestBackend_BackendVar(t *testing.T) {
+	helper := test.New(t)
+	shutdown, hook := newCouper("testdata/integration/backends/08_couper.hcl", helper)
+	defer shutdown()
+
+	client := test.NewHTTPClient()
+
+	hook.Reset()
+
+	req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080/anything", nil)
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	hHealthy1 := res.Header.Get("x-healthy-1")
+	hHealthy2 := res.Header.Get("x-healthy-2")
+	if hHealthy1 != "true" {
+		t.Errorf("expected x-healthy-1 to be true, got %q", hHealthy1)
+	}
+	if hHealthy2 != "true" {
+		t.Errorf("expected x-healthy-2 to be true, got %q", hHealthy2)
+	}
+	hRequestPath1 := res.Header.Get("x-rp-1")
+	hRequestPath2 := res.Header.Get("x-rp-2")
+	if hRequestPath1 != "/anything" {
+		t.Errorf("expected x-rp-1 to be %q, got %q", "/anything", hRequestPath1)
+	}
+	if hRequestPath2 != "/anything" {
+		t.Errorf("expected x-rp-2 to be %q, got %q", "/anything", hRequestPath2)
+	}
+	hResponseStatus1 := res.Header.Get("x-rs-1")
+	hResponseStatus2 := res.Header.Get("x-rs-2")
+	if hResponseStatus1 != "200" {
+		t.Errorf("expected x-rs-1 to be %q, got %q", "/200", hResponseStatus1)
+	}
+	if hResponseStatus2 != "200" {
+		t.Errorf("expected x-rs-2 to be %q, got %q", "/200", hResponseStatus2)
+	}
+}
