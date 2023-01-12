@@ -20,7 +20,6 @@ import (
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
-	"github.com/hashicorp/hcl/v2"
 )
 
 var (
@@ -82,10 +81,12 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fields["request"] = requestFields
 
-	var logBodies []hcl.Body
+	var logValues []cty.Value
+	var logErrors []error
 	berespBytes := int64(0)
 	tokenRetries := uint8(0)
-	outctx := context.WithValue(req.Context(), request.LogCustomUpstream, &logBodies)
+	outctx := context.WithValue(req.Context(), request.LogCustomUpstreamValues, &logValues)
+	outctx = context.WithValue(outctx, request.LogCustomUpstreamErrors, &logErrors)
 	outctx = context.WithValue(outctx, request.BackendBytes, &berespBytes)
 	outctx = context.WithValue(outctx, request.TokenRequestRetries, &tokenRetries)
 	oCtx, openAPIContext := validation.NewWithContext(outctx)

@@ -3,6 +3,7 @@ package hooks
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
@@ -78,24 +79,10 @@ func fireAccess(entry *logrus.Entry) {
 }
 
 func fireUpstream(entry *logrus.Entry) {
-	evalCtx, ok := entry.Context.Value(request.ContextType).(*eval.Context)
-	if !ok {
-		return
-	}
+	logValues, _ := entry.Context.Value(request.LogCustomUpstreamValues).(*[]cty.Value)
+	logErrors, _ := entry.Context.Value(request.LogCustomUpstreamErrors).(*[]error)
 
-	bodies := entry.Context.Value(request.LogCustomUpstream)
-	if bodies == nil {
-		return
-	}
-
-	hclBodies, ok := bodies.(*[]hcl.Body)
-	if !ok {
-		return
-	}
-
-	ctx := syncedUpstreamContext(evalCtx, entry)
-
-	if fields := eval.ApplyCustomLogs(ctx, *hclBodies, entry); len(fields) > 0 {
+	if fields := eval.MergeCustomLogs(*logValues, *logErrors, entry); len(fields) > 0 {
 		entry.Data[customLogField] = fields
 	}
 }

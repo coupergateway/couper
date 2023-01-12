@@ -141,9 +141,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		}, err
 	}
 
-	logBodies, _ := req.Context().Value(request.LogCustomUpstream).(*[]hcl.Body)
-	*logBodies = append(*logBodies, ctxBody)
-
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
 	if err = eval.ApplyRequestContext(hclCtx, ctxBody, req); err != nil {
@@ -252,6 +249,15 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// has own body variable reference?
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
 	evalCtx = evalCtx.WithBeresp(beresp, backendVal, readBody)
+
+	clfValue, err := eval.EvalCustomLogFields(evalCtx.HCLContext(), ctxBody)
+	if err != nil {
+		logErrors, _ := req.Context().Value(request.LogCustomUpstreamErrors).(*[]error)
+		*logErrors = append(*logErrors, err)
+	} else if clfValue != cty.NilVal {
+		logValues, _ := req.Context().Value(request.LogCustomUpstreamValues).(*[]cty.Value)
+		*logValues = append(*logValues, clfValue)
+	}
 
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
