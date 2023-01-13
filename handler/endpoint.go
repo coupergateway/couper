@@ -36,17 +36,18 @@ type Endpoint struct {
 }
 
 type EndpointOptions struct {
-	APIName        string
-	BufferOpts     eval.BufferOption
-	Context        *hclsyntax.Body
-	ErrorTemplate  *errors.Template
-	ErrorHandler   http.Handler
-	IsErrorHandler bool
-	IsJob          bool
-	LogHandlerKind string
-	LogPattern     string
-	ReqBodyLimit   int64
-	ServerOpts     *server.Options
+	APIName           string
+	BufferOpts        eval.BufferOption
+	Context           *hclsyntax.Body
+	ErrorTemplate     *errors.Template
+	ErrorHandler      http.Handler
+	IsErrorHandler    bool
+	IsJob             bool
+	LogHandlerKind    string
+	LogPattern        string
+	ReqBodyLimit      int64
+	SendServerTimings bool
+	ServerOpts        *server.Options
 
 	Proxies   producer.Roundtrip
 	Redirect  *producer.Redirect
@@ -171,7 +172,9 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	rw.Header().Add(serverTimingHeader, getServerTimings(clientres.Header, beresps))
+	if e.opts.SendServerTimings {
+		rw.Header().Add(serverTimingHeader, getServerTimings(clientres.Header, beresps))
+	}
 
 	// copy/write like a reverseProxy
 	copyHeader(rw.Header(), clientres.Header)
