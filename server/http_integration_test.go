@@ -3993,7 +3993,6 @@ func TestWrapperHiJack_WebsocketUpgradeBodyBuffer(t *testing.T) {
 		"Couper-Request-Id": res.Header.Values("Couper-Request-Id"), // dynamic
 		"Date":              res.Header.Values("Date"),              // dynamic
 		"Server":            {"couper.io"},
-		"Server-Timing":     res.Header.Values("Server-Timing"), // dynamic
 		"X-Body":            {"client-body"},
 		"X-Resp-Body":       {"1234567890"},
 	}
