@@ -81,12 +81,12 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	fields["request"] = requestFields
 
-	var logValues []cty.Value
-	var logErrors []error
+	var logValue cty.Value
+	var logError error
 	berespBytes := int64(0)
 	tokenRetries := uint8(0)
-	outctx := context.WithValue(req.Context(), request.LogCustomUpstreamValues, &logValues)
-	outctx = context.WithValue(outctx, request.LogCustomUpstreamErrors, &logErrors)
+	outctx := context.WithValue(req.Context(), request.LogCustomUpstreamValue, &logValue)
+	outctx = context.WithValue(outctx, request.LogCustomUpstreamError, &logError)
 	outctx = context.WithValue(outctx, request.BackendBytes, &berespBytes)
 	outctx = context.WithValue(outctx, request.TokenRequestRetries, &tokenRetries)
 	oCtx, openAPIContext := validation.NewWithContext(outctx)

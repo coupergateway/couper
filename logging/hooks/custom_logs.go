@@ -8,6 +8,7 @@ import (
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/logging"
 )
 
@@ -77,10 +78,12 @@ func fireAccess(entry *logrus.Entry) {
 }
 
 func fireUpstream(entry *logrus.Entry) {
-	logValues, _ := entry.Context.Value(request.LogCustomUpstreamValues).(*[]cty.Value)
-	logErrors, _ := entry.Context.Value(request.LogCustomUpstreamErrors).(*[]error)
-
-	if fields := eval.MergeCustomLogs(*logValues, *logErrors, entry); len(fields) > 0 {
-		entry.Data[customLogField] = fields
+	logError, _ := entry.Context.Value(request.LogCustomUpstreamError).(*error)
+	if *logError != nil {
+		entry.Debug(*logError)
+		return
 	}
+	logValue, _ := entry.Context.Value(request.LogCustomUpstreamValue).(*cty.Value)
+	fields := seetie.ValueToLogFields(*logValue)
+	entry.Data[customLogField] = fields
 }

@@ -252,11 +252,11 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	clfValue, err := eval.EvalCustomLogFields(evalCtx.HCLContext(), ctxBody)
 	if err != nil {
-		logErrors, _ := req.Context().Value(request.LogCustomUpstreamErrors).(*[]error)
-		*logErrors = append(*logErrors, err)
+		logError, _ := req.Context().Value(request.LogCustomUpstreamError).(*error)
+		*logError = err
 	} else if clfValue != cty.NilVal {
-		logValues, _ := req.Context().Value(request.LogCustomUpstreamValues).(*[]cty.Value)
-		*logValues = append(*logValues, clfValue)
+		logValue, _ := req.Context().Value(request.LogCustomUpstreamValue).(*cty.Value)
+		*logValue = clfValue
 	}
 
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)

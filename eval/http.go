@@ -342,22 +342,8 @@ func EvalCustomLogFields(httpCtx *hcl.EvalContext, body *hclsyntax.Body) (cty.Va
 	return Value(httpCtx, attr.Expr)
 }
 
-func MergeCustomLogs(values []cty.Value, errors []error, logger *logrus.Entry) logrus.Fields {
-	for _, err := range errors {
-		logger.Debug(err)
-	}
-
-	val, err := lib.Merge(values)
-	if err != nil {
-		logger.Debug(err)
-	}
-
-	return seetie.ValueToLogFields(val)
-}
-
 func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus.Entry) logrus.Fields {
 	var values []cty.Value
-	var errors []error
 
 	for _, body := range bodies {
 		if body == nil {
@@ -373,14 +359,19 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 
 		val, err := Value(httpCtx, logs.Expr)
 		if err != nil {
-			errors = append(errors, err)
+			logger.Debug(err)
 			continue
 		}
 
 		values = append(values, val)
 	}
 
-	return MergeCustomLogs(values, errors, logger)
+	val, err := lib.Merge(values)
+	if err != nil {
+		logger.Debug(err)
+	}
+
+	return seetie.ValueToLogFields(val)
 }
 
 func ApplyResponseContext(ctx *hcl.EvalContext, body *hclsyntax.Body, beresp *http.Response) error {
