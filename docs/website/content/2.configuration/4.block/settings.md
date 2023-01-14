@@ -128,6 +128,12 @@ values: [
   },
   {
     "default": "false",
+    "description": "If enabled, Couper includes an additional [Server-Timing](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server-Timing) HTTP header field to the client detailing connection and transport relevant metrics for each backend request.",
+    "name": "send_server_timing_headers",
+    "type": "bool"
+  },
+  {
+    "default": "false",
     "description": "whether to use the `X-Forwarded-Host` header as the request host",
     "name": "xfh",
     "type": "bool"
