@@ -170,6 +170,8 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	timingResults := Fields{
 		"total": RoundMS(rtDone.Sub(rtStart)),
 	}
+	serverTimingsVal[fmt.Sprintf(`%s_%s`, serverTimingsKey, "total")] = fmt.Sprintf(`dur=%.3f`, timingResults["total"])
+
 	timingsMu.RLock()
 	for f, v := range timings { // clone
 		timingResults[f] = v
@@ -177,6 +179,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		serverTimingsVal[fmt.Sprintf(`%s_%s`, serverTimingsKey, f)] = fmt.Sprintf(`dur=%.3f`, v)
 	}
 	timingsMu.RUnlock()
+
 	fields["timings"] = timingResults
 	//timings["ttlb"] = RoundMS(rtDone.Sub(timeTTFB)) // TODO: depends on stream or buffer
 

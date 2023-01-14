@@ -949,7 +949,7 @@ func TestHTTPServer_ServerTiming(t *testing.T) {
 		dataCouper2 []string
 	)
 
-	if len(h1) == 3 {
+	if len(h1) == 4 {
 		dataCouper1 = h2
 		dataCouper2 = h1
 	} else {
@@ -960,18 +960,18 @@ func TestHTTPServer_ServerTiming(t *testing.T) {
 	sort.Strings(dataCouper1)
 	sort.Strings(dataCouper2)
 
-	if len(dataCouper1) != 4 || len(dataCouper2) != 3 {
+	if len(dataCouper1) != 6 || len(dataCouper2) != 4 {
 		t.Fatal("Unexpected number of metrics")
 	}
 
-	exp1 := regexp.MustCompile(`b1_tcp;dur=\d+(.\d)* b1_ttfb;dur=\d+(.\d)* b2_REQ_tcp;dur=\d+(.\d)* b2_REQ_ttfb;dur=\d+(.\d)*`)
+	exp1 := regexp.MustCompile(`b1_tcp;dur=\d+(.\d)* b1_total;dur=\d+(.\d)* b1_ttfb;dur=\d+(.\d)* b2_REQ_tcp;dur=\d+(.\d)* b2_REQ_total;dur=\d+(.\d)* b2_REQ_ttfb;dur=\d+(.\d)*`)
 	if s := strings.Join(dataCouper1, " "); !exp1.MatchString(s) {
 		t.Errorf("Unexpected header from 'first' Couper: %s", s)
 	}
 
-	exp2 := regexp.MustCompile(`b1_dns;dur=\d+(.\d)* b1_tcp_1;dur=\d+(.\d)* b1_ttfb_1;dur=\d+(.\d)*`)
+	exp2 := regexp.MustCompile(`b1_dns;dur=\d+(.\d)* b1_tcp_1;dur=\d+(.\d)* b1_total_1;dur=\d+(.\d)* b1_ttfb_1;dur=\d+(.\d)*`)
 	if s := strings.Join(dataCouper2, " "); !exp2.MatchString(s) {
-		t.Errorf("Unexpected header from 'first' Couper: %s", s)
+		t.Errorf("Unexpected header from 'second' Couper: %s", s)
 	}
 }
 
