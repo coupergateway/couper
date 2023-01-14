@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
@@ -162,7 +163,7 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	if name, ok := requestFields["name"].(string); ok && name != "default" {
+	if name, ok := requestFields["name"].(string); ok && name != config.DefaultNameLabel {
 		serverTimingsKey += "_" + name
 	}
 
