@@ -114,7 +114,7 @@ func uniqueKey(key string, timings ServerTimings) string {
 	}
 }
 
-// RFC 2616
+// RFC 7230
 func isTokenChar(ch byte) bool {
 	const separators = `()<>@,;:\"/[]?={}` + " " + "\t"
 
