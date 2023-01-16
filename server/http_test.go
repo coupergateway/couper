@@ -951,7 +951,7 @@ func TestHTTPServer_ServerTiming(t *testing.T) {
 		t.Fatal("Unexpected number of metrics")
 	}
 
-	exp1 := regexp.MustCompile(`b1_dns;dur=\d+(.\d)* b1_tcp_1;dur=\d+(.\d)* b1_total_1;dur=\d+(.\d)* b1_ttfb_1;dur=\d+(.\d)*`)
+	exp1 := regexp.MustCompile(`b1_dns_[0-9a-f]{6};dur=\d+(.\d)* b1_tcp_[0-9a-f]{6};dur=\d+(.\d)* b1_total_[0-9a-f]{6};dur=\d+(.\d)* b1_ttfb_[0-9a-f]{6};dur=\d+(.\d)*`)
 	if s := strings.Join(dataCouper1, " "); !exp1.MatchString(s) {
 		t.Errorf("Unexpected header from 'first' Couper: %s", s)
 	}

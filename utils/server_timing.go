@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"crypto/sha1"
 	"fmt"
+	"io"
 	"strings"
+	"time"
 )
 
 type ServerTimings map[string]string
@@ -31,14 +34,26 @@ func CollectMetricNames(header string, timings ServerTimings) {
 
 // MergeMetrics merges timings from 'src' into 'dest'.
 func MergeMetrics(src, dest ServerTimings) {
-	for k, v := range src {
-		key := k
+	var (
+		suffix = ""
+		exists = true
+		h      = sha1.New()
+	)
 
-		if _, exists := dest[key]; exists {
-			key = uniqueKey(key, dest)
+	for exists {
+		for k := range src {
+			_, exists = dest[k+suffix]
+
+			if exists {
+				io.WriteString(h, time.Now().String())
+
+				suffix = string(fmt.Sprintf("_%x", h.Sum(nil)[:3]))
+			}
 		}
+	}
 
-		dest[key] = v
+	for k, v := range src {
+		dest[k+suffix] = v
 	}
 }
 
@@ -98,20 +113,6 @@ func splitToMetrics(header string) []string {
 	}
 
 	return parts
-}
-
-func uniqueKey(key string, timings ServerTimings) string {
-	i := 1
-
-	for {
-		newKey := fmt.Sprintf("%s_%d", key, i)
-
-		if _, exists := timings[newKey]; !exists {
-			return newKey
-		}
-
-		i++
-	}
 }
 
 // https://httpwg.org/specs/rfc7230.html#rule.token.separators
