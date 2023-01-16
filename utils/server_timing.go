@@ -114,7 +114,7 @@ func uniqueKey(key string, timings ServerTimings) string {
 	}
 }
 
-// RFC 7230
+// https://httpwg.org/specs/rfc7230.html#rule.token.separators
 func isTokenChar(ch byte) bool {
 	const separators = `()<>@,;:\"/[]?={}` + " " + "\t"
 
