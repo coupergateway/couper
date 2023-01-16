@@ -9,7 +9,7 @@ server "first" {
 }
 
 settings {
-  send_server_timing_headers = true
+  server_timing_headers = true
 }
 
 definitions {
