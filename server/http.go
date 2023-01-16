@@ -103,8 +103,15 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	accessLog := logging.NewAccessLog(&logConf, log)
 
 	// order matters
-	traceHandler := middleware.NewTraceHandler()(httpSrv)
-	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(traceHandler)
+	telemetryHandler := middleware.NewHandler(httpSrv, nil) // fallback to plain wrapper without telemetry options
+	if settings.TelemetryMetrics {
+		telemetryHandler = middleware.NewMetricsHandler()(httpSrv)
+	}
+	if settings.TelemetryTraces {
+		telemetryHandler = middleware.NewTraceHandler()(telemetryHandler)
+	}
+
+	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(telemetryHandler)
 	logHandler := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		uidHandler.ServeHTTP(rw, req)
 		accessLog.Do(rw, req)
@@ -117,11 +124,14 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 
 	srv := &http.Server{
 		Addr:              ":" + p.String(),
-		ConnState:         httpSrv.onConnState,
 		ErrorLog:          newErrorLogWrapper(log),
 		Handler:           startTimeHandler,
 		IdleTimeout:       timings.IdleTimeout,
 		ReadHeaderTimeout: timings.ReadHeaderTimeout,
+	}
+
+	if settings.TelemetryMetrics {
+		srv.ConnState = httpSrv.onConnState
 	}
 
 	if serverTLS != nil {
