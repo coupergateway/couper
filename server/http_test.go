@@ -941,21 +941,8 @@ func TestHTTPServer_ServerTiming(t *testing.T) {
 		t.Fatalf("Unexpected number of headers: %d", l)
 	}
 
-	h1 := strings.Split(headers[0], ", ")
-	h2 := strings.Split(headers[1], ", ")
-
-	var (
-		dataCouper1 []string
-		dataCouper2 []string
-	)
-
-	if len(h1) == 4 {
-		dataCouper1 = h2
-		dataCouper2 = h1
-	} else {
-		dataCouper1 = h1
-		dataCouper2 = h2
-	}
+	dataCouper1 := strings.Split(headers[1], ", ")
+	dataCouper2 := strings.Split(headers[0], ", ")
 
 	sort.Strings(dataCouper1)
 	sort.Strings(dataCouper2)
