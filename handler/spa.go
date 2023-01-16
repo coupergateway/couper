@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -83,9 +84,11 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		r.AddModifier(evalContext.HCLContext(), s.modifier...)
 	}
 
-	if len(s.bootstrapContent) > 0 {
+	if l := len(s.bootstrapContent); l > 0 {
 		setLastModified(rw, s.bootstrapModTime)
 		rw.Header().Set("Content-Type", s.bootstrapCType)
+		rw.Header().Set("Content-Length", strconv.Itoa(l))
+		rw.WriteHeader(http.StatusOK) // required for ResponseWriter
 		_, _ = rw.Write(s.bootstrapContent)
 		return
 	}
