@@ -109,6 +109,6 @@ definitions {
   jwt "token" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_permissions_claim = "scope"
+    permissions_claim = "scope"
   }
 }

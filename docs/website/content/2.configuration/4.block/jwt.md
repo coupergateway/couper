@@ -22,12 +22,6 @@ values: [
   },
   {
     "default": "",
-    "description": "Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions.",
-    "name": "beta_permissions_claim",
-    "type": "string"
-  },
-  {
-    "default": "",
     "description": "Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values.",
     "name": "beta_roles_claim",
     "type": "string"
@@ -106,7 +100,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `permissions_map_file`.",
+    "description": "Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions.",
+    "name": "permissions_claim",
+    "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `permissions_map_file`.",
     "name": "permissions_map",
     "type": "object"
   },
@@ -165,7 +165,7 @@ Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case,
 
 A JWT access control configured by this block can extract permissions from
 
-- the value of the claim specified by `beta_permissions_claim` and
+- the value of the claim specified by `permissions_claim` and
 - the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](/configuration/functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.

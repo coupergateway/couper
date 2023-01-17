@@ -110,6 +110,6 @@ definitions {
     header = "Authorization"
     signature_algorithm = "HS256"
     key = "s3cr3t"
-    beta_permissions_claim = "scope"
+    permissions_claim = "scope"
   }
 }
