@@ -11,7 +11,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -31,7 +31,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -40,7 +40,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -51,7 +51,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -60,7 +60,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -69,7 +69,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -78,7 +78,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -87,7 +87,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -96,7 +96,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -104,7 +104,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -121,7 +121,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -141,7 +141,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -154,7 +154,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -163,7 +163,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -176,7 +176,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -185,7 +185,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }

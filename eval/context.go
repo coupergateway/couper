@@ -554,7 +554,7 @@ func NewRawOrigin(u *url.URL) *url.URL {
 }
 
 const (
-	betaGrantedPermissions = "beta_granted_permissions"
+	betaGrantedPermissions = "granted_permissions"
 	betaRequiredPermission = "beta_required_permission"
 )
 

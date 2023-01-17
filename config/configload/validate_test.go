@@ -472,13 +472,13 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:3,12-16: accessControl requires a label; ",
 		},
 		{
-			"basic_auth reserved label beta_granted_permissions",
+			"basic_auth reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   basic_auth "beta_granted_permissions" {
+			   basic_auth "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
+			"couper.hcl:3,18-39: accessControl uses reserved name as label; ",
 		},
 		{
 			"basic_auth reserved label beta_required_permission",
@@ -490,13 +490,13 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
 		},
 		{
-			"beta_oauth2 reserved label beta_granted_permissions",
+			"beta_oauth2 reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   beta_oauth2 "beta_granted_permissions" {
+			   beta_oauth2 "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
+			"couper.hcl:3,19-40: accessControl uses reserved name as label; ",
 		},
 		{
 			"beta_oauth2 reserved label beta_required_permission",
@@ -508,13 +508,13 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
 		},
 		{
-			"jwt reserved label beta_granted_permissions",
+			"jwt reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   jwt "beta_granted_permissions" {
+			   jwt "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
+			"couper.hcl:3,11-32: accessControl uses reserved name as label; ",
 		},
 		{
 			"jwt reserved label beta_required_permission",
@@ -526,13 +526,13 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
 		},
 		{
-			"oidc reserved label beta_granted_permissions",
+			"oidc reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   oidc "beta_granted_permissions" {
+			   oidc "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+			"couper.hcl:3,12-33: accessControl uses reserved name as label; ",
 		},
 		{
 			"oidc reserved label beta_required_permission",
@@ -544,13 +544,13 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
 		},
 		{
-			"saml reserved label beta_granted_permissions",
+			"saml reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   saml "beta_granted_permissions" {
+			   saml "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+			"couper.hcl:3,12-33: accessControl uses reserved name as label; ",
 		},
 		{
 			"saml reserved label beta_required_permission",
