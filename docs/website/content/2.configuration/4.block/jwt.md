@@ -28,12 +28,6 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `permissions_map_file`.",
-    "name": "beta_permissions_map",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values.",
     "name": "beta_roles_claim",
     "type": "string"
@@ -112,7 +106,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Reference to JSON file containing permission mappings. Mutually exclusive with `beta_permissions_map`. See `beta_permissions_map` for more information.",
+    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `permissions_map_file`.",
+    "name": "permissions_map",
+    "type": "object"
+  },
+  {
+    "default": "",
+    "description": "Reference to JSON file containing permission mappings. Mutually exclusive with `permissions_map`. See `permissions_map` for more information.",
     "name": "permissions_map_file",
     "type": "string"
   },

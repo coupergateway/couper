@@ -746,7 +746,7 @@ func TestJwtConfig(t *testing.T) {
 			"configuration error: myac: roles map: read error: open .*/testdata/file_not_found: no such file or directory",
 		},
 		{
-			"signature_algorithm, both beta_permissions_map and permissions_map_file",
+			"signature_algorithm, both permissions_map and permissions_map_file",
 			`
 			server "test" {}
 			definitions {
@@ -754,7 +754,7 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    header = "..."
 			    key = "..."
-			    beta_permissions_map = {}
+			    permissions_map = {}
 			    permissions_map_file = "testdata/map.json"
 			  }
 			}

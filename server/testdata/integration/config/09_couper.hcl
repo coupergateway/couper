@@ -216,7 +216,7 @@ definitions {
     beta_roles_map = {
       "r1" = ["b"]
     }
-    beta_permissions_map = {
+    permissions_map = {
       a = ["c"]
       b = ["e"] # from role-mapped permission
       c = ["d"]
