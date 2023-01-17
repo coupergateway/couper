@@ -1253,13 +1253,13 @@ func TestAttributeObjectKeys(t *testing.T) {
 			"",
 		},
 		{
-			"beta_roles_map",
+			"roles_map",
 			`server {}
 definitions {
   jwt "a" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_roles_map = {
+    roles_map = {
       a = []
       A = []
 	}

@@ -28,12 +28,6 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions. Mutually exclusive with `roles_map_file`.",
-    "name": "beta_roles_map",
-    "type": "object"
-  },
-  {
-    "default": "",
     "description": "Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request.",
     "name": "claims",
     "type": "object"
@@ -100,7 +94,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `permissions_map_file`.",
+    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `permissions_claim` and those created from `roles_map`. The map is called recursively. Mutually exclusive with `permissions_map_file`.",
     "name": "permissions_map",
     "type": "object"
   },
@@ -118,7 +112,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Reference to JSON file containing role mappings. Mutually exclusive with `beta_roles_map`. See `beta_roles_map` for more information.",
+    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions. Mutually exclusive with `roles_map_file`.",
+    "name": "roles_map",
+    "type": "object"
+  },
+  {
+    "default": "",
+    "description": "Reference to JSON file containing role mappings. Mutually exclusive with `roles_map`. See `roles_map` for more information.",
     "name": "roles_map_file",
     "type": "string"
   },
@@ -166,7 +166,7 @@ Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case,
 A JWT access control configured by this block can extract permissions from
 
 - the value of the claim specified by `permissions_claim` and
-- the result of mapping the value of the claim specified by `beta_roles_claim` using the `beta_roles_map`.
+- the result of mapping the value of the claim specified by `beta_roles_claim` using the `roles_map`.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](/configuration/functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 

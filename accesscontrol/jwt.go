@@ -165,7 +165,7 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 	}
 
 	if options.RolesClaim != "" && options.RolesMap == nil {
-		return nil, fmt.Errorf("missing beta_roles_map")
+		return nil, fmt.Errorf("missing roles_map")
 	}
 
 	jwtAC := &JWT{

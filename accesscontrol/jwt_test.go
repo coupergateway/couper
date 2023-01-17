@@ -715,7 +715,7 @@ func TestJwtConfig(t *testing.T) {
 			"configuration error: myac: jwt key: read error: configured attribute and file",
 		},
 		{
-			"signature_algorithm, both beta_roles_map and roles_map_file",
+			"signature_algorithm, both roles_map and roles_map_file",
 			`
 			server "test" {}
 			definitions {
@@ -723,7 +723,7 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    header = "..."
 			    key = "..."
-			    beta_roles_map = {}
+			    roles_map = {}
 			    roles_map_file = "testdata/map.json"
 			  }
 			}

@@ -203,7 +203,7 @@ definitions {
     signature_algorithm = "HS256"
     key = "asdf"
     beta_roles_claim = "rl"
-    beta_roles_map = {
+    roles_map = {
       "r1" = ["a", "b"]
     }
   }
@@ -213,7 +213,7 @@ definitions {
     key = "asdf"
     permissions_claim = "scp"
     beta_roles_claim = "rl"
-    beta_roles_map = {
+    roles_map = {
       "r1" = ["b"]
     }
     permissions_map = {
