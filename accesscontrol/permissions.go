@@ -51,7 +51,7 @@ func (r *requiredPermissions) getPermission(method string) (string, error) {
 
 	permission, exists := r.permissions[method]
 	if !exists {
-		return "", errors.MethodNotAllowed.Messagef("method %s not allowed by beta_required_permission", method)
+		return "", errors.MethodNotAllowed.Messagef("method %s not allowed by required_permission", method)
 	}
 	return permission, nil
 }

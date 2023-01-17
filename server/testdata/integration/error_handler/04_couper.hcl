@@ -5,7 +5,7 @@ server "scoped" {
   api {
     base_path = "/api"
 
-    beta_required_permission = "read"
+    required_permission = "read"
     endpoint "/" {
       response {
         status = 204
@@ -13,7 +13,7 @@ server "scoped" {
     }
 
     endpoint "/pow/" {
-      beta_required_permission = {
+      required_permission = {
         post = "power"
       }
 
@@ -48,7 +48,7 @@ server "scoped" {
     }
 
     endpoint "/" {
-      beta_required_permission = "power"
+      required_permission = "power"
 
       response {
         status = 204
@@ -74,7 +74,7 @@ server "scoped" {
     }
 
     endpoint "/" {
-      beta_required_permission = "power"
+      required_permission = "power"
 
       response {
         status = 204
@@ -90,7 +90,7 @@ server "scoped" {
   }
 
   endpoint "/" {
-    beta_required_permission = "write"
+    required_permission = "write"
 
     response {
       body = "OK"

@@ -20,7 +20,7 @@ server {
 
   api "ERR" {
     access_control = ["scoped"]
-    beta_required_permission = {
+    required_permission = {
       GET = "gimme"
     }
     error_handler "beta_insufficient_permissions" "unexpected_status" "*" {

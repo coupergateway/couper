@@ -2,9 +2,9 @@ server "scoped jwt" {
   api {
     base_path = "/scope"
     access_control = ["scoped_jwt"]
-    beta_required_permission = "z"
+    required_permission = "z"
     endpoint "/foo" {
-      beta_required_permission = {
+      required_permission = {
         get = ""
         post = "foo"
       }
@@ -16,7 +16,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bar" {
-      beta_required_permission = {
+      required_permission = {
         delete = ""
         "*" = "more"
       }
@@ -24,7 +24,7 @@ server "scoped jwt" {
         response {
           status = 403
           headers = {
-            x-required-permission = request.context.beta_required_permission
+            x-required-permission = request.context.required_permission
           }
         }
       }
@@ -36,7 +36,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/path/{p}/path" {
-      beta_required_permission = request.path_params.p
+      required_permission = request.path_params.p
       response {
         status = 204
         headers = {
@@ -45,7 +45,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/object/{method}" {
-      beta_required_permission = {
+      required_permission = {
         (request.path_params.method) = contains(["get", "post"], request.path_params.method) ? "a" : "z"
       }
       response {
@@ -56,7 +56,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bad/expression" {
-      beta_required_permission = request
+      required_permission = request
       response {
         status = 204
         headers = {
@@ -65,7 +65,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bad/type/number" {
-      beta_required_permission = 123
+      required_permission = 123
       response {
         status = 204
         headers = {
@@ -74,7 +74,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bad/type/boolean" {
-      beta_required_permission = true
+      required_permission = true
       response {
         status = 204
         headers = {
@@ -83,7 +83,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bad/type/tuple" {
-      beta_required_permission = ["p1", "p2"]
+      required_permission = ["p1", "p2"]
       response {
         status = 204
         headers = {
@@ -92,7 +92,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bad/type/null" {
-      beta_required_permission = null
+      required_permission = null
       response {
         status = 204
         headers = {
@@ -112,9 +112,9 @@ server "scoped jwt" {
   api {
     base_path = "/role"
     access_control = ["roled_jwt"]
-    beta_required_permission = "a"
+    required_permission = "a"
     endpoint "/foo" {
-      beta_required_permission = {
+      required_permission = {
         get = ""
         post = "foo"
       }
@@ -126,7 +126,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bar" {
-      beta_required_permission = {
+      required_permission = {
         delete = ""
         "*" = "more"
       }
@@ -134,7 +134,7 @@ server "scoped jwt" {
         response {
           status = 403
           headers = {
-            x-required-permission = request.context.beta_required_permission
+            x-required-permission = request.context.required_permission
           }
         }
       }
@@ -150,7 +150,7 @@ server "scoped jwt" {
     base_path = "/scope_and_role"
     access_control = ["scoped_and_roled_jwt"]
     endpoint "/foo" {
-      beta_required_permission = "d"
+      required_permission = "d"
       response {
         status = 204
         headers = {
@@ -159,7 +159,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bar" {
-      beta_required_permission = "e"
+      required_permission = "e"
       response {
         status = 204
         headers = {
@@ -172,7 +172,7 @@ server "scoped jwt" {
     base_path = "/scope_and_role_files"
     access_control = ["scoped_and_roled_jwt_files"]
     endpoint "/foo" {
-      beta_required_permission = "d"
+      required_permission = "d"
       response {
         status = 204
         headers = {
@@ -181,7 +181,7 @@ server "scoped jwt" {
       }
     }
     endpoint "/bar" {
-      beta_required_permission = "e"
+      required_permission = "e"
       response {
         status = 204
         headers = {

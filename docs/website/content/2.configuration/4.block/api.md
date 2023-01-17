@@ -17,18 +17,18 @@ The default value `*` can be combined with additional methods. Methods are match
 **Example:** `allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]`
 
 
-### Attribute `beta_required_permission`
+### Attribute `required_permission`
 
 If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required".
 
 **Example:**
 
 ```hcl
-beta_required_permission = "read"
+required_permission = "read"
 # or
-beta_required_permission = { post = "write", "*" = "" }
+required_permission = { post = "write", "*" = "" }
 # or
-beta_required_permission = default(request.path_params.p, "not_set")
+required_permission = default(request.path_params.p, "not_set")
 ```
 
 ::attributes
@@ -60,12 +60,6 @@ values: [
   },
   {
     "default": "",
-    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`).",
-    "name": "beta_required_permission",
-    "type": "string or object (string)"
-  },
-  {
-    "default": "",
     "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
@@ -87,6 +81,12 @@ values: [
     "description": "list of names to remove headers from the client response",
     "name": "remove_response_headers",
     "type": "tuple (string)"
+  },
+  {
+    "default": "",
+    "description": "Permission required to use this API (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`).",
+    "name": "required_permission",
+    "type": "string or object (string)"
   },
   {
     "default": "",

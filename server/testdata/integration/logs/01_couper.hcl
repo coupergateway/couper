@@ -156,7 +156,7 @@ server "logs" {
     endpoint "/error-handler/endpoint" {
       access_control = ["JWT"]
 
-      beta_required_permission = "required"
+      required_permission = "required"
 
       response {
         status = 204

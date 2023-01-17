@@ -555,7 +555,7 @@ func NewRawOrigin(u *url.URL) *url.URL {
 
 const (
 	grantedPermissions     = "granted_permissions"
-	betaRequiredPermission = "beta_required_permission"
+	betaRequiredPermission = "required_permission"
 )
 
 func IsReservedContextName(name string) bool {
