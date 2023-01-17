@@ -99,7 +99,7 @@ func (p *PermissionsControl) Validate(req *http.Request) error {
 	evalCtx := eval.ContextFromRequest(req)
 	*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
-	grantedPermission, ok := ctx.Value(request.BetaGrantedPermissions).([]string)
+	grantedPermission, ok := ctx.Value(request.GrantedPermissions).([]string)
 	if !ok {
 		return errors.BetaInsufficientPermissions.Messagef("no permissions granted")
 	}

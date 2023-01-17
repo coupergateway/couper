@@ -9,7 +9,6 @@ const (
 	BackendBytes
 	BackendName
 	BackendParams
-	BetaGrantedPermissions
 	BetaRequiredPermission
 	BufferOptions
 	ConfigDryRun
@@ -20,6 +19,7 @@ const (
 	EndpointKind
 	EndpointSequenceDependsOn
 	Error
+	GrantedPermissions
 	Handler
 	LogCustomAccess
 	LogCustomUpstreamValue

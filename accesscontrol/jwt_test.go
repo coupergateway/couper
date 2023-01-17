@@ -634,7 +634,7 @@ func Test_JWT_yields_permissions(t *testing.T) {
 				return
 			}
 
-			grantedPermissionsList, ok := req.Context().Value(request.BetaGrantedPermissions).([]string)
+			grantedPermissionsList, ok := req.Context().Value(request.GrantedPermissions).([]string)
 			if !ok {
 				subT.Errorf("Expected granted permissions within request context")
 			} else {

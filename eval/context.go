@@ -577,7 +577,7 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 		}
 		ctxAcMap[name] = seetie.MapToValue(dataMap)
 	}
-	gp, _ := ctx.Value(request.BetaGrantedPermissions).([]string)
+	gp, _ := ctx.Value(request.GrantedPermissions).([]string)
 	if len(gp) > 0 {
 		ctxAcMap[grantedPermissions] = seetie.GoToValue(gp)
 	}

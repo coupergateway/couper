@@ -256,7 +256,7 @@ func Test_PermissionsControl(t *testing.T) {
 			req := httptest.NewRequest(tt.method, "/", nil)
 			if tt.grantedPermissions != nil {
 				ctx := req.Context()
-				ctx = context.WithValue(ctx, request.BetaGrantedPermissions, tt.grantedPermissions)
+				ctx = context.WithValue(ctx, request.GrantedPermissions, tt.grantedPermissions)
 				*req = *req.WithContext(ctx)
 			}
 			err := pc.Validate(req)
