@@ -159,6 +159,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			mux := server.NewMux(testOptions)
+			mux.RegisterConfigured()
 
 			if got := mux.FindHandler(tt.req); reflect.DeepEqual(got, tt.want) {
 				subT.Errorf("FindHandler() = %v, want %v", got, tt.want)

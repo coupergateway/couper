@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -113,5 +115,33 @@ App with __BOOTSTRAP_DATA__.
 				}
 			}
 		})
+	}
+}
+
+func BenchmarkSPA_BootstrapData(b *testing.B) {
+	wd, werr := os.Getwd()
+	if werr != nil {
+		b.Error(werr)
+	}
+
+	cfg := &config.Spa{Name: "serve bootstrap file /w obj-data", BootstrapFile: path.Join(wd, "testdata/spa/app_bs_data.html"),
+		BootstrapData: hcl.StaticExpr(cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("value")}), hcl.Range{})}
+
+	opts, _ := server.NewServerOptions(&config.Server{}, nil)
+	s, err := handler.NewSpa(eval.NewDefaultContext().HCLContext(), cfg, opts, nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req = req.WithContext(context.WithValue(context.Background(), request.ContextType, eval.NewDefaultContext()))
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		res := httptest.NewRecorder()
+		s.ServeHTTP(res, req)
+		res.Flush()
 	}
 }

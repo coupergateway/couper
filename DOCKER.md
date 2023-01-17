@@ -71,6 +71,7 @@ $ docker run avenga/couper run -watch -p 8081
 | COUPER_LOG_PARENT_FIELD              | `""` | An option for `json` log format to add all log fields as child properties. |
 | COUPER_LOG_PRETTY                    | `false` | Global option for `json` log format which pretty prints with basic key coloring. |
 | COUPER_LOG_TYPE_VALUE                | `couper_daemon` | Value for the runtime log field `type`. |
+| COUPER_SERVER_TIMING_HEADER          | `false` | If enabled, Couper includes an additional [Server-Timing](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server-Timing) HTTP response header field detailing connection and transport relevant metrics for each backend request. |
 | COUPER_ACCESS_LOG_REQUEST_HEADERS    | `User-Agent, Accept, Referer` | A comma separated list of header names whose values should be logged. |
 | COUPER_ACCESS_LOG_RESPONSE_HEADERS   | `Cache-Control, Content-Encoding, Content-Type, Location` | A comma separated list of header names whose values should be logged. |
 | COUPER_ACCESS_LOG_TYPE_VALUE         | `couper_access` | Value for the log field `type`. |

@@ -90,20 +90,22 @@ func NewMux(options *runtime.MuxOptions) *Mux {
 		spaRoot:      gmux.NewRouter(),
 	}
 
-	for _, path := range sortedPathPatterns(opts.EndpointRoutes) {
-		// TODO: handle method option per endpoint configuration
-		mustAddRoute(mux.endpointRoot, path, opts.EndpointRoutes[path], true)
-	}
-
-	for _, path := range sortedPathPatterns(opts.FileRoutes) {
-		mustAddRoute(mux.fileRoot, utils.JoinOpenAPIPath(path, "/**"), opts.FileRoutes[path], false)
-	}
-
-	for _, path := range sortedPathPatterns(opts.SPARoutes) {
-		mustAddRoute(mux.spaRoot, path, opts.SPARoutes[path], true)
-	}
-
 	return mux
+}
+
+func (m *Mux) RegisterConfigured() {
+	for _, path := range sortedPathPatterns(m.opts.EndpointRoutes) {
+		// TODO: handle method option per endpoint configuration
+		mustAddRoute(m.endpointRoot, path, m.opts.EndpointRoutes[path], true)
+	}
+
+	for _, path := range sortedPathPatterns(m.opts.FileRoutes) {
+		mustAddRoute(m.fileRoot, utils.JoinOpenAPIPath(path, "/**"), m.opts.FileRoutes[path], false)
+	}
+
+	for _, path := range sortedPathPatterns(m.opts.SPARoutes) {
+		mustAddRoute(m.spaRoot, path, m.opts.SPARoutes[path], true)
+	}
 }
 
 var noDefaultMethods []string

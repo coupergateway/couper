@@ -70,7 +70,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 
 		for _, proxyConfig := range ep.Proxies {
 			if proxyConfig.Name == "" {
-				proxyConfig.Name = defaultNameLabel
+				proxyConfig.Name = config.DefaultNameLabel
 			}
 
 			names[proxyConfig.Name] = proxyConfig.HCLBody()
@@ -92,7 +92,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 			}
 
 			if wsEnabled {
-				if proxyConfig.Name != defaultNameLabel {
+				if proxyConfig.Name != config.DefaultNameLabel {
 					return errors.Configuration.Message("websockets attribute or block is only allowed in a 'default' proxy block")
 				}
 				if proxyRequestLabelRequired || ep.Response != nil {
@@ -112,7 +112,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 
 		for _, reqConfig := range ep.Requests {
 			if reqConfig.Name == "" {
-				reqConfig.Name = defaultNameLabel
+				reqConfig.Name = config.DefaultNameLabel
 			}
 
 			names[reqConfig.Name] = reqConfig.HCLBody()
@@ -149,7 +149,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 			}
 		}
 
-		if _, ok := names[defaultNameLabel]; checkPathPattern && !ok && ep.Response == nil {
+		if _, ok := names[config.DefaultNameLabel]; checkPathPattern && !ok && ep.Response == nil {
 			return newDiagErr(&subject, "Missing a 'default' proxy or request definition, or a response block")
 		}
 

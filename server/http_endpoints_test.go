@@ -652,7 +652,8 @@ func TestEndpoint_Sequence(t *testing.T) {
 			}
 
 			nbr := 0
-			for _, e := range hook.AllEntries() {
+			entries := hook.AllEntries()
+			for _, e := range entries {
 				if e.Data["type"] != "couper_backend" {
 					continue
 				}
@@ -678,6 +679,12 @@ func TestEndpoint_Sequence(t *testing.T) {
 				st.Errorf("Expected number of backend requests: %d, got: %d", tc.expNumBEReq, nbr)
 			}
 
+			if !st.Failed() {
+				return
+			}
+			for _, e := range entries {
+				st.Logf("%#v", e.Data)
+			}
 		})
 	}
 
