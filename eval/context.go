@@ -554,13 +554,13 @@ func NewRawOrigin(u *url.URL) *url.URL {
 }
 
 const (
-	grantedPermissions     = "granted_permissions"
-	betaRequiredPermission = "required_permission"
+	grantedPermissions = "granted_permissions"
+	requiredPermission = "required_permission"
 )
 
 func IsReservedContextName(name string) bool {
 	switch name {
-	case grantedPermissions, betaRequiredPermission:
+	case grantedPermissions, requiredPermission:
 		return true
 	}
 
@@ -581,8 +581,8 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	if len(gp) > 0 {
 		ctxAcMap[grantedPermissions] = seetie.GoToValue(gp)
 	}
-	if requiredPermission, permissionSet := ctx.Value(request.BetaRequiredPermission).(string); permissionSet {
-		ctxAcMap[betaRequiredPermission] = seetie.GoToValue(requiredPermission)
+	if rp, permissionSet := ctx.Value(request.BetaRequiredPermission).(string); permissionSet {
+		ctxAcMap[requiredPermission] = seetie.GoToValue(rp)
 	}
 	var ctxAcMapValue cty.Value
 	if len(ctxAcMap) > 0 {
