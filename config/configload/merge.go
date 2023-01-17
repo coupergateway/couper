@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -535,7 +536,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 							delete(innerBlock.Body.Attributes, "name")
 						} else {
-							innerBlock.Labels[0] = defaultNameLabel
+							innerBlock.Labels[0] = config.DefaultNameLabel
 						}
 
 						proxiesList[label] = innerBlock

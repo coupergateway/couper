@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * [`beta_job`](https://docs.couper.io/configuration/block/job) block to describe one or more job `definitions` for simple recurring http tasks ([#610](https://github.com/avenga/couper/pull/610))
+  * [`server_timing_header`](https://docs.couper.io/configuration/block/settings) setting, that allows Couper to include an additional `Server-Timing` HTTP response header field detailing connection and transport relevant metrics for each backend request. ([#657](https://github.com/avenga/couper/pull/657))
 
 * **Changed**
   * Use nested `jwt_signing_profile` block in [`oauth2` block](https://docs.couper.io/configuration/block/oauth2) for `grant_type` `"urn:ietf:params:oauth:grant-type:jwt-bearer"` in absence of `assertion` attribute ([#619](https://github.com/avenga/couper/pull/619))
