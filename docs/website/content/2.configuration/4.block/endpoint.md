@@ -132,7 +132,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`).",
+    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `insufficient_permissions`).",
     "name": "required_permission",
     "type": "string or object (string)"
   },

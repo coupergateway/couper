@@ -20,7 +20,7 @@ server "scoped jwt" {
         delete = ""
         "*" = "more"
       }
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 403
           headers = {
@@ -130,7 +130,7 @@ server "scoped jwt" {
         delete = ""
         "*" = "more"
       }
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 403
           headers = {

@@ -101,10 +101,10 @@ func (p *PermissionsControl) Validate(req *http.Request) error {
 
 	grantedPermission, ok := ctx.Value(request.GrantedPermissions).([]string)
 	if !ok {
-		return errors.BetaInsufficientPermissions.Messagef("no permissions granted")
+		return errors.InsufficientPermissions.Messagef("no permissions granted")
 	}
 	if !hasGrantedPermission(grantedPermission, requiredPermission) {
-		return errors.BetaInsufficientPermissions.Messagef("required permission %q not granted", requiredPermission)
+		return errors.InsufficientPermissions.Messagef("required permission %q not granted", requiredPermission)
 	}
 	return nil
 }

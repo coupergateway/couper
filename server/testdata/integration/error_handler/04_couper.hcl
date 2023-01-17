@@ -21,7 +21,7 @@ server "scoped" {
         status = 204
       }
 
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 400
           body = "Not enough power"
@@ -29,7 +29,7 @@ server "scoped" {
       }
     }
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 418
       }
@@ -40,7 +40,7 @@ server "scoped" {
   api {
     base_path = "/wildcard1"
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 418
         body = "Not enough power"
@@ -80,7 +80,7 @@ server "scoped" {
         status = 204
       }
 
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 400
           body = "Not enough power"
@@ -96,7 +96,7 @@ server "scoped" {
       body = "OK"
     }
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 418
       }
