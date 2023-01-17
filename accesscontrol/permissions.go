@@ -93,7 +93,7 @@ func (p *PermissionsControl) Validate(req *http.Request) error {
 	}
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, request.BetaRequiredPermission, requiredPermission)
+	ctx = context.WithValue(ctx, request.RequiredPermission, requiredPermission)
 	*req = *req.WithContext(ctx)
 
 	evalCtx := eval.ContextFromRequest(req)

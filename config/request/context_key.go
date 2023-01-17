@@ -9,7 +9,6 @@ const (
 	BackendBytes
 	BackendName
 	BackendParams
-	BetaRequiredPermission
 	BufferOptions
 	ConfigDryRun
 	ConnectTimeout
@@ -28,6 +27,7 @@ const (
 	LogEntry
 	OpenAPI
 	PathParams
+	RequiredPermission
 	ResponseBlock
 	ResponseWriter
 	RoundTripName
