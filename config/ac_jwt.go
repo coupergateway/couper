@@ -36,7 +36,7 @@ type JWT struct {
 	KeyFile               string              `hcl:"key_file,optional" docs:"Reference to file containing verification key. Mutually exclusive with {key}. See {key} for more information."`
 	Name                  string              `hcl:"name,label"`
 	Remain                hcl.Body            `hcl:",remain"`
-	RolesClaim            string              `hcl:"beta_roles_claim,optional" docs:"Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values."`
+	RolesClaim            string              `hcl:"roles_claim,optional" docs:"Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values."`
 	RolesMap              map[string][]string `hcl:"roles_map,optional" docs:"Mapping of roles to granted permissions. Non-mapped roles can be assigned with {*} to specific permissions. Mutually exclusive with {roles_map_file}."`
 	RolesMapFile          string              `hcl:"roles_map_file,optional" docs:"Reference to JSON file containing role mappings. Mutually exclusive with {roles_map}. See {roles_map} for more information."`
 	PermissionsClaim      string              `hcl:"permissions_claim,optional" docs:"Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions."`

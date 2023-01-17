@@ -202,7 +202,7 @@ definitions {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_roles_claim = "rl"
+    roles_claim = "rl"
     roles_map = {
       "r1" = ["a", "b"]
     }
@@ -212,7 +212,7 @@ definitions {
     signature_algorithm = "HS256"
     key = "asdf"
     permissions_claim = "scp"
-    beta_roles_claim = "rl"
+    roles_claim = "rl"
     roles_map = {
       "r1" = ["b"]
     }
@@ -228,7 +228,7 @@ definitions {
     signature_algorithm = "HS256"
     key = "asdf"
     permissions_claim = "scp"
-    beta_roles_claim = "rl"
+    roles_claim = "rl"
     roles_map_file = "testdata/integration/config/roles.json"
     permissions_map_file = "testdata/integration/config/permissions.json"
   }

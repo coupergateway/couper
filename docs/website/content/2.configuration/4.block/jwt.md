@@ -22,12 +22,6 @@ values: [
   },
   {
     "default": "",
-    "description": "Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values.",
-    "name": "beta_roles_claim",
-    "type": "string"
-  },
-  {
-    "default": "",
     "description": "Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request.",
     "name": "claims",
     "type": "object"
@@ -112,6 +106,12 @@ values: [
   },
   {
     "default": "",
+    "description": "Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values.",
+    "name": "roles_claim",
+    "type": "string"
+  },
+  {
+    "default": "",
     "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions. Mutually exclusive with `roles_map_file`.",
     "name": "roles_map",
     "type": "object"
@@ -166,7 +166,7 @@ Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case,
 A JWT access control configured by this block can extract permissions from
 
 - the value of the claim specified by `permissions_claim` and
-- the result of mapping the value of the claim specified by `beta_roles_claim` using the `roles_map`.
+- the result of mapping the value of the claim specified by `roles_claim` using the `roles_map`.
 
 The `jwt` block may also be referenced by the [`jwt_sign()` function](/configuration/functions), if it has a `signing_ttl` defined. For `HS*` algorithms the signing key is taken from `key`/`key_file`, for `RS*` and `ES*` algorithms, `signing_key` or `signing_key_file` have to be specified.
 
