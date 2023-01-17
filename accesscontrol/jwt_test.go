@@ -746,7 +746,7 @@ func TestJwtConfig(t *testing.T) {
 			"configuration error: myac: roles map: read error: open .*/testdata/file_not_found: no such file or directory",
 		},
 		{
-			"signature_algorithm, both beta_permissions_map and beta_permissions_map_file",
+			"signature_algorithm, both beta_permissions_map and permissions_map_file",
 			`
 			server "test" {}
 			definitions {
@@ -755,14 +755,14 @@ func TestJwtConfig(t *testing.T) {
 			    header = "..."
 			    key = "..."
 			    beta_permissions_map = {}
-			    beta_permissions_map_file = "testdata/map.json"
+			    permissions_map_file = "testdata/map.json"
 			  }
 			}
 			`,
 			"configuration error: myac: jwt permissions map: read error: configured attribute and file",
 		},
 		{
-			"signature_algorithm, beta_permissions_map_file not found",
+			"signature_algorithm, permissions_map_file not found",
 			`
 			server "test" {}
 			definitions {
@@ -770,7 +770,7 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    header = "..."
 			    key = "..."
-			    beta_permissions_map_file = "file_not_found"
+			    permissions_map_file = "file_not_found"
 			  }
 			}
 			`,

@@ -28,15 +28,9 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `beta_permissions_map_file`.",
+    "description": "Mapping of granted permissions to additional granted permissions. Maps values from `beta_permissions_claim` and those created from `beta_roles_map`. The map is called recursively. Mutually exclusive with `permissions_map_file`.",
     "name": "beta_permissions_map",
     "type": "object"
-  },
-  {
-    "default": "",
-    "description": "Reference to JSON file containing permission mappings. Mutually exclusive with `beta_permissions_map`. See `beta_permissions_map` for more information.",
-    "name": "beta_permissions_map_file",
-    "type": "string"
   },
   {
     "default": "",
@@ -114,6 +108,12 @@ values: [
     "default": "",
     "description": "Reference to file containing verification key. Mutually exclusive with `key`. See `key` for more information.",
     "name": "key_file",
+    "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Reference to JSON file containing permission mappings. Mutually exclusive with `beta_permissions_map`. See `beta_permissions_map` for more information.",
+    "name": "permissions_map_file",
     "type": "string"
   },
   {

@@ -230,6 +230,6 @@ definitions {
     beta_permissions_claim = "scp"
     beta_roles_claim = "rl"
     beta_roles_map_file = "testdata/integration/config/roles.json"
-    beta_permissions_map_file = "testdata/integration/config/permissions.json"
+    permissions_map_file = "testdata/integration/config/permissions.json"
   }
 }
