@@ -37,8 +37,8 @@ type JWT struct {
 	Name                  string              `hcl:"name,label"`
 	Remain                hcl.Body            `hcl:",remain"`
 	RolesClaim            string              `hcl:"beta_roles_claim,optional" docs:"Name of claim specifying the roles of the user represented by the token. The claim value must either be a string containing a space-separated list of role values or a list of string role values."`
-	RolesMap              map[string][]string `hcl:"beta_roles_map,optional" docs:"Mapping of roles to granted permissions. Non-mapped roles can be assigned with {*} to specific permissions. Mutually exclusive with {beta_roles_map_file}."`
-	RolesMapFile          string              `hcl:"beta_roles_map_file,optional" docs:"Reference to JSON file containing role mappings. Mutually exclusive with {beta_roles_map}. See {beta_roles_map} for more information."`
+	RolesMap              map[string][]string `hcl:"beta_roles_map,optional" docs:"Mapping of roles to granted permissions. Non-mapped roles can be assigned with {*} to specific permissions. Mutually exclusive with {roles_map_file}."`
+	RolesMapFile          string              `hcl:"roles_map_file,optional" docs:"Reference to JSON file containing role mappings. Mutually exclusive with {beta_roles_map}. See {beta_roles_map} for more information."`
 	PermissionsClaim      string              `hcl:"permissions_claim,optional" docs:"Name of claim containing the granted permissions. The claim value must either be a string containing a space-separated list of permissions or a list of string permissions."`
 	PermissionsMap        map[string][]string `hcl:"permissions_map,optional" docs:"Mapping of granted permissions to additional granted permissions. Maps values from {permissions_claim} and those created from {beta_roles_map}. The map is called recursively. Mutually exclusive with {permissions_map_file}."`
 	PermissionsMapFile    string              `hcl:"permissions_map_file,optional" docs:"Reference to JSON file containing permission mappings. Mutually exclusive with {permissions_map}. See {permissions_map} for more information."`

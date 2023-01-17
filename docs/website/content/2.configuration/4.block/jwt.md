@@ -28,15 +28,9 @@ values: [
   },
   {
     "default": "",
-    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions. Mutually exclusive with `beta_roles_map_file`.",
+    "description": "Mapping of roles to granted permissions. Non-mapped roles can be assigned with `*` to specific permissions. Mutually exclusive with `roles_map_file`.",
     "name": "beta_roles_map",
     "type": "object"
-  },
-  {
-    "default": "",
-    "description": "Reference to JSON file containing role mappings. Mutually exclusive with `beta_roles_map`. See `beta_roles_map` for more information.",
-    "name": "beta_roles_map_file",
-    "type": "string"
   },
   {
     "default": "",
@@ -121,6 +115,12 @@ values: [
     "description": "List of claim names that must be given for a valid token.",
     "name": "required_claims",
     "type": "tuple (string)"
+  },
+  {
+    "default": "",
+    "description": "Reference to JSON file containing role mappings. Mutually exclusive with `beta_roles_map`. See `beta_roles_map` for more information.",
+    "name": "roles_map_file",
+    "type": "string"
   },
   {
     "default": "",

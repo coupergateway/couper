@@ -715,7 +715,7 @@ func TestJwtConfig(t *testing.T) {
 			"configuration error: myac: jwt key: read error: configured attribute and file",
 		},
 		{
-			"signature_algorithm, both beta_roles_map and beta_roles_map_file",
+			"signature_algorithm, both beta_roles_map and roles_map_file",
 			`
 			server "test" {}
 			definitions {
@@ -724,14 +724,14 @@ func TestJwtConfig(t *testing.T) {
 			    header = "..."
 			    key = "..."
 			    beta_roles_map = {}
-			    beta_roles_map_file = "testdata/map.json"
+			    roles_map_file = "testdata/map.json"
 			  }
 			}
 			`,
 			"configuration error: myac: jwt roles map: read error: configured attribute and file",
 		},
 		{
-			"signature_algorithm, beta_roles_map_file not found",
+			"signature_algorithm, roles_map_file not found",
 			`
 			server "test" {}
 			definitions {
@@ -739,7 +739,7 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    header = "..."
 			    key = "..."
-			    beta_roles_map_file = "file_not_found"
+			    roles_map_file = "file_not_found"
 			  }
 			}
 			`,

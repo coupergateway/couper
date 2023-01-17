@@ -229,7 +229,7 @@ definitions {
     key = "asdf"
     permissions_claim = "scp"
     beta_roles_claim = "rl"
-    beta_roles_map_file = "testdata/integration/config/roles.json"
+    roles_map_file = "testdata/integration/config/roles.json"
     permissions_map_file = "testdata/integration/config/permissions.json"
   }
 }
