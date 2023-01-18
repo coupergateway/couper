@@ -33,7 +33,7 @@ values: [
   },
   {
     "default": "",
-    "description": "The client password.",
+    "description": "The client password. Required unless `token_endpoint_auth_method` is `\"private_key_jwt\"`.",
     "name": "client_secret",
     "type": "string"
   },
