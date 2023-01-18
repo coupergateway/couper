@@ -1,19 +1,25 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.11.0...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.11.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * [`beta_job`](https://docs.couper.io/configuration/block/job) block to describe one or more job `definitions` for simple recurring http tasks ([#610](https://github.com/avenga/couper/pull/610))
+  * [`server_timing_header`](https://docs.couper.io/configuration/block/settings) setting, that allows Couper to include an additional `Server-Timing` HTTP response header field detailing connection and transport relevant metrics for each backend request. ([#657](https://github.com/avenga/couper/pull/657))
 
 * **Changed**
   * Use nested `jwt_signing_profile` block in [`oauth2` block](https://docs.couper.io/configuration/block/oauth2) for `grant_type` `"urn:ietf:params:oauth:grant-type:jwt-bearer"` in absence of `assertion` attribute ([#619](https://github.com/avenga/couper/pull/619))
+  * Improved the way an SPA `bootstrap_file` gets cached and served in combination with `bootstrap_data` ([#656](https://github.com/avenga/couper/pull/656))
+
+---
+
+## [1.11.1](https://github.com/avenga/couper/releases/tag/v1.11.1)
 
 * **Fixed**
   * [Endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) not being terminated by errors (e.g. `unexpected_status`) (regression; since v1.11.0) ([#648](https://github.com/avenga/couper/pull/648))
+  * [Health route](https://docs.couper.io/observation/health) affected by [access control](https://docs.couper.io/configuration/access-control) (regression; since v1.11.0) ([#654](https://github.com/avenga/couper/pull/654))
 
----
 
 ## [1.11.0](https://github.com/avenga/couper/releases/tag/v1.11.0)
 

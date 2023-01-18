@@ -21,6 +21,7 @@ var defaultSettings = Settings{
 	RequestIDBackendHeader:   "Couper-Request-ID",
 	RequestIDClientHeader:    "Couper-Request-ID",
 	RequestIDFormat:          "common",
+	SendServerTimings:        false,
 	TelemetryMetricsEndpoint: otelCollectorEndpoint,
 	TelemetryMetricsExporter: "prometheus",
 	TelemetryMetricsPort:     9090, // default prometheus port
@@ -50,6 +51,7 @@ type Settings struct {
 	RequestIDClientHeader     string `hcl:"request_id_client_header,optional" docs:"HTTP header field which Couper uses to transport the {request.id} to the client" default:"Couper-Request-ID"`
 	RequestIDFormat           string `hcl:"request_id_format,optional" docs:"{\"common\"} or {\"uuid4\"}. If set to {\"uuid4\"} an RFC 4122 UUID is used for {request.id} and related log fields. " default:"common"`
 	SecureCookies             string `hcl:"secure_cookies,optional" docs:"{\"\"} or {\"strip\"}. If set to {\"strip\"}, the {Secure} flag is removed from all {Set-Cookie} HTTP header fields." default:"\u200C"`
+	SendServerTimings         bool   `hcl:"server_timing_header,optional" docs:"If enabled, Couper includes an additional [Server-Timing](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server-Timing) HTTP response header field detailing connection and transport relevant metrics for each backend request."`
 	TLSDevProxy               List   `hcl:"https_dev_proxy,optional" docs:"TLS port mappings to define the TLS listen port and the target one. Self-signed certificates will be generated on the fly based on the given hostname. Certificates will be held in memory."`
 	TelemetryMetrics          bool   `hcl:"beta_metrics,optional" docs:"enables the Prometheus [metrics](/observation/metrics) exporter"`
 	TelemetryMetricsEndpoint  string `hcl:"beta_metrics_endpoint,optional" docs:"" default:""`

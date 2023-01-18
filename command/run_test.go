@@ -198,6 +198,7 @@ func TestAcceptForwarded(t *testing.T) {
 
 	for _, testcase := range tests {
 		t.Run(testcase.name, func(subT *testing.T) {
+			time.Sleep(time.Millisecond * 100)
 			tc := testcase
 
 			caseCtx, caseCancel := context.WithCancel(ctx)

@@ -182,7 +182,7 @@ func setOAuth2Backend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.Body, 
 
 func checkTokenRequestLabels(trbs []*hclsyntax.Block, unique map[string]struct{}) error {
 	for _, trb := range trbs {
-		label := defaultNameLabel
+		label := config.DefaultNameLabel
 		dr := trb.DefRange()
 		r := &dr
 		if len(trb.Labels) > 0 {

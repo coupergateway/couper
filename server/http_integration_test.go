@@ -1422,6 +1422,8 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 	client := newClient()
 
 	configFile := "testdata/integration/endpoint_eval/13_couper.hcl"
+	shutdown, _ := newCouper(configFile, test.New(t))
+	defer shutdown()
 
 	type expectation struct {
 		Body    string
@@ -1452,9 +1454,6 @@ func TestHTTPServer_DynamicRequest(t *testing.T) {
 	} {
 		t.Run("Dynamic request", func(subT *testing.T) {
 			helper := test.New(subT)
-
-			shutdown, _ := newCouper(configFile, helper)
-			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/?method=put", nil)
 			helper.Must(err)
@@ -1487,6 +1486,8 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 	client := newClient()
 
 	configFile := "testdata/integration/endpoint_eval/14_couper.hcl"
+	shutdown, _ := newCouper(configFile, test.New(t))
+	defer shutdown()
 
 	type expectation struct {
 		Body    string
@@ -1765,9 +1766,6 @@ func TestHTTPServer_request_bodies(t *testing.T) {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
 
-			shutdown, _ := newCouper(configFile, helper)
-			defer shutdown()
-
 			req, err := http.NewRequest(http.MethodPost, "http://example.com:8080"+tc.path, strings.NewReader(tc.clientPayload))
 			helper.Must(err)
 
@@ -1799,6 +1797,8 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 	client := newClient()
 
 	configFile := "testdata/integration/endpoint_eval/14_couper.hcl"
+	shutdown, _ := newCouper(configFile, test.New(t))
+	defer shutdown()
 
 	type expectation struct {
 		Body        string
@@ -1884,9 +1884,6 @@ func TestHTTPServer_response_bodies(t *testing.T) {
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
-
-			shutdown, _ := newCouper(configFile, helper)
-			defer shutdown()
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
 			helper.Must(err)
