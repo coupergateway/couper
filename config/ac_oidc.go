@@ -24,7 +24,7 @@ type OIDC struct {
 	ErrorHandlerSetter
 	BackendName             string             `hcl:"backend,optional" docs:"References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for OpenID configuration, JWKS, token and userinfo requests. Mutually exclusive with {backend} block."`
 	ClientID                string             `hcl:"client_id" docs:"The client identifier."`
-	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password."`
+	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password. Required unless {token_endpoint_auth_method} is {\"private_key_jwt\"}."`
 	ConfigurationURL        string             `hcl:"configuration_url" docs:"The OpenID configuration URL."`
 	JWKsTTL                 string             `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
 	JWKsMaxStale            string             `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`

@@ -35,7 +35,7 @@ values: [
   },
   {
     "default": "",
-    "description": "The client password. Required unless the `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"`.",
+    "description": "The client password. Required unless `token_endpoint_auth_method` is `\"private_key_jwt\"` or the `grant_type` is `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"`.",
     "name": "client_secret",
     "type": "string"
   },
