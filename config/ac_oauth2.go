@@ -26,7 +26,7 @@ type OAuth2AC struct {
 	AuthorizationEndpoint   string             `hcl:"authorization_endpoint" docs:"The authorization server endpoint URL used for authorization."`
 	BackendName             string             `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for token requests. Mutually exclusive with {backend} block."`
 	ClientID                string             `hcl:"client_id" docs:"The client identifier."`
-	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password."`
+	ClientSecret            string             `hcl:"client_secret,optional" docs:"The client password. Required unless {token_endpoint_auth_method} is {\"private_key_jwt\"}."`
 	GrantType               string             `hcl:"grant_type" docs:"The grant type. Required, to be set to: {\"authorization_code\"}"`
 	JWTSigningProfile       *JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configures a [JWT signing profile](/configuration/block/jwt_signing_profile) to create a client assertion if {token_endpoint_auth_method} is either {\"client_secret_jwt\"} or {\"private_key_jwt\"} (zero or one)."`
 	Name                    string             `hcl:"name,label"`

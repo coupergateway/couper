@@ -32,6 +32,7 @@ const (
 	RoundTripName
 	RoundTripProxy
 	ServerName
+	ServerTimings
 	StartTime
 	TokenRequest
 	TokenRequestRetries

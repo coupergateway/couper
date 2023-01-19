@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/avenga/couper/accesscontrol"
@@ -21,16 +20,4 @@ func (m ACDefinitions) Add(name string, ac accesscontrol.AccessControl, eh []*co
 		Control:      ac,
 		ErrorHandler: eh,
 	}
-}
-
-func (m ACDefinitions) MustExist(name string) error {
-	if m == nil {
-		panic("no accessControl configuration")
-	}
-
-	if _, ok := m[name]; !ok {
-		return fmt.Errorf("accessControl is not defined: " + name)
-	}
-
-	return nil
 }

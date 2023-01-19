@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -915,6 +916,50 @@ func TestHTTPServer_RateLimiterBlock(t *testing.T) {
 	}
 
 	mu.Unlock()
+}
+
+func TestHTTPServer_ServerTiming(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	confPath1 := "testdata/integration/http/01_couper.hcl"
+	shutdown1, _ := newCouper(confPath1, test.New(t))
+	defer shutdown1()
+
+	confPath2 := "testdata/integration/http/02_couper.hcl"
+	shutdown2, _ := newCouper(confPath2, test.New(t))
+	defer shutdown2()
+
+	req, err := http.NewRequest(http.MethodGet, "http://anyserver:9090/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	headers := res.Header.Values("Server-Timing")
+	if l := len(headers); l != 2 {
+		t.Fatalf("Unexpected number of headers: %d", l)
+	}
+
+	dataCouper1 := strings.Split(headers[0], ", ")
+	dataCouper2 := strings.Split(headers[1], ", ")
+
+	sort.Strings(dataCouper1)
+	sort.Strings(dataCouper2)
+
+	if len(dataCouper1) != 4 || len(dataCouper2) != 6 {
+		t.Fatal("Unexpected number of metrics")
+	}
+
+	exp1 := regexp.MustCompile(`b1_dns_[0-9a-f]{6};dur=\d+(.\d)* b1_tcp_[0-9a-f]{6};dur=\d+(.\d)* b1_total_[0-9a-f]{6};dur=\d+(.\d)* b1_ttfb_[0-9a-f]{6};dur=\d+(.\d)*`)
+	if s := strings.Join(dataCouper1, " "); !exp1.MatchString(s) {
+		t.Errorf("Unexpected header from 'first' Couper: %s", s)
+	}
+
+	exp2 := regexp.MustCompile(`b1_tcp;dur=\d+(.\d)* b1_total;dur=\d+(.\d)* b1_ttfb;dur=\d+(.\d)* b2_REQ_tcp;dur=\d+(.\d)* b2_REQ_total;dur=\d+(.\d)* b2_REQ_ttfb;dur=\d+(.\d)*`)
+	if s := strings.Join(dataCouper2, " "); !exp2.MatchString(s) {
+		t.Errorf("Unexpected header from 'second' Couper: %s", s)
+	}
 }
 
 func TestHTTPServer_CVE_2022_2880(t *testing.T) {

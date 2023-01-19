@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/eval"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -535,7 +536,7 @@ func mergeDefinitions(bodies []*hclsyntax.Body) (*hclsyntax.Block, map[string]*h
 
 							delete(innerBlock.Body.Attributes, "name")
 						} else {
-							innerBlock.Labels[0] = defaultNameLabel
+							innerBlock.Labels[0] = config.DefaultNameLabel
 						}
 
 						proxiesList[label] = innerBlock
@@ -766,7 +767,7 @@ func addProxy(block *hclsyntax.Block, proxies map[string]*hclsyntax.Block) error
 		if !ok {
 			sr := attr.Expr.StartRange()
 
-			return newDiagErr(&sr, "proxy reference is not defined")
+			return newDiagErr(&sr, fmt.Sprintf("referenced proxy %q is not defined", reference))
 		}
 
 		delete(block.Body.Attributes, proxy)

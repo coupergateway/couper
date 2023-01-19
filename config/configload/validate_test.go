@@ -1407,6 +1407,11 @@ func TestPermissionMixed(t *testing.T) {
       response {}
     }
   }
+}
+definitions {
+  basic_auth "foo" {
+    password = "asdf"
+  }
 }`,
 			"",
 		},
@@ -1504,6 +1509,128 @@ definitions {
   }
 }`,
 			"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := LoadBytes([]byte(tt.hcl), "couper.hcl")
+
+			var errMsg string
+			if err != nil {
+				errMsg = err.Error()
+			}
+
+			if tt.error != errMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errMsg)
+			}
+		})
+	}
+}
+
+func Test_checkReferencedAccessControls(t *testing.T) {
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"missing AC referenced by server access_control",
+			`server {
+			  access_control = ["undefined"]
+			}`,
+			`couper.hcl:2,23-36: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by server disable_access_control",
+			`server {
+			  disable_access_control = ["undefined"]
+			}`,
+			`couper.hcl:2,31-44: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by api access_control",
+			`server {
+			  api {
+			    access_control = ["undefined"]
+			  }
+			}`,
+			`couper.hcl:3,25-38: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by api disable_access_control",
+			`server {
+			  api {
+			    disable_access_control = ["undefined"]
+			  }
+			}`,
+			`couper.hcl:3,33-46: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by files access_control",
+			`server {
+			  files {
+			    access_control = ["undefined"]
+			    document_root = "htdocs"
+			  }
+			}`,
+			`couper.hcl:3,25-38: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by files disable_access_control",
+			`server {
+			  files {
+			    disable_access_control = ["undefined"]
+			    document_root = "htdocs"
+			  }
+			}`,
+			`couper.hcl:3,33-46: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by spa access_control",
+			`server {
+			  spa {
+			    access_control = ["undefined"]
+			    bootstrap_file = "foo"
+			    paths = ["/**"]
+			  }
+			}`,
+			`couper.hcl:3,25-38: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by spa disable_access_control",
+			`server {
+			  spa {
+			    disable_access_control = ["undefined"]
+			    bootstrap_file = "foo"
+			    paths = ["/**"]
+			  }
+			}`,
+			`couper.hcl:3,33-46: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by endpoint access_control",
+			`server {
+			  endpoint "/" {
+			    access_control = ["undefined"]
+			    response {
+			      body = "OK"
+			    }
+			  }
+			}`,
+			`couper.hcl:3,25-38: referenced access control "undefined" is not defined; `,
+		},
+		{
+			"missing AC referenced by endpoint disable_access_control",
+			`server {
+			  endpoint "/" {
+			    disable_access_control = ["undefined"]
+			    response {
+			      body = "OK"
+			    }
+			  }
+			}`,
+			`couper.hcl:3,33-46: referenced access control "undefined" is not defined; `,
 		},
 	}
 
