@@ -10,7 +10,7 @@ var Definitions = []*Error{
 	AccessControl.Kind("basic_auth").Status(http.StatusUnauthorized),
 	AccessControl.Kind("basic_auth").Kind("basic_auth_credentials_missing").Status(http.StatusUnauthorized),
 
-	AccessControl.Kind("jwt"),
+	AccessControl.Kind("jwt").Status(http.StatusUnauthorized),
 	AccessControl.Kind("jwt").Kind("jwt_token_expired").Status(http.StatusUnauthorized),
 	AccessControl.Kind("jwt").Kind("jwt_token_invalid").Status(http.StatusUnauthorized),
 	AccessControl.Kind("jwt").Kind("jwt_token_missing").Status(http.StatusUnauthorized),
