@@ -3428,7 +3428,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: token required"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusForbidden, "", "access control error: JWTToken: Token is expired"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusUnauthorized, "", "access control error: JWTToken: Token is expired"},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + hmacToken}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS1", "/jwt/rsa/pkcs1", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
