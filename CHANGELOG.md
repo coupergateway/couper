@@ -13,6 +13,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Improved the way an SPA `bootstrap_file` gets cached and served in combination with `bootstrap_data` ([#656](https://github.com/avenga/couper/pull/656))
   * Harmonized and improved logged error information for references to undefined blocks ([#651](https://github.com/avenga/couper/pull/651))
 
+* **Fixed**
+  * Loop with evaluation error in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) if log level is `"debug"` ([#659](https://github.com/avenga/couper/pull/659))
+
 ---
 
 ## [1.11.1](https://github.com/avenga/couper/releases/tag/v1.11.1)

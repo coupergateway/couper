@@ -137,6 +137,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	defer testServerMu.Unlock()
 
 	log, hook := test.NewLogger()
+	log.Level, _ = logrus.ParseLevel(couperConfig.Settings.LogLevel)
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	shutdownFn := func() {
