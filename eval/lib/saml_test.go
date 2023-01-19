@@ -3,6 +3,7 @@ package lib_test
 import (
 	"bytes"
 	"compress/flate"
+	"context"
 	"encoding/base64"
 	"encoding/xml"
 	"io"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/test"
@@ -25,7 +27,6 @@ func Test_SamlSsoURL(t *testing.T) {
 		name      string
 		hcl       string
 		samlLabel string
-		wantErr   bool
 		wantPfx   string
 	}{
 		{
@@ -43,44 +44,7 @@ func Test_SamlSsoURL(t *testing.T) {
 			}
 			`,
 			"MySAML",
-			false,
 			"https://idp.example.org/saml/SSOService",
-		},
-		{
-			"metadata not found",
-			`
-			server "test" {
-			}
-			definitions {
-				saml "MySAML" {
-					idp_metadata_file = "not-there"
-					sp_entity_id = "the-sp"
-					sp_acs_url = "https://sp.example.com/saml/acs"
-					array_attributes = ["memberOf"]
-				}
-			}
-			`,
-			"MySAML",
-			true,
-			"",
-		},
-		{
-			"label mismatch",
-			`
-			server "test" {
-			}
-			definitions {
-				saml "MySAML" {
-					idp_metadata_file = "testdata/idp-metadata.xml"
-					sp_entity_id = "the-sp"
-					sp_acs_url = "https://sp.example.com/saml/acs"
-					array_attributes = ["memberOf"]
-				}
-			}
-			`,
-			"NotThere",
-			true,
-			"",
 		},
 	}
 	for _, tt := range tests {
@@ -88,9 +52,6 @@ func Test_SamlSsoURL(t *testing.T) {
 			h := test.New(subT)
 			cf, err := configload.LoadBytes([]byte(tt.hcl), "couper.hcl")
 			if err != nil {
-				if tt.wantErr {
-					return
-				}
 				h.Must(err)
 			}
 
@@ -100,16 +61,7 @@ func Test_SamlSsoURL(t *testing.T) {
 			evalContext = evalContext.WithClientRequest(req)
 
 			ssoURL, err := evalContext.HCLContext().Functions[lib.FnSamlSsoURL].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
-			if err == nil && tt.wantErr {
-				subT.Fatal("Error expected")
-			}
-			if err != nil {
-				if !tt.wantErr {
-					h.Must(err)
-				} else {
-					return
-				}
-			}
+			h.Must(err)
 
 			if !strings.HasPrefix(ssoURL.AsString(), tt.wantPfx) {
 				subT.Errorf("Expected to start with %q, got: %#v", tt.wantPfx, ssoURL.AsString())
@@ -136,5 +88,104 @@ func Test_SamlSsoURL(t *testing.T) {
 			h.Must(err)
 		})
 	}
+}
 
+func TestSamlConfigError(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  string
+		label   string
+		wantErr string
+	}{
+		{
+			"missing referenced saml IdP metadata",
+			`
+			server {}
+			definitions {
+			  saml "MySAML" {
+			    idp_metadata_file = "/not/there"
+			    sp_entity_id = "the-sp"
+			    sp_acs_url = "https://sp.example.com/saml/acs"
+			  }
+			}
+			`,
+			"MyLabel",
+			"configuration error: MySAML: saml2 idp_metadata_file: read error: open /not/there: no such file or directory",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			_, err := configload.LoadBytes([]byte(tt.config), "test.hcl")
+			if err == nil {
+				subT.Error("expected an error, got nothing")
+				return
+			}
+			gErr := err.(errors.GoError)
+			if gErr.LogError() != tt.wantErr {
+				subT.Errorf("\nWant:\t%q\nGot:\t%q", tt.wantErr, gErr.LogError())
+			}
+		})
+	}
+}
+
+func TestSamlSsoURLError(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  string
+		label   string
+		wantErr string
+	}{
+		{
+			"missing saml definitions",
+			`
+			server {}
+			definitions {
+			}
+			`,
+			"MyLabel",
+			`missing saml block with referenced label "MyLabel"`,
+		},
+		{
+			"missing referenced saml",
+			`
+			server {}
+			definitions {
+			  saml "MySAML" {
+			    idp_metadata_file = "testdata/idp-metadata.xml"
+			    sp_entity_id = "the-sp"
+			    sp_acs_url = "https://sp.example.com/saml/acs"
+			  }
+			}
+			`,
+			"MyLabel",
+			`missing saml block with referenced label "MyLabel"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			h := test.New(subT)
+			couperConf, err := configload.LoadBytes([]byte(tt.config), "test.hcl")
+			h.Must(err)
+
+			ctx, cancel := context.WithCancel(couperConf.Context)
+			couperConf.Context = ctx
+			defer cancel()
+
+			evalContext := couperConf.Context.Value(request.ContextType).(*eval.Context)
+			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
+			h.Must(err)
+			evalContext = evalContext.WithClientRequest(req)
+
+			_, err = evalContext.HCLContext().Functions[lib.FnSamlSsoURL].Call([]cty.Value{cty.StringVal(tt.label)})
+			if err == nil {
+				subT.Error("expected an error, got nothing")
+				return
+			}
+			if err.Error() != tt.wantErr {
+				subT.Errorf("\nWant:\t%q\nGot:\t%q", tt.wantErr, err.Error())
+			}
+		})
+	}
 }

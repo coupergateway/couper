@@ -330,3 +330,26 @@ func validateBackendTLS(block *hclsyntax.Block) error {
 	}
 	return nil
 }
+
+func checkReferencedAccessControls(body *hclsyntax.Body, acs, dacs []string, definedACs map[string]struct{}) error {
+	for _, ac := range acs {
+		if ac = strings.TrimSpace(ac); ac == "" {
+			continue
+		}
+		if _, set := definedACs[ac]; !set {
+			r := body.Attributes["access_control"].Expr.Range()
+			return newDiagErr(&r, fmt.Sprintf("referenced access control %q is not defined", ac))
+		}
+	}
+	for _, ac := range dacs {
+		if ac = strings.TrimSpace(ac); ac == "" {
+			continue
+		}
+		if _, set := definedACs[ac]; !set {
+			r := body.Attributes["disable_access_control"].Expr.Range()
+			return newDiagErr(&r, fmt.Sprintf("referenced access control %q is not defined", ac))
+		}
+	}
+
+	return nil
+}

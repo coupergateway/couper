@@ -533,12 +533,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, saml := range conf.Definitions.SAML {
 			confErr := errors.Configuration.Label(saml.Name)
-			metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
-			if err != nil {
-				return nil, confErr.With(err)
-			}
-
-			s, err := ac.NewSAML2ACS(metadata, saml.Name, saml.SpAcsURL, saml.SpEntityID, saml.ArrayAttributes)
+			s, err := ac.NewSAML2ACS(saml.MetadataBytes, saml.Name, saml.SpAcsURL, saml.SpEntityID, saml.ArrayAttributes)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -651,9 +646,6 @@ func configureProtectedHandler(m ACDefinitions, conf *config.Couper, ctx *hcl.Ev
 	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
-		if e := m.MustExist(acName); e != nil {
-			return nil, e
-		}
 		eh, err := newErrorHandler(ctx, conf, opts, log, m, acName)
 		if err != nil {
 			return nil, err

@@ -368,6 +368,23 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
 		WithSAML(helper.config.Definitions.SAML)
 
+	definedACs := make(map[string]struct{})
+	for _, ac := range helper.config.Definitions.BasicAuth {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.JWT {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.OAuth2AC {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.OIDC {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.SAML {
+		definedACs[ac.Name] = struct{}{}
+	}
+
 	// Read per server block and merge backend settings which results in a final server configuration.
 	for _, serverBlock := range hclbody.BlocksOfType(body, server) {
 		serverConfig := &config.Server{}
@@ -380,6 +397,22 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 			serverConfig.Name = serverBlock.Labels[0]
 		}
 
+		if err := checkReferencedAccessControls(serverBlock.Body, serverConfig.AccessControl, serverConfig.DisableAccessControl, definedACs); err != nil {
+			return nil, err
+		}
+
+		for _, fileConfig := range serverConfig.Files {
+			if err := checkReferencedAccessControls(fileConfig.HCLBody(), fileConfig.AccessControl, fileConfig.DisableAccessControl, definedACs); err != nil {
+				return nil, err
+			}
+		}
+
+		for _, spaConfig := range serverConfig.SPAs {
+			if err := checkReferencedAccessControls(spaConfig.HCLBody(), spaConfig.AccessControl, spaConfig.DisableAccessControl, definedACs); err != nil {
+				return nil, err
+			}
+		}
+
 		// Read api blocks and merge backends with server and definitions backends.
 		for _, apiConfig := range serverConfig.APIs {
 			apiBody := apiConfig.HCLBody()
@@ -390,12 +423,16 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 				}
 			}
 
+			if err := checkReferencedAccessControls(apiBody, apiConfig.AccessControl, apiConfig.DisableAccessControl, definedACs); err != nil {
+				return nil, err
+			}
+
 			rp := apiBody.Attributes["beta_required_permission"]
 			if rp != nil {
 				apiConfig.RequiredPermission = rp.Expr
 			}
 
-			err = refineEndpoints(helper, apiConfig.Endpoints, true)
+			err = refineEndpoints(helper, apiConfig.Endpoints, true, definedACs)
 			if err != nil {
 				return nil, err
 			}
@@ -414,7 +451,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		}
 
 		// standalone endpoints
-		err = refineEndpoints(helper, serverConfig.Endpoints, true)
+		err = refineEndpoints(helper, serverConfig.Endpoints, true, definedACs)
 		if err != nil {
 			return nil, err
 		}
@@ -439,7 +476,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 			Requests: job.Requests,
 		}
 
-		err = refineEndpoints(helper, config.Endpoints{endpointConf}, false)
+		err = refineEndpoints(helper, config.Endpoints{endpointConf}, false, nil)
 		if err != nil {
 			return nil, err
 		}
