@@ -1044,13 +1044,13 @@ func TestEndpointACBufferOptions(t *testing.T) {
 	}
 
 	for _, tc := range []testcase{
-		{"with ac (token in-form_body) and wrong token", "/in-form_body", invalidToken, urlencoded, "application/x-www-form-urlencoded", http.StatusForbidden, "jwt_token_invalid"},
+		{"with ac (token in-form_body) and wrong token", "/in-form_body", invalidToken, urlencoded, "application/x-www-form-urlencoded", http.StatusUnauthorized, "jwt_token_invalid"},
 		{"with ac (token in-form_body) and without token", "/in-form_body", "", urlencoded, "application/x-www-form-urlencoded", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-form_body) and valid token", "/in-form_body", validToken, urlencoded, "application/x-www-form-urlencoded", http.StatusOK, ""},
-		{"with ac (token in-json_body) and wrong token", "/in-json_body", invalidToken, jsonFn, "application/json", http.StatusForbidden, "jwt_token_invalid"},
+		{"with ac (token in-json_body) and wrong token", "/in-json_body", invalidToken, jsonFn, "application/json", http.StatusUnauthorized, "jwt_token_invalid"},
 		{"with ac (token in-json_body) and without token", "/in-json_body", "", jsonFn, "application/json", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-json_body) and valid token", "/in-json_body", validToken, jsonFn, "application/json", http.StatusOK, ""},
-		{"with ac (token in-body) and wrong token", "/in-body", invalidToken, plain, "text/plain", http.StatusForbidden, "jwt_token_invalid"},
+		{"with ac (token in-body) and wrong token", "/in-body", invalidToken, plain, "text/plain", http.StatusUnauthorized, "jwt_token_invalid"},
 		{"with ac (token in-body) and without token", "/in-body", "", plain, "text/plain", http.StatusUnauthorized, "jwt_token_missing"},
 		{"with ac (token in-body) and valid token", "/in-body", validToken, plain, "text/plain", http.StatusOK, ""},
 		{"without ac", "/without-ac", "", nil, "text/plain", http.StatusOK, ""},
