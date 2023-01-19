@@ -36,7 +36,13 @@ func init() {
 }
 
 func (c *CustomLogs) Levels() []logrus.Level {
-	return logrus.AllLevels
+	return []logrus.Level{
+		logrus.PanicLevel, // reasonable?
+		logrus.FatalLevel, // reasonable?
+		logrus.ErrorLevel,
+		logrus.WarnLevel, // not used?
+		logrus.InfoLevel,
+	}
 }
 
 func (c *CustomLogs) Fire(entry *logrus.Entry) error {

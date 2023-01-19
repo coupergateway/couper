@@ -239,3 +239,18 @@ func TestCustomLogs_Merge(t *testing.T) {
 		t.Errorf("expected\n%#v\ngot\n%#v", exp, got)
 	}
 }
+
+func TestCustomLogs_EvalError(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/logs/04_couper.hcl", test.New(t))
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	_, err = client.Do(req)
+	helper.Must(err)
+}

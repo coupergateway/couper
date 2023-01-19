@@ -152,7 +152,7 @@ func newErrorHandlerConfig(content kindContent, helper *helper) (*config.ErrorHa
 		Requests:  errHandlerConf.Requests,
 	}
 
-	if err := refineEndpoints(helper, config.Endpoints{ep}, false); err != nil {
+	if err := refineEndpoints(helper, config.Endpoints{ep}, false, nil); err != nil {
 		return nil, err
 	}
 
