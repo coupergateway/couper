@@ -1,20 +1,6 @@
 .PHONY: docker-telemetry build generate image
 .PHONY: test test-docker coverage test-coverage test-coverage-show
 
-report:
-	@echo "================================================================================ gofmt"
-	@(go list -f {{.Dir}} ./... | tail -n +2 | xargs gofmt -s -d) || true
-	@echo "================================================================================ gocyclo"
-	@(gocyclo . | grep -v 'vendor/' | grep -E '^(1[5-9]|[2-9]\d)\s') || true
-	@echo "================================================================================ golint"
-	@(golint ./... | grep -v 'vendor/') || true
-	@echo "================================================================================ go vet"
-	@(go vet) || true
-	@echo "================================================================================ ineffassign"
-	@(ineffassign ./...) || true
-	@echo "================================================================================ misspell"
-	@(misspell . | grep -v 'vendor/') || true
-
 build:
 	go build -race -v -o couper main.go
 
