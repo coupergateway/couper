@@ -79,5 +79,5 @@ $ docker run avenga/couper run -watch -p 8081
 | COUPER_BACKEND_LOG_RESPONSE_HEADERS  | `Cache-Control, Content-Encoding, Content-Type, Location` | A comma separated list of header names whose values should be logged. |
 | COUPER_BACKEND_LOG_TYPE_VALUE        | `couper_backend` | Value for the log field `type`. |
 |                                      | | |
-| COUPER_PPROF                         | – | Enables profiling. |
+| COUPER_PPROF                         | `false` | Enables profiling. |
 | COUPER_PPROF_PORT                    | `6060` | Port for profiling interface |
