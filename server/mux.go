@@ -69,7 +69,7 @@ func SortPathPatterns(pathPatterns []string) {
 func sortedPathPatterns(routes map[string]http.Handler) []string {
 	pathPatterns := make([]string, len(routes))
 	i := 0
-	for k, _ := range routes {
+	for k := range routes {
 		pathPatterns[i] = k
 		i++
 	}
@@ -159,9 +159,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 		p = strings.Replace(p, "{"+k+"}", v, 1)
 	}
 	wc := strings.TrimPrefix(req.URL.Path, p)
-	if strings.HasPrefix(wc, "/") {
-		wc = strings.TrimPrefix(wc, "/")
-	}
+	wc = strings.TrimPrefix(wc, "/")
 
 	if wc != "" {
 		ctx = context.WithValue(ctx, request.Wildcard, wc)
@@ -252,9 +250,8 @@ func mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailing
 	}
 	// cannot use Router.StrictSlash(true) because redirect and subsequent GET request would cause problem with CORS
 	if trailingSlash {
-		if strings.HasSuffix(path, "/") {
-			path = strings.TrimSuffix(path, "/")
-		}
+		path = strings.TrimSuffix(path, "/")
+
 		if len(path) > 0 {
 			root.Path(path).Handler(handler) // register /path ...
 		}
