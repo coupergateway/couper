@@ -43,7 +43,7 @@ $ docker run avenga/couper run -watch -p 8081
 | COUPER_ACCEPT_FORWARDED_URL          | `""`    | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](https://docs.couper.io/configuration/variables#request) `url`, `origin`, `protocol`, `host`, `port`. Comma-separated list of values. Valid values: `proto`, `host`, `port`. |
 | COUPER_DEFAULT_PORT                  | `8080`  | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
 | COUPER_HEALTH_PATH                   | `/healthz` | Path for health-check requests for all servers and ports. |
-| COUPER_HTTPS_DEV_PROXY               | `""`    | List of tls port mappings to define the tls listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. |
+| COUPER_HTTPS_DEV_PROXY               | `""`    | List of TLS port mappings to define the TLS listen port and the target one. A self-signed certificate will be generated on the fly based on given hostname. |
 | COUPER_NO_PROXY_FROM_ENV             | `false` | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy). |
 | COUPER_SECURE_COOKIES                | `""`    | If set to `"strip"`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields. |
 | COUPER_WATCH                         | `false` | Set to `true` to watch for configuration file changes. |
