@@ -126,8 +126,8 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 | `"delay"`    |                 | shutdown parameter, see [Health Check](/observation/health)                                                                                    |
 | `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings) |
 |              | `{`             |                                                                                                                                                |
-|              | `"max-retries"` | maximum retry count, see [Global Options](/configuration/command-line#global-options)                                                          |
-|              | `"retry-delay"` | configured delay of each retry, see [Global Options](/configuration/command-line#global-options)                                               |
+|              | `"max-retries"` | maximum retry count, see [Basic Options](/configuration/command-line#basic-options)                                                          |
+|              | `"retry-delay"` | configured delay of each retry, see [Basic Options](/configuration/command-line#basic-options)                                               |
 |              | `}`             |                                                                                                                                                |
 
 ## Job Fields

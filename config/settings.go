@@ -38,7 +38,7 @@ type Settings struct {
 	CAFile                    string `hcl:"ca_file,optional" docs:"adds the given PEM encoded CA certificate to the existing system certificate pool for all outgoing connections"`
 	AcceptForwardedURL        List   `hcl:"accept_forwarded_url,optional" docs:"Which {X-Forwarded-*} request headers should be accepted to change the [request variables](../variables#request) {url}, {origin}, {protocol}, {host}, {port}. Valid values: {\"proto\"}, {\"host\"} and {\"port\"}. The port in a {X-Forwarded-Port} header takes precedence over a port in {X-Forwarded-Host}. Affects relative URL values for [{sp_acs_url}](saml) attribute and {redirect_uri} attribute within [{beta_oauth2}](oauth2) and [{oidc}](oidc)."`
 	DefaultPort               int    `hcl:"default_port,optional" docs:"Port which will be used if not explicitly specified per host within the [{hosts}](server) attribute." default:"8080"`
-	Environment               string `hcl:"environment,optional" docs:"[environment](../command-line#global-options) Couper is to run in"`
+	Environment               string `hcl:"environment,optional" docs:"[environment](../command-line#basic-options) Couper is to run in"`
 	HealthPath                string `hcl:"health_path,optional" docs:"Health path for all configured servers and ports" default:"/healthz"`
 	LogFormat                 string `hcl:"log_format,optional" docs:"tab/field based colored logs or JSON logs: {\"common\"} or {\"json\"}" default:"common"`
 	LogLevel                  string `hcl:"log_level,optional" docs:"sets the log level: {\"panic\"}, {\"fatal\"}, {\"error\"}, {\"warn\"}, {\"info\"}, {\"debug\"}, {\"trace\"}" default:"info"`

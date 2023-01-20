@@ -44,7 +44,7 @@ values: [
   },
   {
     "default": "",
-    "description": "[environment](../command-line#global-options) Couper is to run in",
+    "description": "[environment](../command-line#basic-options) Couper is to run in",
     "name": "environment",
     "type": "string"
   },

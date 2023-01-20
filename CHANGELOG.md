@@ -60,7 +60,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 Couper 1.10 is a feature release comprising new features for a more flexible and cleaner configuration. It also comes with some bug fixes and some smaller improvements. See below for a complete list of changes.
 
-The new [`environment` block](https://docs.couper.io/configuration/block/environment) along with its corresponding [setting](https://docs.couper.io/configuration/block/settings) and the [`-e` command line option](https://docs.couper.io/configuration/command-line#global-options) allows for a cleaner and safer configuration if Couper is to be deployed in different environments. Read more about that feature in our [example](https://github.com/avenga/couper-examples/tree/master/environment).
+The new [`environment` block](https://docs.couper.io/configuration/block/environment) along with its corresponding [setting](https://docs.couper.io/configuration/block/settings) and the [`-e` command line option](https://docs.couper.io/configuration/command-line#basic-options) allows for a cleaner and safer configuration if Couper is to be deployed in different environments. Read more about that feature in our [example](https://github.com/avenga/couper-examples/tree/master/environment).
 
 Labeled, reusable [`proxy` blocks](https://docs.couper.io/configuration/block/proxy) provide means for a leaner and less repetitive configuration.
 
@@ -145,7 +145,7 @@ We've also updated the completion suggestions and fixed a couple of syntax highl
 issues.
 
 * **Added**
-  * Couper now [reads and merges multiple configuration files](./docs/CLI.md#global-options) ([#437](https://github.com/avenga/couper/pull/437), [#515](https://github.com/avenga/couper/pull/515))
+  * Couper now [reads and merges multiple configuration files](https://docs.couper.io/configuration/multiple-files) ([#437](https://github.com/avenga/couper/pull/437), [#515](https://github.com/avenga/couper/pull/515))
   * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))

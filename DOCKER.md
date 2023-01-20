@@ -23,7 +23,7 @@ The entrypoint of the image is the `/couper` binary. The command is `run`.
 
 Therefore `docker run avenga/couper` runs `/couper run -d /conf`.
 
-The [directory argument](https://docs.couper.io/configuration/command-line#global-options) allows you to mount multiple configuration files to the `/conf` directory.
+The [directory argument](https://docs.couper.io/configuration/command-line#basic-options) allows you to mount multiple configuration files to the `/conf` directory.
 
 You could also use other commands directly:
 
