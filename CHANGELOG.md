@@ -80,7 +80,7 @@ We have launched our [documentation website](https://docs.couper.io/) to find bl
   * reusable [`proxy` block](https://docs.couper.io/configuration/block/proxy) ([#561](https://github.com/avenga/couper/pull/561))
 
 * **Changed**
- * Renamed `-debug` to `-pprof` and made debug port configurable via `-pprof-port`. Both [command line options](https://docs.couper.io/configuration/command-line#run-options) can also be specified via the respective [`settings`](https://docs.couper.io/configuration/block/settings). ([#577](https://github.com/avenga/couper/pull/577))
+ * Renamed `-debug` to `-pprof` and made debug port configurable via `-pprof-port`. Both [command line options](https://docs.couper.io/configuration/command-line#profiling-options) can also be specified via the respective [`settings`](https://docs.couper.io/configuration/block/settings). ([#577](https://github.com/avenga/couper/pull/577))
 
 * **Fixed**
   * [`form_body`, `headers` and `cookies`](https://docs.couper.io/configuration/block/request#attributes) can now be properly [custom-logged](https://docs.couper.io/observation/logging#custom-logging) ([#535](https://github.com/avenga/couper/pull/535))
