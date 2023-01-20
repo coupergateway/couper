@@ -58,7 +58,7 @@ func newRelativeURLFunction() function.Function {
 				return cty.StringVal(""), fmt.Errorf("invalid url given: %q", absURL)
 			}
 
-			// Do not use the result of url.Parse() to preserve the # character in an emtpy fragment.
+			// Do not use the result of url.Parse() to preserve the # character in an empty fragment.
 			if _, err := url.Parse(absURL); err != nil {
 				return cty.StringVal(""), err
 			}
