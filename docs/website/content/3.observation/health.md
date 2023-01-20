@@ -2,7 +2,7 @@
 
 The health check will answer with status `200 OK` on every port with the configured
 [`health_path` setting](/configuration/block/settings) or the
-[`COUPER_HEALTH_PATH` environment variable](/configuration/command-line#other-environment-options).
+[`COUPER_HEALTH_PATH` environment variable](/configuration/command-line#observation-options).
 
 As soon as the gateway instance receives a `SIGINT` or `SIGTERM` the check will return a status
 `500 Internal Server Error`.
