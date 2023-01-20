@@ -4,12 +4,12 @@
 
 Couper is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a frontend gateway component.
 
-_For additional information, tutorials and documentation please visit the [Couper repository](https://github.com/avenga/couper)._
+_For additional information, tutorials and documentation, please visit the [Couper repository](https://github.com/avenga/couper)._
 
 ## Usage
 
-Couper requires a [configuration file](https://docs.couper.io/configuration/configuration-file) which have to be provided on start.
-See our [documentation](https://docs.couper.io/getting-started/introduction) how to configure _Couper_.
+Couper requires a [configuration file](https://docs.couper.io/configuration/configuration-file) which has to be provided on start.
+See our [documentation](https://docs.couper.io/getting-started/introduction) on how to configure _Couper_.
 
 This image contains a basic configuration to serve files from `/htdocs` directory.
 
