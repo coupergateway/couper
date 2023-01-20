@@ -49,7 +49,7 @@ $ docker run avenga/couper run -watch -p 8081
 | COUPER_WATCH                         | `false` | Set to `true` to watch for configuration file changes. |
 | COUPER_WATCH_RETRIES                 | `5`     | Maximal retry count for configuration reloads which could not bind the configured port. |
 | COUPER_WATCH_RETRY_DELAY             | `500ms` | Delay duration before next attempt if an error occurs. |
-| COUPER_XFH                           | `false` | Global configurations which uses the `Forwarded-Host` header instead of the request host. |
+| COUPER_XFH                           | `false` | Global configurations which uses the `X-Forwarded-Host` header instead of the request host. |
 | COUPER_CA_FILE                       | `""` | Option for adding the given PEM encoded ca-certificate to the existing system certificate pool for all outgoing connections. |
 |                                      | | |
 | COUPER_BETA_METRICS                  | `false`  | Option to enable the prometheus [metrics](https://github.com/avenga/couper/blob/master/docs/METRICS.md) exporter. |
