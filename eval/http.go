@@ -333,6 +333,15 @@ var customLogFieldsSchema = &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
 	{Name: attrCustomLogFields},
 }}
 
+func EvalCustomLogFields(httpCtx *hcl.EvalContext, body *hclsyntax.Body) (cty.Value, error) {
+	attr, ok := body.Attributes[attrCustomLogFields]
+	if !ok {
+		return cty.NilVal, nil
+	}
+
+	return Value(httpCtx, attr.Expr)
+}
+
 func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus.Entry) logrus.Fields {
 	var values []cty.Value
 

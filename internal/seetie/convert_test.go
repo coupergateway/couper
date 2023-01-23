@@ -50,17 +50,17 @@ func Test_ValueToLogFields(t *testing.T) {
 	for _, tc := range []testCase{
 		{
 			name:   "form body",
-			val:    ValuesMapToValue(map[string][]string{"a": []string{"b"}}),
+			val:    ValuesMapToValue(map[string][]string{"a": {"b"}}),
 			expLog: logrus.Fields{"v": logrus.Fields{"a": []interface{}{"b"}}},
 		},
 		{
 			name:   "cookies",
-			val:    CookiesToMapValue([]*http.Cookie{&http.Cookie{Name: "c", Value: "d"}}),
+			val:    CookiesToMapValue([]*http.Cookie{{Name: "c", Value: "d"}}),
 			expLog: logrus.Fields{"v": logrus.Fields{"c": "d"}},
 		},
 		{
 			name:   "headers",
-			val:    HeaderToMapValue(http.Header{"c": []string{"d"}}),
+			val:    HeaderToMapValue(http.Header{"c": {"d"}}),
 			expLog: logrus.Fields{"v": logrus.Fields{"c": "d"}},
 		},
 	} {

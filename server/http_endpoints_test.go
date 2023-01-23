@@ -749,7 +749,7 @@ func TestEndpoint_Sequence_ClientCancel(t *testing.T) {
 	}
 
 	if !ctxCanceledSeen || !statusOKseen {
-		t.Errorf("Expected one sucessful and one failed backend request")
+		t.Errorf("Expected one successful and one failed backend request")
 	}
 }
 
@@ -806,7 +806,7 @@ func TestEndpoint_Sequence_BackendTimeout(t *testing.T) {
 	}
 
 	if !ctxDeadlineSeen || !statusOKseen {
-		t.Errorf("Expected one sucessful and one failed backend request")
+		t.Errorf("Expected one successful and one failed backend request")
 	}
 }
 

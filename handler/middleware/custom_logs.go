@@ -27,9 +27,7 @@ func NewCustomLogsHandler(bodies []hcl.Body, next http.Handler, handlerName stri
 }
 
 func (c *CustomLogs) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	var bodies []hcl.Body
-
-	ctx := context.WithValue(req.Context(), request.LogCustomAccess, append(bodies, c.bodies...))
+	ctx := context.WithValue(req.Context(), request.LogCustomAccess, c.bodies)
 	*req = *req.WithContext(ctx)
 
 	c.next.ServeHTTP(rw, req)
