@@ -80,6 +80,9 @@ func NewCertificate(duration time.Duration, hosts []string, notBefore *time.Time
 	}
 
 	srvCrt, srvKeyBytes, srvPEM, err := newCertificateFromDER(srvDER, privateKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// intermediate
 	intermediateName := "intermediateCA_" + strconv.Itoa(int(atomic.LoadUint32(&caCount)))
