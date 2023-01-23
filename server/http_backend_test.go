@@ -403,3 +403,82 @@ func TestBackend_Oauth2_TokenEndpoint(t *testing.T) {
 		t.Errorf("unexpected number of requests, want: %d, got: %d", retries+1, requestCount)
 	}
 }
+
+func TestBackend_BackendVar(t *testing.T) {
+	helper := test.New(t)
+	shutdown, hook := newCouper("testdata/integration/backends/08_couper.hcl", helper)
+	defer shutdown()
+
+	client := test.NewHTTPClient()
+
+	hook.Reset()
+
+	req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080/anything", nil)
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	hHealthy1 := res.Header.Get("x-healthy-1")
+	hHealthy2 := res.Header.Get("x-healthy-2")
+	if hHealthy1 != "true" {
+		t.Errorf("expected x-healthy-1 to be true, got %q", hHealthy1)
+	}
+	if hHealthy2 != "true" {
+		t.Errorf("expected x-healthy-2 to be true, got %q", hHealthy2)
+	}
+	hRequestPath1 := res.Header.Get("x-rp-1")
+	hRequestPath2 := res.Header.Get("x-rp-2")
+	if hRequestPath1 != "/anything" {
+		t.Errorf("expected x-rp-1 to be %q, got %q", "/anything", hRequestPath1)
+	}
+	if hRequestPath2 != "/anything" {
+		t.Errorf("expected x-rp-2 to be %q, got %q", "/anything", hRequestPath2)
+	}
+	hResponseStatus1 := res.Header.Get("x-rs-1")
+	hResponseStatus2 := res.Header.Get("x-rs-2")
+	if hResponseStatus1 != "200" {
+		t.Errorf("expected x-rs-1 to be %q, got %q", "/200", hResponseStatus1)
+	}
+	if hResponseStatus2 != "200" {
+		t.Errorf("expected x-rs-2 to be %q, got %q", "/200", hResponseStatus2)
+	}
+
+	for _, e := range hook.AllEntries() {
+		if e.Data["type"] != "couper_backend" {
+			continue
+		}
+		custom, _ := e.Data["custom"].(logrus.Fields)
+
+		if lHealthy1, ok := custom["healthy_1"].(bool); !ok {
+			t.Error("expected healthy_1 to be set and bool")
+		} else if lHealthy1 != true {
+			t.Errorf("expected healthy_1 to be true, got %v", lHealthy1)
+		}
+		if lHealthy2, ok := custom["healthy_2"].(bool); !ok {
+			t.Error("expected healthy_2 to be set and bool")
+		} else if lHealthy2 != true {
+			t.Errorf("expected healthy_2 to be true, got %v", lHealthy2)
+		}
+
+		if lRequestPath1, ok := custom["rp_1"].(string); !ok {
+			t.Error("expected rp_1 to be set and string")
+		} else if lRequestPath1 != "/anything" {
+			t.Errorf("expected rp_1 to be %q, got %v", "/anything", lRequestPath1)
+		}
+		if lRequestPath2, ok := custom["rp_2"].(string); !ok {
+			t.Error("expected rp_2 to be set and string")
+		} else if lRequestPath2 != "/anything" {
+			t.Errorf("expected rp_2 to be %q, got %v", "/anything", lRequestPath2)
+		}
+
+		if lResponseStatus1, ok := custom["rs_1"].(float64); !ok {
+			t.Error("expected rs_1 to be set and float64")
+		} else if lResponseStatus1 != 200 {
+			t.Errorf("expected rs_1 to be %d, got %v", 200, lResponseStatus1)
+		}
+		if lResponseStatus2, ok := custom["rs_2"].(float64); !ok {
+			t.Error("expected rs_2 to be set and float64")
+		} else if lResponseStatus2 != 200 {
+			t.Errorf("expected rs_2 to be %d, got %v", 200, lResponseStatus2)
+		}
+	}
+}

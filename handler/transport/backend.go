@@ -126,10 +126,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, errors.BetaBackendTokenRequest.Label(b.name).With(err)
 	}
 
+	var backendVal cty.Value
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 	if v, ok := hclCtx.Variables[eval.Backends]; ok {
 		if m, exist := v.AsValueMap()[b.name]; exist {
 			hclCtx.Variables[eval.Backend] = m
+			backendVal = m
 		}
 	}
 
@@ -137,11 +139,6 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		return &http.Response{
 			Request: req, // provide outreq (variable) on error cases
 		}, err
-	}
-
-	logCh, _ := req.Context().Value(request.LogCustomUpstream).(chan hcl.Body)
-	if logCh != nil {
-		logCh <- ctxBody
 	}
 
 	// Execute before <b.evalTransport()> due to right
@@ -251,7 +248,16 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	evalCtx := eval.ContextFromRequest(req)
 	// has own body variable reference?
 	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
-	evalCtx = evalCtx.WithBeresp(beresp, readBody)
+	evalCtx = evalCtx.WithBeresp(beresp, backendVal, readBody)
+
+	clfValue, err := eval.EvalCustomLogFields(evalCtx.HCLContext(), ctxBody)
+	if err != nil {
+		logError, _ := req.Context().Value(request.LogCustomUpstreamError).(*error)
+		*logError = err
+	} else if clfValue != cty.NilVal {
+		logValue, _ := req.Context().Value(request.LogCustomUpstreamValue).(*cty.Value)
+		*logValue = clfValue
+	}
 
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 

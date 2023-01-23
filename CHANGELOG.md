@@ -16,6 +16,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Fixed**
   * Loop with evaluation error in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) if log level is `"debug"` ([#659](https://github.com/avenga/couper/pull/659))
 
+* **Fixed**
+  * Use of [backend-related variables](https://docs.couper.io/configuration/variables#backend) in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) within a [`backend` block](https://docs.couper.io/configuration/block/backend) ([#658](https://github.com/avenga/couper/pull/658))
+
 ---
 
 ## [1.11.1](https://github.com/avenga/couper/releases/tag/v1.11.1)

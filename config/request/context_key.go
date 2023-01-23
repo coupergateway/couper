@@ -22,7 +22,8 @@ const (
 	Error
 	Handler
 	LogCustomAccess
-	LogCustomUpstream
+	LogCustomUpstreamValue
+	LogCustomUpstreamError
 	LogDebugLevel
 	LogEntry
 	OpenAPI
