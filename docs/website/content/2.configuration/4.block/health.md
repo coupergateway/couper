@@ -13,43 +13,43 @@ via `headers` attribute. An unhealthy backend will return with a [`backend_unhea
 values: [
   {
     "default": "[200, 204, 301]",
-    "description": "one of wanted response status codes",
+    "description": "One of wanted response status codes.",
     "name": "expected_status",
     "type": "tuple (int)"
   },
   {
     "default": "",
-    "description": "text which the response body must contain",
+    "description": "Text which the response body must contain.",
     "name": "expected_text",
     "type": "string"
   },
   {
     "default": "2",
-    "description": "failed checks needed to consider backend unhealthy",
+    "description": "Failed checks needed to consider backend unhealthy.",
     "name": "failure_threshold",
     "type": "number"
   },
   {
     "default": "",
-    "description": "request headers",
+    "description": "Request HTTP header fields.",
     "name": "headers",
     "type": "object"
   },
   {
     "default": "\"1s\"",
-    "description": "time interval for recheck",
+    "description": "Time interval for recheck.",
     "name": "interval",
     "type": "string"
   },
   {
     "default": "",
-    "description": "URL path with query on backend host",
+    "description": "URL path with query on backend host.",
     "name": "path",
     "type": "string"
   },
   {
     "default": "\"1s\"",
-    "description": "maximum allowed time limit which is\tbounded by `interval`",
+    "description": "Maximum allowed time limit which is\tbounded by `interval`.",
     "name": "timeout",
     "type": "string"
   }
