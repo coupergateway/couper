@@ -25,7 +25,7 @@ type Endpoint struct {
 	Proxies              Proxies   `hcl:"proxy,block" docs:"Configures a [proxy](/configuration/block/proxy) (zero or more)."`
 	Proxy                string    `hcl:"proxy,optional" docs:"References a [{proxy} block](/configuration/block/proxy) in the [definitions](/configuration/block/definitions)."`
 	Remain               hcl.Body  `hcl:",remain"`
-	RequestBodyLimit     string    `hcl:"request_body_limit,optional" docs:"Configures the maximum buffer size while accessing {request.form_body} or {request.json_body} content. Valid units are: {KiB}, {MiB}, {GiB}" default:"64MiB"`
+	RequestBodyLimit     string    `hcl:"request_body_limit,optional" docs:"Configures the maximum buffer size while accessing {request.form_body} or {request.json_body} content. Valid units are: {KiB}, {MiB}, {GiB}." default:"64MiB"`
 	Requests             Requests  `hcl:"request,block" docs:"Configures a [request](/configuration/block/request) (zero or more)."`
 	Response             *Response `hcl:"response,block" docs:"Configures the [response](/configuration/block/response) (zero or one)."`
 

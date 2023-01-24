@@ -132,7 +132,7 @@ values: [
   },
   {
     "default": "\"64MiB\"",
-    "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`",
+    "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`.",
     "name": "request_body_limit",
     "type": "string"
   },
