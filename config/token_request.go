@@ -51,7 +51,7 @@ func (t *TokenRequest) Inline() interface{} {
 		Body           string               `hcl:"body,optional" docs:"Creates implicit default {Content-Type: text/plain} header field"`
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a {beta_backend_token_request} error can be handled with an {error_handler}"`
 		FormBody       string               `hcl:"form_body,optional" docs:"Creates implicit default {Content-Type: application/x-www-form-urlencoded} header field."`
-		Headers        map[string]string    `hcl:"headers,optional" docs:"sets the given request headers"`
+		Headers        map[string]string    `hcl:"headers,optional" docs:"sets the given request HTTP header fields"`
 		JSONBody       string               `hcl:"json_body,optional" docs:"Creates implicit default {Content-Type: application/json} header field" type:"null, bool, number, string, object, tuple"`
 		Method         string               `hcl:"method,optional" default:"GET"`
 		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"sets the url query parameters"`

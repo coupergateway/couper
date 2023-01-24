@@ -39,7 +39,7 @@ values: [
   },
   {
     "default": "",
-    "description": "request headers",
+    "description": "request HTTP header fields",
     "name": "headers",
     "type": "object"
   },
