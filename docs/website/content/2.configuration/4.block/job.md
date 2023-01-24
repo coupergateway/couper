@@ -46,7 +46,7 @@ definitions {
 values: [
   {
     "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
+    "description": "Log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
   },

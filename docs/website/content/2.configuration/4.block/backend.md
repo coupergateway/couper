@@ -19,25 +19,25 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
 values: [
   {
     "default": "",
-    "description": "key/value pairs to add form parameters to the upstream request body",
+    "description": "Key/value pairs to add form parameters to the upstream request body.",
     "name": "add_form_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to add query parameters to the upstream request URL",
+    "description": "Key/value pairs to add query parameters to the upstream request URL.",
     "name": "add_query_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to add as request headers in the upstream request",
+    "description": "Key/value pairs to add as request headers in the upstream request.",
     "name": "add_request_headers",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to add as response headers in the client response",
+    "description": "Key/value pairs to add as response headers in the client response.",
     "name": "add_response_headers",
     "type": "object"
   },
@@ -55,7 +55,7 @@ values: [
   },
   {
     "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
+    "description": "Log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
   },
@@ -115,49 +115,49 @@ values: [
   },
   {
     "default": "",
-    "description": "list of names to remove form parameters from the upstream request body",
+    "description": "List of names to remove form parameters from the upstream request body.",
     "name": "remove_form_params",
     "type": "object"
   },
   {
     "default": "[]",
-    "description": "list of names to remove query parameters from the upstream request URL",
+    "description": "List of names to remove query parameters from the upstream request URL.",
     "name": "remove_query_params",
     "type": "tuple (string)"
   },
   {
     "default": "[]",
-    "description": "list of names to remove headers from the upstream request",
+    "description": "List of names to remove headers from the upstream request.",
     "name": "remove_request_headers",
     "type": "tuple (string)"
   },
   {
     "default": "[]",
-    "description": "list of names to remove headers from the client response",
+    "description": "List of names to remove headers from the client response.",
     "name": "remove_response_headers",
     "type": "tuple (string)"
   },
   {
     "default": "",
-    "description": "key/value pairs to set query parameters in the upstream request URL",
+    "description": "Key/value pairs to set query parameters in the upstream request URL.",
     "name": "set_form_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to set query parameters in the upstream request URL",
+    "description": "Key/value pairs to set query parameters in the upstream request URL.",
     "name": "set_query_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to set as request headers in the upstream request",
+    "description": "Key/value pairs to set as request headers in the upstream request.",
     "name": "set_request_headers",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to set as response headers in the client response",
+    "description": "Key/value pairs to set as response headers in the client response.",
     "name": "set_response_headers",
     "type": "object"
   },
