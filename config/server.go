@@ -19,7 +19,7 @@ type Server struct {
 	Endpoints            Endpoints   `hcl:"endpoint,block" docs:"Configures a free [endpoint](/configuration/block/endpoint) (zero or more)."`
 	ErrorFile            string      `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Files                FilesBlocks `hcl:"files,block" docs:"Configures file serving (zero or more)."`
-	Hosts                []string    `hcl:"hosts,optional" docs:""`
+	Hosts                []string    `hcl:"hosts,optional" docs:"Mandatory, if there is more than one {server} block."`
 	Name                 string      `hcl:"name,label,optional"`
 	Remain               hcl.Body    `hcl:",remain"`
 	SPAs                 SPAs        `hcl:"spa,block" docs:"Configures an SPA (zero or more)."`

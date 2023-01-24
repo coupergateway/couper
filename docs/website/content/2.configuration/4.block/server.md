@@ -6,6 +6,14 @@ The `server` block is one of the root configuration blocks of Couper's configura
 |:-----------|:--------|:---------|
 | `server`   | -       | optional |
 
+### Attribute `hosts`
+
+The `hosts` attribute allows to start multiple Couper instances with a single
+configuration file. You can add a specific port to your host.
+
+**Example:** `hosts = ["8080", "9090"]` or `hosts = ["example.com:9090", "*:8080"]`
+
+
 ::attributes
 ---
 values: [
@@ -44,6 +52,12 @@ values: [
     "description": "Location of the error file template.",
     "name": "error_file",
     "type": "string"
+  },
+  {
+    "default": "[]",
+    "description": "Mandatory, if there is more than one `server` block.",
+    "name": "hosts",
+    "type": "tuple (string)"
   },
   {
     "default": "[]",
