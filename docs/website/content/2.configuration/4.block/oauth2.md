@@ -41,7 +41,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Required, valid values: `\"client_credentials\"`, `\"password\"`, `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"`",
+    "description": "Required, valid values: `\"client_credentials\"`, `\"password\"`, `\"urn:ietf:params:oauth:grant-type:jwt-bearer\"`.",
     "name": "grant_type",
     "type": "string"
   },

@@ -11,7 +11,7 @@ The `server` block is one of the root configuration blocks of Couper's configura
 values: [
   {
     "default": "[]",
-    "description": "[access controls](../access-control) to protect the server. Inherited by nested blocks.",
+    "description": "The [access controls](../access-control) to protect the server. Inherited by nested blocks.",
     "name": "access_control",
     "type": "tuple (string)"
   },
@@ -23,7 +23,7 @@ values: [
   },
   {
     "default": "",
-    "description": "the path prefix for all requests",
+    "description": "The path prefix for all requests.",
     "name": "base_path",
     "type": "string"
   },
@@ -35,13 +35,13 @@ values: [
   },
   {
     "default": "[]",
-    "description": "disables access controls by name",
+    "description": "Disables access controls by name.",
     "name": "disable_access_control",
     "type": "tuple (string)"
   },
   {
     "default": "",
-    "description": "location of the error file template",
+    "description": "Location of the error file template.",
     "name": "error_file",
     "type": "string"
   },

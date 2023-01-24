@@ -18,13 +18,13 @@ values: [
   },
   {
     "default": "",
-    "description": "Creates implicit default `Content-Type: text/plain` header field",
+    "description": "Creates implicit default `Content-Type: text/plain` header field.",
     "name": "body",
     "type": "string"
   },
   {
     "default": "[]",
-    "description": "If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a `beta_backend_token_request` error can be handled with an `error_handler`",
+    "description": "If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a `beta_backend_token_request` error can be handled with an `error_handler`.",
     "name": "expected_status",
     "type": "tuple (int)"
   },
@@ -36,25 +36,31 @@ values: [
   },
   {
     "default": "",
-    "description": "sets the given request HTTP header fields",
+    "description": "Sets the given request HTTP header fields.",
     "name": "headers",
     "type": "object"
   },
   {
     "default": "",
-    "description": "Creates implicit default `Content-Type: application/json` header field",
+    "description": "Creates implicit default `Content-Type: application/json` header field.",
     "name": "json_body",
     "type": "null, bool, number, string, object, tuple"
   },
   {
+    "default": "\"GET\"",
+    "description": "The request method.",
+    "name": "method",
+    "type": "string"
+  },
+  {
     "default": "",
-    "description": "sets the url query parameters",
+    "description": "Sets the URL query parameters.",
     "name": "query_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "The token to be stored in `backends.<backend_name>.tokens.<token_request_name>`",
+    "description": "The token to be stored in `backends.<backend_name>.tokens.<token_request_name>`.",
     "name": "token",
     "type": "string"
   },

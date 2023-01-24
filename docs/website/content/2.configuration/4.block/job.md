@@ -52,7 +52,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Execution interval",
+    "description": "Execution interval.",
     "name": "interval",
     "type": "duration"
   }
