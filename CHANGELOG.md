@@ -63,7 +63,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 Couper 1.10 is a feature release comprising new features for a more flexible and cleaner configuration. It also comes with some bug fixes and some smaller improvements. See below for a complete list of changes.
 
-The new [`environment` block](https://docs.couper.io/configuration/block/environment) along with its corresponding [setting](https://docs.couper.io/configuration/block/settings) and the [`-e` command line option](https://docs.couper.io/configuration/command-line#global-options) allows for a cleaner and safer configuration if Couper is to be deployed in different environments. Read more about that feature in our [example](https://github.com/avenga/couper-examples/tree/master/environment).
+The new [`environment` block](https://docs.couper.io/configuration/block/environment) along with its corresponding [setting](https://docs.couper.io/configuration/block/settings) and the [`-e` command line option](https://docs.couper.io/configuration/command-line#basic-options) allows for a cleaner and safer configuration if Couper is to be deployed in different environments. Read more about that feature in our [example](https://github.com/avenga/couper-examples/tree/master/environment).
 
 Labeled, reusable [`proxy` blocks](https://docs.couper.io/configuration/block/proxy) provide means for a leaner and less repetitive configuration.
 
@@ -83,7 +83,7 @@ We have launched our [documentation website](https://docs.couper.io/) to find bl
   * reusable [`proxy` block](https://docs.couper.io/configuration/block/proxy) ([#561](https://github.com/avenga/couper/pull/561))
 
 * **Changed**
- * Renamed `-debug` to `-pprof` and made debug port configurable via `-pprof-port`. Both [command line options](https://docs.couper.io/configuration/command-line#run-options) can also be specified via the respective [`settings`](https://docs.couper.io/configuration/block/settings). ([#577](https://github.com/avenga/couper/pull/577))
+ * Renamed `-debug` to `-pprof` and made debug port configurable via `-pprof-port`. Both [command line options](https://docs.couper.io/configuration/command-line#profiling-options) can also be specified via the respective [`settings`](https://docs.couper.io/configuration/block/settings). ([#577](https://github.com/avenga/couper/pull/577))
 
 * **Fixed**
   * [`form_body`, `headers` and `cookies`](https://docs.couper.io/configuration/block/request#attributes) can now be properly [custom-logged](https://docs.couper.io/observation/logging#custom-logging) ([#535](https://github.com/avenga/couper/pull/535))
@@ -148,7 +148,7 @@ We've also updated the completion suggestions and fixed a couple of syntax highl
 issues.
 
 * **Added**
-  * Couper now [reads and merges multiple configuration files](./docs/CLI.md#global-options) ([#437](https://github.com/avenga/couper/pull/437), [#515](https://github.com/avenga/couper/pull/515))
+  * Couper now [reads and merges multiple configuration files](https://docs.couper.io/configuration/multiple-files) ([#437](https://github.com/avenga/couper/pull/437), [#515](https://github.com/avenga/couper/pull/515))
   * `beta_health`-block to `backend`-block to enable continuous health-checks for defined backends ([#313](https://github.com/avenga/couper/pull/313))
     * `backends.<name>.health` variable to access the current health-check state _(subject to change)_
   * Log malformed duration settings ([#487](https://github.com/avenga/couper/pull/487))
@@ -351,7 +351,7 @@ If your applications are running in multiple setups, like testing and production
   * [`https-dev-proxy` option](./docs/REFERENCE.md#settings-block) creates a TLS server listing on the given TLS port. Requests are forwarded to the given `server` port. The certificate is generated on-the-fly. This function is intended for local development setups to support browser features requiring HTTPS connections, such as secure cookies. ([#281](https://github.com/avenga/couper/pull/281))
   * [`websockets`](docs/REFERENCE.md#websockets-block) option in `proxy` block enables transparent websocket support when proxying to upstream backends ([#198](https://github.com/avenga/couper/issues/198))
   * Client request [variables](./docs/REFERENCE.md#request) `request.url`, `request.origin`, `request.protocol`, `request.host` and `request.port` ([#255](https://github.com/avenga/couper/pull/255))
-  * [Run option](./docs/CLI.md#run-options) `-accept-forwarded-url` and [setting](./docs/REFERENCE.md#settings-block) `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers ([#255](https://github.com/avenga/couper/pull/255))
+  * [Command-line option](https://docs.couper.io/configuration/command-line#surrounding-architecture-options) `-accept-forwarded-url` and [setting](https://docs.couper.io/configuration/block/settings) `accept_forwarded_url` to accept `proto`, `host`, or `port` from `X-Forwarded-Proto`, `X-Forwarded-Host` or `X-Forwarded-Port` request headers ([#255](https://github.com/avenga/couper/pull/255))
   * Couper sends its request ID as `Couper-Request-Id` HTTP header in backend requests and client responses. This can be configured with the `request_id_backend_header` and `request_id_client_header` [settings](./docs/REFERENCE.md#settings-block) ([#268](https://github.com/avenga/couper/pull/268))
   * [`request_id_accept_from_header` setting](./docs/REFERENCE.md#settings-block) configures Couper to use a downstream request ID instead of generating its own in order to help correlating log events across services ([#268](https://github.com/avenga/couper/pull/268))
   * [`couper.version` variable](docs/REFERENCE.md#couper) ([#274](https://github.com/avenga/couper/pull/274))
