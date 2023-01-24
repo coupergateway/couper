@@ -43,7 +43,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Basic auth for the upstream request with format user:pass .",
+    "description": "Basic auth for the upstream request with format `user:pass`.",
     "name": "basic_auth",
     "type": "string"
   },
@@ -103,7 +103,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Prefixes all backend request paths with the given prefix",
+    "description": "Prefixes all backend request paths with the given prefix.",
     "name": "path_prefix",
     "type": "string"
   },
@@ -181,7 +181,7 @@ values: [
   },
   {
     "default": "false",
-    "description": "Ignores the health state and continues with the outgoing request",
+    "description": "Ignores the health state and continues with the outgoing request.",
     "name": "use_when_unhealthy",
     "type": "bool"
   }
