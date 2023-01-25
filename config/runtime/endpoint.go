@@ -118,15 +118,27 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		if berr != nil {
 			return nil, berr
 		}
-		proxyHandler := handler.NewProxy(backend, proxyConf.HCLBody(), log)
+
+		var hasWSblock bool
+		proxyBody := proxyConf.HCLBody()
+		for _, b := range proxyBody.Blocks {
+			if b.Type == "websockets" {
+				hasWSblock = true
+				break
+			}
+		}
+
+		allowWebsockets := proxyConf.Websockets != nil || hasWSblock
+		proxyHandler := handler.NewProxy(backend, proxyBody, allowWebsockets, log)
+
 		p := &producer.Proxy{
-			Content:   proxyConf.HCLBody(),
+			Content:   proxyBody,
 			Name:      proxyConf.Name,
 			RoundTrip: proxyHandler,
 		}
 
 		allProxies[proxyConf.Name] = p
-		blockBodies = append(blockBodies, proxyConf.Backend, proxyConf.HCLBody())
+		blockBodies = append(blockBodies, proxyConf.Backend, proxyBody)
 	}
 
 	allRequests := make(map[string]*producer.Request)
