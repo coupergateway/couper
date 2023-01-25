@@ -482,7 +482,9 @@ func (b *Backend) withTimeout(req *http.Request, conf *Config) <-chan error {
 		defer cancelFn()
 		deadline := make(<-chan time.Time)
 		if timeout > 0 {
-			deadline = time.After(timeout)
+			deadlineTimer := time.NewTimer(timeout)
+			deadline = deadlineTimer.C
+			defer deadlineTimer.Stop()
 		}
 		select {
 		case <-deadline:
