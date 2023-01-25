@@ -410,6 +410,8 @@ func (c *Context) updateFunctions() {
 	if len(c.jwtSigningConfigs) > 0 {
 		jwtfn := lib.NewJwtSignFunction(c.eval, c.jwtSigningConfigs, Value)
 		c.eval.Functions[lib.FnJWTSign] = jwtfn
+	} else {
+		c.eval.Functions[lib.FnJWTSign] = lib.NoOpJwtSignFunction
 	}
 }
 
