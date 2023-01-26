@@ -77,24 +77,15 @@ jobs:
     name: build and publish container image
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      # couperio
-      C_USERNAME: ${{ secrets.DOCKER_COUPERIO_USERNAME }}
-      C_PASSWORD: ${{ secrets.DOCKER_COUPERIO_PASSWORD }}
-      # avenga
-      A_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      A_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     strategy:
       matrix:
         include:
-          - environment: 'couperio' # map with envs since secrets/vars are not supported as matrix values
-            image: 'couperio/couper'
-            username: C_USERNAME
-            password: C_PASSWORD
-          - environment: 'avenga'
-            image: 'avenga/couper'
-            username: A_USERNAME
-            password: A_PASSWORD
+          - image: 'couperio/couper'
+            username_key: DOCKER_COUPERIO_USERNAME
+            password_key: DOCKER_COUPERIO_PASSWORD
+          - image: 'avenga/couper'
+            username_key: DOCKER_USERNAME
+            password_key: DOCKER_PASSWORD
     steps:
       - name: checkout
         uses: actions/checkout@v2
@@ -129,8 +120,8 @@ jobs:
         uses: docker/login-action@v2
         with:
           #registry: ...
-          username: ${{ matrix.username }}
-          password: ${{ matrix.password }}
+          username: ${{ secrets[matrix.username_key] }}
+          password: ${{ secrets[matrix.password_key] }}
 
       - name: Build & push image with edge tag
         if: github.ref == 'refs/heads/master' && github.event_name == 'push' # due to release branch, pin to master
