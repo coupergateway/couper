@@ -64,12 +64,12 @@ jobs:
         context: .
         labels: ${{ steps.meta.outputs.labels }}
         load: true
-        tags: 'couper-test-${{ github.ref }}'
+        tags: ${{ steps.meta.outputs.tags[0] }}
 
     - name: Test container serves index.html # run for edge and release images
       if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/master' && github.event_name == 'push')
       run: |
-        docker run -d --rm -p 8080:8080 'couper-test-${{ github.ref }}'
+        docker run -d --rm -p 8080:8080 '${{ steps.meta.outputs.tags[0] }}'
         [[ $(curl --head --location --connect-timeout 5 --write-out %{http_code} --silent --output /dev/null http://localhost:8080/) == 200 ]]
 
   publish:
