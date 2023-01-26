@@ -6,6 +6,9 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * Requests to wildcard (`**`) [endpoints](https://docs.couper.io/configuration/block/endpoint) using backends with a wildcard [`path` attribue](https://docs.couper.io/configuration/block/backend#attributes), where the wildcard matches the empty string (regression; since v1.11.0) ([#655](https://github.com/avenga/couper/pull/655))
+  * Creating request context based jwt, oauth2 and saml (hcl) functions without related definitions ([#666](https://github.com/avenga/couper/pull/666))
+  * Reduced allocation amount while proxying requests ([#666](https://github.com/avenga/couper/pull/666))
+  * Removing websockets related headers while the proxy `websockets` option is `false` (or no block definition) ([#666](https://github.com/avenga/couper/pull/666))
 
 ---
 

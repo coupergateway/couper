@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
@@ -30,13 +31,15 @@ var headerBlacklist = []string{"Authorization", "Cookie"}
 // Proxy wraps a httputil.ReverseProxy to apply additional configuration context
 // and have control over the roundtrip configuration.
 type Proxy struct {
+	allowWS bool
 	backend http.RoundTripper
 	context *hclsyntax.Body
 	logger  *logrus.Entry
 }
 
-func NewProxy(backend http.RoundTripper, ctx *hclsyntax.Body, logger *logrus.Entry) *Proxy {
+func NewProxy(backend http.RoundTripper, ctx *hclsyntax.Body, allowWS bool, logger *logrus.Entry) *Proxy {
 	proxy := &Proxy{
+		allowWS: allowWS,
 		backend: backend,
 		context: ctx,
 		logger:  logger,
@@ -54,12 +57,14 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 
 	// 2. Apply proxy-body
-	if err := eval.ApplyRequestContext(hclCtx, p.context, req); err != nil {
+	err := eval.ApplyRequestContext(hclCtx, p.context, req)
+	if err != nil {
 		return nil, err
 	}
 
 	// 3. Apply websockets-body
-	if err := p.applyWebsocketsRequest(req); err != nil {
+	outCtx, err := p.applyWebsocketsRequest(hclCtx, req)
+	if err != nil {
 		return nil, err
 	}
 
@@ -69,7 +74,7 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	outCtx := context.WithValue(req.Context(), request.EndpointExpectedStatus, seetie.ValueToIntSlice(expStatusVal))
+	outCtx = context.WithValue(outCtx, request.EndpointExpectedStatus, seetie.ValueToIntSlice(expStatusVal))
 
 	*req = *req.WithContext(outCtx)
 
@@ -141,54 +146,50 @@ func upgradeType(h http.Header) string {
 	return ""
 }
 
-func (p *Proxy) applyWebsocketsRequest(req *http.Request) error {
-	ctx := req.Context()
-
-	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
-	*req = *req.WithContext(ctx)
-
-	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
+func (p *Proxy) applyWebsocketsRequest(hclCtx *hcl.EvalContext, req *http.Request) (context.Context, error) {
+	outCtx := req.Context()
+	if p.allowWS {
+		outCtx = context.WithValue(outCtx, request.WebsocketsAllowed, p.allowWS)
+	} else {
+		return outCtx, nil
+	}
 
 	// This method needs the 'request.WebsocketsAllowed' flag in the 'req.context'.
-	if !eval.IsUpgradeRequest(req) {
-		return nil
+	if !eval.IsUpgradeRequest(req.WithContext(outCtx)) {
+		return outCtx, nil
 	}
 
 	wsBody := p.getWebsocketsBody()
+	if wsBody == nil { // applies if just the websockets attribute is given
+		return outCtx, nil
+	}
+
 	if err := eval.ApplyRequestContext(hclCtx, wsBody, req); err != nil {
-		return err
+		return nil, err
 	}
 
 	attr, ok := wsBody.Attributes["timeout"]
 	if !ok {
-		return nil
+		return outCtx, nil
 	}
 
 	val, err := eval.Value(hclCtx, attr.Expr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	str := seetie.ValueToString(val)
 
 	timeout, err := time.ParseDuration(str)
 	if str != "" && err != nil {
-		return err
+		return nil, err
 	}
 
-	ctx = context.WithValue(ctx, request.WebsocketsTimeout, timeout)
-	*req = *req.WithContext(ctx)
-
-	return nil
+	outCtx = context.WithValue(outCtx, request.WebsocketsTimeout, timeout)
+	return outCtx, nil
 }
 
 func (p *Proxy) registerWebsocketsResponse(req *http.Request) error {
-	ctx := req.Context()
-
-	ctx = context.WithValue(ctx, request.WebsocketsAllowed, true)
-	*req = *req.WithContext(ctx)
-
-	// This method needs the 'request.WebsocketsAllowed' flag in the 'req.context'.
 	if !eval.IsUpgradeRequest(req) {
 		return nil
 	}
