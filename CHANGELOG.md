@@ -12,10 +12,15 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Use nested `jwt_signing_profile` block in [`oauth2` block](https://docs.couper.io/configuration/block/oauth2) for `grant_type` `"urn:ietf:params:oauth:grant-type:jwt-bearer"` in absence of `assertion` attribute ([#619](https://github.com/avenga/couper/pull/619))
   * Improved the way an SPA `bootstrap_file` gets cached and served in combination with `bootstrap_data` ([#656](https://github.com/avenga/couper/pull/656))
   * Harmonized and improved logged error information for references to undefined blocks ([#651](https://github.com/avenga/couper/pull/651))
+  * Unbeta permission features: ([#673](https://github.com/avenga/couper/pull/673))
+    * `beta_required_permission` attribute for [`api`](https://docs.couper.io/configuration/block/api#attribute-beta_required_permission) and [`endpoint`](https://docs.couper.io/configuration/block/endpoint#attribute-beta_required_permission) blocks,
+    * `beta_granted_permissions` and `beta_required_permission` [request context variables](https://docs.couper.io/configuration/variables#request),
+    * `beta_insufficient_permissions` [error type](https://docs.couper.io/configuration/error-handling/#api-error-types),
+    * `beta_permissions_claim`, `beta_permissions_map`, `beta_permissions_map_file`, `beta_roles_claim`, `beta_roles_map` and `beta_roles_map_file` attributes for [`jwt` block](https://docs.couper.io/configuration/block/jwt#attributes).
 
 * **Fixed**
-  * Loop with evaluation error in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) if log level is `"debug"` ([#659](https://github.com/avenga/couper/pull/659))
   * Use of [backend-related variables](https://docs.couper.io/configuration/variables#backend) in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) within a [`backend` block](https://docs.couper.io/configuration/block/backend) ([#658](https://github.com/avenga/couper/pull/658))
+  * Loop with evaluation error in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) if log level is `"debug"` ([#659](https://github.com/avenga/couper/pull/659))
 
 ---
 
