@@ -154,8 +154,7 @@ jobs:
 
   oidc:
     name: trigger couper-oidc-gateway edge build
-    needs:
-      - build
+    needs: publish
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     steps:
