@@ -1,6 +1,6 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.11.1...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.11.2...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
@@ -15,11 +15,17 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
   * Loop with evaluation error in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) if log level is `"debug"` ([#659](https://github.com/avenga/couper/pull/659))
-
-* **Fixed**
   * Use of [backend-related variables](https://docs.couper.io/configuration/variables#backend) in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) within a [`backend` block](https://docs.couper.io/configuration/block/backend) ([#658](https://github.com/avenga/couper/pull/658))
 
 ---
+
+## [1.11.2](https://github.com/avenga/couper/releases/tag/v1.11.2)
+
+* **Fixed**
+  * Requests to wildcard (`**`) [endpoints](https://docs.couper.io/configuration/block/endpoint) using backends with a wildcard [`path` attribue](https://docs.couper.io/configuration/block/backend#attributes), where the wildcard matches the empty string (regression; since v1.11.0) ([#655](https://github.com/avenga/couper/pull/655))
+  * [internal alloc] stop creating request context based jwt, oauth2 and saml (hcl) functions without related definitions ([#666](https://github.com/avenga/couper/pull/666))
+  * [internal alloc] reduced allocation amount while proxying requests ([#666](https://github.com/avenga/couper/pull/666))
+  * Removing websockets related headers while the proxy `websockets` option is `false` (or no block definition exist) ([#666](https://github.com/avenga/couper/pull/666))
 
 ## [1.11.1](https://github.com/avenga/couper/releases/tag/v1.11.1)
 
