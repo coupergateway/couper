@@ -77,15 +77,24 @@ jobs:
     name: build and publish container image
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # couperio
+      C_USERNAME: ${{ secrets.DOCKER_COUPERIO_USERNAME }}
+      C_PASSWORD: ${{ secrets.DOCKER_COUPERIO_PASSWORD }}
+      # avenga
+      A_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      A_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     strategy:
       matrix:
         include:
-          - image: 'couperio/couper'
-            username: ${{ secrets.DOCKER_COUPERIO_USERNAME }}
-            password: ${{ secrets.DOCKER_COUPERIO_PASSWORD }}
-          - image: 'avenga/couper'
-            username: ${{ secrets.DOCKER_USERNAME }}
-            password: ${{ secrets.DOCKER_PASSWORD }}
+          - environment: 'couperio' # map with envs since secrets/vars are not supported as matrix values
+            image: 'couperio/couper'
+            username: C_USERNAME
+            password: C_PASSWORD
+          - environment: 'avenga'
+            image: 'avenga/couper'
+            username: A_USERNAME
+            password: A_PASSWORD
     steps:
       - name: checkout
         uses: actions/checkout@v2
