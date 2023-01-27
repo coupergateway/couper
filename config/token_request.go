@@ -48,15 +48,15 @@ func (t *TokenRequest) HCLBody() *hclsyntax.Body {
 func (t *TokenRequest) Inline() interface{} {
 	type Inline struct {
 		Backend        *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the token request (zero or one). Mutually exclusive with {backend} attribute."`
-		Body           string               `hcl:"body,optional" docs:"Creates implicit default {Content-Type: text/plain} header field"`
-		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a {beta_backend_token_request} error can be handled with an {error_handler}"`
+		Body           string               `hcl:"body,optional" docs:"Creates implicit default {Content-Type: text/plain} header field."`
+		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of status codes, If the status code is unexpected a {beta_backend_token_request} error can be handled with an {error_handler}."`
 		FormBody       string               `hcl:"form_body,optional" docs:"Creates implicit default {Content-Type: application/x-www-form-urlencoded} header field."`
-		Headers        map[string]string    `hcl:"headers,optional" docs:"sets the given request headers"`
-		JSONBody       string               `hcl:"json_body,optional" docs:"Creates implicit default {Content-Type: application/json} header field" type:"null, bool, number, string, object, tuple"`
-		Method         string               `hcl:"method,optional" default:"GET"`
-		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"sets the url query parameters"`
+		Headers        map[string]string    `hcl:"headers,optional" docs:"Sets the given request HTTP header fields."`
+		JSONBody       string               `hcl:"json_body,optional" docs:"Creates implicit default {Content-Type: application/json} header field." type:"null, bool, number, string, object, tuple"`
+		Method         string               `hcl:"method,optional" docs:"The request method." default:"GET"`
+		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"Sets the URL query parameters."`
 		TTL            string               `hcl:"ttl" docs:"The time span for which the token is to be stored."`
-		Token          string               `hcl:"token" docs:"The token to be stored in {backends.<backend_name>.tokens.<token_request_name>}"`
+		Token          string               `hcl:"token" docs:"The token to be stored in {backends.<backend_name>.tokens.<token_request_name>}."`
 	}
 
 	return &Inline{}

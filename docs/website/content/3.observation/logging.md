@@ -24,14 +24,14 @@ Given the large amount of information contained in some logs, it might come hand
 
 These fields are part of all [Log Types](#log-types) and therefore mentioned separately to avoid unnecessary redundancy.
 
-| Name          | Description                                       |
-|:--------------|:--------------------------------------------------|
-| `"build”`     | git short hash during build time                  |
-| `"level"`     | configured log level, determines verbosity of log |
-| `"message”`   | context based, mainly used in `couper_daemon`     |
-| `"timestamp"` | request starting time                             |
-| `"type"`      | [Log Type](#log-types)                            |
-| `"version"`   | release version                                   |
+| Name          | Description                                        |
+|:--------------|:---------------------------------------------------|
+| `"build”`     | GIT short hash during build time.                  |
+| `"level"`     | Configured log level, determines verbosity of log. |
+| `"message”`   | Context based, mainly used in `couper_daemon`.     |
+| `"timestamp"` | Request starting time.                             |
+| `"type"`      | [Log Type](#log-types).                            |
+| `"version"`   | Release version.                                   |
 
 ### Access Fields
 
@@ -39,38 +39,38 @@ These fields are found in the [Log Types](#log-types) `couper_access` and `coupe
 
 | Name          |             | Description                                                                                                                                                                                                          |
 |:--------------|:------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `"auth_user"` |             | basic auth username (if provided)                                                                                                                                                                                    |
-| `"client_ip"` |             | ip of client                                                                                                                                                                                                         |
-| `"custom"`    |             | see [Custom Logging](#custom-logging)                                                                                                                                                                                |
-| `"endpoint"`  |             | path pattern of endpoint                                                                                                                                                                                             |
-| `"handler"`   |             | one of: `endpoint`, `file`, `spa`                                                                                                                                                                                    |
-| `"method"`    |             | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information                                                                                    |
-| `"port"`      |             | current port accepting request                                                                                                                                                                                       |
-| `"request":`  |             | field regarding request information                                                                                                                                                                                  |
+| `"auth_user"` |             | Basic auth username (if provided).                                                                                                                                                                                    |
+| `"client_ip"` |             | IP of client.                                                                                                                                                                                                         |
+| `"custom"`    |             | See [Custom Logging](#custom-logging).                                                                                                                                                                                |
+| `"endpoint"`  |             | Path pattern of endpoint.                                                                                                                                                                                             |
+| `"handler"`   |             | One of: `endpoint`, `file`, `spa`.                                                                                                                                                                                    |
+| `"method"`    |             | HTTP request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information.                                                                                    |
+| `"port"`      |             | Current port accepting request.                                                                                                                                                                                       |
+| `"request":`  |             | Field regarding request information.                                                                                                                                                                                  |
 |               | `{`         |                                                                                                                                                                                                                      |
-|               | `"bytes"`   | request body size in bytes                                                                                                                                                                                           |
-|               | `"headers"` | field regarding keys and values originating from configured keys/header names                                                                                                                                        |
-|               | `"host"`    | request host                                                                                                                                                                                                         |
-|               | `"method"`  | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information                                                                                    |
-|               | `"origin"`  | request origin (`<proto>://<host>:<port>`), for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information |
-|               | `"path"`    | request path                                                                                                                                                                                                         |
-|               | `"proto"`   | request protocol                                                                                                                                                                                                     |
-|               | `"status"`  | request status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information                                                                                     |
-|               | `"tls"`     | TLS used `true` or `false`                                                                                                                                                                                           |
+|               | `"bytes"`   | Request body size in bytes.                                                                                                                                                                                           |
+|               | `"headers"` | Field regarding keys and values originating from configured keys/header names.                                                                                                                                        |
+|               | `"host"`    | Request host.                                                                                                                                                                                                         |
+|               | `"method"`  | HTTP request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information.                                                                                    |
+|               | `"origin"`  | Request origin (`<proto>://<host>:<port>`), for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information. |
+|               | `"path"`    | Request path.                                                                                                                                                                                                         |
+|               | `"proto"`   | Request protocol.                                                                                                                                                                                                     |
+|               | `"status"`  | Request status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information.                                                                                     |
+|               | `"tls"`     | TLS used `true` or `false`.                                                                                                                                                                                           |
 |               | `}`         |                                                                                                                                                                                                                      |
-| `"response":` |             | field regarding response information                                                                                                                                                                                 |
+| `"response":` |             | Field regarding response information.                                                                                                                                                                                 |
 |               | `{`         |                                                                                                                                                                                                                      |
-|               | `"bytes"`   | response body size in bytes                                                                                                                                                                                          |
-|               | `"headers"` | field regarding keys and values originating from configured keys/header names                                                                                                                                        |
+|               | `"bytes"`   | Response body size in bytes.                                                                                                                                                                                          |
+|               | `"headers"` | Field regarding keys and values originating from configured keys/header names.                                                                                                                                        |
 |               | `}`         |                                                                                                                                                                                                                      |
-| `"server"`    |             | server name (defined in couper file)                                                                                                                                                                                 |
-| `"status"`    |             | response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information                                                                                    |
-| `"timings":`  |             | field regarding timing [ms]                                                                                                                                                                                          |
+| `"server"`    |             | Server name (if defined in couper file).                                                                                                                                                                                 |
+| `"status"`    |             | Response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information.                                                                                    |
+| `"timings":`  |             | Field regarding timing (ms).                                                                                                                                                                                          |
 |               | `{`         |                                                                                                                                                                                                                      |
-|               | `"total"`   | total time taken                                                                                                                                                                                                     |
+|               | `"total"`   | Total time taken.                                                                                                                                                                                                     |
 |               | `}`         |                                                                                                                                                                                                                      |
-| `“uid"`       |             | unique request id configurable in [Settings](/configuration/block/settings)                                                                                                                                          |
-| `"url"`       |             | complete url (`<proto>://<host>:<port><path>` or `<origin><path>`)                                                                                                                                                   |
+| `“uid"`       |             | Unique request ID configurable in [Settings](/configuration/block/settings).                                                                                                                                          |
+| `"url"`       |             | Complete URL (`<proto>://<host>:<port><path>` or `<origin><path>`).                                                                                                                                                   |
 
 ### Backend Fields
 
@@ -78,43 +78,43 @@ These fields are found in the [Log Type](#log-types) `couper_backend` in additio
 
 | Name                    |             | Description                                                                                                                                                                              |
 |:------------------------|:------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `"auth_user"`           |             | backend request basic auth username (if provided)                                                                                                                                        |
-| `"backend"`             |             | configured name, `default` if not provided                                                                                                                                               |
-| `"custom"`              |             | see [Custom Logging](#custom-logging)                                                                                                                                                    |
-| `"method"`              |             | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information                                                        |
-| `"proxy"`               |             | used system proxy url (if configured), see [Proxy Block](/configuration/block/proxy)                                                                                                     |
-| `"request":`            |             | field regarding request information                                                                                                                                                      |
+| `"auth_user"`           |             | Backend request basic auth username (if provided).                                                                                                                                        |
+| `"backend"`             |             | Configured name (`default` if not provided).                                                                                                                                               |
+| `"custom"`              |             | See [Custom Logging](#custom-logging).                                                                                                                                                    |
+| `"method"`              |             | HTTP request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information.                                                        |
+| `"proxy"`               |             | Used system proxy URL (if configured), see [Proxy Block](/configuration/block/proxy).                                                                                                     |
+| `"request":`            |             | Field regarding request information.                                                                                                                                                      |
 |                         | `{`         |                                                                                                                                                                                          |
-|                         | `"bytes"`   | request body size in bytes                                                                                                                                                               |
-|                         | `"headers"` | field regarding keys and values originating from configured keys/header names                                                                                                            |
-|                         | `"host"`    | request host                                                                                                                                                                             |
-|                         | `"method"`  | http request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information                                                        |
-|                         | `"name"`    | configured request name, `default` if not provided                                                                                                                                       |
-|                         | `"origin"`  | request origin, for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information |
-|                         | `"path"`    | request path                                                                                                                                                                             |
-|                         | `"port"`    | current port accepting request                                                                                                                                                           |
-|                         | `"proto"`   | request protocol                                                                                                                                                                         |
+|                         | `"bytes"`   | Request body size in bytes.                                                                                                                                                               |
+|                         | `"headers"` | Field regarding keys and values originating from configured keys/header names.                                                                                                            |
+|                         | `"host"`    | Request host.                                                                                                                                                                             |
+|                         | `"method"`  | HTTP request method, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for more information.                                                        |
+|                         | `"name"`    | Configured request name (`default` if not provided).                                                                                                                                       |
+|                         | `"origin"`  | Request origin, for our purposes excluding `<proto>://` in printing, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin) for more information. |
+|                         | `"path"`    | Request path.                                                                                                                                                                             |
+|                         | `"port"`    | Current port accepting request.                                                                                                                                                           |
+|                         | `"proto"`   | Request protocol.                                                                                                                                                                         |
 |                         | `}`         |                                                                                                                                                                                          |
-| `"response":`           |             | field regarding response information                                                                                                                                                     |
+| `"response":`           |             | Field regarding response information.                                                                                                                                                     |
 |                         | `{`         |                                                                                                                                                                                          |
-|                         | `"bytes"`   | raw size of read body bytes                                                                                                                                                              |
-|                         | `"headers"` | field regarding keys and values originating from configured keys/header names                                                                                                            |
-|                         | `"status"`  | response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information                                                        |
+|                         | `"bytes"`   | Raw size of read body bytes.                                                                                                                                                              |
+|                         | `"headers"` | Field regarding keys and values originating from configured keys/header names.                                                                                                            |
+|                         | `"status"`  | Response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information.                                                        |
 |                         | `}`         |                                                                                                                                                                                          |
-| `"status"`              |             | response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information                                                        |
-| `"timings":`            |             | field regarding timing [ms]                                                                                                                                                              |
+| `"status"`              |             | Response status code, see [Mozilla HTTP Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) for more information.                                                        |
+| `"timings":`            |             | Field regarding timing (ms).                                                                                                                                                              |
 |                         | `{`         |                                                                                                                                                                                          |
-|                         | `"dns"`     | time taken by dns                                                                                                                                                                        |
-|                         | `"tcp"`     | time taken between attempting and establishing tcp connection                                                                                                                            |
-|                         | `"tls"`     | time taken between attempt and success at tls handshake                                                                                                                                  |
-|                         | `"total"`   | total time taken                                                                                                                                                                         |
-|                         | `"ttfb"`    | time to first byte/between establishing connection and receiving first byte                                                                                                              |
+|                         | `"dns"`     | Time taken by DNS.                                                                                                                                                                        |
+|                         | `"tcp"`     | Time taken between attempting and establishing TCP connection.                                                                                                                            |
+|                         | `"tls"`     | Time taken between attempt and success at TLS handshake.                                                                                                                                  |
+|                         | `"total"`   | Total time taken.                                                                                                                                                                         |
+|                         | `"ttfb"`    | Time to first byte/between establishing connection and receiving first byte.                                                                                                              |
 |                         | `}`         |                                                                                                                                                                                          |
-| `"token_request"`       |             | entry regarding request for token                                                                                                                                                        |
-| `"token_request_retry"` |             | how many `token_request` attempts were made                                                                                                                                              |
-| `"uid"`                 |             | unique request id configurable in [Settings](/configuration/block/settings)                                                                                                              |
-| `"url"`                 |             | complete url (`<proto>://<host>:<port><path>` or `<origin><path>`)                                                                                                                       |
-| `"validation"`          |             | validation result for open api, see [OpenAPI Block](/configuration/block/open-api)                                                                                                       |
+| `"token_request"`       |             | Entry regarding request for token.                                                                                                                                                        |
+| `"token_request_retry"` |             | How many `token_request` attempts were made.                                                                                                                                              |
+| `"uid"`                 |             | Unique request ID configurable in [Settings](/configuration/block/settings)                                                                                                              |
+| `"url"`                 |             | Complete URL (`<proto>://<host>:<port><path>` or `<origin><path>`).                                                                                                                       |
+| `"validation"`          |             | Validation result for open api, see [OpenAPI Block](/configuration/block/open-api).                                                                                                       |
 
 ### Daemon Fields
 
@@ -122,12 +122,12 @@ These fields are found in the [Log Type](#log-types) `couper_daemon` in addition
 
 | Name         |                 | Description                                                                                                                                    |
 |:-------------|:----------------|:-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `"deadline"` |                 | shutdown parameter, see [Health Check](/observation/health)                                                                                    |
-| `"delay"`    |                 | shutdown parameter, see [Health Check](/observation/health)                                                                                    |
-| `"watch":`   |                 | field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings) |
+| `"deadline"` |                 | Shutdown parameter, see [Health Check](/observation/health).                                                                                    |
+| `"delay"`    |                 | Shutdown parameter, see [Health Check](/observation/health).                                                                                    |
+| `"watch":`   |                 | Field watching configuration file changes, logs with this field only appear if `watch=true`, more in [Settings](/configuration/block/settings). |
 |              | `{`             |                                                                                                                                                |
-|              | `"max-retries"` | maximum retry count, see [Basic Options](/configuration/command-line#basic-options)                                                          |
-|              | `"retry-delay"` | configured delay of each retry, see [Basic Options](/configuration/command-line#basic-options)                                               |
+|              | `"max-retries"` | Maximum retry count, see [Basic Options](/configuration/command-line#basic-options).                                                          |
+|              | `"retry-delay"` | Configured delay of each retry, see [Basic Options](/configuration/command-line#basic-options).                                               |
 |              | `}`             |                                                                                                                                                |
 
 ## Job Fields
@@ -136,13 +136,13 @@ The following fields are found in the [log type](#log-types) `couper_daemon` in 
 
 | Name         |              | Description                                                                    |
 |:-------------|:-------------|:-------------------------------------------------------------------------------|
-| `"name"`     |              | job name, label of [`beta_job` block](/configuration/block/job)                |
-| `"timings":` |              | field regarding timing [ms]                                                    |
+| `"name"`     |              | Job name, label of [`beta_job` block](/configuration/block/job).               |
+| `"timings":` |              | Field regarding timing (ms).                                                   |
 |              | `{`          |                                                                                |
-|              | `"interval"` | interval, see [`interval` attribute](/configuration/block/job#attributes)      |
-|              | `"total"`    | total time taken                                                               |
+|              | `"interval"` | Interval, see [`interval` attribute](/configuration/block/job#attributes).     |
+|              | `"total"`    | Total time taken.                                                              |
 |              | `}`          |                                                                                |
-| `“uid"`      |              | unique request id configurable in [settings](/configuration/block/settings)    |
+| `“uid"`      |              | Unique request ID configurable in [settings](/configuration/block/settings).   |
 
 ## Custom Logging
 

@@ -21,7 +21,7 @@ values: [
   },
   {
     "default": "",
-    "description": "plain text request body, implicitly sets `Content-Type: text/plain` header field.",
+    "description": "Plain text request body, implicitly sets `Content-Type: text/plain` header field.",
     "name": "body",
     "type": "string"
   },
@@ -33,13 +33,13 @@ values: [
   },
   {
     "default": "",
-    "description": "form request body, implicitly sets `Content-Type: application/x-www-form-urlencoded` header field.",
+    "description": "Form request body, implicitly sets `Content-Type: application/x-www-form-urlencoded` header field.",
     "name": "form_body",
     "type": "string"
   },
   {
     "default": "",
-    "description": "request headers",
+    "description": "Request HTTP header fields.",
     "name": "headers",
     "type": "object"
   },
@@ -51,13 +51,13 @@ values: [
   },
   {
     "default": "\"GET\"",
-    "description": "the request method",
+    "description": "The request method.",
     "name": "method",
     "type": "string"
   },
   {
     "default": "",
-    "description": "Key/value pairs to set query parameters for this request",
+    "description": "Key/value pairs to set query parameters for this request.",
     "name": "query_params",
     "type": "object"
   },

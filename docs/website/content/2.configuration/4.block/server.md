@@ -6,54 +6,68 @@ The `server` block is one of the root configuration blocks of Couper's configura
 |:-----------|:--------|:---------|
 | `server`   | -       | optional |
 
+### Attribute `hosts`
+
+The `hosts` attribute allows to start multiple Couper instances with a single
+configuration file. You can add a specific port to your host.
+
+**Example:** `hosts = ["8080", "9090"]` or `hosts = ["example.com:9090", "*:8080"]`
+
+
 ::attributes
 ---
 values: [
   {
     "default": "[]",
-    "description": "[access controls](../access-control) to protect the server. Inherited by nested blocks.",
+    "description": "The [access controls](../access-control) to protect the server. Inherited by nested blocks.",
     "name": "access_control",
     "type": "tuple (string)"
   },
   {
     "default": "",
-    "description": "key/value pairs to add as response headers in the client response",
+    "description": "Key/value pairs to add as response headers in the client response.",
     "name": "add_response_headers",
     "type": "object"
   },
   {
     "default": "",
-    "description": "the path prefix for all requests",
+    "description": "The path prefix for all requests.",
     "name": "base_path",
     "type": "string"
   },
   {
     "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
+    "description": "Log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
   },
   {
     "default": "[]",
-    "description": "disables access controls by name",
+    "description": "Disables access controls by name.",
     "name": "disable_access_control",
     "type": "tuple (string)"
   },
   {
     "default": "",
-    "description": "location of the error file template",
+    "description": "Location of the error file template.",
     "name": "error_file",
     "type": "string"
   },
   {
     "default": "[]",
-    "description": "list of names to remove headers from the client response",
+    "description": "Mandatory, if there is more than one `server` block.",
+    "name": "hosts",
+    "type": "tuple (string)"
+  },
+  {
+    "default": "[]",
+    "description": "List of names to remove headers from the client response.",
     "name": "remove_response_headers",
     "type": "tuple (string)"
   },
   {
     "default": "",
-    "description": "key/value pairs to set as response headers in the client response",
+    "description": "Key/value pairs to set as response headers in the client response.",
     "name": "set_response_headers",
     "type": "object"
   }
