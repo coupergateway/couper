@@ -145,7 +145,10 @@ var NoOpJwtSignFunction = function.New(&function.Spec{
 		},
 	},
 	Type: function.StaticReturnType(cty.String),
-	Impl: func(_ []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+	Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+		if len(args) > 0 {
+			return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt (with signing_ttl) block with referenced label %q", args[0].AsString())
+		}
 		return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt (with signing_ttl) definitions")
 	},
 })
@@ -165,14 +168,10 @@ func NewJwtSignFunction(ctx *hcl.EvalContext, jwtSigningConfigs map[string]*JWTS
 		},
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
-			if len(jwtSigningConfigs) == 0 {
-				return NoOpJwtSignFunction.Call(nil)
-			}
-
 			label := args[0].AsString()
 			signingConfig, exist := jwtSigningConfigs[label]
 			if !exist {
-				return cty.StringVal(""), fmt.Errorf("missing jwt_signing_profile or jwt (with signing_ttl) block with referenced label %q", label)
+				return NoOpJwtSignFunction.Call(args)
 			}
 
 			var claims, argumentClaims, headers map[string]interface{}
