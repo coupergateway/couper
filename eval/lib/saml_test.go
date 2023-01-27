@@ -130,7 +130,6 @@ func TestSamlConfigError(t *testing.T) {
 }
 
 func TestSamlSsoURLError(t *testing.T) {
-	t.Skip("TODO fallback")
 	tests := []struct {
 		name    string
 		config  string
