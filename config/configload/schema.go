@@ -177,16 +177,24 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema,
 
 	content, diags := body.Content(schema)
 
+	errorHandlerCompleted := false
+
 	for _, diag := range diags {
 		// TODO: How to implement this block automatically?
 		if diag.Detail == noLabelForErrorHandler {
+			if errorHandlerCompleted {
+				continue
+			}
+
 			bodyContent := bodyToContent(body.(*hclsyntax.Body))
 
 			for _, block := range bodyContent.Blocks {
-				if block.Type == errorHandler {
+				if block.Type == errorHandler && len(block.Labels) > 0 {
 					blocks = append(blocks, block)
 				}
 			}
+
+			errorHandlerCompleted = true
 		} else {
 			errors = errors.Append(diag)
 		}
