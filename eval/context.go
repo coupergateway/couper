@@ -421,6 +421,8 @@ func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
 	if len(c.oauth2) > 0 {
 		oauth2fn := lib.NewOAuthAuthorizationURLFunction(c.eval, c.oauth2, c.getCodeVerifier, origin, Value)
 		c.eval.Functions[lib.FnOAuthAuthorizationURL] = oauth2fn
+	} else {
+		c.eval.Functions[lib.FnOAuthAuthorizationURL] = lib.NoOpOAuthAuthorizationURLFunction
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
@@ -428,6 +430,8 @@ func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
 	if len(c.saml) > 0 {
 		samlfn := lib.NewSamlSsoURLFunction(c.saml, origin)
 		c.eval.Functions[lib.FnSamlSsoURL] = samlfn
+	} else {
+		c.eval.Functions[lib.FnSamlSsoURL] = lib.NoOpSamlSsoURLFunction
 	}
 }
 
