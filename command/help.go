@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/avenga/couper/config"
 	"github.com/sirupsen/logrus"
@@ -40,15 +39,7 @@ func NewHelp(ctx context.Context) *Help {
 
 func (h Help) Execute(args Args, _ *config.Couper, _ *logrus.Entry) error {
 	defer Synopsis()
-	if len(args) == 0 {
-		h.Usage()
-		return fmt.Errorf("missing command argument")
-	}
-	cmd := NewCommand(h.ctx, args[0])
-	if cmd == nil {
-		return fmt.Errorf("unknown command: %s", args[0])
-	}
-	cmd.Usage()
+	h.Usage()
 	return nil
 }
 
