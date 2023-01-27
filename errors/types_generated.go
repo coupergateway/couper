@@ -12,7 +12,7 @@ var (
 	Oauth2                       = Definitions[7]
 	Saml2                        = Definitions[8]
 	Saml                         = Definitions[9]
-	BetaInsufficientPermissions  = Definitions[10]
+	InsufficientPermissions      = Definitions[10]
 	BackendOpenapiValidation     = Definitions[12]
 	BetaBackendRateLimitExceeded = Definitions[13]
 	BackendTimeout               = Definitions[14]
@@ -39,7 +39,7 @@ var types = typeDefinitions{
 	"oauth2":                           Oauth2,
 	"saml2":                            Saml2,
 	"saml":                             Saml,
-	"beta_insufficient_permissions":    BetaInsufficientPermissions,
+	"insufficient_permissions":         InsufficientPermissions,
 	"backend":                          Backend,
 	"backend_openapi_validation":       BackendOpenapiValidation,
 	"beta_backend_rate_limit_exceeded": BetaBackendRateLimitExceeded,
@@ -60,4 +60,4 @@ func IsKnown(errorType string) bool {
 
 // SuperTypesMapsByContext holds maps for error super-types to sub-types
 // by a given context block type (e.g. api or endpoint).
-var SuperTypesMapsByContext = map[string]map[string][]string{"api": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy"}}, "endpoint": map[string][]string{"*": []string{"beta_insufficient_permissions", "backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy", "sequence", "unexpected_status"}, "access_control": []string{"beta_insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy"}, "endpoint": []string{"sequence", "unexpected_status"}}}
+var SuperTypesMapsByContext = map[string]map[string][]string{"api": map[string][]string{"*": []string{"insufficient_permissions", "backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy"}, "access_control": []string{"insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy"}}, "endpoint": map[string][]string{"*": []string{"insufficient_permissions", "backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy", "sequence", "unexpected_status"}, "access_control": []string{"insufficient_permissions"}, "backend": []string{"backend_openapi_validation", "beta_backend_rate_limit_exceeded", "backend_timeout", "beta_backend_token_request", "backend_unhealthy"}, "endpoint": []string{"sequence", "unexpected_status"}}}

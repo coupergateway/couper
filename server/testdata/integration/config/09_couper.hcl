@@ -2,101 +2,101 @@ server "scoped jwt" {
   api {
     base_path = "/scope"
     access_control = ["scoped_jwt"]
-    beta_required_permission = "z"
+    required_permission = "z"
     endpoint "/foo" {
-      beta_required_permission = {
+      required_permission = {
         get = ""
         post = "foo"
       }
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bar" {
-      beta_required_permission = {
+      required_permission = {
         delete = ""
         "*" = "more"
       }
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 403
           headers = {
-            x-required-permission = request.context.beta_required_permission
+            x-required-permission = request.context.required_permission
           }
         }
       }
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/path/{p}/path" {
-      beta_required_permission = request.path_params.p
+      required_permission = request.path_params.p
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/object/{method}" {
-      beta_required_permission = {
+      required_permission = {
         (request.path_params.method) = contains(["get", "post"], request.path_params.method) ? "a" : "z"
       }
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bad/expression" {
-      beta_required_permission = request
+      required_permission = request
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bad/type/number" {
-      beta_required_permission = 123
+      required_permission = 123
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bad/type/boolean" {
-      beta_required_permission = true
+      required_permission = true
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bad/type/tuple" {
-      beta_required_permission = ["p1", "p2"]
+      required_permission = ["p1", "p2"]
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bad/type/null" {
-      beta_required_permission = null
+      required_permission = null
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -104,7 +104,7 @@ server "scoped jwt" {
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -112,36 +112,36 @@ server "scoped jwt" {
   api {
     base_path = "/role"
     access_control = ["roled_jwt"]
-    beta_required_permission = "a"
+    required_permission = "a"
     endpoint "/foo" {
-      beta_required_permission = {
+      required_permission = {
         get = ""
         post = "foo"
       }
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bar" {
-      beta_required_permission = {
+      required_permission = {
         delete = ""
         "*" = "more"
       }
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 403
           headers = {
-            x-required-permission = request.context.beta_required_permission
+            x-required-permission = request.context.required_permission
           }
         }
       }
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -150,20 +150,20 @@ server "scoped jwt" {
     base_path = "/scope_and_role"
     access_control = ["scoped_and_roled_jwt"]
     endpoint "/foo" {
-      beta_required_permission = "d"
+      required_permission = "d"
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bar" {
-      beta_required_permission = "e"
+      required_permission = "e"
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -172,20 +172,20 @@ server "scoped jwt" {
     base_path = "/scope_and_role_files"
     access_control = ["scoped_and_roled_jwt_files"]
     endpoint "/foo" {
-      beta_required_permission = "d"
+      required_permission = "d"
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
     endpoint "/bar" {
-      beta_required_permission = "e"
+      required_permission = "e"
       response {
         status = 204
         headers = {
-          x-granted-permissions = json_encode(request.context.beta_granted_permissions)
+          x-granted-permissions = json_encode(request.context.granted_permissions)
         }
       }
     }
@@ -196,14 +196,14 @@ definitions {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_permissions_claim = "scp"
+    permissions_claim = "scp"
   }
   jwt "roled_jwt" {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_roles_claim = "rl"
-    beta_roles_map = {
+    roles_claim = "rl"
+    roles_map = {
       "r1" = ["a", "b"]
     }
   }
@@ -211,12 +211,12 @@ definitions {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_permissions_claim = "scp"
-    beta_roles_claim = "rl"
-    beta_roles_map = {
+    permissions_claim = "scp"
+    roles_claim = "rl"
+    roles_map = {
       "r1" = ["b"]
     }
-    beta_permissions_map = {
+    permissions_map = {
       a = ["c"]
       b = ["e"] # from role-mapped permission
       c = ["d"]
@@ -227,9 +227,9 @@ definitions {
     header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_permissions_claim = "scp"
-    beta_roles_claim = "rl"
-    beta_roles_map_file = "testdata/integration/config/roles.json"
-    beta_permissions_map_file = "testdata/integration/config/permissions.json"
+    permissions_claim = "scp"
+    roles_claim = "rl"
+    roles_map_file = "testdata/integration/config/roles.json"
+    permissions_map_file = "testdata/integration/config/permissions.json"
   }
 }

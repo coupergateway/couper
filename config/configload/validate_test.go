@@ -472,94 +472,94 @@ func Test_validateBody(t *testing.T) {
 			"couper.hcl:3,12-16: accessControl requires a label; ",
 		},
 		{
-			"basic_auth reserved label beta_granted_permissions",
+			"basic_auth reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   basic_auth "beta_granted_permissions" {
+			   basic_auth "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
+			"couper.hcl:3,18-39: accessControl uses reserved name as label; ",
 		},
 		{
-			"basic_auth reserved label beta_required_permission",
+			"basic_auth reserved label required_permission",
 			`server {}
 			 definitions {
-			   basic_auth "beta_required_permission" {
+			   basic_auth "required_permission" {
 			   }
 			 }`,
-			"couper.hcl:3,18-44: accessControl uses reserved name as label; ",
+			"couper.hcl:3,18-39: accessControl uses reserved name as label; ",
 		},
 		{
-			"beta_oauth2 reserved label beta_granted_permissions",
+			"beta_oauth2 reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   beta_oauth2 "beta_granted_permissions" {
+			   beta_oauth2 "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
+			"couper.hcl:3,19-40: accessControl uses reserved name as label; ",
 		},
 		{
-			"beta_oauth2 reserved label beta_required_permission",
+			"beta_oauth2 reserved label required_permission",
 			`server {}
 			 definitions {
-			   beta_oauth2 "beta_required_permission" {
+			   beta_oauth2 "required_permission" {
 			   }
 			 }`,
-			"couper.hcl:3,19-45: accessControl uses reserved name as label; ",
+			"couper.hcl:3,19-40: accessControl uses reserved name as label; ",
 		},
 		{
-			"jwt reserved label beta_granted_permissions",
+			"jwt reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   jwt "beta_granted_permissions" {
+			   jwt "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
+			"couper.hcl:3,11-32: accessControl uses reserved name as label; ",
 		},
 		{
-			"jwt reserved label beta_required_permission",
+			"jwt reserved label required_permission",
 			`server {}
 			 definitions {
-			   jwt "beta_required_permission" {
+			   jwt "required_permission" {
 			   }
 			 }`,
-			"couper.hcl:3,11-37: accessControl uses reserved name as label; ",
+			"couper.hcl:3,11-32: accessControl uses reserved name as label; ",
 		},
 		{
-			"oidc reserved label beta_granted_permissions",
+			"oidc reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   oidc "beta_granted_permissions" {
+			   oidc "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+			"couper.hcl:3,12-33: accessControl uses reserved name as label; ",
 		},
 		{
-			"oidc reserved label beta_required_permission",
+			"oidc reserved label required_permission",
 			`server {}
 			 definitions {
-			   oidc "beta_required_permission" {
+			   oidc "required_permission" {
 			   }
 			 }`,
-			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+			"couper.hcl:3,12-33: accessControl uses reserved name as label; ",
 		},
 		{
-			"saml reserved label beta_granted_permissions",
+			"saml reserved label granted_permissions",
 			`server {}
 			 definitions {
-			   saml "beta_granted_permissions" {
+			   saml "granted_permissions" {
 			   }
 			 }`,
-			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+			"couper.hcl:3,12-33: accessControl uses reserved name as label; ",
 		},
 		{
-			"saml reserved label beta_required_permission",
+			"saml reserved label required_permission",
 			`server {}
 			 definitions {
-			   saml "beta_required_permission" {
+			   saml "required_permission" {
 			   }
 			 }`,
-			"couper.hcl:3,12-38: accessControl uses reserved name as label; ",
+			"couper.hcl:3,12-33: accessControl uses reserved name as label; ",
 		},
 		{
 			"duplicate AC labels 1",
@@ -1163,18 +1163,18 @@ func TestAttributeObjectKeys(t *testing.T) {
 			"couper.hcl:4,30-7,8: key in an attribute must be unique: 'a'; Key must be unique for a.",
 		},
 		{
-			"beta_required_permission",
+			"required_permission",
 			`server {
   api {
     endpoint "/a" {
-      beta_required_permission = {
+      required_permission = {
         get = "a"
         GeT = "A"
       }
     }
   }
 }`,
-			"couper.hcl:4,34-7,8: key in an attribute must be unique: 'get'; Key must be unique for get.",
+			"couper.hcl:4,29-7,8: key in an attribute must be unique: 'get'; Key must be unique for get.",
 		},
 		{
 			"headers",
@@ -1253,13 +1253,13 @@ func TestAttributeObjectKeys(t *testing.T) {
 			"",
 		},
 		{
-			"beta_roles_map",
+			"roles_map",
 			`server {}
 definitions {
   jwt "a" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_roles_map = {
+    roles_map = {
       a = []
       A = []
 	}
@@ -1268,13 +1268,13 @@ definitions {
 			"",
 		},
 		{
-			"beta_permissions_map",
+			"permissions_map",
 			`server {}
 definitions {
   jwt "a" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_permissions_map = {
+    permissions_map = {
       a = []
       A = []
 	}
@@ -1352,7 +1352,7 @@ func TestPermissionMixed(t *testing.T) {
 			`server {
   api "foo" {
     endpoint "/a" {
-      beta_required_permission = "a"
+      required_permission = "a"
       response {}
     }
     endpoint "/b" {
@@ -1367,11 +1367,11 @@ func TestPermissionMixed(t *testing.T) {
 			`server {
   api "foo" {
     endpoint "/a" {
-      beta_required_permission = "a"
+      required_permission = "a"
       response {}
     }
     endpoint "/b" {
-      beta_required_permission = ""
+      required_permission = ""
       response {}
     }
   }
@@ -1382,9 +1382,9 @@ func TestPermissionMixed(t *testing.T) {
 			"no mix: permission set by api",
 			`server {
   api "foo" {
-    beta_required_permission = "api"
+    required_permission = "api"
     endpoint "/a" {
-      beta_required_permission = "a"
+      required_permission = "a"
       response {}
     }
     endpoint "/b" {
@@ -1399,7 +1399,7 @@ func TestPermissionMixed(t *testing.T) {
 			`server {
   api "foo" {
     endpoint "/a" {
-      beta_required_permission = "a"
+      required_permission = "a"
       response {}
     }
     endpoint "/b" {
@@ -1420,7 +1420,7 @@ definitions {
 			`server {
   api "foo" {
     endpoint "/a" {
-      beta_required_permission = "a"
+      required_permission = "a"
       response {}
     }
   }

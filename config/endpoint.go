@@ -51,7 +51,7 @@ func (e Endpoint) Inline() interface{} {
 		meta.QueryParamsAttributes
 		meta.LogFieldsAttribute
 		ResponseStatus     *uint8         `hcl:"set_response_status,optional" docs:"Modifies the response status code."`
-		RequiredPermission hcl.Expression `hcl:"beta_required_permission,optional" docs:"Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) {beta_insufficient_permissions})." type:"string or object (string)"`
+		RequiredPermission hcl.Expression `hcl:"required_permission,optional" docs:"Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) {insufficient_permissions})." type:"string or object (string)"`
 	}
 
 	return &Inline{}

@@ -20,10 +20,10 @@ server {
 
   api "ERR" {
     access_control = ["scoped"]
-    beta_required_permission = {
+    required_permission = {
       GET = "gimme"
     }
-    error_handler "beta_insufficient_permissions" "unexpected_status" "*" {
+    error_handler "insufficient_permissions" "unexpected_status" "*" {
       response {
         status = 418
       }
@@ -34,7 +34,7 @@ server {
     base_path      = "/api-111"
     access_control = ["foo"]
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 415
       }

@@ -408,22 +408,30 @@ func (c *Context) getCodeVerifier() (*pkce.CodeVerifier, error) {
 
 // updateFunctions recreates the listed functions with the current evaluation context.
 func (c *Context) updateFunctions() {
-	jwtfn := lib.NewJwtSignFunction(c.eval, c.jwtSigningConfigs, Value)
-	c.eval.Functions[lib.FnJWTSign] = jwtfn
+	if len(c.jwtSigningConfigs) > 0 {
+		jwtfn := lib.NewJwtSignFunction(c.eval, c.jwtSigningConfigs, Value)
+		c.eval.Functions[lib.FnJWTSign] = jwtfn
+	} else {
+		c.eval.Functions[lib.FnJWTSign] = lib.NoOpJwtSignFunction
+	}
 }
 
 // updateRequestRelatedFunctions re-creates the listed functions for the client request context.
 func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
-	if c.oauth2 != nil {
+	if len(c.oauth2) > 0 {
 		oauth2fn := lib.NewOAuthAuthorizationURLFunction(c.eval, c.oauth2, c.getCodeVerifier, origin, Value)
 		c.eval.Functions[lib.FnOAuthAuthorizationURL] = oauth2fn
+	} else {
+		c.eval.Functions[lib.FnOAuthAuthorizationURL] = lib.NoOpOAuthAuthorizationURLFunction
 	}
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
 
-	if c.saml != nil {
+	if len(c.saml) > 0 {
 		samlfn := lib.NewSamlSsoURLFunction(c.saml, origin)
 		c.eval.Functions[lib.FnSamlSsoURL] = samlfn
+	} else {
+		c.eval.Functions[lib.FnSamlSsoURL] = lib.NoOpSamlSsoURLFunction
 	}
 }
 
@@ -550,13 +558,13 @@ func NewRawOrigin(u *url.URL) *url.URL {
 }
 
 const (
-	betaGrantedPermissions = "beta_granted_permissions"
-	betaRequiredPermission = "beta_required_permission"
+	grantedPermissions = "granted_permissions"
+	requiredPermission = "required_permission"
 )
 
 func IsReservedContextName(name string) bool {
 	switch name {
-	case betaGrantedPermissions, betaRequiredPermission:
+	case grantedPermissions, requiredPermission:
 		return true
 	}
 
@@ -573,12 +581,12 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 		}
 		ctxAcMap[name] = seetie.MapToValue(dataMap)
 	}
-	grantedPermissions, _ := ctx.Value(request.BetaGrantedPermissions).([]string)
-	if len(grantedPermissions) > 0 {
-		ctxAcMap[betaGrantedPermissions] = seetie.GoToValue(grantedPermissions)
+	gp, _ := ctx.Value(request.GrantedPermissions).([]string)
+	if len(gp) > 0 {
+		ctxAcMap[grantedPermissions] = seetie.GoToValue(gp)
 	}
-	if requiredPermission, permissionSet := ctx.Value(request.BetaRequiredPermission).(string); permissionSet {
-		ctxAcMap[betaRequiredPermission] = seetie.GoToValue(requiredPermission)
+	if rp, permissionSet := ctx.Value(request.RequiredPermission).(string); permissionSet {
+		ctxAcMap[requiredPermission] = seetie.GoToValue(rp)
 	}
 	var ctxAcMapValue cty.Value
 	if len(ctxAcMap) > 0 {

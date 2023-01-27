@@ -1139,3 +1139,50 @@ func TestEndpoint_ReusableProxies(t *testing.T) {
 		})
 	}
 }
+
+func TestEndpointWildcardProxyPathWildcard(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/endpoints/21_couper.hcl", test.New(t))
+	defer shutdown()
+
+	for _, testcase := range []struct {
+		path, expectedPath string
+		statusCode         int
+	}{
+		{"/", "/", http.StatusNotFound},
+		{"/anything", "/anything", http.StatusOK},
+		{"/a/b", "/a/b", http.StatusNotFound},
+		{"/p/", "/pb/", http.StatusNotFound},
+		{"/p/a/c", "/pb/a/c", http.StatusNotFound},
+	} {
+		t.Run(testcase.path[1:], func(st *testing.T) {
+			helper := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+testcase.path, nil)
+			helper.Must(err)
+
+			hook.Reset()
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != testcase.statusCode {
+				st.Errorf("expected status %d, got %d", testcase.statusCode, res.StatusCode)
+			}
+
+			b, err := io.ReadAll(res.Body)
+			helper.Must(res.Body.Close())
+			helper.Must(err)
+
+			type result struct {
+				Path string
+			}
+			r := result{}
+			helper.Must(json.Unmarshal(b, &r))
+
+			if testcase.expectedPath != r.Path {
+				st.Errorf("Expected path: %q, got: %q", testcase.expectedPath, r.Path)
+			}
+		})
+	}
+}

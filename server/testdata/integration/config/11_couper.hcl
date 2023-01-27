@@ -25,7 +25,7 @@ server {
 
     endpoint "/unrestricted" {
       access_control = ["token"]
-      beta_required_permission = {
+      required_permission = {
         get = "foo"
         head = "foo"
         post = "foo"
@@ -42,7 +42,7 @@ server {
     endpoint "/restricted" {
       access_control = ["token"]
       allowed_methods = ["GET", "Post", "delete", "BREW"]
-      beta_required_permission = {
+      required_permission = {
         get = "foo"
         head = "foo"
         post = "foo"
@@ -59,7 +59,7 @@ server {
 
     endpoint "/wildcard" {
       allowed_methods = ["*"]
-      beta_required_permission = ""
+      required_permission = ""
 
       response {
         body = "a"
@@ -68,7 +68,7 @@ server {
 
     endpoint "/wildcardAndMore" {
       allowed_methods = ["get", "*", "PuT", "brew"]
-      beta_required_permission = ""
+      required_permission = ""
 
       response {
         body = "a"
@@ -109,6 +109,6 @@ definitions {
   jwt "token" {
     signature_algorithm = "HS256"
     key = "asdf"
-    beta_permissions_claim = "scope"
+    permissions_claim = "scope"
   }
 }

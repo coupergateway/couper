@@ -23,18 +23,18 @@ The default value `"*"` can be combined with additional methods. Methods are mat
 allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]
 ```
 
-### Attribute `beta_required_permission`
+### Attribute `required_permission`
 
-Overrides `beta_required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `beta_required_permission` set or b) either `beta_required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown.
+Overrides `required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `required_permission` set or b) either `required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown.
 
 **Example:**
 
 ```hcl
-beta_required_permission = "read"
+required_permission = "read"
 # or
-beta_required_permission = { post = "write", "*" = "" }
+required_permission = { post = "write", "*" = "" }
 # or
-beta_required_permission = default(request.path_params.p, "not_set")
+required_permission = default(request.path_params.p, "not_set")
 ```
 
 ::attributes
@@ -75,12 +75,6 @@ values: [
     "description": "Sets allowed methods overriding a default set in the containing `api` block. Requests with a method that is not allowed result in an error response with a `405 Method Not Allowed` status.",
     "name": "allowed_methods",
     "type": "tuple (string)"
-  },
-  {
-    "default": "",
-    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`).",
-    "name": "beta_required_permission",
-    "type": "string or object (string)"
   },
   {
     "default": "",
@@ -135,6 +129,12 @@ values: [
     "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`.",
     "name": "request_body_limit",
     "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `insufficient_permissions`).",
+    "name": "required_permission",
+    "type": "string or object (string)"
   },
   {
     "default": "",

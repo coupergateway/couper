@@ -5,7 +5,7 @@ server "scoped" {
   api {
     base_path = "/api"
 
-    beta_required_permission = "read"
+    required_permission = "read"
     endpoint "/" {
       response {
         status = 204
@@ -13,7 +13,7 @@ server "scoped" {
     }
 
     endpoint "/pow/" {
-      beta_required_permission = {
+      required_permission = {
         post = "power"
       }
 
@@ -21,7 +21,7 @@ server "scoped" {
         status = 204
       }
 
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 400
           body = "Not enough power"
@@ -29,7 +29,7 @@ server "scoped" {
       }
     }
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 418
       }
@@ -40,7 +40,7 @@ server "scoped" {
   api {
     base_path = "/wildcard1"
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 418
         body = "Not enough power"
@@ -48,7 +48,7 @@ server "scoped" {
     }
 
     endpoint "/" {
-      beta_required_permission = "power"
+      required_permission = "power"
 
       response {
         status = 204
@@ -74,13 +74,13 @@ server "scoped" {
     }
 
     endpoint "/" {
-      beta_required_permission = "power"
+      required_permission = "power"
 
       response {
         status = 204
       }
 
-      error_handler "beta_insufficient_permissions" {
+      error_handler "insufficient_permissions" {
         response {
           status = 400
           body = "Not enough power"
@@ -90,13 +90,13 @@ server "scoped" {
   }
 
   endpoint "/" {
-    beta_required_permission = "write"
+    required_permission = "write"
 
     response {
       body = "OK"
     }
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 418
       }
@@ -110,6 +110,6 @@ definitions {
     header = "Authorization"
     signature_algorithm = "HS256"
     key = "s3cr3t"
-    beta_permissions_claim = "scope"
+    permissions_claim = "scope"
   }
 }
