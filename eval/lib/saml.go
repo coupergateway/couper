@@ -18,6 +18,22 @@ const (
 	NameIDFormatUnspecified = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
 )
 
+var NoOpSamlSsoURLFunction = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "saml_label",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+		if len(args) > 0 {
+			return cty.StringVal(""), fmt.Errorf("missing saml block with referenced label %q", args[0].AsString())
+		}
+		return cty.StringVal(""), fmt.Errorf("missing saml definitions")
+	},
+})
+
 func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Function {
 	type entity struct {
 		config     *config.SAML
@@ -48,7 +64,7 @@ func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Fun
 			label := args[0].AsString()
 			ent, exist := samlEntities[label]
 			if !exist {
-				return cty.StringVal(""), fmt.Errorf("missing saml block with referenced label %q", label)
+				return NoOpSamlSsoURLFunction.Call(args)
 			}
 
 			metadata := ent.descriptor

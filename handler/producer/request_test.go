@@ -92,7 +92,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 		proxies := producer.Proxies{&producer.Proxy{
 			Content:   content,
 			Name:      "proxy",
-			RoundTrip: handler.NewProxy(backend, content, logEntry),
+			RoundTrip: handler.NewProxy(backend, content, false, logEntry),
 		}}
 
 		testNames := []string{"request", "proxy"}

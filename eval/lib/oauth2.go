@@ -19,6 +19,22 @@ const (
 	InternalFnOAuthHashedVerifier = "internal_oauth_hashed_verifier"
 )
 
+var NoOpOAuthAuthorizationURLFunction = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name: "oauth2_label",
+			Type: cty.String,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+		if len(args) > 0 {
+			return cty.StringVal(""), fmt.Errorf("missing oidc or beta_oauth2 block with referenced label %q", args[0].AsString())
+		}
+		return cty.StringVal(""), fmt.Errorf("missing oidc or beta_oauth2 definitions")
+	},
+})
+
 func NewOAuthAuthorizationURLFunction(ctx *hcl.EvalContext, oauth2s map[string]config.OAuth2Authorization,
 	verifier func() (*pkce.CodeVerifier, error), origin *url.URL,
 	evalFn func(*hcl.EvalContext, hcl.Expression) (cty.Value, error)) function.Function {
@@ -37,7 +53,7 @@ func NewOAuthAuthorizationURLFunction(ctx *hcl.EvalContext, oauth2s map[string]c
 			label := args[0].AsString()
 			oauth2, exist := oauth2s[label]
 			if !exist {
-				return emptyStringVal, fmt.Errorf("missing oidc or beta_oauth2 block with referenced label %q", label)
+				return NoOpOAuthAuthorizationURLFunction.Call(args)
 			}
 
 			authorizationEndpoint, err := oauth2.GetAuthorizationEndpoint()

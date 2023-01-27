@@ -51,10 +51,6 @@ func NewURLFromAttribute(hclCtx *hcl.EvalContext, content *hclsyntax.Body, attrN
 
 			path = utils.JoinPath("/", strings.ReplaceAll(u.Path, "/**", "/"), pathMatch)
 		}
-
-		if strings.HasSuffix(req.URL.Path, "/") && !strings.HasSuffix(path, "/") {
-			path += "/"
-		}
 	}
 
 	u.Path = path

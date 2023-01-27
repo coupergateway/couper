@@ -16,7 +16,7 @@ on:
 #        default: ''
 jobs:
   build:
-    name: Test and build container image
+    name: build and test container image
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -39,24 +39,6 @@ jobs:
       with:
         ref: ${{ github.event.inputs.tag }}
 
-    - name: Docker meta
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: avenga/couper
-        tags: |
-          type=semver,pattern={{major}}.{{minor}}.{{patch}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=edge,event=branch
-          type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},value=${{ github.event.inputs.tag }}
-
-    - name: Login to DockerHub
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
 
@@ -68,48 +50,98 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         context: .
-        labels: ${{ steps.meta.outputs.labels }}
         load: true
         tags: 'couper-test-${{ github.ref }}'
 
-    - name: Test container serves index.html # run for edge and release images
+    - name: Test container serves index.html
       if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/master' && github.event_name == 'push')
       run: |
         docker run -d --rm -p 8080:8080 'couper-test-${{ github.ref }}'
         [[ $(curl --head --location --connect-timeout 5 --write-out %{http_code} --silent --output /dev/null http://localhost:8080/) == 200 ]]
 
-    - name: Build and push docker image with edge tag
-      if: github.ref == 'refs/heads/master' && github.event_name == 'push' # due to release branch, pin to master
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ steps.meta.outputs.tags }}
-        push: ${{ GitHub.event_name != 'pull_request' }}
+  publish:
+    needs: build
+    name: build and publish container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        include:
+          - image: 'couperio/couper'
+            username_key: DOCKER_COUPERIO_USERNAME
+            password_key: DOCKER_COUPERIO_PASSWORD
+          - image: 'avenga/couper'
+            username_key: DOCKER_USERNAME
+            password_key: DOCKER_PASSWORD
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        if: github.event_name != 'workflow_dispatch'
 
-    - name: Build and push docker image with specific tag
-      if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        labels: ${{ steps.meta.outputs.labels }}
-        tags: ${{ steps.meta.outputs.tags }}
-        push: ${{ GitHub.event_name != 'pull_request' }}
+      - name: checkout given tag
+        uses: actions/checkout@v2
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          ref: ${{ github.event.inputs.tag }}
 
-    - name: Docker Hub Description
-      if: github.event_name == 'release'
-      uses: peter-evans/dockerhub-description@v2
-      with:
-        readme-filepath: './DOCKER.md'
-        username: '${{ secrets.DOCKER_USERNAME }}'
-        password: '${{ secrets.DOCKER_PASSWORD }}'
-        repository: avenga/couper
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=edge,event=branch
+            type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},value=${{ github.event.inputs.tag }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          #registry: ...
+          username: ${{ secrets[matrix.username_key] }}
+          password: ${{ secrets[matrix.password_key] }}
+
+      - name: Build & push image with edge tag
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push' # due to release branch, pin to master
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: ${{ GitHub.event_name != 'pull_request' }}
+
+      - name: Build & push image with specific tag
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: ${{ GitHub.event_name != 'pull_request' }}
+
+      - name: Docker Hub Description
+        if: github.event_name == 'release'
+        uses: peter-evans/dockerhub-description@v2
+        with:
+          readme-filepath: './DOCKER.md'
+          username: '${{ matrix.username }}'
+          password: '${{ matrix.password }}'
+          repository: ${{ matrix.image }}
+
   oidc:
     name: trigger couper-oidc-gateway edge build
-    needs:
-      - build
+    needs: publish
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     steps:
