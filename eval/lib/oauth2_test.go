@@ -423,7 +423,6 @@ definitions {
 }
 
 func TestOAuthAuthorizationURLError(t *testing.T) {
-	t.Skip("TODO: fallback")
 	tests := []struct {
 		name    string
 		config  string
