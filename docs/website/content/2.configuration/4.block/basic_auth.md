@@ -16,7 +16,7 @@ by `htpasswd_file` otherwise.
 
 The `user` is accessible via `request.context.<label>.user` variable for successfully authenticated requests.
 
-### htpasswd_file
+### Attribute `htpasswd_file`
 
 Couper uses [Apache's httpasswd](https://httpd.apache.org/docs/current/programs/htpasswd.html) file format. `apr1`, `md5` and `bcrypt` password encryption are supported. The file is loaded once at startup. Restart Couper after you have changed it.
 
