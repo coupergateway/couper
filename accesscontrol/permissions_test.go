@@ -112,7 +112,7 @@ func Test_PermissionsControl(t *testing.T) {
 			map[string]string{},
 			http.MethodGet,
 			nil,
-			"method not allowed error: method GET not allowed by beta_required_permission",
+			"method not allowed error: method GET not allowed by required_permission",
 		},
 		{
 			"no method permitted, permission granted",
@@ -120,7 +120,7 @@ func Test_PermissionsControl(t *testing.T) {
 			map[string]string{},
 			http.MethodPost,
 			[]string{"read"},
-			"method not allowed error: method POST not allowed by beta_required_permission",
+			"method not allowed error: method POST not allowed by required_permission",
 		},
 		{
 			"method permitted, no permission required, no permission granted",
@@ -184,7 +184,7 @@ func Test_PermissionsControl(t *testing.T) {
 			map[string]string{"*": "read"},
 			"BREW",
 			[]string{"read"},
-			"method not allowed error: method BREW not allowed by beta_required_permission",
+			"method not allowed error: method BREW not allowed by required_permission",
 		},
 		{
 			"standard method not allowed",
@@ -192,7 +192,7 @@ func Test_PermissionsControl(t *testing.T) {
 			map[string]string{http.MethodGet: ""},
 			http.MethodPost,
 			nil,
-			"method not allowed error: method POST not allowed by beta_required_permission",
+			"method not allowed error: method POST not allowed by required_permission",
 		},
 		{
 			"method permitted, permission required, no permissions granted",
@@ -256,7 +256,7 @@ func Test_PermissionsControl(t *testing.T) {
 			req := httptest.NewRequest(tt.method, "/", nil)
 			if tt.grantedPermissions != nil {
 				ctx := req.Context()
-				ctx = context.WithValue(ctx, request.BetaGrantedPermissions, tt.grantedPermissions)
+				ctx = context.WithValue(ctx, request.GrantedPermissions, tt.grantedPermissions)
 				*req = *req.WithContext(ctx)
 			}
 			err := pc.Validate(req)

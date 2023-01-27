@@ -427,7 +427,7 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 				return nil, err
 			}
 
-			rp := apiBody.Attributes["beta_required_permission"]
+			rp := apiBody.Attributes["required_permission"]
 			if rp != nil {
 				apiConfig.RequiredPermission = rp.Expr
 			}

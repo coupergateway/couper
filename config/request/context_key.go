@@ -9,8 +9,6 @@ const (
 	BackendBytes
 	BackendName
 	BackendParams
-	BetaGrantedPermissions
-	BetaRequiredPermission
 	BufferOptions
 	ConfigDryRun
 	ConnectTimeout
@@ -20,6 +18,7 @@ const (
 	EndpointKind
 	EndpointSequenceDependsOn
 	Error
+	GrantedPermissions
 	Handler
 	LogCustomAccess
 	LogCustomUpstreamValue
@@ -28,6 +27,7 @@ const (
 	LogEntry
 	OpenAPI
 	PathParams
+	RequiredPermission
 	ResponseBlock
 	ResponseWriter
 	RoundTripName
