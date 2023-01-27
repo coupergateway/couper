@@ -20,37 +20,37 @@ or `"private_key_jwt"` or in [`oauth2`](oauth2) blocks with
 values: [
   {
     "default": "",
-    "description": "claims for the JWT payload, claim values are evaluated per request",
+    "description": "Claims for the JWT payload, claim values are evaluated per request.",
     "name": "claims",
     "type": "object"
   },
   {
     "default": "",
-    "description": "additional header fields for the JWT, `typ` has the default value `JWT`, `alg` cannot be set",
+    "description": "Additional HTTP header fields for the JWT, `typ` has the default value `JWT`, `alg` cannot be set.",
     "name": "headers",
     "type": "object"
   },
   {
     "default": "",
-    "description": "private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithms. Mutually exclusive with `key_file`.",
+    "description": "Private key (in PEM format) for `RS*` and `ES*` variants or the secret for `HS*` algorithms. Mutually exclusive with `key_file`.",
     "name": "key",
     "type": "string"
   },
   {
     "default": "",
-    "description": "reference to file containing signing key. Mutually exclusive with `key`. See `key` for more information.",
+    "description": "Reference to file containing signing key. Mutually exclusive with `key`. See `key` for more information.",
     "name": "key_file",
     "type": "string"
   },
   {
     "default": "",
-    "description": "algorithm used for signing: `\"RS256\"`, `\"RS384\"`, `\"RS512\"`, `\"HS256\"`, `\"HS384\"`, `\"HS512\"`, `\"ES256\"`, `\"ES384\"`, `\"ES512\"`",
+    "description": "Algorithm used for signing: `\"RS256\"`, `\"RS384\"`, `\"RS512\"`, `\"HS256\"`, `\"HS384\"`, `\"HS512\"`, `\"ES256\"`, `\"ES384\"`, `\"ES512\"`.",
     "name": "signature_algorithm",
     "type": "string"
   },
   {
     "default": "",
-    "description": "The token's time-to-live, creates the `exp` claim",
+    "description": "The token's time-to-live, creates the `exp` claim.",
     "name": "ttl",
     "type": "string"
   }

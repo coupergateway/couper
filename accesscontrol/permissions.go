@@ -51,7 +51,7 @@ func (r *requiredPermissions) getPermission(method string) (string, error) {
 
 	permission, exists := r.permissions[method]
 	if !exists {
-		return "", errors.MethodNotAllowed.Messagef("method %s not allowed by beta_required_permission", method)
+		return "", errors.MethodNotAllowed.Messagef("method %s not allowed by required_permission", method)
 	}
 	return permission, nil
 }
@@ -93,18 +93,18 @@ func (p *PermissionsControl) Validate(req *http.Request) error {
 	}
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, request.BetaRequiredPermission, requiredPermission)
+	ctx = context.WithValue(ctx, request.RequiredPermission, requiredPermission)
 	*req = *req.WithContext(ctx)
 
 	evalCtx := eval.ContextFromRequest(req)
 	*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
-	grantedPermission, ok := ctx.Value(request.BetaGrantedPermissions).([]string)
+	grantedPermission, ok := ctx.Value(request.GrantedPermissions).([]string)
 	if !ok {
-		return errors.BetaInsufficientPermissions.Messagef("no permissions granted")
+		return errors.InsufficientPermissions.Messagef("no permissions granted")
 	}
 	if !hasGrantedPermission(grantedPermission, requiredPermission) {
-		return errors.BetaInsufficientPermissions.Messagef("required permission %q not granted", requiredPermission)
+		return errors.InsufficientPermissions.Messagef("required permission %q not granted", requiredPermission)
 	}
 	return nil
 }

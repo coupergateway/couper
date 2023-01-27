@@ -29,7 +29,7 @@ server {
       }
     }
 
-    error_handler "unexpected_status * beta_insufficient_permissions" {
+    error_handler "unexpected_status * insufficient_permissions" {
       response {
         status = 405
       }
@@ -39,7 +39,7 @@ server {
   api "API" {
     base_path = "/api-1"
 
-    error_handler "beta_insufficient_permissions" {
+    error_handler "insufficient_permissions" {
       response {
         status = 401
       }

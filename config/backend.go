@@ -50,17 +50,17 @@ func (b Backend) Inline() interface{} {
 		meta.FormParamsAttributes
 		meta.QueryParamsAttributes
 		meta.LogFieldsAttribute
-		BasicAuth      string `hcl:"basic_auth,optional" docs:"Basic auth for the upstream request with format user:pass ."`
+		BasicAuth      string `hcl:"basic_auth,optional" docs:"Basic auth for the upstream request with format {user:pass}."`
 		ConnectTimeout string `hcl:"connect_timeout,optional" docs:"The total timeout for dialing and connect to the origin." type:"duration" default:"10s"`
 		Hostname       string `hcl:"hostname,optional" docs:"Value of the HTTP host header field for the origin request. Since hostname replaces the request host the value will also be used for a server identity check during a TLS handshake with the origin."`
 		Origin         string `hcl:"origin,optional" docs:"URL to connect to for backend requests."`
 		Path           string `hcl:"path,optional" docs:"Changeable part of upstream URL."`
-		PathPrefix     string `hcl:"path_prefix,optional" docs:"Prefixes all backend request paths with the given prefix"`
+		PathPrefix     string `hcl:"path_prefix,optional" docs:"Prefixes all backend request paths with the given prefix."`
 		ProxyURL       string `hcl:"proxy,optional" docs:"A proxy URL for the related origin request."`
 		ResponseStatus *uint8 `hcl:"set_response_status,optional" docs:"Modifies the response status code."`
 		TTFBTimeout    string `hcl:"ttfb_timeout,optional" docs:"The duration from writing the full request to the origin and receiving the answer." type:"duration" default:"60s"`
 		Timeout        string `hcl:"timeout,optional" docs:"The total deadline duration a backend request has for write and read/pipe." type:"duration" default:"300s"`
-		UseUnhealthy   bool   `hcl:"use_when_unhealthy,optional" docs:"Ignores the health state and continues with the outgoing request"`
+		UseUnhealthy   bool   `hcl:"use_when_unhealthy,optional" docs:"Ignores the health state and continues with the outgoing request."`
 
 		// set by backend preparation
 		BackendURL string `hcl:"backend_url,optional"`

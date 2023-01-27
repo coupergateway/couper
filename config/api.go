@@ -44,7 +44,7 @@ func (a API) Inline() interface{} {
 	type Inline struct {
 		meta.ResponseHeadersAttributes
 		meta.LogFieldsAttribute
-		RequiredPermission hcl.Expression `hcl:"beta_required_permission,optional" docs:"Permission required to use this API (see [error type](/configuration/error-handling#error-types) {beta_insufficient_permissions})." type:"string or object (string)"`
+		RequiredPermission hcl.Expression `hcl:"required_permission,optional" docs:"Permission required to use this API (see [error type](/configuration/error-handling#error-types) {insufficient_permissions})." type:"string or object (string)"`
 	}
 
 	return &Inline{}

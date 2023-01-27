@@ -10,8 +10,11 @@ on:
     types: [ published ]
   workflow_dispatch:
     inputs:
+      docker_tag:
+        description: 'value to use for override the image tag; <tag> will still be used for checkout'
+        required: false
       tag:
-        description: 'git tag'
+        description: 'git tag to checkout'
         required: true
 #        default: ''
 jobs:
@@ -94,7 +97,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
             type=semver,pattern={{major}}.{{minor}}
             type=edge,event=branch
-            type=raw,enable=${{ github.event_name == 'workflow_dispatch' }},value=${{ github.event.inputs.tag }}
+            type=raw,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag != '' }},value=${{ github.event.inputs.docker_tag }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1

@@ -23,18 +23,18 @@ The default value `"*"` can be combined with additional methods. Methods are mat
 allowed_methods = ["GET", "POST"]` or `allowed_methods = ["*", "BREW"]
 ```
 
-### Attribute `beta_required_permission`
+### Attribute `required_permission`
 
-Overrides `beta_required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `beta_required_permission` set or b) either `beta_required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown.
+Overrides `required_permission` in a containing `api` block. If the value is a string, the same permission applies to all request methods. If there are different permissions for different request methods, use an object with the request methods as keys and string values. Methods not specified in this object are not permitted. `"*"` is the key for "all other standard methods". Methods other than `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` must be specified explicitly. A value `""` means "no permission required". For `api` blocks with at least two `endpoint`s, all endpoints must have either a) no `required_permission` set or b) either `required_permission` or `disable_access_control` set. Otherwise, a configuration error is thrown.
 
 **Example:**
 
 ```hcl
-beta_required_permission = "read"
+required_permission = "read"
 # or
-beta_required_permission = { post = "write", "*" = "" }
+required_permission = { post = "write", "*" = "" }
 # or
-beta_required_permission = default(request.path_params.p, "not_set")
+required_permission = default(request.path_params.p, "not_set")
 ```
 
 ::attributes
@@ -48,25 +48,25 @@ values: [
   },
   {
     "default": "",
-    "description": "key/value pairs to add form parameters to the upstream request body",
+    "description": "Key/value pairs to add form parameters to the upstream request body.",
     "name": "add_form_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to add query parameters to the upstream request URL",
+    "description": "Key/value pairs to add query parameters to the upstream request URL.",
     "name": "add_query_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to add as request headers in the upstream request",
+    "description": "Key/value pairs to add as request headers in the upstream request.",
     "name": "add_request_headers",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to add as response headers in the client response",
+    "description": "Key/value pairs to add as response headers in the client response.",
     "name": "add_response_headers",
     "type": "object"
   },
@@ -78,13 +78,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `beta_insufficient_permissions`).",
-    "name": "beta_required_permission",
-    "type": "string or object (string)"
-  },
-  {
-    "default": "",
-    "description": "log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
+    "description": "Log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
   },
@@ -108,55 +102,61 @@ values: [
   },
   {
     "default": "",
-    "description": "list of names to remove form parameters from the upstream request body",
+    "description": "List of names to remove form parameters from the upstream request body.",
     "name": "remove_form_params",
     "type": "object"
   },
   {
     "default": "[]",
-    "description": "list of names to remove query parameters from the upstream request URL",
+    "description": "List of names to remove query parameters from the upstream request URL.",
     "name": "remove_query_params",
     "type": "tuple (string)"
   },
   {
     "default": "[]",
-    "description": "list of names to remove headers from the upstream request",
+    "description": "List of names to remove headers from the upstream request.",
     "name": "remove_request_headers",
     "type": "tuple (string)"
   },
   {
     "default": "[]",
-    "description": "list of names to remove headers from the client response",
+    "description": "List of names to remove headers from the client response.",
     "name": "remove_response_headers",
     "type": "tuple (string)"
   },
   {
     "default": "\"64MiB\"",
-    "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`",
+    "description": "Configures the maximum buffer size while accessing `request.form_body` or `request.json_body` content. Valid units are: `KiB`, `MiB`, `GiB`.",
     "name": "request_body_limit",
     "type": "string"
   },
   {
     "default": "",
-    "description": "key/value pairs to set query parameters in the upstream request URL",
+    "description": "Permission required to use this endpoint (see [error type](/configuration/error-handling#error-types) `insufficient_permissions`).",
+    "name": "required_permission",
+    "type": "string or object (string)"
+  },
+  {
+    "default": "",
+    "description": "Key/value pairs to set query parameters in the upstream request URL.",
     "name": "set_form_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to set query parameters in the upstream request URL",
+    "description": "Key/value pairs to set query parameters in the upstream request URL.",
     "name": "set_query_params",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to set as request headers in the upstream request",
+    "description": "Key/value pairs to set as request headers in the upstream request.",
     "name": "set_request_headers",
     "type": "object"
   },
   {
     "default": "",
-    "description": "key/value pairs to set as response headers in the client response",
+    "description": "Key/value pairs to set as response headers in the client response.",
     "name": "set_response_headers",
     "type": "object"
   },

@@ -44,7 +44,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 			}
 		}
 
-		rp := endpointBody.Attributes["beta_required_permission"]
+		rp := endpointBody.Attributes["required_permission"]
 		if rp != nil {
 			ep.RequiredPermission = rp.Expr
 		}

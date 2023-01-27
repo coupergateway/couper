@@ -8,7 +8,7 @@ gateway instance.
 values: [
   {
     "default": "[]",
-    "description": "Which `X-Forwarded-*` request headers should be accepted to change the [request variables](../variables#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `\"proto\"`, `\"host\"` and `\"port\"`. The port in a `X-Forwarded-Port` header takes precedence over a port in `X-Forwarded-Host`. Affects relative URL values for [`sp_acs_url`](saml) attribute and `redirect_uri` attribute within [`beta_oauth2`](oauth2) and [`oidc`](oidc).",
+    "description": "Which `X-Forwarded-*` request HTTP header fields should be accepted to change the [request variables](../variables#request) `url`, `origin`, `protocol`, `host`, `port`. Valid values: `\"proto\"`, `\"host\"` and `\"port\"`. The port in a `X-Forwarded-Port` header takes precedence over a port in `X-Forwarded-Host`. Affects relative URL values for [`sp_acs_url`](saml) attribute and `redirect_uri` attribute within [`beta_oauth2`](oauth2) and [`oidc`](oidc).",
     "name": "accept_forwarded_url",
     "type": "tuple (string)"
   },

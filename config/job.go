@@ -15,7 +15,7 @@ var (
 
 // Job represents the <Job> object.
 type Job struct {
-	Interval string   `hcl:"interval" docs:"Execution interval" type:"duration"`
+	Interval string   `hcl:"interval" docs:"Execution interval." type:"duration"`
 	Name     string   `hcl:"name,label"`
 	Remain   hcl.Body `hcl:",remain"`
 	Requests Requests `hcl:"request,block" docs:"Configures a [request](/configuration/block/request) (zero or more)."`

@@ -165,7 +165,7 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 	}
 
 	if options.RolesClaim != "" && options.RolesMap == nil {
-		return nil, fmt.Errorf("missing beta_roles_map")
+		return nil, fmt.Errorf("missing roles_map")
 	}
 
 	jwtAC := &JWT{
@@ -257,11 +257,11 @@ func (j *JWT) Validate(req *http.Request) error {
 	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
 	jwtGrantedPermissions := j.getGrantedPermissions(tokenClaims, log)
 
-	grantedPermissions, _ := ctx.Value(request.BetaGrantedPermissions).([]string)
+	grantedPermissions, _ := ctx.Value(request.GrantedPermissions).([]string)
 
 	grantedPermissions = append(grantedPermissions, jwtGrantedPermissions...)
 
-	ctx = context.WithValue(ctx, request.BetaGrantedPermissions, grantedPermissions)
+	ctx = context.WithValue(ctx, request.GrantedPermissions, grantedPermissions)
 
 	*req = *req.WithContext(ctx)
 

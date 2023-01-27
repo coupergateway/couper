@@ -20,7 +20,7 @@ var Definitions = []*Error{
 	AccessControl.Kind("saml2"),
 	AccessControl.Kind("saml2").Kind("saml"),
 
-	AccessControl.Kind("beta_insufficient_permissions").Context("api").Context("endpoint"),
+	AccessControl.Kind("insufficient_permissions").Context("api").Context("endpoint"),
 
 	Backend,
 	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),

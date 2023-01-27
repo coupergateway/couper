@@ -11,15 +11,15 @@ var _ Inline = &Server{}
 
 // Server represents the <Server> object.
 type Server struct {
-	AccessControl        []string    `hcl:"access_control,optional" docs:"[access controls](../access-control) to protect the server. Inherited by nested blocks."`
+	AccessControl        []string    `hcl:"access_control,optional" docs:"The [access controls](../access-control) to protect the server. Inherited by nested blocks."`
 	APIs                 APIs        `hcl:"api,block" docs:"Configures an API (zero or more)."`
-	BasePath             string      `hcl:"base_path,optional" docs:"the path prefix for all requests"`
+	BasePath             string      `hcl:"base_path,optional" docs:"The path prefix for all requests."`
 	CORS                 *CORS       `hcl:"cors,block" docs:"Configures [CORS](/configuration/block/cors) settings (zero or one)."`
-	DisableAccessControl []string    `hcl:"disable_access_control,optional" docs:"disables access controls by name"`
+	DisableAccessControl []string    `hcl:"disable_access_control,optional" docs:"Disables access controls by name."`
 	Endpoints            Endpoints   `hcl:"endpoint,block" docs:"Configures a free [endpoint](/configuration/block/endpoint) (zero or more)."`
-	ErrorFile            string      `hcl:"error_file,optional" docs:"location of the error file template"`
+	ErrorFile            string      `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Files                FilesBlocks `hcl:"files,block" docs:"Configures file serving (zero or more)."`
-	Hosts                []string    `hcl:"hosts,optional" docs:""`
+	Hosts                []string    `hcl:"hosts,optional" docs:"Mandatory, if there is more than one {server} block."`
 	Name                 string      `hcl:"name,label,optional"`
 	Remain               hcl.Body    `hcl:",remain"`
 	SPAs                 SPAs        `hcl:"spa,block" docs:"Configures an SPA (zero or more)."`
