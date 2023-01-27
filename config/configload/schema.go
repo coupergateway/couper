@@ -189,7 +189,7 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema,
 			bodyContent := bodyToContent(body.(*hclsyntax.Body))
 
 			for _, block := range bodyContent.Blocks {
-				if block.Type == errorHandler {
+				if block.Type == errorHandler && len(block.Labels) > 0 {
 					blocks = append(blocks, block)
 				}
 			}
