@@ -96,7 +96,7 @@ jobs:
           tags: |
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
             type=semver,pattern={{major}}.{{minor}}
-            type=edge,event=branch
+            type=edge,branch=master,event=branch,enable=${{ github.event_name != 'workflow_dispatch' }}
             type=raw,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag != '' }},value=${{ github.event.inputs.docker_tag }}
 
       - name: Set up QEMU
