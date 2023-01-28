@@ -134,7 +134,7 @@ jobs:
           push: ${{ GitHub.event_name != 'pull_request' }}
 
       - name: Docker Hub Description
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag == '')
         uses: peter-evans/dockerhub-description@v2
         with:
           readme-filepath: './DOCKER.md'
