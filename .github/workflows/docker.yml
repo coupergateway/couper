@@ -138,8 +138,8 @@ jobs:
         uses: peter-evans/dockerhub-description@v2
         with:
           readme-filepath: './DOCKER.md'
-          username: '${{ matrix.username }}'
-          password: '${{ matrix.password }}'
+          username: ${{ secrets[matrix.username_key] }}
+          password: ${{ secrets[matrix.password_key] }}
           repository: ${{ matrix.image }}
 
   oidc:
