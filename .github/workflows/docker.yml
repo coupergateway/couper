@@ -96,6 +96,8 @@ jobs:
           tags: |
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
             type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}},value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=edge,branch=master,event=branch,enable=${{ github.event_name != 'workflow_dispatch' }}
             type=raw,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag != '' }},value=${{ github.event.inputs.docker_tag }}
 
