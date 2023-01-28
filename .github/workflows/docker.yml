@@ -70,9 +70,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: 'couperio/couper'
-            username_key: DOCKER_COUPERIO_USERNAME
-            password_key: DOCKER_COUPERIO_PASSWORD
+          - image: 'coupergateway/couper'
+            username_key: DOCKER_COUPER_GATEWAY_USERNAME
+            password_key: DOCKER_COUPER_GATEWAY_PASSWORD
           - image: 'avenga/couper'
             username_key: DOCKER_USERNAME
             password_key: DOCKER_PASSWORD
