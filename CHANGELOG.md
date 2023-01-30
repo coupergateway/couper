@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.11.2...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.12.0...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
+
+---
+
+## [1.12.0](https://github.com/avenga/couper/releases/tag/v1.12.0)
 
 * **Added**
   * [`beta_job`](https://docs.couper.io/configuration/block/job) block to describe one or more job `definitions` for simple recurring http tasks ([#610](https://github.com/avenga/couper/pull/610))
@@ -22,8 +26,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Use of [backend-related variables](https://docs.couper.io/configuration/variables#backend) in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) within a [`backend` block](https://docs.couper.io/configuration/block/backend) ([#658](https://github.com/avenga/couper/pull/658))
   * Loop with evaluation error in [`custom_log_fields`](https://docs.couper.io/observation/logging#custom-logging) if log level is `"debug"` ([#659](https://github.com/avenga/couper/pull/659))
   * Removed error message with `couper help` [command](https://docs.couper.io/configuration/command-line) ([#678](https://github.com/avenga/couper/pull/678))
-
----
 
 ## [1.11.2](https://github.com/avenga/couper/releases/tag/v1.11.2)
 
