@@ -70,9 +70,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: 'couperio/couper'
-            username_key: DOCKER_COUPERIO_USERNAME
-            password_key: DOCKER_COUPERIO_PASSWORD
+          - image: 'coupergateway/couper'
+            username_key: DOCKER_COUPER_GATEWAY_USERNAME
+            password_key: DOCKER_COUPER_GATEWAY_PASSWORD
           - image: 'avenga/couper'
             username_key: DOCKER_USERNAME
             password_key: DOCKER_PASSWORD
@@ -85,7 +85,7 @@ jobs:
         uses: actions/checkout@v2
         if: github.event_name == 'workflow_dispatch'
         with:
-          ref: ${{ github.event.inputs.tag }}
+          ref: 'refs/tags/${{ github.event.inputs.tag }}'
 
       - name: Docker meta
         id: meta
@@ -96,7 +96,9 @@ jobs:
           tags: |
             type=semver,pattern={{major}}.{{minor}}.{{patch}}
             type=semver,pattern={{major}}.{{minor}}
-            type=edge,event=branch
+            type=semver,pattern={{major}}.{{minor}}.{{patch}},value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag == '' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag == '' }}
+            type=edge,branch=master,event=branch,enable=${{ github.event_name != 'workflow_dispatch' }}
             type=raw,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag != '' }},value=${{ github.event.inputs.docker_tag }}
 
       - name: Set up QEMU
@@ -134,12 +136,12 @@ jobs:
           push: ${{ GitHub.event_name != 'pull_request' }}
 
       - name: Docker Hub Description
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.docker_tag == '')
         uses: peter-evans/dockerhub-description@v2
         with:
           readme-filepath: './DOCKER.md'
-          username: '${{ matrix.username }}'
-          password: '${{ matrix.password }}'
+          username: ${{ secrets[matrix.username_key] }}
+          password: ${{ secrets[matrix.password_key] }}
           repository: ${{ matrix.image }}
 
   oidc:
