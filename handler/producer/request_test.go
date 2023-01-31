@@ -83,21 +83,21 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 			content.Attributes[tt.attr.Name] = tt.attr
 		}
 
-		requests := producer.Requests{&producer.Request{
-			Backend: backend,
-			Context: content,
-			Name:    "request",
-		}}
-
-		proxies := producer.Proxies{&producer.Proxy{
-			Content:   content,
-			Name:      "proxy",
-			RoundTrip: handler.NewProxy(backend, content, false, logEntry),
-		}}
-
+		producers := []producer.Roundtrip{
+			&producer.Request{
+				Backend: backend,
+				Context: content,
+				Name:    "request",
+			},
+			&producer.Proxy{
+				Content:   content,
+				Name:      "proxy",
+				RoundTrip: handler.NewProxy(backend, content, false, logEntry),
+			},
+		}
 		testNames := []string{"request", "proxy"}
 
-		for i, rt := range []producer.Roundtrip{requests, proxies} {
+		for i, rt := range producers {
 			t.Run(testNames[i]+"_"+tt.name, func(t *testing.T) {
 
 				ctx := eval.NewDefaultContext().WithClientRequest(clientRequest)
@@ -105,7 +105,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 				outreq := clientRequest.WithContext(ctx)
 				outreq.Header.Set("X-Status", strconv.Itoa(tt.reflectStatus))
 
-				result := <-rt.Produce(outreq, nil)
+				result := rt.Produce(outreq)
 
 				if !errors.Equals(tt.expectedErr, result.Err) {
 					t.Fatalf("expected error: %v, got %v", tt.expectedErr, result.Err)

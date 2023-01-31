@@ -2,12 +2,11 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"runtime/debug"
-	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/config/runtime/server"
+	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler/producer"
@@ -49,10 +49,9 @@ type EndpointOptions struct {
 	SendServerTimings bool
 	ServerOpts        *server.Options
 
-	Proxies   producer.Roundtrip
+	Items     sequence.List
+	Producers map[string]producer.Roundtrip
 	Redirect  *producer.Redirect
-	Requests  producer.Roundtrip
-	Sequences producer.Roundtrip
 	Response  *producer.Response
 }
 
@@ -242,6 +241,65 @@ func (e *Endpoint) newRedirect() *http.Response {
 	}
 }
 
+func newChannels(l sequence.List) (inputChannels, outputChannels map[string][]chan *producer.Result) {
+	inputChannels = make(map[string][]chan *producer.Result)
+	outputChannels = make(map[string][]chan *producer.Result)
+	for _, item := range l {
+		fillChannels(item, inputChannels, outputChannels)
+		ch := make(chan *producer.Result, 1)
+		outputChannels[item.Name] = []chan *producer.Result{ch}
+	}
+	return inputChannels, outputChannels
+}
+
+func fillChannels(item *sequence.Item, inputChannels, outputChannels map[string][]chan *producer.Result) {
+	for _, dep := range item.Deps() {
+		ch := make(chan *producer.Result, 1)
+		inputChannels[item.Name] = append(inputChannels[item.Name], ch)
+		outputChannels[dep.Name] = append(outputChannels[dep.Name], ch)
+		fillChannels(dep, inputChannels, outputChannels)
+	}
+}
+
+func drainInputChannels(inputChannels, outputChannels []chan *producer.Result) bool {
+	for _, inCh := range inputChannels {
+		result := <-inCh
+		if result.Err != nil {
+			cErr, ok := result.Err.(*errors.Error)
+			if !ok || !hasSequenceKind(cErr) {
+				result.Err = errors.Sequence.With(cErr)
+			}
+			passToOutputChannels(result, outputChannels)
+			return true
+		}
+	}
+	return false
+}
+
+func hasSequenceKind(cerr *errors.Error) bool {
+	for _, kind := range cerr.Kinds() {
+		if kind == "sequence" {
+			return true
+		}
+	}
+	return false
+}
+
+func passToOutputChannels(result *producer.Result, outputChannels []chan *producer.Result) {
+	for _, outCh := range outputChannels {
+		outCh <- result
+	}
+}
+
+type ResultPanic struct {
+	err   error
+	stack []byte
+}
+
+func (r ResultPanic) Error() string {
+	return fmt.Sprintf("panic: %v\n%s", r.err, string(r.stack))
+}
+
 // produce hands over all possible outgoing requests to the producer interface and reads
 // the backend response results afterwards. Returns first occurred backend error.
 func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
@@ -249,21 +307,30 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 
 	outreq := req.WithContext(context.WithValue(req.Context(), request.ResponseBlock, e.opts.Response != nil))
 
-	trips := []producer.Roundtrip{e.opts.Proxies, e.opts.Requests, e.opts.Sequences}
-	tripCh := make(chan chan *producer.Result, len(trips))
-	for _, trip := range trips {
-		// use-case: just a response block within an endpoint
-		if trip == nil {
-			continue
-		}
+	inputChannels, outputChannels := newChannels(e.opts.Items)
+	for name, prod := range e.opts.Producers {
+		go func(n string, rt producer.Roundtrip, intChs, outChs []chan *producer.Result) {
+			defer func() {
+				if rp := recover(); rp != nil {
+					res := &producer.Result{
+						Err: ResultPanic{
+							err:   fmt.Errorf("%v", rp),
+							stack: debug.Stack(),
+						},
+						RoundTripName: n,
+					}
+					passToOutputChannels(res, outChs)
+				}
+			}()
 
-		tripCh <- trip.Produce(outreq, &sync.Map{})
+			if drainInputChannels(intChs, outChs) {
+				return
+			}
+			res := rt.Produce(outreq)
+			passToOutputChannels(res, outChs)
+		}(name, prod, inputChannels[name], outputChannels[name])
 	}
-	close(tripCh)
-
-	for resultCh := range tripCh {
-		e.readResults(resultCh, results)
-	}
+	readResults(e.opts.Items, outputChannels, results)
 
 	var err error // TODO: prefer default resp err
 	// TODO: additionally log all panic error types
@@ -277,19 +344,12 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	return results, err
 }
 
-func (e *Endpoint) readResults(requestResults producer.Results, beresps producer.ResultMap) {
-	i := 0
-	for r := range requestResults {
-		i++
-		var name string
-		if r != nil {
-			name = r.RoundTripName
+func readResults(items sequence.List, outputChannels map[string][]chan *producer.Result, beresps producer.ResultMap) {
+	for _, item := range items {
+		for _, outCh := range outputChannels[item.Name] {
+			res := <-outCh
+			beresps[item.Name] = res
 		}
-
-		if name == "" {
-			name = strconv.Itoa(i)
-		}
-		beresps[name] = r
 	}
 }
 
@@ -306,7 +366,7 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, err er
 		if p, ok := req.Context().Value(request.RoundTripProxy).(bool); ok && p {
 			serveErr = errors.Proxy.With(err)
 		}
-	case producer.ResultPanic:
+	case ResultPanic:
 		serveErr = errors.Server.With(err)
 	}
 

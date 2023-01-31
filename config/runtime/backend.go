@@ -180,12 +180,12 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 	case *config.OAuth2ReqAuth:
 		return transport.NewOAuth2ReqAuth(evalCtx, impl, memStore, authorizerBackend)
 	case *config.TokenRequest:
-		reqs := producer.Requests{&producer.Request{
+		req := &producer.Request{
 			Backend: authorizerBackend,
 			Context: impl.HCLBody(),
 			Name:    impl.Name,
-		}}
-		return transport.NewTokenRequest(impl, memStore, reqs)
+		}
+		return transport.NewTokenRequest(impl, memStore, req)
 	default:
 		return nil, errors.Configuration.Message("unknown authorizer type")
 	}

@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 
 	hclbody "github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/handler"
@@ -93,10 +93,8 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				ErrorTemplate: errors.DefaultJSON,
 				Context:       remain.Inline.(*hclsyntax.Body),
 				ReqBodyLimit:  1024,
-				Proxies: producer.Proxies{
-					&producer.Proxy{Name: "default", RoundTrip: backend},
-				},
-				Requests: make(producer.Requests, 0),
+				Items:         sequence.List{&sequence.Item{Name: "default"}},
+				Producers:     map[string]producer.Roundtrip{"default": &producer.Proxy{Name: "default", RoundTrip: backend}},
 			}, logger, nil)
 
 			req := httptest.NewRequest(tt.method, "http://couper.io", tt.body)
@@ -217,10 +215,8 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 					ErrorTemplate: errors.DefaultJSON,
 					Context:       &hclsyntax.Body{},
 					ReqBodyLimit:  1024,
-					Proxies: producer.Proxies{
-						&producer.Proxy{Name: "default", RoundTrip: backend},
-					},
-					Requests: make(producer.Requests, 0),
+					Items:         sequence.List{&sequence.Item{Name: "default"}},
+					Producers:     map[string]producer.Roundtrip{"default": &producer.Proxy{Name: "default", RoundTrip: backend}},
 				}, logger, nil)
 
 				var body io.Reader
@@ -340,10 +336,8 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				Context:       helper.NewInlineContext(tc.remain),
 				ErrorTemplate: errors.DefaultJSON,
 				ReqBodyLimit:  1024,
-				Proxies: producer.Proxies{
-					&producer.Proxy{Name: "default", RoundTrip: backend},
-				},
-				Requests: make(producer.Requests, 0),
+				Items:         sequence.List{&sequence.Item{Name: "default"}},
+				Producers:     map[string]producer.Roundtrip{"default": &producer.Proxy{Name: "default", RoundTrip: backend}},
 			}, logger, nil)
 
 			req := httptest.NewRequest(http.MethodPost, "http://localhost/", bytes.NewReader(clientPayload))
@@ -390,29 +384,23 @@ type mockProducerResult struct {
 	rt http.RoundTripper
 }
 
-func (m *mockProducerResult) Produce(r *http.Request, _ *sync.Map) chan *producer.Result {
-	result := make(chan *producer.Result, 1)
-	defer close(result)
-
+func (m *mockProducerResult) Produce(r *http.Request) *producer.Result {
 	if m == nil || m.rt == nil {
-		return result
+		return nil
 	}
 
 	res, err := m.rt.RoundTrip(r)
-	result <- &producer.Result{
+	return &producer.Result{
 		RoundTripName: "default",
 		Beresp:        res,
 		Err:           err,
 	}
-	return result
 }
 
-func (m *mockProducerResult) Len() int {
-	return 1
+func (m *mockProducerResult) GetPreviousSequence() string {
+	return ""
 }
-
-func (m *mockProducerResult) Names() []string {
-	return []string{"default"}
+func (m *mockProducerResult) SetPreviousSequence(ps string) {
 }
 
 func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
@@ -441,8 +429,8 @@ func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
 		Context:       &hclsyntax.Body{},
 		ErrorTemplate: errors.DefaultJSON,
-		Proxies:       &mockProducerResult{},
-		Requests:      mockProducer,
+		Items:         sequence.List{&sequence.Item{Name: "default"}},
+		Producers:     map[string]producer.Roundtrip{"default": mockProducer},
 	}, log.WithContext(context.Background()), nil)
 
 	ctx := context.Background()
@@ -494,8 +482,8 @@ func TestEndpoint_ServeHTTP_Cancel(t *testing.T) {
 	ep := handler.NewEndpoint(&handler.EndpointOptions{
 		Context:       &hclsyntax.Body{},
 		ErrorTemplate: errors.DefaultJSON,
-		Proxies:       &mockProducerResult{},
-		Requests:      mockProducer,
+		Items:         sequence.List{&sequence.Item{Name: "default"}},
+		Producers:     map[string]producer.Roundtrip{"default": mockProducer},
 	}, log.WithContext(ctx), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "https://couper.io/", nil)
