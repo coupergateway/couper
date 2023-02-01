@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+* **Added**
+  * [`can()` function](https://docs.couper.io/configuration/functions) ([#699](https://github.com/avenga/couper/pull/699))
+
 ---
 
 ## [1.12.0](https://github.com/avenga/couper/releases/tag/v1.12.0)
