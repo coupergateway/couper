@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/ext/tryfunc"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 	"github.com/zclconf/go-cty/cty"
@@ -663,6 +664,7 @@ func newFunctionsMap() map[string]function.Function {
 	return map[string]function.Function{
 		"base64_decode":    lib.Base64DecodeFunc,
 		"base64_encode":    lib.Base64EncodeFunc,
+		"can":              tryfunc.CanFunc,
 		"coalesce":         lib.DefaultFunc,
 		"contains":         stdlib.ContainsFunc,
 		"default":          lib.DefaultFunc,
