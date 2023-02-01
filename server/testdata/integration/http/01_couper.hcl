@@ -6,6 +6,12 @@ server "first" {
       backend = "b1"
     }
   }
+
+  endpoint "/empty" {
+    response {
+      status = 204
+    }
+  }
 }
 
 settings {

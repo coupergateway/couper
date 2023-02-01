@@ -960,6 +960,17 @@ func TestHTTPServer_ServerTiming(t *testing.T) {
 	if s := strings.Join(dataCouper2, " "); !exp2.MatchString(s) {
 		t.Errorf("Unexpected header from 'second' Couper: %s", s)
 	}
+
+	req, err = http.NewRequest(http.MethodGet, "http://anyserver:9090/empty", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	headers = res.Header.Values("Server-Timing")
+	if l := len(headers); l != 0 {
+		t.Fatalf("Unexpected number of headers: %d", l)
+	}
 }
 
 func TestHTTPServer_CVE_2022_2880(t *testing.T) {
