@@ -144,14 +144,19 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 		return nil, diags
 	}
 
+	var watchFiles configfile.Files
+
 	for _, body := range parsedBodies {
-		if err = absolutizePaths(body); err != nil {
+		files, err := absolutizePaths(body)
+		if err != nil {
 			return nil, err
 		}
 
 		if err = validateBody(body, false); err != nil {
 			return nil, err
 		}
+
+		watchFiles = append(watchFiles, files...)
 	}
 
 	settingsBlock := mergeSettings(parsedBodies)
@@ -183,6 +188,8 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 	if err != nil {
 		return nil, err
 	}
+
+	conf.Files = append(conf.Files, watchFiles...)
 
 	return conf, nil
 }
@@ -223,7 +230,8 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf.Files = configFiles
+
+	conf.Files = append(configFiles, conf.Files...)
 
 	return conf, nil
 }
@@ -532,8 +540,12 @@ func checkPermissionMixedConfig(apiConfig *config.API) error {
 	return nil
 }
 
-func absolutizePaths(fileBody *hclsyntax.Body) error {
+func absolutizePaths(fileBody *hclsyntax.Body) ([]configfile.File, error) {
+	const watchFilePrefix = "COUPER-WATCH-FILE: "
+
 	visitor := func(node hclsyntax.Node) hcl.Diagnostics {
+		var watchFile string
+
 		attribute, ok := node.(*hclsyntax.Attribute)
 		if !ok {
 			return nil
@@ -559,28 +571,55 @@ func absolutizePaths(fileBody *hclsyntax.Body) error {
 
 			filePath = strings.TrimPrefix(filePath, "file:")
 			if path.IsAbs(filePath) {
-				return nil
-			}
+				watchFile = filePath
+			} else {
+				watchFile = filepath.ToSlash(path.Join(filepath.Dir(basePath), filePath))
 
-			absolutePath = "file:" + filepath.ToSlash(path.Join(filepath.Dir(basePath), filePath))
+				absolutePath = "file:" + watchFile
+			}
 		} else {
 			if filepath.IsAbs(filePath) {
-				return nil
+				watchFile = filePath
+			} else {
+				watchFile = filepath.Join(filepath.Dir(basePath), filePath)
+
+				absolutePath = watchFile
 			}
-			absolutePath = filepath.Join(filepath.Dir(basePath), filePath)
 		}
 
-		attribute.Expr = &hclsyntax.LiteralValueExpr{
-			Val:      cty.StringVal(absolutePath),
-			SrcRange: attribute.SrcRange,
+		if absolutePath != "" {
+			attribute.Expr = &hclsyntax.LiteralValueExpr{
+				Val:      cty.StringVal(absolutePath),
+				SrcRange: attribute.SrcRange,
+			}
 		}
 
-		return nil
+		return hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  fmt.Sprintf("%s%s", watchFilePrefix, watchFile),
+		}}
 	}
 
 	diags := hclsyntax.VisitAll(fileBody, visitor)
-	if diags.HasErrors() {
-		return diags
+
+	var (
+		newDiags   hcl.Diagnostics
+		watchFiles []configfile.File
+	)
+
+	for _, diag := range diags {
+		if diag.Severity == hcl.DiagWarning && strings.HasPrefix(diag.Summary, watchFilePrefix) {
+			watchFiles = append(watchFiles, configfile.File{
+				Path: strings.TrimPrefix(diag.Summary, watchFilePrefix),
+			})
+		} else {
+			newDiags.Append(diag)
+		}
 	}
-	return nil
+
+	if newDiags.HasErrors() {
+		return nil, newDiags
+	}
+
+	return watchFiles, nil
 }
