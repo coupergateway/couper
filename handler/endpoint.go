@@ -173,7 +173,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if e.opts.SendServerTimings {
-		rw.Header().Add(serverTimingHeader, getServerTimings(clientres.Header, beresps))
+		st := getServerTimings(clientres.Header, beresps)
+		if st != "" {
+			rw.Header().Add(serverTimingHeader, st)
+		}
 	}
 
 	// copy/write like a reverseProxy
@@ -196,6 +199,10 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func getServerTimings(headers http.Header, beresps producer.ResultMap) string {
+	if len(beresps) == 0 {
+		return ""
+	}
+
 	serverTimings := make(utils.ServerTimings)
 
 	for _, h := range headers.Values(serverTimingHeader) {
