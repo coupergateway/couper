@@ -5,7 +5,7 @@
 Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Fixed**
-  * url scheme while using the [`tls` block](https://docs.couper.io/configuration/block/server_tls) ([703](https://github.com/avenga/couper/issues/703))
+  * url scheme while using the [`tls` block](https://docs.couper.io/configuration/block/server_tls) ([#703](https://github.com/avenga/couper/issues/703))
 
 ---
 
