@@ -52,30 +52,31 @@ func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClie
 
 // validateTokenResponseData validates the token response data
 func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenResponseData map[string]interface{}, hashedVerifierValue, verifierValue, accessToken string) error {
-	if idTokenString, ok := tokenResponseData["id_token"].(string); ok {
-		idTokenClaims := jwt.MapClaims{}
-		_, err := o.jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.Keyfunc)
-		if err != nil {
-			return err
-		}
-
-		// treat token claims as map for context
-		tokenResponseData["id_token_claims"] = map[string]interface{}(idTokenClaims)
-
-		var userinfo map[string]interface{}
-		userinfo, err = o.validateIDTokenClaims(ctx, idTokenClaims, hashedVerifierValue, verifierValue, accessToken)
-		if err != nil {
-			return err
-		}
-
-		if userinfo != nil {
-			tokenResponseData["userinfo"] = userinfo
-		}
-
-		return nil
+	idTokenString, ok := tokenResponseData["id_token"].(string)
+	if !ok {
+		return errors.Oauth2.Message("missing id_token in token response")
 	}
 
-	return errors.Oauth2.Message("missing id_token in token response")
+	idTokenClaims := jwt.MapClaims{}
+	_, err := o.jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.Keyfunc)
+	if err != nil {
+		return err
+	}
+
+	// treat token claims as map for context
+	tokenResponseData["id_token_claims"] = map[string]interface{}(idTokenClaims)
+
+	var userinfo map[string]interface{}
+	userinfo, err = o.validateIDTokenClaims(ctx, idTokenClaims, hashedVerifierValue, verifierValue, accessToken)
+	if err != nil {
+		return err
+	}
+
+	if userinfo != nil {
+		tokenResponseData["userinfo"] = userinfo
+	}
+
+	return nil
 }
 
 func (o *OidcClient) Keyfunc(token *jwt.Token) (interface{}, error) {
