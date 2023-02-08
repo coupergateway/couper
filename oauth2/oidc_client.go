@@ -59,15 +59,18 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 			return err
 		}
 
+		// treat token claims as map for context
+		tokenResponseData["id_token_claims"] = map[string]interface{}(idTokenClaims)
+
 		var userinfo map[string]interface{}
 		userinfo, err = o.validateIDTokenClaims(ctx, idTokenClaims, hashedVerifierValue, verifierValue, accessToken)
 		if err != nil {
 			return err
 		}
 
-		// treat token claims as map for context
-		tokenResponseData["id_token_claims"] = map[string]interface{}(idTokenClaims)
-		tokenResponseData["userinfo"] = userinfo
+		if userinfo != nil {
+			tokenResponseData["userinfo"] = userinfo
+		}
 
 		return nil
 	}
@@ -165,7 +168,19 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, idTokenClaims jw
 		}
 	}
 
-	userinfoData, subUserinfo, err := o.getUserinfo(ctx, accessToken)
+	userinfoEndpoint, err := o.config.GetUserinfoEndpoint()
+	if err != nil {
+		return nil, err
+	}
+
+	// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+	// userinfo_endpoint
+    //     RECOMMENDED. URL of the OP's UserInfo Endpoint
+	if userinfoEndpoint == "" {
+		return nil, nil
+	}
+
+	userinfoData, subUserinfo, err := o.getUserinfo(ctx, userinfoEndpoint, accessToken)
 	if err != nil {
 		return nil, errors.Oauth2.Message("userinfo request error").With(err)
 	}
@@ -181,8 +196,8 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, idTokenClaims jw
 	return userinfoData, nil
 }
 
-func (o *OidcClient) getUserinfo(ctx context.Context, accessToken string) (map[string]interface{}, string, error) {
-	userinfoReq, err := o.newUserinfoRequest(ctx, accessToken)
+func (o *OidcClient) getUserinfo(ctx context.Context, userinfoEndpoint, accessToken string) (map[string]interface{}, string, error) {
+	userinfoReq, err := o.newUserinfoRequest(ctx, userinfoEndpoint, accessToken)
 	if err != nil {
 		return nil, "", err
 	}
@@ -232,12 +247,7 @@ func parseUserinfoResponse(userinfoResponse []byte) (map[string]interface{}, str
 	return userinfoData, sub, nil
 }
 
-func (o *OidcClient) newUserinfoRequest(ctx context.Context, accessToken string) (*http.Request, error) {
-	userinfoEndpoint, err := o.config.GetUserinfoEndpoint()
-	if err != nil {
-		return nil, err
-	}
-
+func (o *OidcClient) newUserinfoRequest(ctx context.Context, userinfoEndpoint, accessToken string) (*http.Request, error) {
 	outreq, err := http.NewRequest(http.MethodGet, userinfoEndpoint, nil)
 	if err != nil {
 		return nil, err
