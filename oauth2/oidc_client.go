@@ -176,7 +176,7 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, idTokenClaims jw
 
 	// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
 	// userinfo_endpoint
-    //     RECOMMENDED. URL of the OP's UserInfo Endpoint
+	//     RECOMMENDED. URL of the OP's UserInfo Endpoint
 	if userinfoEndpoint == "" {
 		return nil, nil
 	}
