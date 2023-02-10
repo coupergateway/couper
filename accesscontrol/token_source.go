@@ -13,70 +13,70 @@ import (
 )
 
 const (
-	Invalid TokenSourceType = iota
-	Cookie
-	Header
-	Value
+	Invalid tokenSourceType = iota
+	cookieType
+	headerType
+	valueType
 )
 
 type (
-	TokenSourceType uint8
-	TokenSource     struct {
+	tokenSourceType uint8
+	tokenSource     struct {
 		Expr hcl.Expression
 		Name string
-		Type TokenSourceType
+		Type tokenSourceType
 	}
 )
 
-func NewTokenSource(cookie, header string, value hcl.Expression) TokenSource {
+func newTokenSource(cookie, header string, value hcl.Expression) tokenSource {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
 	if value != nil {
 		v, _ := value.Value(nil)
 		if !v.IsNull() {
 			if h != "" || c != "" {
-				return TokenSource{}
+				return tokenSource{}
 			}
 
-			return TokenSource{
+			return tokenSource{
 				Name: "",
-				Type: Value,
+				Type: valueType,
 				Expr: value,
 			}
 		}
 	}
 	if c != "" && h == "" {
-		return TokenSource{
+		return tokenSource{
 			Name: c,
-			Type: Cookie,
+			Type: cookieType,
 		}
 	}
 	if h != "" && c == "" {
-		return TokenSource{
+		return tokenSource{
 			Name: h,
-			Type: Header,
+			Type: headerType,
 		}
 	}
 	if h == "" && c == "" {
-		return TokenSource{
+		return tokenSource{
 			Name: "Authorization",
-			Type: Header,
+			Type: headerType,
 		}
 	}
-	return TokenSource{}
+	return tokenSource{}
 }
 
-func (s TokenSource) TokenValue(req *http.Request) (string, error) {
+func (s tokenSource) TokenValue(req *http.Request) (string, error) {
 	var tokenValue string
 	var err error
 
 	switch s.Type {
-	case Cookie:
+	case cookieType:
 		cookie, cerr := req.Cookie(s.Name)
 		if cerr != http.ErrNoCookie && cookie != nil {
 			tokenValue = cookie.Value
 		}
-	case Header:
+	case headerType:
 		if strings.ToLower(s.Name) == "authorization" {
 			if tokenValue = req.Header.Get(s.Name); tokenValue != "" {
 				if tokenValue, err = getBearer(tokenValue); err != nil {
@@ -86,7 +86,7 @@ func (s TokenSource) TokenValue(req *http.Request) (string, error) {
 		} else {
 			tokenValue = req.Header.Get(s.Name)
 		}
-	case Value:
+	case valueType:
 		requestContext := eval.ContextFromRequest(req).HCLContext()
 		value, err := eval.Value(requestContext, s.Expr)
 		if err != nil {
