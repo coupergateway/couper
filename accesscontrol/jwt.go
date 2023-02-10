@@ -82,6 +82,51 @@ func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
 	return JWTSource{}
 }
 
+func (s JWTSource) TokenValue(req *http.Request) (string, error) {
+	var tokenValue string
+	var err error
+
+	switch s.Type {
+	case Cookie:
+		cookie, cerr := req.Cookie(s.Name)
+		if cerr != http.ErrNoCookie && cookie != nil {
+			tokenValue = cookie.Value
+		}
+	case Header:
+		if strings.ToLower(s.Name) == "authorization" {
+			if tokenValue = req.Header.Get(s.Name); tokenValue != "" {
+				if tokenValue, err = getBearer(tokenValue); err != nil {
+					return "", errors.JwtTokenMissing.With(err)
+				}
+			}
+		} else {
+			tokenValue = req.Header.Get(s.Name)
+		}
+	case Value:
+		requestContext := eval.ContextFromRequest(req).HCLContext()
+		value, err := eval.Value(requestContext, s.Expr)
+		if err != nil {
+			return "", err
+		}
+
+		tokenValue = seetie.ValueToString(value)
+	}
+
+	if tokenValue == "" {
+		return "", errors.JwtTokenMissing.Message("token required")
+	}
+
+	return tokenValue, nil
+}
+
+func getBearer(val string) (string, error) {
+	const bearer = "bearer "
+	if strings.HasPrefix(strings.ToLower(val), bearer) {
+		return strings.Trim(val[len(bearer):], " "), nil
+	}
+	return "", fmt.Errorf("bearer required with authorization header")
+}
+
 type JWTOptions struct {
 	Algorithm             string
 	Claims                hcl.Expression
@@ -241,37 +286,9 @@ func (j *JWT) DisablePrivateCaching() bool {
 
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
-	var tokenValue string
-	var err error
-
-	switch j.source.Type {
-	case Cookie:
-		cookie, cerr := req.Cookie(j.source.Name)
-		if cerr != http.ErrNoCookie && cookie != nil {
-			tokenValue = cookie.Value
-		}
-	case Header:
-		if strings.ToLower(j.source.Name) == "authorization" {
-			if tokenValue = req.Header.Get(j.source.Name); tokenValue != "" {
-				if tokenValue, err = getBearer(tokenValue); err != nil {
-					return errors.JwtTokenMissing.With(err)
-				}
-			}
-		} else {
-			tokenValue = req.Header.Get(j.source.Name)
-		}
-	case Value:
-		requestContext := eval.ContextFromRequest(req).HCLContext()
-		value, diags := eval.Value(requestContext, j.source.Expr)
-		if diags != nil {
-			return diags
-		}
-
-		tokenValue = seetie.ValueToString(value)
-	}
-
-	if tokenValue == "" {
-		return errors.JwtTokenMissing.Message("token required")
+	tokenValue, err := j.source.TokenValue(req)
+	if err != nil {
+		return err
 	}
 
 	expectedClaims, err := j.getConfiguredClaims(req)
@@ -551,12 +568,4 @@ func addPermission(permissions []string, permission string) ([]string, bool) {
 		}
 	}
 	return append(permissions, permission), true
-}
-
-func getBearer(val string) (string, error) {
-	const bearer = "bearer "
-	if strings.HasPrefix(strings.ToLower(val), bearer) {
-		return strings.Trim(val[len(bearer):], " "), nil
-	}
-	return "", fmt.Errorf("bearer required with authorization header")
 }
