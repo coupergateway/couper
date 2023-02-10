@@ -4215,6 +4215,9 @@ func TestFunctions(t *testing.T) {
 		{"trim", "/v1/trim", map[string]string{
 			"X-Trim": "foo \tbar",
 		}, http.StatusOK},
+		{"can", "/v1/can", map[string]string{
+			"X-Can": `{"method":"GET","path":"/v1/can"}`,
+		}, http.StatusOK},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
