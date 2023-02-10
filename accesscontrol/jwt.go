@@ -288,26 +288,28 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 // getConfiguredClaims evaluates the expected claim values from the configuration, and especially iss and aud
 func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, error) {
 	claims := make(map[string]interface{})
-	if j.claims != nil {
-		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
-		if verr != nil {
-			return nil, verr
-		}
-		claims = seetie.ValueToMap(val)
+	if j.claims == nil { // tests only
+		return claims, nil
+	}
 
-		var ok bool
-		if issVal, exists := claims["iss"]; exists {
-			_, ok = issVal.(string)
-			if !ok {
-				return nil, errors.Configuration.Message("invalid value type, string expected (claims / iss)")
-			}
-		}
+	val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
+	if verr != nil {
+		return nil, verr
+	}
+	claims = seetie.ValueToMap(val)
 
-		if audVal, exists := claims["aud"]; exists {
-			_, ok = audVal.(string)
-			if !ok {
-				return nil, errors.Configuration.Message("invalid value type, string expected (claims / aud)")
-			}
+	var ok bool
+	if issVal, exists := claims["iss"]; exists {
+		_, ok = issVal.(string)
+		if !ok {
+			return nil, errors.Configuration.Message("invalid value type, string expected (claims / iss)")
+		}
+	}
+
+	if audVal, exists := claims["aud"]; exists {
+		_, ok = audVal.(string)
+		if !ok {
+			return nil, errors.Configuration.Message("invalid value type, string expected (claims / aud)")
 		}
 	}
 
