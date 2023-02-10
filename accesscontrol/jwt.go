@@ -296,6 +296,11 @@ func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, er
 	if verr != nil {
 		return nil, verr
 	}
+
+	if val.IsNull() { // claims not configured
+		return claims, nil
+	}
+
 	claims = seetie.ValueToMap(val)
 
 	var ok bool
