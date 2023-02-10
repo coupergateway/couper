@@ -578,15 +578,14 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	log *logrus.Entry, memStore *cache.MemoryStore) (*ac.JWT, error) {
 	var (
-		jwt                      *ac.JWT
-		err                      error
-		rolesMap, permissionsMap map[string][]string
+		jwt *ac.JWT
+		err error
 	)
-	rolesMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt roles map", jwtConf.RolesMap, jwtConf.RolesMapFile)
+	jwtConf.RolesMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt roles map", jwtConf.RolesMap, jwtConf.RolesMapFile)
 	if err != nil {
 		return nil, err
 	}
-	permissionsMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt permissions map", jwtConf.PermissionsMap, jwtConf.PermissionsMapFile)
+	jwtConf.PermissionsMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt permissions map", jwtConf.PermissionsMap, jwtConf.PermissionsMapFile)
 	if err != nil {
 		return nil, err
 	}
@@ -596,9 +595,9 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 		DisablePrivateCaching: jwtConf.DisablePrivateCaching,
 		Name:                  jwtConf.Name,
 		RolesClaim:            jwtConf.RolesClaim,
-		RolesMap:              rolesMap,
+		RolesMap:              jwtConf.RolesMap,
 		PermissionsClaim:      jwtConf.PermissionsClaim,
-		PermissionsMap:        permissionsMap,
+		PermissionsMap:        jwtConf.PermissionsMap,
 		Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 	}
 	if jwtConf.JWKsURL != "" {
