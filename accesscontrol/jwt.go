@@ -138,7 +138,6 @@ type JWTOptions struct {
 	PermissionsClaim      string
 	PermissionsMap        map[string][]string
 	Source                JWTSource
-	Key                   []byte
 }
 
 type JWT struct {
@@ -159,7 +158,7 @@ type JWT struct {
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(options *JWTOptions) (*JWT, error) {
+func NewJWT(options *JWTOptions, key []byte) (*JWT, error) {
 	jwtAC, err := newJWT(options)
 	if err != nil {
 		return nil, err
@@ -173,11 +172,11 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 	jwtAC.parser = newParser([]acjwt.Algorithm{jwtAC.algorithm})
 
 	if jwtAC.algorithm.IsHMAC() {
-		jwtAC.hmacSecret = options.Key
+		jwtAC.hmacSecret = key
 		return jwtAC, nil
 	}
 
-	pubKey, err := parsePublicPEMKey(options.Key)
+	pubKey, err := parsePublicPEMKey(key)
 	if err != nil {
 		return nil, err
 	}

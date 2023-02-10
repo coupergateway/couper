@@ -614,8 +614,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 		}
 
 		jwtOptions.Algorithm = jwtConf.SignatureAlgorithm
-		jwtOptions.Key = key
-		jwt, err = ac.NewJWT(jwtOptions)
+		jwt, err = ac.NewJWT(jwtOptions, key)
 	}
 	if err != nil {
 		return nil, err

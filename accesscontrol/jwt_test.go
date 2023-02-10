@@ -127,9 +127,8 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 					Claims:         tt.fields.claims,
 					ClaimsRequired: tt.fields.claimsRequired,
 					Name:           "test_ac",
-					Key:            key,
 					Source:         ac.NewJWTSource("", "Authorization", nil),
-				})
+				}, key)
 				if jerr != nil {
 					if tt.wantErr != jerr.Error() {
 						subT.Errorf("error: %v, want: %v", jerr.Error(), tt.wantErr)
@@ -296,8 +295,7 @@ func Test_JWT_Validate(t *testing.T) {
 					ClaimsRequired: tt.fields.claimsRequired,
 					Name:           "test_ac",
 					Source:         tt.fields.source,
-					Key:            tt.fields.pubKey,
-				})
+				}, tt.fields.pubKey)
 				if err != nil {
 					subT.Error(err)
 					return
@@ -620,8 +618,7 @@ func Test_JWT_yields_permissions(t *testing.T) {
 				RolesClaim:       tt.rolesClaim,
 				RolesMap:         rolesMap,
 				Source:           source,
-				Key:              pubKeyBytes,
-			})
+			}, pubKeyBytes)
 			if err != nil {
 				subT.Fatal(err)
 			}
