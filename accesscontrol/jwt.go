@@ -139,7 +139,6 @@ type JWTOptions struct {
 	PermissionsMap        map[string][]string
 	Source                JWTSource
 	Key                   []byte
-	JWKS                  *jwk.JWKS
 }
 
 type JWT struct {
@@ -225,19 +224,19 @@ func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
 	return pubKey, nil
 }
 
-func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
+func NewJWTFromJWKS(options *JWTOptions, jwks *jwk.JWKS) (*JWT, error) {
+	if jwks == nil {
+		return nil, fmt.Errorf("invalid JWKS")
+	}
+
 	jwtAC, err := newJWT(options)
 	if err != nil {
 		return nil, err
 	}
 
-	if options.JWKS == nil {
-		return nil, fmt.Errorf("invalid JWKS")
-	}
-
 	algorithms := append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
 	jwtAC.parser = newParser(algorithms)
-	jwtAC.jwks = options.JWKS
+	jwtAC.jwks = jwks
 
 	return jwtAC, nil
 }

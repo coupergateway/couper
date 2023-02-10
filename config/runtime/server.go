@@ -606,8 +606,7 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 			return nil, jerr
 		}
 
-		jwtOptions.JWKS = jwks
-		jwt, err = ac.NewJWTFromJWKS(jwtOptions)
+		jwt, err = ac.NewJWTFromJWKS(jwtOptions, jwks)
 	} else {
 		key, kerr := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 		if kerr != nil {
