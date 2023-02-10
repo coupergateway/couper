@@ -477,7 +477,7 @@ func (j *JWT) addPermissionsFromPermissionsClaim(tokenClaims jwt.MapClaims, perm
 	return permissions
 }
 
-func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []string {
+func getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []string {
 	var roleValues []string
 	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
 	rolesArray, ok := rolesClaimValue.([]interface{})
@@ -512,7 +512,7 @@ func (j *JWT) addPermissionsFromRoles(tokenClaims jwt.MapClaims, permissions []s
 		return permissions
 	}
 
-	roleValues := j.getRoleValues(rolesClaimValue, log)
+	roleValues := getRoleValues(rolesClaimValue, log)
 	for _, r := range roleValues {
 		if perms, exist := j.rolesMap[r]; exist {
 			for _, p := range perms {
