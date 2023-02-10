@@ -44,38 +44,6 @@ type (
 	}
 )
 
-type JWT struct {
-	algorithm             acjwt.Algorithm
-	claims                hcl.Expression
-	claimsRequired        []string
-	disablePrivateCaching bool
-	source                JWTSource
-	hmacSecret            []byte
-	name                  string
-	parser                *jwt.Parser
-	pubKey                interface{}
-	rolesClaim            string
-	rolesMap              map[string][]string
-	permissionsClaim      string
-	permissionsMap        map[string][]string
-	jwks                  *jwk.JWKS
-}
-
-type JWTOptions struct {
-	Algorithm             string
-	Claims                hcl.Expression
-	ClaimsRequired        []string
-	DisablePrivateCaching bool
-	Name                  string // TODO: more generic (validate)
-	RolesClaim            string
-	RolesMap              map[string][]string
-	PermissionsClaim      string
-	PermissionsMap        map[string][]string
-	Source                JWTSource
-	Key                   []byte
-	JWKS                  *jwk.JWKS
-}
-
 func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
@@ -114,6 +82,38 @@ func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
 	return JWTSource{}
 }
 
+type JWTOptions struct {
+	Algorithm             string
+	Claims                hcl.Expression
+	ClaimsRequired        []string
+	DisablePrivateCaching bool
+	Name                  string // TODO: more generic (validate)
+	RolesClaim            string
+	RolesMap              map[string][]string
+	PermissionsClaim      string
+	PermissionsMap        map[string][]string
+	Source                JWTSource
+	Key                   []byte
+	JWKS                  *jwk.JWKS
+}
+
+type JWT struct {
+	algorithm             acjwt.Algorithm
+	claims                hcl.Expression
+	claimsRequired        []string
+	disablePrivateCaching bool
+	source                JWTSource
+	hmacSecret            []byte
+	name                  string
+	parser                *jwt.Parser
+	pubKey                interface{}
+	rolesClaim            string
+	rolesMap              map[string][]string
+	permissionsClaim      string
+	permissionsMap        map[string][]string
+	jwks                  *jwk.JWKS
+}
+
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
 func NewJWT(options *JWTOptions) (*JWT, error) {
 	jwtAC, err := newJWT(options)
@@ -140,6 +140,44 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 
 	jwtAC.pubKey = pubKey
 	return jwtAC, nil
+}
+
+// parsePublicPEMKey tries to parse all supported publicKey variations which
+// must be given in PEM encoded format.
+func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
+	pemBlock, _ := pem.Decode(key)
+	if pemBlock == nil {
+		return nil, jwt.ErrKeyMustBePEMEncoded
+	}
+	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
+	if pubErr != nil {
+		pkixKey, pkerr := x509.ParsePKIXPublicKey(pemBlock.Bytes)
+		if pkerr != nil {
+			cert, cerr := x509.ParseCertificate(pemBlock.Bytes)
+			if cerr != nil {
+				return nil, jwt.ErrNotRSAPublicKey
+			}
+			if k, ok := cert.PublicKey.(*rsa.PublicKey); ok {
+				return k, nil
+			}
+			if k, ok := cert.PublicKey.(*ecdsa.PublicKey); ok {
+				return k, nil
+			}
+
+			return nil, fmt.Errorf("invalid RSA/ECDSA public key")
+		}
+
+		if k, ok := pkixKey.(*rsa.PublicKey); ok {
+			return k, nil
+		}
+
+		if k, ok := pkixKey.(*ecdsa.PublicKey); ok {
+			return k, nil
+		}
+
+		return nil, fmt.Errorf("invalid RSA/ECDSA public key")
+	}
+	return pubKey, nil
 }
 
 func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
@@ -180,6 +218,21 @@ func newJWT(options *JWTOptions) (*JWT, error) {
 		source:                options.Source,
 	}
 	return jwtAC, nil
+}
+
+// newParser creates a new parser
+func newParser(algos []acjwt.Algorithm) *jwt.Parser {
+	var algorithms []string
+	for _, a := range algos {
+		algorithms = append(algorithms, a.String())
+	}
+	options := []jwt.ParserOption{
+		jwt.WithValidMethods(algorithms),
+		// no equivalent in new lib
+		// jwt.WithLeeway(time.Second),
+	}
+
+	return jwt.NewParser(options...)
 }
 
 func (j *JWT) DisablePrivateCaching() bool {
@@ -506,57 +559,4 @@ func getBearer(val string) (string, error) {
 		return strings.Trim(val[len(bearer):], " "), nil
 	}
 	return "", fmt.Errorf("bearer required with authorization header")
-}
-
-// newParser creates a new parser
-func newParser(algos []acjwt.Algorithm) *jwt.Parser {
-	var algorithms []string
-	for _, a := range algos {
-		algorithms = append(algorithms, a.String())
-	}
-	options := []jwt.ParserOption{
-		jwt.WithValidMethods(algorithms),
-		// no equivalent in new lib
-		// jwt.WithLeeway(time.Second),
-	}
-
-	return jwt.NewParser(options...)
-}
-
-// parsePublicPEMKey tries to parse all supported publicKey variations which
-// must be given in PEM encoded format.
-func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
-	pemBlock, _ := pem.Decode(key)
-	if pemBlock == nil {
-		return nil, jwt.ErrKeyMustBePEMEncoded
-	}
-	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
-	if pubErr != nil {
-		pkixKey, pkerr := x509.ParsePKIXPublicKey(pemBlock.Bytes)
-		if pkerr != nil {
-			cert, cerr := x509.ParseCertificate(pemBlock.Bytes)
-			if cerr != nil {
-				return nil, jwt.ErrNotRSAPublicKey
-			}
-			if k, ok := cert.PublicKey.(*rsa.PublicKey); ok {
-				return k, nil
-			}
-			if k, ok := cert.PublicKey.(*ecdsa.PublicKey); ok {
-				return k, nil
-			}
-
-			return nil, fmt.Errorf("invalid RSA/ECDSA public key")
-		}
-
-		if k, ok := pkixKey.(*rsa.PublicKey); ok {
-			return k, nil
-		}
-
-		if k, ok := pkixKey.(*ecdsa.PublicKey); ok {
-			return k, nil
-		}
-
-		return nil, fmt.Errorf("invalid RSA/ECDSA public key")
-	}
-	return pubKey, nil
 }
