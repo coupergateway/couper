@@ -17,6 +17,7 @@ import (
 
 	"github.com/avenga/couper/accesscontrol/jwk"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
@@ -127,19 +128,6 @@ func getBearer(val string) (string, error) {
 	return "", fmt.Errorf("bearer required with authorization header")
 }
 
-type JWTOptions struct {
-	Algorithm             string
-	Claims                hcl.Expression
-	ClaimsRequired        []string
-	DisablePrivateCaching bool
-	Name                  string // TODO: more generic (validate)
-	RolesClaim            string
-	RolesMap              map[string][]string
-	PermissionsClaim      string
-	PermissionsMap        map[string][]string
-	Source                JWTSource
-}
-
 type JWT struct {
 	algorithm             acjwt.Algorithm
 	claims                hcl.Expression
@@ -158,15 +146,15 @@ type JWT struct {
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(options *JWTOptions, key []byte) (*JWT, error) {
-	jwtAC, err := newJWT(options)
+func NewJWT(jwtConf *config.JWT, key []byte) (*JWT, error) {
+	jwtAC, err := newJWT(jwtConf)
 	if err != nil {
 		return nil, err
 	}
 
-	jwtAC.algorithm = acjwt.NewAlgorithm(options.Algorithm)
+	jwtAC.algorithm = acjwt.NewAlgorithm(jwtConf.SignatureAlgorithm)
 	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
-		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
+		return nil, fmt.Errorf("algorithm %q is not supported", jwtConf.SignatureAlgorithm)
 	}
 
 	jwtAC.parser = newParser([]acjwt.Algorithm{jwtAC.algorithm})
@@ -223,12 +211,12 @@ func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
 	return pubKey, nil
 }
 
-func NewJWTFromJWKS(options *JWTOptions, jwks *jwk.JWKS) (*JWT, error) {
+func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS) (*JWT, error) {
 	if jwks == nil {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	jwtAC, err := newJWT(options)
+	jwtAC, err := newJWT(jwtConf)
 	if err != nil {
 		return nil, err
 	}
@@ -240,25 +228,26 @@ func NewJWTFromJWKS(options *JWTOptions, jwks *jwk.JWKS) (*JWT, error) {
 	return jwtAC, nil
 }
 
-func newJWT(options *JWTOptions) (*JWT, error) {
-	if options.Source.Type == Invalid {
+func newJWT(jwtConf *config.JWT) (*JWT, error) {
+	source := NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
+	if source.Type == Invalid {
 		return nil, fmt.Errorf("token source is invalid")
 	}
 
-	if options.RolesClaim != "" && options.RolesMap == nil {
+	if jwtConf.RolesClaim != "" && jwtConf.RolesMap == nil {
 		return nil, fmt.Errorf("missing roles_map")
 	}
 
 	jwtAC := &JWT{
-		claims:                options.Claims,
-		claimsRequired:        options.ClaimsRequired,
-		disablePrivateCaching: options.DisablePrivateCaching,
-		name:                  options.Name,
-		rolesClaim:            options.RolesClaim,
-		rolesMap:              options.RolesMap,
-		permissionsClaim:      options.PermissionsClaim,
-		permissionsMap:        options.PermissionsMap,
-		source:                options.Source,
+		claims:                jwtConf.Claims,
+		claimsRequired:        jwtConf.ClaimsRequired,
+		disablePrivateCaching: jwtConf.DisablePrivateCaching,
+		name:                  jwtConf.Name,
+		rolesClaim:            jwtConf.RolesClaim,
+		rolesMap:              jwtConf.RolesMap,
+		permissionsClaim:      jwtConf.PermissionsClaim,
+		permissionsMap:        jwtConf.PermissionsMap,
+		source:                source,
 	}
 	return jwtAC, nil
 }
