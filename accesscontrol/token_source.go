@@ -13,32 +13,32 @@ import (
 )
 
 const (
-	Invalid JWTSourceType = iota
+	Invalid TokenSourceType = iota
 	Cookie
 	Header
 	Value
 )
 
 type (
-	JWTSourceType uint8
-	JWTSource     struct {
+	TokenSourceType uint8
+	TokenSource     struct {
 		Expr hcl.Expression
 		Name string
-		Type JWTSourceType
+		Type TokenSourceType
 	}
 )
 
-func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
+func NewTokenSource(cookie, header string, value hcl.Expression) TokenSource {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
 	if value != nil {
 		v, _ := value.Value(nil)
 		if !v.IsNull() {
 			if h != "" || c != "" {
-				return JWTSource{}
+				return TokenSource{}
 			}
 
-			return JWTSource{
+			return TokenSource{
 				Name: "",
 				Type: Value,
 				Expr: value,
@@ -46,27 +46,27 @@ func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
 		}
 	}
 	if c != "" && h == "" {
-		return JWTSource{
+		return TokenSource{
 			Name: c,
 			Type: Cookie,
 		}
 	}
 	if h != "" && c == "" {
-		return JWTSource{
+		return TokenSource{
 			Name: h,
 			Type: Header,
 		}
 	}
 	if h == "" && c == "" {
-		return JWTSource{
+		return TokenSource{
 			Name: "Authorization",
 			Type: Header,
 		}
 	}
-	return JWTSource{}
+	return TokenSource{}
 }
 
-func (s JWTSource) TokenValue(req *http.Request) (string, error) {
+func (s TokenSource) TokenValue(req *http.Request) (string, error) {
 	var tokenValue string
 	var err error
 
