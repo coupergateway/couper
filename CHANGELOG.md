@@ -6,6 +6,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 * **Added**
   * [`can()` function](https://docs.couper.io/configuration/functions) ([#699](https://github.com/avenga/couper/pull/699))
+  * If Couper starts with `-watch` CLI flag, watch referenced files, too ([#701](https://github.com/avenga/couper/pull/701))
 
 * **Fixed**
   * Erroneously sending an empty [`Server-Timing` header](https://docs.couper.io/configuration/command-line#oberservation-options) ([#700](https://github.com/avenga/couper/pull/700))
