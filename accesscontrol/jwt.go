@@ -325,11 +325,11 @@ func (j *JWT) Validate(req *http.Request) error {
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 
 	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
-	jwtGrantedPermissions := j.getGrantedPermissions(tokenClaims, log)
+	grantedPermissions := j.getGrantedPermissions(tokenClaims, log)
 
-	grantedPermissions, _ := ctx.Value(request.GrantedPermissions).([]string)
+	alreadyGrantedPermissions, _ := ctx.Value(request.GrantedPermissions).([]string)
 
-	grantedPermissions = append(grantedPermissions, jwtGrantedPermissions...)
+	grantedPermissions = append(alreadyGrantedPermissions, grantedPermissions...)
 
 	ctx = context.WithValue(ctx, request.GrantedPermissions, grantedPermissions)
 
