@@ -85,8 +85,8 @@ func TestAccessControl_ErrorHandler_BasicAuth_Default(t *testing.T) {
 		return
 	}
 
-	if www := res.Header.Get("www-authenticate"); www != "Basic realm=protected" {
-		t.Errorf("Expected header: www-authenticate with value: %s, got: %s", "Basic realm=protected", www)
+	if www := res.Header.Get("www-authenticate"); www != `Basic realm="protected"` {
+		t.Errorf("Expected header: www-authenticate with value: %s, got: %s", `Basic realm="protected"`, www)
 	}
 }
 

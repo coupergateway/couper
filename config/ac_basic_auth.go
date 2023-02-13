@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -54,7 +56,7 @@ func (b *BasicAuth) Schema(inline bool) *hcl.BodySchema {
 func (b *BasicAuth) DefaultErrorHandler() *ErrorHandler {
 	wwwAuthenticateValue := "Basic"
 	if b.Realm != "" {
-		wwwAuthenticateValue += " realm=" + b.Realm
+		wwwAuthenticateValue += fmt.Sprintf(" realm=%q", b.Realm)
 	}
 	return &ErrorHandler{
 		Kinds: []string{"basic_auth"},
