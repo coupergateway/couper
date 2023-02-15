@@ -8,9 +8,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/internal/seetie"
-
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var (
