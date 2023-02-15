@@ -7,8 +7,10 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
+	"github.com/avenga/couper/config/body"
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var (
@@ -124,4 +126,37 @@ func (j *JWT) check() error {
 	}
 
 	return nil
+}
+
+func (j *JWT) DefaultErrorHandlers() []*ErrorHandler {
+	if j.Cookie != "" {
+		// no "WWW-Authenticate: Bearer" for cookie = "..."
+		return []*ErrorHandler{}
+	}
+	if tv, err := j.TokenValue.Value(nil); err != nil || !tv.IsNull() {
+		// invalid expression or not null
+		// no "WWW-Authenticate: Bearer" for token_value = ...
+		return []*ErrorHandler{}
+	}
+	wwwAuthenticateValue := "Bearer"
+	return []*ErrorHandler{
+		&ErrorHandler{
+			Kinds: []string{"jwt_token_missing"},
+			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+				"Www-Authenticate": wwwAuthenticateValue,
+			}), hcl.Range{Filename: "default_jwt_error_handler"}),
+		},
+		&ErrorHandler{
+			Kinds: []string{"jwt_token_invalid"},
+			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+				"Www-Authenticate": wwwAuthenticateValue + `, error="invalid_token"`,
+			}), hcl.Range{Filename: "default_jwt_error_handler"}),
+		},
+		&ErrorHandler{
+			Kinds: []string{"jwt_token_expired"},
+			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+				"Www-Authenticate": wwwAuthenticateValue + `, error="invalid_token", error_description="The access token expired"`,
+			}), hcl.Range{Filename: "default_jwt_error_handler"}),
+		},
+	}
 }
