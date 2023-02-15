@@ -3499,6 +3499,71 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 }
 
+func TestJWT_DefaultErrorHandler(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name        string
+		path        string
+		header      http.Header
+		status      int
+		wantErrType string
+		wantWwwAuth string
+	}
+
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"
+	expiredToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"
+	invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0"
+
+	for _, tc := range []testCase{
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + validToken}}, http.StatusOK, "", ""},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `Bearer`},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer, error="invalid_token", error_description="The access token expired"`},
+		{"invalid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer, error="invalid_token"`},
+
+		{"valid token in cookie", "/jwt/cookie", http.Header{"Cookie": []string{"tok=" + validToken}}, http.StatusOK, "", ""},
+		{"no token in cookie", "/jwt/cookie", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
+		{"expired token in cookie", "/jwt/cookie", http.Header{"Cookie": []string{"tok=" + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", ""},
+		{"invalid token in cookie", "/jwt/cookie", http.Header{"Cookie": []string{"tok=" + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", ""},
+
+		{"valid token from token_value", "/jwt/tokenValue?tok=" + validToken, http.Header{}, http.StatusOK, "", ""},
+		{"no token from token_value", "/jwt/tokenValue", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
+		{"expired token from token_value", "/jwt/tokenValue?tok=" + expiredToken, http.Header{}, http.StatusUnauthorized, "jwt_token_expired", ""},
+		{"invalid token from token_value", "/jwt/tokenValue?tok=" + invalidToken, http.Header{}, http.StatusUnauthorized, "jwt_token_invalid", ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header = tc.header
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.status {
+				subT.Errorf("expected Status %d, got: %d", tc.status, res.StatusCode)
+				return
+			}
+
+			errorType := getAccessLogErrorType(hook)
+			if errorType != tc.wantErrType {
+				subT.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
+			}
+
+			wwwAuth := res.Header.Get("WWW-Authenticate")
+			if wwwAuth != tc.wantWwwAuth {
+				subT.Errorf("Expected www-authenticate: %q, actual: %q", tc.wantWwwAuth, wwwAuth)
+			}
+		})
+	}
+}
+
 func TestJWKsMaxStale(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
