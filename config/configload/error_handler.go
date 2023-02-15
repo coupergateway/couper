@@ -53,7 +53,7 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) 
 			}
 
 			if !exist {
-				ehs.Set(handler.DefaultErrorHandler())
+				ehs.Set(defaultHandler)
 			}
 		}
 	}
