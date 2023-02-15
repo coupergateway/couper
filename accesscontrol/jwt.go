@@ -17,17 +17,11 @@ import (
 
 	"github.com/avenga/couper/accesscontrol/jwk"
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
+	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
-)
-
-const (
-	Invalid JWTSourceType = iota
-	Cookie
-	Header
-	Value
 )
 
 var (
@@ -35,21 +29,12 @@ var (
 	_ DisablePrivateCaching = &JWT{}
 )
 
-type (
-	JWTSourceType uint8
-	JWTSource     struct {
-		Expr hcl.Expression
-		Name string
-		Type JWTSourceType
-	}
-)
-
 type JWT struct {
 	algorithm             acjwt.Algorithm
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
-	source                JWTSource
+	source                tokenSource
 	hmacSecret            []byte
 	name                  string
 	parser                *jwt.Parser
@@ -61,79 +46,26 @@ type JWT struct {
 	jwks                  *jwk.JWKS
 }
 
-type JWTOptions struct {
-	Algorithm             string
-	Claims                hcl.Expression
-	ClaimsRequired        []string
-	DisablePrivateCaching bool
-	Name                  string // TODO: more generic (validate)
-	RolesClaim            string
-	RolesMap              map[string][]string
-	PermissionsClaim      string
-	PermissionsMap        map[string][]string
-	Source                JWTSource
-	Key                   []byte
-	JWKS                  *jwk.JWKS
-}
-
-func NewJWTSource(cookie, header string, value hcl.Expression) JWTSource {
-	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
-
-	if value != nil {
-		v, _ := value.Value(nil)
-		if !v.IsNull() {
-			if h != "" || c != "" {
-				return JWTSource{}
-			}
-
-			return JWTSource{
-				Name: "",
-				Type: Value,
-				Expr: value,
-			}
-		}
-	}
-	if c != "" && h == "" {
-		return JWTSource{
-			Name: c,
-			Type: Cookie,
-		}
-	}
-	if h != "" && c == "" {
-		return JWTSource{
-			Name: h,
-			Type: Header,
-		}
-	}
-	if h == "" && c == "" {
-		return JWTSource{
-			Name: "Authorization",
-			Type: Header,
-		}
-	}
-	return JWTSource{}
-}
-
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(options *JWTOptions) (*JWT, error) {
-	jwtAC, err := newJWT(options)
+func NewJWT(jwtConf *config.JWT, key []byte) (*JWT, error) {
+	jwtAC, err := newJWT(jwtConf)
 	if err != nil {
 		return nil, err
 	}
 
-	jwtAC.algorithm = acjwt.NewAlgorithm(options.Algorithm)
+	jwtAC.algorithm = acjwt.NewAlgorithm(jwtConf.SignatureAlgorithm)
 	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
-		return nil, fmt.Errorf("algorithm %q is not supported", options.Algorithm)
+		return nil, fmt.Errorf("algorithm %q is not supported", jwtConf.SignatureAlgorithm)
 	}
 
 	jwtAC.parser = newParser([]acjwt.Algorithm{jwtAC.algorithm})
 
 	if jwtAC.algorithm.IsHMAC() {
-		jwtAC.hmacSecret = options.Key
+		jwtAC.hmacSecret = key
 		return jwtAC, nil
 	}
 
-	pubKey, err := parsePublicPEMKey(options.Key)
+	pubKey, err := parsePublicPEMKey(key)
 	if err != nil {
 		return nil, err
 	}
@@ -142,44 +74,98 @@ func NewJWT(options *JWTOptions) (*JWT, error) {
 	return jwtAC, nil
 }
 
-func NewJWTFromJWKS(options *JWTOptions) (*JWT, error) {
-	jwtAC, err := newJWT(options)
+// parsePublicPEMKey tries to parse all supported publicKey variations which
+// must be given in PEM encoded format.
+func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
+	pemBlock, _ := pem.Decode(key)
+	if pemBlock == nil {
+		return nil, jwt.ErrKeyMustBePEMEncoded
+	}
+	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
+	if pubErr != nil {
+		pkixKey, pkerr := x509.ParsePKIXPublicKey(pemBlock.Bytes)
+		if pkerr != nil {
+			cert, cerr := x509.ParseCertificate(pemBlock.Bytes)
+			if cerr != nil {
+				return nil, jwt.ErrNotRSAPublicKey
+			}
+			if k, ok := cert.PublicKey.(*rsa.PublicKey); ok {
+				return k, nil
+			}
+			if k, ok := cert.PublicKey.(*ecdsa.PublicKey); ok {
+				return k, nil
+			}
+
+			return nil, fmt.Errorf("invalid RSA/ECDSA public key")
+		}
+
+		if k, ok := pkixKey.(*rsa.PublicKey); ok {
+			return k, nil
+		}
+
+		if k, ok := pkixKey.(*ecdsa.PublicKey); ok {
+			return k, nil
+		}
+
+		return nil, fmt.Errorf("invalid RSA/ECDSA public key")
+	}
+	return pubKey, nil
+}
+
+func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS) (*JWT, error) {
+	if jwks == nil {
+		return nil, fmt.Errorf("invalid JWKS")
+	}
+
+	jwtAC, err := newJWT(jwtConf)
 	if err != nil {
 		return nil, err
 	}
 
-	if options.JWKS == nil {
-		return nil, fmt.Errorf("invalid JWKS")
-	}
-
 	algorithms := append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
 	jwtAC.parser = newParser(algorithms)
-	jwtAC.jwks = options.JWKS
+	jwtAC.jwks = jwks
 
 	return jwtAC, nil
 }
 
-func newJWT(options *JWTOptions) (*JWT, error) {
-	if options.Source.Type == Invalid {
+func newJWT(jwtConf *config.JWT) (*JWT, error) {
+	source := newTokenSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
+	if source.Type == Invalid {
 		return nil, fmt.Errorf("token source is invalid")
 	}
 
-	if options.RolesClaim != "" && options.RolesMap == nil {
+	if jwtConf.RolesClaim != "" && jwtConf.RolesMap == nil {
 		return nil, fmt.Errorf("missing roles_map")
 	}
 
 	jwtAC := &JWT{
-		claims:                options.Claims,
-		claimsRequired:        options.ClaimsRequired,
-		disablePrivateCaching: options.DisablePrivateCaching,
-		name:                  options.Name,
-		rolesClaim:            options.RolesClaim,
-		rolesMap:              options.RolesMap,
-		permissionsClaim:      options.PermissionsClaim,
-		permissionsMap:        options.PermissionsMap,
-		source:                options.Source,
+		claims:                jwtConf.Claims,
+		claimsRequired:        jwtConf.ClaimsRequired,
+		disablePrivateCaching: jwtConf.DisablePrivateCaching,
+		name:                  jwtConf.Name,
+		rolesClaim:            jwtConf.RolesClaim,
+		rolesMap:              jwtConf.RolesMap,
+		permissionsClaim:      jwtConf.PermissionsClaim,
+		permissionsMap:        jwtConf.PermissionsMap,
+		source:                source,
 	}
 	return jwtAC, nil
+}
+
+// newParser creates a new parser
+func newParser(algos []acjwt.Algorithm) *jwt.Parser {
+	var algorithms []string
+	for _, a := range algos {
+		algorithms = append(algorithms, a.String())
+	}
+	options := []jwt.ParserOption{
+		jwt.WithValidMethods(algorithms),
+		// no equivalent in new lib
+		// jwt.WithLeeway(time.Second),
+	}
+
+	return jwt.NewParser(options...)
 }
 
 func (j *JWT) DisablePrivateCaching() bool {
@@ -188,37 +174,9 @@ func (j *JWT) DisablePrivateCaching() bool {
 
 // Validate reading the token from configured source and validates against the key.
 func (j *JWT) Validate(req *http.Request) error {
-	var tokenValue string
-	var err error
-
-	switch j.source.Type {
-	case Cookie:
-		cookie, cerr := req.Cookie(j.source.Name)
-		if cerr != http.ErrNoCookie && cookie != nil {
-			tokenValue = cookie.Value
-		}
-	case Header:
-		if strings.ToLower(j.source.Name) == "authorization" {
-			if tokenValue = req.Header.Get(j.source.Name); tokenValue != "" {
-				if tokenValue, err = getBearer(tokenValue); err != nil {
-					return errors.JwtTokenMissing.With(err)
-				}
-			}
-		} else {
-			tokenValue = req.Header.Get(j.source.Name)
-		}
-	case Value:
-		requestContext := eval.ContextFromRequest(req).HCLContext()
-		value, diags := eval.Value(requestContext, j.source.Expr)
-		if diags != nil {
-			return diags
-		}
-
-		tokenValue = seetie.ValueToString(value)
-	}
-
-	if tokenValue == "" {
-		return errors.JwtTokenMissing.Message("token required")
+	tokenValue, err := j.source.TokenValue(req)
+	if err != nil {
+		return err
 	}
 
 	expectedClaims, err := j.getConfiguredClaims(req)
@@ -255,11 +213,11 @@ func (j *JWT) Validate(req *http.Request) error {
 	ctx = context.WithValue(ctx, request.AccessControls, acMap)
 
 	log := req.Context().Value(request.LogEntry).(*logrus.Entry).WithContext(req.Context())
-	jwtGrantedPermissions := j.getGrantedPermissions(tokenClaims, log)
+	grantedPermissions := j.getGrantedPermissions(tokenClaims, log)
 
-	grantedPermissions, _ := ctx.Value(request.GrantedPermissions).([]string)
+	alreadyGrantedPermissions, _ := ctx.Value(request.GrantedPermissions).([]string)
 
-	grantedPermissions = append(grantedPermissions, jwtGrantedPermissions...)
+	grantedPermissions = append(alreadyGrantedPermissions, grantedPermissions...)
 
 	ctx = context.WithValue(ctx, request.GrantedPermissions, grantedPermissions)
 
@@ -288,26 +246,33 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 // getConfiguredClaims evaluates the expected claim values from the configuration, and especially iss and aud
 func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, error) {
 	claims := make(map[string]interface{})
-	if j.claims != nil {
-		val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
-		if verr != nil {
-			return nil, verr
-		}
-		claims = seetie.ValueToMap(val)
+	if j.claims == nil { // tests only
+		return claims, nil
+	}
 
-		var ok bool
-		if issVal, exists := claims["iss"]; exists {
-			_, ok = issVal.(string)
-			if !ok {
-				return nil, errors.Configuration.Message("invalid value type, string expected (claims / iss)")
-			}
-		}
+	val, verr := eval.Value(eval.ContextFromRequest(req).HCLContext(), j.claims)
+	if verr != nil {
+		return nil, verr
+	}
 
-		if audVal, exists := claims["aud"]; exists {
-			_, ok = audVal.(string)
-			if !ok {
-				return nil, errors.Configuration.Message("invalid value type, string expected (claims / aud)")
-			}
+	if val.IsNull() { // claims not configured
+		return claims, nil
+	}
+
+	claims = seetie.ValueToMap(val)
+
+	var ok bool
+	if issVal, exists := claims["iss"]; exists {
+		_, ok = issVal.(string)
+		if !ok {
+			return nil, errors.Configuration.Message("invalid value type, string expected (claims / iss)")
+		}
+	}
+
+	if audVal, exists := claims["aud"]; exists {
+		_, ok = audVal.(string)
+		if !ok {
+			return nil, errors.Configuration.Message("invalid value type, string expected (claims / aud)")
 		}
 	}
 
@@ -400,7 +365,7 @@ func (j *JWT) addPermissionsFromPermissionsClaim(tokenClaims jwt.MapClaims, perm
 	return permissions
 }
 
-func (j *JWT) getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []string {
+func getRoleValues(rolesClaimValue interface{}, log *logrus.Entry) []string {
 	var roleValues []string
 	// ["foo", "bar"] is stored as []interface{}, not []string, unfortunately
 	rolesArray, ok := rolesClaimValue.([]interface{})
@@ -435,7 +400,7 @@ func (j *JWT) addPermissionsFromRoles(tokenClaims jwt.MapClaims, permissions []s
 		return permissions
 	}
 
-	roleValues := j.getRoleValues(rolesClaimValue, log)
+	roleValues := getRoleValues(rolesClaimValue, log)
 	for _, r := range roleValues {
 		if perms, exist := j.rolesMap[r]; exist {
 			for _, p := range perms {
@@ -491,65 +456,4 @@ func addPermission(permissions []string, permission string) ([]string, bool) {
 		}
 	}
 	return append(permissions, permission), true
-}
-
-func getBearer(val string) (string, error) {
-	const bearer = "bearer "
-	if strings.HasPrefix(strings.ToLower(val), bearer) {
-		return strings.Trim(val[len(bearer):], " "), nil
-	}
-	return "", fmt.Errorf("bearer required with authorization header")
-}
-
-// newParser creates a new parser
-func newParser(algos []acjwt.Algorithm) *jwt.Parser {
-	var algorithms []string
-	for _, a := range algos {
-		algorithms = append(algorithms, a.String())
-	}
-	options := []jwt.ParserOption{
-		jwt.WithValidMethods(algorithms),
-		// no equivalent in new lib
-		// jwt.WithLeeway(time.Second),
-	}
-
-	return jwt.NewParser(options...)
-}
-
-// parsePublicPEMKey tries to parse all supported publicKey variations which
-// must be given in PEM encoded format.
-func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
-	pemBlock, _ := pem.Decode(key)
-	if pemBlock == nil {
-		return nil, jwt.ErrKeyMustBePEMEncoded
-	}
-	pubKey, pubErr := x509.ParsePKCS1PublicKey(pemBlock.Bytes)
-	if pubErr != nil {
-		pkixKey, pkerr := x509.ParsePKIXPublicKey(pemBlock.Bytes)
-		if pkerr != nil {
-			cert, cerr := x509.ParseCertificate(pemBlock.Bytes)
-			if cerr != nil {
-				return nil, jwt.ErrNotRSAPublicKey
-			}
-			if k, ok := cert.PublicKey.(*rsa.PublicKey); ok {
-				return k, nil
-			}
-			if k, ok := cert.PublicKey.(*ecdsa.PublicKey); ok {
-				return k, nil
-			}
-
-			return nil, fmt.Errorf("invalid RSA/ECDSA public key")
-		}
-
-		if k, ok := pkixKey.(*rsa.PublicKey); ok {
-			return k, nil
-		}
-
-		if k, ok := pkixKey.(*ecdsa.PublicKey); ok {
-			return k, nil
-		}
-
-		return nil, fmt.Errorf("invalid RSA/ECDSA public key")
-	}
-	return pubKey, nil
 }

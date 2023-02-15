@@ -578,28 +578,16 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	log *logrus.Entry, memStore *cache.MemoryStore) (*ac.JWT, error) {
 	var (
-		jwt                      *ac.JWT
-		err                      error
-		rolesMap, permissionsMap map[string][]string
+		jwt *ac.JWT
+		err error
 	)
-	rolesMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt roles map", jwtConf.RolesMap, jwtConf.RolesMapFile)
+	jwtConf.RolesMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt roles map", jwtConf.RolesMap, jwtConf.RolesMapFile)
 	if err != nil {
 		return nil, err
 	}
-	permissionsMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt permissions map", jwtConf.PermissionsMap, jwtConf.PermissionsMapFile)
+	jwtConf.PermissionsMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt permissions map", jwtConf.PermissionsMap, jwtConf.PermissionsMapFile)
 	if err != nil {
 		return nil, err
-	}
-	jwtOptions := &ac.JWTOptions{
-		Claims:                jwtConf.Claims,
-		ClaimsRequired:        jwtConf.ClaimsRequired,
-		DisablePrivateCaching: jwtConf.DisablePrivateCaching,
-		Name:                  jwtConf.Name,
-		RolesClaim:            jwtConf.RolesClaim,
-		RolesMap:              rolesMap,
-		PermissionsClaim:      jwtConf.PermissionsClaim,
-		PermissionsMap:        permissionsMap,
-		Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 	}
 	if jwtConf.JWKsURL != "" {
 		jwks, jerr := configureJWKS(jwtConf, confCtx, log, conf, memStore)
@@ -607,17 +595,14 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 			return nil, jerr
 		}
 
-		jwtOptions.JWKS = jwks
-		jwt, err = ac.NewJWTFromJWKS(jwtOptions)
+		jwt, err = ac.NewJWTFromJWKS(jwtConf, jwks)
 	} else {
 		key, kerr := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 		if kerr != nil {
 			return nil, kerr
 		}
 
-		jwtOptions.Algorithm = jwtConf.SignatureAlgorithm
-		jwtOptions.Key = key
-		jwt, err = ac.NewJWT(jwtOptions)
+		jwt, err = ac.NewJWT(jwtConf, key)
 	}
 	if err != nil {
 		return nil, err
