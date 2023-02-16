@@ -126,7 +126,6 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 				j, jerr := ac.NewJWT(&config.JWT{
 					Claims:             tt.fields.claims,
 					ClaimsRequired:     tt.fields.claimsRequired,
-					Header:             "Authorization",
 					Name:               "test_ac",
 					SignatureAlgorithm: tt.fields.algorithm,
 				}, key)
@@ -637,7 +636,6 @@ func Test_JWT_yields_permissions(t *testing.T) {
 			}
 
 			j, err := ac.NewJWT(&config.JWT{
-				Header:             "Authorization",
 				Name:               "test_ac",
 				PermissionsClaim:   tt.permissionsClaim,
 				PermissionsMap:     permissionsMap,

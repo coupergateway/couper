@@ -44,7 +44,6 @@ definitions {
     }
   }
   jwt "my_jwt" {
-    header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
     claims = {
@@ -53,7 +52,6 @@ definitions {
     }
   }
   jwt "self_signed_jwt" {
-    header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
     signing_ttl = "1h"

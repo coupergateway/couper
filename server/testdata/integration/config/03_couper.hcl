@@ -375,7 +375,6 @@ definitions {
   }
 
   jwt "JWKS_not_found" {
-    header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/not.found"
   }
 
