@@ -130,7 +130,7 @@ func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS) (*JWT, error) {
 }
 
 func newJWT(jwtConf *config.JWT) (*JWT, error) {
-	source := newTokenSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
+	source := newTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
 	if source.Type == Invalid {
 		return nil, fmt.Errorf("token source is invalid")
 	}

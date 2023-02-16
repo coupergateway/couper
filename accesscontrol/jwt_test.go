@@ -149,6 +149,7 @@ func Test_JWT_Validate(t *testing.T) {
 	log, _ := test.NewLogger()
 	type fields struct {
 		algorithm      acjwt.Algorithm
+		bearer         bool
 		claims         map[string]string
 		claimsRequired []string
 		cookie         string
@@ -190,6 +191,64 @@ func Test_JWT_Validate(t *testing.T) {
 			req         *http.Request
 			wantErrKind string
 		}{
+			{"src: bearer /w no authorization header", fields{
+				algorithm: algo,
+				bearer:    true,
+				pubKey:    pubKeyBytes,
+			}, httptest.NewRequest(http.MethodGet, "/", nil), "jwt_token_missing"},
+			{"src: bearer /w different auth-scheme", fields{
+				algorithm: algo,
+				bearer:    true,
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Basic qbqnb"), "jwt_token_missing"},
+			{"src: bearer /w empty bearer", fields{
+				algorithm: algo,
+				bearer:    true,
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR"), "jwt_token_missing"},
+			{"src: bearer /w valid bearer", fields{
+				algorithm: algo,
+				bearer:    true,
+				pubKey:    pubKeyBytes,
+			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), ""},
+			{"src: bearer /w valid bearer & claims", fields{
+				algorithm: algo,
+				claims: map[string]string{
+					"aud":     "peter",
+					"test123": "value123",
+				},
+				claimsRequired: []string{"aud"},
+				bearer:         true,
+				pubKey:         pubKeyBytes,
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), ""},
+			{"src: bearer /w valid bearer & wrong audience", fields{
+				algorithm: algo,
+				claims: map[string]string{
+					"aud":     "paul",
+					"test123": "value123",
+				},
+				claimsRequired: []string{"aud"},
+				bearer:         true,
+				pubKey:         pubKeyBytes,
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
+			{"src: bearer /w valid bearer & w/o claims", fields{
+				algorithm: algo,
+				claims: map[string]string{
+					"aud":  "peter",
+					"cptn": "hook",
+				},
+				bearer: true,
+				pubKey: pubKeyBytes,
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
+			{"src: bearer /w valid bearer & w/o required claims", fields{
+				algorithm: algo,
+				claims: map[string]string{
+					"aud": "peter",
+				},
+				claimsRequired: []string{"exp"},
+				bearer:         true,
+				pubKey:         pubKeyBytes,
+			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
 			{"src: header /w no authorization header", fields{
 				algorithm: algo,
 				header:    "Authorization",
@@ -210,59 +269,21 @@ func Test_JWT_Validate(t *testing.T) {
 				header:    "Authorization",
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token), ""},
-			{"src: header /w no cookie", fields{
+			{"src: cookie /w no cookie", fields{
 				algorithm: algo,
 				cookie:    "token",
 				pubKey:    pubKeyBytes,
 			}, httptest.NewRequest(http.MethodGet, "/", nil), "jwt_token_missing"},
-			{"src: header /w empty cookie", fields{
+			{"src: cookie /w empty cookie", fields{
 				algorithm: algo,
 				cookie:    "token",
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", ""), "jwt_token_missing"},
-			{"src: header /w valid cookie", fields{
+			{"src: cookie /w valid cookie", fields{
 				algorithm: algo,
 				cookie:    "token",
 				pubKey:    pubKeyBytes,
 			}, setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "token", token), ""},
-			{"src: header /w valid bearer & claims", fields{
-				algorithm: algo,
-				claims: map[string]string{
-					"aud":     "peter",
-					"test123": "value123",
-				},
-				claimsRequired: []string{"aud"},
-				header:         "Authorization",
-				pubKey:         pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), ""},
-			{"src: header /w valid bearer & wrong audience", fields{
-				algorithm: algo,
-				claims: map[string]string{
-					"aud":     "paul",
-					"test123": "value123",
-				},
-				claimsRequired: []string{"aud"},
-				header:         "Authorization",
-				pubKey:         pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
-			{"src: header /w valid bearer & w/o claims", fields{
-				algorithm: algo,
-				claims: map[string]string{
-					"aud":  "peter",
-					"cptn": "hook",
-				},
-				header: "Authorization",
-				pubKey: pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
-			{"src: header /w valid bearer & w/o required claims", fields{
-				algorithm: algo,
-				claims: map[string]string{
-					"aud": "peter",
-				},
-				claimsRequired: []string{"exp"},
-				header:         "Authorization",
-				pubKey:         pubKeyBytes,
-			}, setContext(setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "BeAreR "+token)), "jwt_token_invalid"},
 			{
 				"token_value number",
 				fields{
@@ -297,6 +318,7 @@ func Test_JWT_Validate(t *testing.T) {
 					Claims:             hcl.StaticExpr(cty.ObjectVal(claimValMap), hcl.Range{}),
 					ClaimsRequired:     tt.fields.claimsRequired,
 					Name:               "test_ac",
+					Bearer:             tt.fields.bearer,
 					Cookie:             tt.fields.cookie,
 					Header:             tt.fields.header,
 					TokenValue:         tt.fields.tokenValue,
@@ -778,13 +800,27 @@ func TestJwtConfig(t *testing.T) {
 			"configuration error: myac: permissions map: read error: open .*/accesscontrol/file_not_found: no such file or directory",
 		},
 		{
-			"ok: signature_algorithm + key (default: header = Authorization)",
+			"ok: signature_algorithm + key (default: bearer = true)",
 			`
 			server "test" {}
 			definitions {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
 			    key = "..."
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"ok: signature_algorithm + key + bearer",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    key = "..."
+			    bearer = true
 			  }
 			}
 			`,
