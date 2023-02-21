@@ -52,7 +52,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `bearer`, `cookie` or `token_value`.",
+    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used (deprecated!), otherwise any other header name can be used. Cannot be used together with `bearer`, `cookie` or `token_value`.",
     "name": "header",
     "type": "string"
   },
@@ -165,6 +165,8 @@ values: [
 
 The attributes `bearer`, `cookie`, `header` and `token_value` are mutually exclusive.
 If all four attributes are missing, `bearer = true` will be implied, i.e. the token will be read from the incoming `Authorization: Bearer ...` header.
+
+**Deprecation Note:** Configuring `header = "Authorization"` to read from the incoming `Authorization: Bearer ...` header is **deprecated**. Use `bearer = true` instead.
 
 If the key to verify the signatures of tokens does not change over time, it should be specified via either `key` or `key_file` (together with `signature_algorithm`).
 Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case, the tokens need a `kid` header.

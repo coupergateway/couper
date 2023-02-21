@@ -29,7 +29,7 @@ type JWT struct {
 	ClaimsRequired        []string            `hcl:"required_claims,optional" docs:"List of claim names that must be given for a valid token."`
 	Cookie                string              `hcl:"cookie,optional" docs:"Read token value from a cookie. Cannot be used together with {bearer}, {header} or {token_value}"`
 	DisablePrivateCaching bool                `hcl:"disable_private_caching,optional" docs:"If set to {true}, Couper does not add the {private} directive to the {Cache-Control} HTTP header field value."`
-	Header                string              `hcl:"header,optional" docs:"Read token value from the given request header field. Implies {Bearer} if {Authorization} (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with {bearer}, {cookie} or {token_value}."`
+	Header                string              `hcl:"header,optional" docs:"Read token value from the given request header field. Implies {Bearer} if {Authorization} (case-insensitive) is used (deprecated!), otherwise any other header name can be used. Cannot be used together with {bearer}, {cookie} or {token_value}."`
 	JWKsURL               string              `hcl:"jwks_url,optional" docs:"URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)"`
 	JWKsTTL               string              `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
 	JWKsMaxStale          string              `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
