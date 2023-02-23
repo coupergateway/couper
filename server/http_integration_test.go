@@ -3521,8 +3521,8 @@ func TestJWT_DefaultErrorHandler(t *testing.T) {
 	for _, tc := range []testCase{
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + validToken}}, http.StatusOK, "", ""},
 		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `Bearer`},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer, error="invalid_token", error_description="The access token expired"`},
-		{"invalid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer, error="invalid_token"`},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer error="invalid_token", error_description="The access token expired"`},
+		{"invalid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer error="invalid_token"`},
 
 		{"valid token in header", "/jwt/header", http.Header{"X-Token": []string{validToken}}, http.StatusOK, "", ""},
 		{"no token in header", "/jwt/header", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
@@ -3531,8 +3531,8 @@ func TestJWT_DefaultErrorHandler(t *testing.T) {
 
 		{"valid token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + validToken}}, http.StatusOK, "", ""},
 		{"no token in authorization header", "/jwt/header/auth", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `Bearer`},
-		{"expired token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer, error="invalid_token", error_description="The access token expired"`},
-		{"invalid token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer, error="invalid_token"`},
+		{"expired token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer error="invalid_token", error_description="The access token expired"`},
+		{"invalid token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer error="invalid_token"`},
 
 		{"valid token in cookie", "/jwt/cookie", http.Header{"Cookie": []string{"tok=" + validToken}}, http.StatusOK, "", ""},
 		{"no token in cookie", "/jwt/cookie", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
