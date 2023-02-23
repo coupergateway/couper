@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -131,6 +132,10 @@ func (j *JWT) check() error {
 func (j *JWT) DefaultErrorHandlers() []*ErrorHandler {
 	if j.Cookie != "" {
 		// no "WWW-Authenticate: Bearer" for cookie = "..."
+		return []*ErrorHandler{}
+	}
+	if j.Header != "" && strings.ToLower(j.Header) != "authorization" {
+		// no "WWW-Authenticate: Bearer" for header = "..." if not "authorization"
 		return []*ErrorHandler{}
 	}
 	if tv, err := j.TokenValue.Value(nil); err != nil || !tv.IsNull() {
