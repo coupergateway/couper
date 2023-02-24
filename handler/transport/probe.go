@@ -100,7 +100,10 @@ func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener 
 	if _, exist := opts.Context.Value(request.ConfigDryRun).(bool); exist {
 		return
 	}
-	go p.probe(opts.Context)
+
+	if _, exist := tc.Context.Value(request.ConfigDryRun).(bool); !exist {
+		go p.probe(opts.Context)
+	}
 }
 
 func (p *Probe) probe(c context.Context) {
