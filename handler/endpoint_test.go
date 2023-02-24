@@ -242,7 +242,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 				for k, v := range tt.want.req {
 					if res.Header.Get(k) != v {
-						subT.Errorf("want: %q for key %q, got: %q", v, k, res.Header[k])
+						subT.Errorf("want: %q for key %q, got: %q", v, k, res.Header.Get(k))
 					}
 				}
 			})
