@@ -139,7 +139,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			j := definitions.NewJob(job, epHandler, conf.Settings)
 			jobs = append(jobs, j)
 		}
-		jobs.Run(conf.Context, log)
+
+		// do not start go-routine on config check (-watch)
+		if _, exist := conf.Context.Value(request.ConfigDryRun).(bool); !exist {
+			jobs.Run(conf.Context, log)
+		}
 	}
 
 	for _, srvConf := range conf.Servers {

@@ -97,10 +97,9 @@ func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener 
 	}
 
 	// do not start go-routine on config check (-watch)
-	if _, exist := opts.Context.Value(request.ConfigDryRun).(bool); exist {
-		return
+	if _, exist := opts.Context.Value(request.ConfigDryRun).(bool); !exist {
+		go p.probe(opts.Context)
 	}
-	go p.probe(opts.Context)
 }
 
 func (p *Probe) probe(c context.Context) {
