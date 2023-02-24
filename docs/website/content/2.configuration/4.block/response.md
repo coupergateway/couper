@@ -19,7 +19,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Same as `set_response_headers` in [Request Header](../modifiers#response-header).",
+    "description": "Same as `set_response_headers` in [Modifiers - Response Header](../modifiers#response-header).",
     "name": "headers",
     "type": "object"
   },

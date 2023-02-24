@@ -28,7 +28,7 @@ func (r Response) Inline() interface{} {
 	type Inline struct {
 		Body     string            `hcl:"body,optional" docs:"Response body which creates implicit default {Content-Type: text/plain} header field."`
 		JSONBody string            `hcl:"json_body,optional" docs:"JSON response body which creates implicit default {Content-Type: application/json} header field." type:"null, bool, number, string, object, tuple"`
-		Headers  map[string]string `hcl:"headers,optional" docs:"Same as {set_response_headers} in [Request Header](../modifiers#response-header)."`
+		Headers  map[string]string `hcl:"headers,optional" docs:"Same as {set_response_headers} in [Modifiers - Response Header](../modifiers#response-header)."`
 		Status   int               `hcl:"status,optional" docs:"The HTTP status code to return." default:"200"`
 	}
 
