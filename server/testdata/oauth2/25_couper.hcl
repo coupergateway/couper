@@ -28,7 +28,7 @@ definitions {
     key = "asdf"
     signing_ttl = "60s"
 
-    introspection {
+    beta_introspection {
       endpoint = "{{.asOrigin}}/introspect"
       ttl = "{{.ttl}}"
       client_id = "the_rs"

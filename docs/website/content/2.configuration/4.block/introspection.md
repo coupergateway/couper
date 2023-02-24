@@ -1,10 +1,10 @@
-# Token Introspection
+# Token Introspection (Beta)
 
 The `introspection` block lets you configure OAuth2 token introspection for an encapsulating `jwt` block.
 
-| Block name      | Context                               | Label    |
-|:----------------|:--------------------------------------|:---------|
-| `introspection` | [JWT Block](/configuration/block/jwt) | no label |
+| Block name           | Context                               | Label    |
+|:---------------------|:--------------------------------------|:---------|
+| `beta_introspection` | [JWT Block](/configuration/block/jwt) | no label |
 
 ::attributes
 ---

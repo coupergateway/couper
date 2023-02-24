@@ -42,7 +42,7 @@ definitions {
     signature_algorithm = "HS256"
     key = "asdf"
 
-    introspection {
+    beta_introspection {
       endpoint = "http://1.1.1.1:9999/introspect/csb"
       ttl = "0s"
       client_id = "the_rs"
@@ -54,7 +54,7 @@ definitions {
     signature_algorithm = "HS256"
     key = "asdf"
 
-    introspection {
+    beta_introspection {
       endpoint = "http://1.1.1.1:9999/introspect/csp"
       endpoint_auth_method = "client_secret_post"
       ttl = "0s"
@@ -67,7 +67,7 @@ definitions {
     signature_algorithm = "HS256"
     key = "asdf"
 
-    introspection {
+    beta_introspection {
       endpoint = "http://1.1.1.1:9999/introspect/csj"
       endpoint_auth_method = "client_secret_jwt"
       ttl = "0s"
@@ -85,7 +85,7 @@ definitions {
     signature_algorithm = "HS256"
     key = "asdf"
 
-    introspection {
+    beta_introspection {
       endpoint = "http://1.1.1.1:9999/introspect/pkj"
       endpoint_auth_method = "private_key_jwt"
       ttl = "0s"
