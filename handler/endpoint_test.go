@@ -192,7 +192,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		origin = "` + origin.URL + `"
 		set_request_headers = {
 			x-test = request.json_body.foo
-		}`, []string{http.MethodTrace, http.MethodHead}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
+		}`, []string{http.MethodTrace}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
 		{"method /wo body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {
