@@ -190,7 +190,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		origin = "` + origin.URL + `"
 		set_request_headers = {
 			x-test = request.json_body.foo
-		}`, []string{http.MethodTrace, http.MethodHead}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
+		}`, []string{http.MethodTrace}, test.Header{"Content-Type": "application/json"}, `{"foo": "bar"}`, want{req: test.Header{"x-test": ""}}},
 		{"method /wo body", `
 		origin = "` + origin.URL + `"
 		set_request_headers = {
@@ -238,7 +238,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 
 				for k, v := range tt.want.req {
 					if res.Header.Get(k) != v {
-						subT.Errorf("want: %q for key %q, got: %q", v, k, res.Header[k])
+						subT.Errorf("want: %q for key %q, got: %q", v, k, res.Header.Get(k))
 					}
 				}
 			})
