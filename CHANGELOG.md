@@ -11,6 +11,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Use of [`backend_responses`'](https://docs.couper.io/configuration/variables#backend_responses) `body` or `json_body` properties in api-level [error handlers](https://docs.couper.io/configuration/block/error_handler) ([#710](https://github.com/avenga/couper/pull/710))
   * Some `..._file` attributes missing for path absolutizing ([#713](https://github.com/avenga/couper/pull/713))
   * `WWW-Authenticate` header `realm` param value for [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth) ([#715](https://github.com/avenga/couper/pull/715))
+  * [JWT access control](https://docs.couper.io/configuration/block/jwt) now creating `401` error status code, adding a `WWW-Authenticate: Bearer[...]` response header if appropriate ([#719](https://github.com/avenga/couper/pull/719))
 
 ---
 

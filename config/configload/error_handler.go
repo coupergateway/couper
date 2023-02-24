@@ -41,19 +41,20 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) 
 		}
 
 		if handler, has := ehs.(config.ErrorHandlerGetter); has {
-			defaultHandler := handler.DefaultErrorHandler()
-			_, exist := kinds[errors.Wildcard]
-			if !exist {
-				for _, kind := range defaultHandler.Kinds {
-					_, exist = kinds[kind]
-					if exist {
-						break
+			for _, defaultHandler := range handler.DefaultErrorHandlers() {
+				_, exist := kinds[errors.Wildcard]
+				if !exist {
+					for _, kind := range defaultHandler.Kinds {
+						_, exist = kinds[kind]
+						if exist {
+							break
+						}
 					}
 				}
-			}
 
-			if !exist {
-				ehs.Set(handler.DefaultErrorHandler())
+				if !exist {
+					ehs.Set(defaultHandler)
+				}
 			}
 		}
 	}

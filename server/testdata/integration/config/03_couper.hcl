@@ -113,6 +113,30 @@ server "acs" {
     }
   }
 
+  endpoint "/jwt/cookie" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWTTokenCookie"]
+    response {}
+  }
+
+  endpoint "/jwt/header" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWTTokenHeader"]
+    response {}
+  }
+
+  endpoint "/jwt/header/auth" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWTTokenHeaderAuth"]
+    response {}
+  }
+
+  endpoint "/jwt/tokenValue" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWTTokenTokenValue"]
+    response {}
+  }
+
   endpoint "/jwt/token_value_query" {
     disable_access_control = ["ba1"]
     access_control = ["JWT_token_value_query"]
@@ -302,6 +326,26 @@ definitions {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     permissions_claim = "scope"
+  }
+  jwt "JWTTokenCookie" {
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+	cookie = "tok"
+  }
+  jwt "JWTTokenHeader" {
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+	header = "x-token"
+  }
+  jwt "JWTTokenHeaderAuth" {
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+	header = "aUtHoRiZaTiOn"
+  }
+  jwt "JWTTokenTokenValue" {
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+	token_value = request.query.tok[0]
   }
   jwt "RSAToken" {
     signature_algorithm = "RS256"
