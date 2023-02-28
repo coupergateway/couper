@@ -60,7 +60,7 @@ func getKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
 	return key, parseErr
 }
 
-func NewJWTSigningConfigFromJWTSigningProfile(j *config.JWTSigningProfile, algCheckFunc func(alg acjwt.Algorithm) error) (*JWTSigningConfig, error) {
+func NewJWTSigningConfigFromJWTSigningProfile(j *config.JwtSigningProfile, algCheckFunc func(alg acjwt.Algorithm) error) (*JWTSigningConfig, error) {
 	ttl, alg, err := checkData(j.TTL, j.SignatureAlgorithm)
 	if err != nil {
 		return nil, err

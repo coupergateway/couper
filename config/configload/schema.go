@@ -7,19 +7,14 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/configload/collect"
-	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/internal/seetie"
-)
-
-const (
-	noLabelForErrorHandler = "No labels are expected for error_handler blocks."
-	summUnsupportedAttr    = "Unsupported argument"
+	"github.com/avenga/couper/plugins"
 )
 
 var reFetchUnexpectedArg = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
@@ -40,7 +35,8 @@ func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
 	_, isEndpoint := obj.(*config.Endpoint)
 	_, isProxy := obj.(*config.Proxy)
 	for _, err := range diags {
-		if err.Summary == summUnsupportedAttr && (isEndpoint || isProxy) {
+		const summaryUnsupportedAttr = "Unsupported argument"
+		if err.Summary == summaryUnsupportedAttr && (isEndpoint || isProxy) {
 			if matches := reFetchUnexpectedArg.FindStringSubmatch(err.Detail); matches != nil && matches[1] == `"path"` {
 				err.Detail = err.Detail + ` Use the "path" attribute in a backend block instead.`
 			}
@@ -50,18 +46,15 @@ func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
 }
 
 func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
+	if plugins.Defined(block.Type) {
+		return nil // TODO: maybe call validate, skip for now since the type impl is unknown at this point
+	}
+
 	var errors hcl.Diagnostics
 	var checked bool
 
-	typ := reflect.TypeOf(obj)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-
-	val := reflect.ValueOf(obj)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
+	typ := elemType(reflect.TypeOf(obj))
+	val := elemValue(reflect.ValueOf(obj))
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
@@ -96,28 +89,20 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 				tp = tp.Elem()
 			}
 
-			vl := reflect.ValueOf(tp)
-			if vl.Kind() == reflect.Ptr {
-				vl = vl.Elem()
-			}
+			vl := elemValue(reflect.ValueOf(tp))
 
 			if vl.Kind() == reflect.Struct {
-				var elem reflect.Type
+				et := elemType(tp)
 
-				if tp.Kind() == reflect.Struct {
-					elem = tp
-				} else if tp.Kind() == reflect.Ptr {
-					elem = tp.Elem()
-				} else {
+				if et.Kind() != reflect.Struct {
 					errors = errors.Append(&hcl.Diagnostic{
 						Severity: hcl.DiagError,
 						Summary:  "Unsupported type.Kind '" + tp.Kind().String() + "' for: " + field.Name,
 					})
-
 					continue
 				}
 
-				o := reflect.New(elem).Interface()
+				o := reflect.New(et).Interface()
 				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
 
 				continue
@@ -131,9 +116,9 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 	}
 
 	if !checked {
-		if i, ok := obj.(config.Inline); ok {
-			errors = errors.Extend(checkObjectFields(block, i.Inline()))
-		}
+		//if i, ok := obj.(config.Inline); ok {
+		//	errors = errors.Extend(checkObjectFields(block, i.Inline()))
+		//}
 	}
 
 	return errors
@@ -145,29 +130,13 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 		errors hcl.Diagnostics
 	)
 
-	schema, _ := gohcl.ImpliedBodySchema(obj)
-
-	typ := reflect.TypeOf(obj)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-
-	// TODO: How to implement this automatically?
-	if typ.String() == "config.Backend" {
-		meta.MergeSchemas(schema, config.OAuthBlockSchema, config.TokenRequestBlockSchema)
-	}
+	bodySchema := schema.Registry.GetFor(obj)
 
 	if _, ok := obj.(collect.ErrorHandlerSetter); ok {
-		schema = config.WithErrorHandlerSchema(schema)
+		bodySchema = config.WithErrorHandlerSchema(bodySchema)
 	}
 
-	if i, ok := obj.(config.Inline); ok {
-		inlineSchema := i.Schema(true)
-		schema.Attributes = append(schema.Attributes, inlineSchema.Attributes...)
-		schema.Blocks = append(schema.Blocks, inlineSchema.Blocks...)
-	}
-
-	blocks, errors = completeSchemaComponents(body, schema, blocks, errors)
+	blocks, errors = completeSchemaComponents(body, bodySchema, blocks, errors)
 
 	return blocks, errors
 }
@@ -181,6 +150,7 @@ func completeSchemaComponents(body hcl.Body, schema *hcl.BodySchema,
 
 	for _, diag := range diags {
 		// TODO: How to implement this block automatically?
+		const noLabelForErrorHandler = "No labels are expected for error_handler blocks."
 		if diag.Detail == noLabelForErrorHandler {
 			if errorHandlerCompleted {
 				continue
@@ -305,4 +275,18 @@ func getRange(body *hclsyntax.Body) *hcl.Range {
 	}
 
 	return &body.SrcRange
+}
+
+func elemValue(value reflect.Value) reflect.Value {
+	if value.Kind() == reflect.Ptr {
+		return value.Elem()
+	}
+	return value
+}
+
+func elemType(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Ptr {
+		return t.Elem()
+	}
+	return t
 }

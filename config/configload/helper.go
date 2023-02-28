@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/config/schema"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 )
@@ -23,6 +23,12 @@ type helper struct {
 
 // newHelper creates a container with some methods to keep things simple here and there.
 func newHelper(body hcl.Body) (*helper, error) {
+	if evalContext == nil { // testcase
+		if diags := updateContext(body, nil, ""); diags.HasErrors() {
+			return nil, diags
+		}
+	}
+
 	couperConfig := &config.Couper{
 		Context:     evalContext,
 		Definitions: &config.Definitions{},
@@ -30,8 +36,7 @@ func newHelper(body hcl.Body) (*helper, error) {
 		Settings:    config.NewDefaultSettings(),
 	}
 
-	schema, _ := gohcl.ImpliedBodySchema(couperConfig)
-	content, diags := body.Content(schema)
+	content, diags := body.Content(schema.Registry.GetFor(couperConfig))
 	if content == nil { // reference diags only for missing content, due to optional server label
 		return nil, fmt.Errorf("invalid configuration: %w", diags)
 	}

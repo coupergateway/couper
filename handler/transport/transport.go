@@ -1,24 +1,17 @@
 package transport
 
 import (
-	"context"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/connection"
+	coupertls "github.com/avenga/couper/connection/tls"
 	"github.com/avenga/couper/handler/ratelimit"
-	coupertls "github.com/avenga/couper/internal/tls"
-	"github.com/avenga/couper/telemetry"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http/httpproxy"
 )
 
@@ -74,10 +67,6 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 		tlsConf.ServerName = conf.Hostname
 	}
 
-	d := &net.Dialer{
-		KeepAlive: 60 * time.Second,
-	}
-
 	var proxyFunc func(req *http.Request) (*url.URL, error)
 	if conf.Proxy != "" {
 		proxyFunc = func(req *http.Request) (*url.URL, error) {
@@ -104,35 +93,12 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 	logEntry := log.WithField("type", "couper_connection")
 
 	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			address := addr
-			if proxyFunc == nil {
-				address = conf.Origin
-			} // Otherwise, proxy connect will use this dial method and addr could be a proxy one.
-
-			stx, span := telemetry.NewSpanFromContext(ctx, "connect", trace.WithAttributes(attribute.String("couper.address", addr)))
-			defer span.End()
-
-			connectTimeout, _ := ctx.Value(request.ConnectTimeout).(time.Duration)
-			if connectTimeout > 0 {
-				dtx, cancel := context.WithDeadline(stx, time.Now().Add(connectTimeout))
-				stx = dtx
-				defer cancel()
-			}
-
-			conn, cerr := d.DialContext(stx, network, address)
-			if cerr != nil {
-				host, port, _ := net.SplitHostPort(conf.Origin)
-				if port != "80" && port != "443" {
-					host = conf.Origin
-				}
-				if os.IsTimeout(cerr) || cerr == context.DeadlineExceeded {
-					return nil, fmt.Errorf("connecting to %s '%s' failed: i/o timeout", conf.BackendName, host)
-				}
-				return nil, fmt.Errorf("connecting to %s '%s' failed: %w", conf.BackendName, conf.Origin, cerr)
-			}
-			return NewOriginConn(stx, conn, conf, logEntry), nil
-		},
+		DialContext: connection.NewDialContextFunc(&connection.Configuration{
+			ContextName: conf.BackendName,
+			ContextType: "backend",
+			Hostname:    conf.Hostname,
+			Origin:      conf.Origin,
+		}, proxyFunc == nil, logEntry),
 		DisableCompression: true,
 		DisableKeepAlives:  conf.DisableConnectionReuse,
 		ForceAttemptHTTP2:  conf.HTTP2,

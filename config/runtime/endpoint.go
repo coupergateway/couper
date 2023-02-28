@@ -114,7 +114,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 	allProxies := make(map[string]*producer.Proxy)
 	for _, proxyConf := range endpointConf.Proxies {
-		backend, berr := NewBackend(confCtx, proxyConf.Backend, log, conf, memStore)
+		backend, berr := NewBackend(confCtx, proxyConf.BackendBody, log, conf, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -138,12 +138,12 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allProxies[proxyConf.Name] = p
-		blockBodies = append(blockBodies, proxyConf.Backend, proxyBody)
+		blockBodies = append(blockBodies, proxyConf.BackendBody, proxyBody)
 	}
 
 	allRequests := make(map[string]*producer.Request)
 	for _, requestConf := range endpointConf.Requests {
-		backend, berr := NewBackend(confCtx, requestConf.Backend, log, conf, memStore)
+		backend, berr := NewBackend(confCtx, requestConf.BackendBody, log, conf, memStore)
 		if berr != nil {
 			return nil, berr
 		}
@@ -155,7 +155,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}
 
 		allRequests[requestConf.Name] = pr
-		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
+		blockBodies = append(blockBodies, requestConf.BackendBody, requestConf.HCLBody())
 	}
 
 	sequences, requests, proxies := resolveDependencies(allProxies, allRequests, endpointConf.Sequences...)

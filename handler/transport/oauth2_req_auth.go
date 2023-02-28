@@ -71,7 +71,7 @@ type assertionCreatorFromJSP struct {
 	claims  map[string]interface{}
 }
 
-func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JWTSigningProfile) (assertionCreator, error) {
+func newAssertionCreatorFromJSP(evalCtx *hcl.EvalContext, jsp *config.JwtSigningProfile) (assertionCreator, error) {
 	signingConfig, err := lib.NewJWTSigningConfigFromJWTSigningProfile(jsp, nil)
 	if err != nil {
 		return nil, err

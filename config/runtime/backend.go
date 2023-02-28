@@ -151,7 +151,7 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 		}
 	case config.TokenRequestBlockSchema.Blocks[0].Type:
 		// block is guaranteed to have a label ("default" being added at configload)
-		authorizerConfig = &config.TokenRequest{Name: block.Labels[0]}
+		authorizerConfig = &config.BetaTokenRequest{Name: block.Labels[0]}
 	default:
 		return nil, errors.Configuration.Messagef("request authorizer not implemented: %s", block.Type)
 	}
@@ -179,7 +179,7 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 	switch impl := authorizerConfig.(type) {
 	case *config.OAuth2ReqAuth:
 		return transport.NewOAuth2ReqAuth(evalCtx, impl, memStore, authorizerBackend)
-	case *config.TokenRequest:
+	case *config.BetaTokenRequest:
 		reqs := producer.Requests{&producer.Request{
 			Backend: authorizerBackend,
 			Context: impl.HCLBody(),

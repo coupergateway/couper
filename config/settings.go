@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 )
 
 const otelCollectorEndpoint = "localhost:4317"
@@ -69,20 +72,9 @@ func NewDefaultSettings() *Settings {
 	return &settings
 }
 
-var _ flag.Value = &List{}
-
-type List []string
-
-func (s *List) String() string {
-	return strings.Join(*s, ",")
-}
-
-func (s *List) Set(val string) error {
-	if len(*s) > 0 { // argument priority over settings
-		*s = nil
-	}
-	*s = append(*s, strings.Split(val, ",")...)
-	return nil
+func (s *Settings) Schema() *hcl.BodySchema {
+	sh, _ := gohcl.ImpliedBodySchema(s)
+	return sh
 }
 
 func (s *Settings) ApplyAcceptForwarded() error {
@@ -124,5 +116,21 @@ func (a *AcceptForwarded) Set(forwarded []string) error {
 			return fmt.Errorf("invalid X-Forwarded-* name (%s)", part)
 		}
 	}
+	return nil
+}
+
+var _ flag.Value = &List{}
+
+type List []string
+
+func (s *List) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *List) Set(val string) error {
+	if len(*s) > 0 { // argument priority over settings
+		*s = nil
+	}
+	*s = append(*s, strings.Split(val, ",")...)
 	return nil
 }

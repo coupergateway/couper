@@ -50,6 +50,13 @@ func PrepareBackend(helper *helper, attrName, attrValue string, block config.Bod
 	var backendBody *hclsyntax.Body
 	var err error
 
+	if helper == nil { // testcase
+		helper, err = newHelper(block.HCLBody())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	reference, backendBody, err = getBackendReference(block)
 	if err != nil {
 		return nil, err
@@ -221,7 +228,7 @@ func setTokenRequestBackend(helper *helper, parent *hclsyntax.Body) (*hclsyntax.
 	// beta_token_request block exists, read out backend configuration
 	for _, tokenRequestBlock := range tokenRequestBlocks {
 		tokenRequestBody := tokenRequestBlock.Body
-		conf := &config.TokenRequest{}
+		conf := &config.BetaTokenRequest{}
 		if diags := gohcl.DecodeBody(tokenRequestBody, helper.context, conf); diags.HasErrors() {
 			return nil, diags
 		}

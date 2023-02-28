@@ -1,15 +1,8 @@
 package config
 
 import (
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
-
-// Inline defines the <Inline> interface.
-type Inline interface {
-	Inline() interface{}
-	Schema(inline bool) *hcl.BodySchema
-}
 
 // BackendReference defines the <BackendReference> interface.
 type BackendReference interface {

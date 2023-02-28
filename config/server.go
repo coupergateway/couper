@@ -5,9 +5,10 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/config/schema"
 )
 
-var _ Inline = &Server{}
+var _ schema.BodySchema = &Server{}
 
 // Server represents the <Server> object.
 type Server struct {
@@ -29,23 +30,7 @@ type Server struct {
 // Servers represents a list of <Server> objects.
 type Servers []*Server
 
-// Inline implements the <Inline> interface.
-func (s Server) Inline() interface{} {
-	type Inline struct {
-		meta.ResponseHeadersAttributes
-		meta.LogFieldsAttribute
-	}
-
-	return &Inline{}
-}
-
-// Schema implements the <Inline> interface.
-func (s Server) Schema(inline bool) *hcl.BodySchema {
-	if !inline {
-		schema, _ := gohcl.ImpliedBodySchema(s)
-		return schema
-	}
-
-	schema, _ := gohcl.ImpliedBodySchema(s.Inline())
-	return meta.MergeSchemas(schema, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
+func (s Server) Schema() *hcl.BodySchema {
+	bs, _ := gohcl.ImpliedBodySchema(s)
+	return meta.MergeSchemas(bs, meta.ResponseHeadersAttributesSchema, meta.LogFieldsAttributeSchema)
 }
