@@ -83,7 +83,7 @@ func deprecateBlocks(blocks hclsyntax.Blocks) {
 func deprecateLabels(block *hclsyntax.Block) []string {
 	var renamed []string
 
-	labels, _ := newKindsFromLabels(block)
+	labels, _ := newKindsFromLabels(block, false)
 
 	for _, label := range labels {
 		name := label
