@@ -131,6 +131,8 @@ func parseFiles(files configfile.Files) ([]*hclsyntax.Body, [][]byte, error) {
 }
 
 func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env string) (*config.Couper, error) {
+	deprecate(parsedBodies)
+
 	defaultsBlock, err := mergeDefaults(parsedBodies)
 	if err != nil {
 		return nil, err
