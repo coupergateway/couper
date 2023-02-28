@@ -28,12 +28,20 @@ func init() {
 
 	// Deprecated attributes:
 	// deprecatedAttributes["..."] = deprecated{"...", "..."}
+	deprecatedAttributes["beta_permissions_claim"] = deprecated{"permissions_claim", "1.13"}
+	deprecatedAttributes["beta_permissions_map"] = deprecated{"permissions_map", "1.13"}
+	deprecatedAttributes["beta_permissions_map_file"] = deprecated{"permissions_map_file", "1.13"}
+	deprecatedAttributes["beta_required_permission"] = deprecated{"required_permission", "1.13"}
+	deprecatedAttributes["beta_roles_claim"] = deprecated{"roles_claim", "1.13"}
+	deprecatedAttributes["beta_roles_map"] = deprecated{"roles_map", "1.13"}
+	deprecatedAttributes["beta_roles_file"] = deprecated{"roles_map_file", "1.13"}
 
 	// Deprecated blocks:
 	// deprecatedBlocks["..."] = deprecated{"...", "..."}
 
 	// Deprecated labels:
 	// deprecatedLabels["..."] = deprecated{"...", "..."}
+	deprecatedLabels["beta_insufficient_permissions"] = deprecated{"insufficient_permissions", "1.13"}
 }
 
 func deprecate(bodies []*hclsyntax.Body) {
