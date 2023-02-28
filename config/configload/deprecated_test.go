@@ -15,8 +15,10 @@ func Test_deprecated(t *testing.T) {
 	deprecatedLabels["couper_test_label"] = deprecated{"couper_new_label", ""}
 
 	src := []byte(`
-couper_test_block "x" "couper_test_label" "abc couper_test_label def" "y" {
+error_handler "x" "couper_test_label" "abc couper_test_label def" "y" {
 	couper_test_attribute = true
+	couper_test_block {
+	}
 }
 `)
 
@@ -41,7 +43,7 @@ couper_test_block "x" "couper_test_label" "abc couper_test_label def" "y" {
 		t.Errorf("Unexpected attribute name given: '%s'", attr.Name)
 	}
 
-	if body.Blocks[0].Type != "couper_new_block" {
+	if body.Blocks[0].Body.Blocks[0].Type != "couper_new_block" {
 		t.Errorf("Expected 'couper_new_block' block name, got '%s'", body.Blocks[0].Type)
 	}
 
