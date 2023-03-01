@@ -1,18 +1,20 @@
 package configload
 
 import (
+	"context"
 	"testing"
 
 	"github.com/avenga/couper/config/parser"
+	"github.com/avenga/couper/internal/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 func Test_deprecated(t *testing.T) {
 	// Insert test data:
-	deprecatedAttributes["couper_test_attribute"] = deprecated{"couper_new_attribute", ""}
-	deprecatedBlocks["couper_test_block"] = deprecated{"couper_new_block", ""}
-	deprecatedLabels["couper_test_label"] = deprecated{"couper_new_label", ""}
+	deprecatedAttributes["couper_test_attribute"] = deprecated{"couper_new_attribute", "1.23"}
+	deprecatedBlocks["couper_test_block"] = deprecated{"couper_new_block", "1.23"}
+	deprecatedLabels["couper_test_label"] = deprecated{"couper_new_label", "1.23"}
 
 	src := []byte(`
 error_handler "x" "couper_test_label" "abc couper_test_label def" "y" {
@@ -27,7 +29,10 @@ error_handler "x" "couper_test_label" "abc couper_test_label def" "y" {
 		t.Fatalf("%s", err)
 	}
 
-	deprecate([]*hclsyntax.Body{body})
+	logger, hook := test.NewLogger()
+	hook.Reset()
+
+	deprecate([]*hclsyntax.Body{body}, logger.WithContext(context.TODO()))
 
 	if len(body.Blocks) != 1 {
 		t.Fatal("Unexpected number of blocks given")
@@ -50,5 +55,28 @@ error_handler "x" "couper_test_label" "abc couper_test_label def" "y" {
 	expLabels := []string{"x", "couper_new_label", "abc", "couper_new_label", "def", "y"}
 	if !cmp.Equal(expLabels, body.Blocks[0].Labels) {
 		t.Errorf("Expected\n%#v, got:\n%#v", expLabels, body.Blocks[0].Labels)
+	}
+
+	entries := hook.AllEntries()
+	if len(entries) != 4 {
+		t.Fatal("Unexpected number of log entries given")
+	}
+
+	exp := `Replacing label "couper_test_label" with "couper_new_label". As of Couper version 1.23, the old value is no longer supported.`
+	if entries[0].Message != exp {
+		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
+	}
+	if entries[1].Message != exp {
+		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
+	}
+
+	exp = `Replacing attribute "couper_test_attribute" with "couper_new_attribute". As of Couper version 1.23, the old value is no longer supported.`
+	if entries[2].Message != exp {
+		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
+	}
+
+	exp = `Replacing block "couper_test_block" with "couper_new_block". As of Couper version 1.23, the old value is no longer supported.`
+	if entries[3].Message != exp {
+		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
 	}
 }

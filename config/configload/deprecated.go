@@ -1,7 +1,10 @@
 package configload
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/sirupsen/logrus"
 )
 
 type deprecated struct {
@@ -44,29 +47,31 @@ func init() {
 	deprecatedLabels["beta_insufficient_permissions"] = deprecated{"insufficient_permissions", "1.13"}
 }
 
-func deprecate(bodies []*hclsyntax.Body) {
+func deprecate(bodies []*hclsyntax.Body, logger *logrus.Entry) {
 	for _, body := range bodies {
-		deprecateBody(body)
+		deprecateBody(body, logger)
 	}
 }
 
-func deprecateBody(body *hclsyntax.Body) {
+func deprecateBody(body *hclsyntax.Body, logger *logrus.Entry) {
 	if body == nil {
 		return
 	}
 
-	body.Attributes = deprecateAttributes(body.Attributes)
+	body.Attributes = deprecateAttributes(body.Attributes, logger)
 
-	deprecateBlocks(body.Blocks)
+	deprecateBlocks(body.Blocks, logger)
 }
 
-func deprecateAttributes(attributes hclsyntax.Attributes) hclsyntax.Attributes {
+func deprecateAttributes(attributes hclsyntax.Attributes, logger *logrus.Entry) hclsyntax.Attributes {
 	attrs := make(hclsyntax.Attributes)
 
 	for _, attr := range attributes {
 		name := attr.Name
 
 		if rename, exists := deprecatedAttributes[name]; exists {
+			rename.log("attribute", name, logger)
+
 			name = rename.newName
 		}
 
@@ -76,19 +81,21 @@ func deprecateAttributes(attributes hclsyntax.Attributes) hclsyntax.Attributes {
 	return attrs
 }
 
-func deprecateBlocks(blocks hclsyntax.Blocks) {
+func deprecateBlocks(blocks hclsyntax.Blocks, logger *logrus.Entry) {
 	for _, block := range blocks {
-		block.Labels = deprecateLabels(block)
+		block.Labels = deprecateLabels(block, logger)
 
 		if rename, exists := deprecatedBlocks[block.Type]; exists {
+			rename.log("block", block.Type, logger)
+
 			block.Type = rename.newName
 		}
 
-		deprecateBody(block.Body)
+		deprecateBody(block.Body, logger)
 	}
 }
 
-func deprecateLabels(block *hclsyntax.Block) []string {
+func deprecateLabels(block *hclsyntax.Block, logger *logrus.Entry) []string {
 	var (
 		err     error
 		labels  []string = block.Labels
@@ -107,6 +114,8 @@ func deprecateLabels(block *hclsyntax.Block) []string {
 		name := label
 
 		if rename, exists := deprecatedLabels[label]; exists {
+			rename.log("label", label, logger)
+
 			name = rename.newName
 		}
 
@@ -114,4 +123,14 @@ func deprecateLabels(block *hclsyntax.Block) []string {
 	}
 
 	return renamed
+}
+
+// In some test cases the logger is <nil>, but not in production code.
+func (d deprecated) log(name, old string, logger *logrus.Entry) {
+	if logger != nil {
+		logger.Warn(fmt.Sprintf(
+			"Replacing %s %q with %q. As of Couper version %s, the old value is no longer supported.",
+			name, old, d.newName, d.version,
+		))
+	}
 }
