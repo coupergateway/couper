@@ -39,7 +39,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Request HTTP header fields.",
+    "description": "Same as `set_request_headers` in [Modifiers - Request Header](../modifiers#request-header).",
     "name": "headers",
     "type": "object"
   },
