@@ -46,6 +46,7 @@ type Config struct {
 	ClientCertificate tls.Certificate
 
 	// Dynamic values
+	Context  context.Context
 	Hostname string
 	Origin   string
 	Scheme   string
