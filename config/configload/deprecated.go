@@ -45,6 +45,11 @@ func init() {
 	// Deprecated labels:
 	// deprecatedLabels["..."] = deprecated{"...", "..."}
 	deprecatedLabels["beta_insufficient_permissions"] = deprecated{"insufficient_permissions", "1.13"}
+
+	// TODO with 1.13, also remove
+	// ctxAcMap["beta_"+grantedPermissions] = seetie.GoToValue(gp)
+	// ctxAcMap["beta_"+requiredPermission] = seetie.GoToValue(rp)
+	// in eval/context.go newVariable()
 }
 
 func deprecate(bodies []*hclsyntax.Body, logger *logrus.Entry) {
