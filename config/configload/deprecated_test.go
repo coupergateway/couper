@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/avenga/couper/config/parser"
-	"github.com/avenga/couper/internal/test"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/avenga/couper/config/parser"
+	"github.com/avenga/couper/internal/test"
 )
 
 func Test_deprecated(t *testing.T) {
