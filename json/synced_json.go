@@ -52,7 +52,10 @@ func NewSyncedJSON(
 		}
 		sj.fileMode = true
 	} else if transport != nil {
-		go sj.sync(ctx)
+		// do not start go-routine on config check (-watch)
+		if _, exist := ctx.Value(request.ConfigDryRun).(bool); !exist {
+			go sj.sync(ctx)
+		}
 	} else {
 		return nil, fmt.Errorf("synced JSON: missing both file and request")
 	}

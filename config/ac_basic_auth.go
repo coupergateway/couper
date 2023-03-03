@@ -58,7 +58,7 @@ func (b *BasicAuth) DefaultErrorHandlers() []*ErrorHandler {
 		wwwAuthenticateValue += fmt.Sprintf(" realm=%q", b.Realm)
 	}
 	return []*ErrorHandler{
-		&ErrorHandler{
+		{
 			Kinds: []string{"basic_auth"},
 			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
 				"Www-Authenticate": wwwAuthenticateValue,
