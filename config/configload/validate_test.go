@@ -1105,7 +1105,7 @@ func Test_validateBody_multiple(t *testing.T) {
 				testContents = append(testContents, testContent{fmt.Sprintf("couper_%d.hcl", i), []byte(hcl)})
 			}
 
-			_, err := loadTestContents(testContents, nil)
+			_, err := loadTestContents(testContents)
 
 			var errMsg string
 			if err != nil {

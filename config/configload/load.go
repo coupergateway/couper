@@ -249,7 +249,7 @@ type testContent struct {
 	src      []byte
 }
 
-func loadTestContents(tcs []testContent, logger *logrus.Entry) (*config.Couper, error) {
+func loadTestContents(tcs []testContent) (*config.Couper, error) {
 	var (
 		parsedBodies []*hclsyntax.Body
 		srcs         [][]byte
@@ -265,7 +265,7 @@ func loadTestContents(tcs []testContent, logger *logrus.Entry) (*config.Couper, 
 		srcs = append(srcs, tc.src)
 	}
 
-	return bodiesToConfig(parsedBodies, srcs, "", logger)
+	return bodiesToConfig(parsedBodies, srcs, "", nil)
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
