@@ -74,8 +74,14 @@ type SAMLServiceProvider struct {
 	SkipSignatureValidation bool
 	AllowMissingAttributes  bool
 	Clock                   *dsig.Clock
-	signingContextMu        sync.RWMutex
-	signingContext          *dsig.SigningContext
+
+	// MaximumDecompressedBodySize is the maximum size to which a compressed
+	// SAML document will be decompressed. If a compresed document is exceeds
+	// this size during decompression an error will be returned.
+	MaximumDecompressedBodySize int64
+
+	signingContextMu sync.RWMutex
+	signingContext   *dsig.SigningContext
 }
 
 // RequestedAuthnContext controls which authentication mechanisms are requested of
