@@ -12,6 +12,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * Some `..._file` attributes missing for path absolutizing ([#713](https://github.com/avenga/couper/pull/713))
   * `WWW-Authenticate` header `realm` param value for [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth) ([#715](https://github.com/avenga/couper/pull/715))
   * [JWT access control](https://docs.couper.io/configuration/block/jwt) now creating `401` error status code, adding a `WWW-Authenticate: Bearer[...]` response header if appropriate ([#719](https://github.com/avenga/couper/pull/719))
+  * Erroneous multiplying of [health probes](https://docs.couper.io/configuration/block/health), [jobs](https://docs.couper.io/configuration/block/job) and requests to [JWKS](https://docs.couper.io/configuration/block/jwt) and [OpenID configuration](https://docs.couper.io/configuration/block/oidc) resources after a reload with [`-watch`](https://docs.couper.io/configuration/command-line#basic-options) ([#730](https://github.com/avenga/couper/pull/730), [#736](https://github.com/avenga/couper/pull/736))
 
 ---
 
