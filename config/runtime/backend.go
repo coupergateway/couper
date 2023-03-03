@@ -69,6 +69,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 	tc := &transport.Config{
 		BackendName:            beConf.Name,
 		Certificate:            conf.Settings.Certificate,
+		Context:                conf.Context,
 		DisableCertValidation:  beConf.DisableCertValidation,
 		DisableConnectionReuse: beConf.DisableConnectionReuse,
 		HTTP2:                  beConf.HTTP2,

@@ -72,6 +72,11 @@ type ProbeStateChange interface {
 }
 
 func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener ProbeStateChange) {
+	// do not start go-routine on config check (-watch)
+	if _, exist := opts.Context.Value(request.ConfigDryRun).(bool); exist {
+		return
+	}
+
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -96,10 +101,6 @@ func NewProbe(log *logrus.Entry, tc *Config, opts *config.HealthCheck, listener 
 		uidFunc: middleware.NewUIDFunc(opts.RequestUIDFormat),
 	}
 
-	// do not start go-routine on config check (-watch)
-	if _, exist := opts.Context.Value(request.ConfigDryRun).(bool); exist {
-		return
-	}
 	go p.probe(opts.Context)
 }
 

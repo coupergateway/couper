@@ -196,8 +196,9 @@ func realmain(ctx context.Context, arguments []string) int {
 						logger.Errorf("retry %d/%d due to listen error: %v", errRetries, flags.FileWatchRetries, netErr)
 
 						// configuration load succeeded at this point, just restart the command
-						execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
+						close(restartSignal) // but cleanup the failed one
 						time.Sleep(flags.FileWatchRetryDelay)
+						execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
 
 						go func() {
 							errCh <- execCmd.Execute(args, confFile, logger)
