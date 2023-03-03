@@ -11,7 +11,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/rs/xid v1.4.0
-	github.com/russellhaering/gosaml2 v0.8.1
+	github.com/russellhaering/gosaml2 v0.9.0
 	github.com/russellhaering/goxmldsig v1.2.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/zclconf/go-cty v1.12.1
