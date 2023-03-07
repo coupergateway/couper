@@ -226,7 +226,6 @@ definitions {
   }
 
   jwt "JWT" {
-    header = "Authorization"
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
 
@@ -242,7 +241,6 @@ definitions {
   }
 
   jwt "JWT-WILDCARD" {
-    header = "Authorization"
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
 
