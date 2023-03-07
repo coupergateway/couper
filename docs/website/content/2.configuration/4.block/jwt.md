@@ -21,6 +21,12 @@ values: [
     "type": "string"
   },
   {
+    "default": "false",
+    "description": "If set to `true` the token is obtained from a `Authorization: Bearer ...` request header. Cannot be used together with `cookie`, `header` or `token_value`.",
+    "name": "bearer",
+    "type": "bool"
+  },
+  {
     "default": "",
     "description": "Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request.",
     "name": "claims",
@@ -28,7 +34,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Read token value from a cookie. Cannot be used together with `header` or `token_value`",
+    "description": "Read token value from a cookie. Cannot be used together with `bearer`, `header` or `token_value`",
     "name": "cookie",
     "type": "string"
   },
@@ -46,7 +52,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with `cookie` or `token_value`.",
+    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used (deprecated!), otherwise any other header name can be used. Cannot be used together with `bearer`, `cookie` or `token_value`.",
     "name": "header",
     "type": "string"
   },
@@ -148,7 +154,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Expression to obtain the token. Cannot be used together with `cookie` or `header`.",
+    "description": "Expression to obtain the token. Cannot be used together with `bearer`, `cookie` or `header`.",
     "name": "token_value",
     "type": "string"
   }
@@ -157,8 +163,10 @@ values: [
 ---
 ::
 
-The attributes `header`, `cookie` and `token_value` are mutually exclusive.
-If all three attributes are missing, `header = "Authorization"` will be implied, i.e. the token will be read from the incoming `Authorization` header.
+The attributes `bearer`, `cookie`, `header` and `token_value` are mutually exclusive.
+If all four attributes are missing, `bearer = true` will be implied, i.e. the token will be read from the incoming `Authorization: Bearer ...` header.
+
+**Deprecation Note:** Configuring `header = "Authorization"` to read from the incoming `Authorization: Bearer ...` header is **deprecated**. Use `bearer = true` instead.
 
 If the key to verify the signatures of tokens does not change over time, it should be specified via either `key` or `key_file` (together with `signature_algorithm`).
 Otherwise, a JSON web key set should be referenced via `jwks_url`; in this case, the tokens need a `kid` header.

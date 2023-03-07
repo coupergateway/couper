@@ -107,7 +107,6 @@ server "scoped" {
 
 definitions {
   jwt "secured" {
-    header = "Authorization"
     signature_algorithm = "HS256"
     key = "s3cr3t"
     permissions_claim = "scope"

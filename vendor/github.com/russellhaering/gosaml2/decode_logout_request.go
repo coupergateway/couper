@@ -49,7 +49,7 @@ func (sp *SAMLServiceProvider) ValidateEncodedLogoutRequestPOST(encodedRequest s
 	}
 
 	// Parse the raw request - parseResponse is generic
-	doc, el, err := parseResponse(raw)
+	doc, el, err := parseResponse(raw, sp.MaximumDecompressedBodySize)
 	if err != nil {
 		return nil, err
 	}
