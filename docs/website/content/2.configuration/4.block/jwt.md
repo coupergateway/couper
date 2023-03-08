@@ -22,7 +22,7 @@ values: [
   },
   {
     "default": "false",
-    "description": "If set to `true` the token is obtained from a `Authorization: Bearer ...` request header. Cannot be used together with `cookie`, `header` or `token_value`.",
+    "description": "If set to `true` the token is obtained from an `Authorization: Bearer ...` request header. Cannot be used together with `cookie`, `dpop`, `header` or `token_value`.",
     "name": "bearer",
     "type": "bool"
   },
@@ -34,7 +34,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Read token value from a cookie. Cannot be used together with `bearer`, `header` or `token_value`",
+    "description": "Read token value from a cookie. Cannot be used together with `bearer`, `dpop`, `header` or `token_value`",
     "name": "cookie",
     "type": "string"
   },
@@ -51,8 +51,14 @@ values: [
     "type": "bool"
   },
   {
+    "default": "false",
+    "description": "If set to `true` the token is obtained from an `Authorization: DPoP ...` request header. Cannot be used together with `bearer`, `cookie`, `header` or `token_value`.",
+    "name": "dpop",
+    "type": "bool"
+  },
+  {
     "default": "",
-    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used (deprecated!), otherwise any other header name can be used. Cannot be used together with `bearer`, `cookie` or `token_value`.",
+    "description": "Read token value from the given request header field. Implies `Bearer` if `Authorization` (case-insensitive) is used (deprecated!), otherwise any other header name can be used. Cannot be used together with `bearer`, `cookie`, `dpop` or `token_value`.",
     "name": "header",
     "type": "string"
   },
@@ -154,7 +160,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Expression to obtain the token. Cannot be used together with `bearer`, `cookie` or `header`.",
+    "description": "Expression to obtain the token. Cannot be used together with `bearer`, `cookie`, `dpop` or `header`.",
     "name": "token_value",
     "type": "string"
   }
