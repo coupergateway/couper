@@ -29,41 +29,51 @@ type (
 	}
 )
 
-func newTokenSource(bearer bool, cookie, header string, value hcl.Expression) tokenSource {
+func newTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*tokenSource, error) {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
+	types := make(map[tokenSourceType]struct{})
+	if bearer {
+		types[bearerType] = struct{}{}
+	}
+	if c != "" {
+		types[cookieType] = struct{}{}
+	}
+	if h != "" {
+		types[headerType] = struct{}{}
+	}
 	if value != nil {
 		v, _ := value.Value(nil)
 		if !v.IsNull() {
-			if bearer || h != "" || c != "" {
-				return tokenSource{}
-			}
-
-			return tokenSource{
-				Name: "",
-				Type: valueType,
-				Expr: value,
-			}
+			types[valueType] = struct{}{}
 		}
 	}
-	if c != "" && !bearer && h == "" {
-		return tokenSource{
+	if len(types) > 1 {
+		return nil, fmt.Errorf("only one of bearer, cookie, header or token_value attributes is allowed")
+	}
+
+	if _, ok := types[valueType]; ok {
+		return &tokenSource{
+			Expr: value,
+			Type: valueType,
+		}, nil
+	}
+	if _, ok := types[cookieType]; ok {
+		return &tokenSource{
 			Name: c,
 			Type: cookieType,
-		}
+		}, nil
 	}
-	if h != "" && !bearer && c == "" {
-		return tokenSource{
+	if _, ok := types[headerType]; ok {
+		return &tokenSource{
 			Name: h,
 			Type: headerType,
-		}
+		}, nil
 	}
-	if h == "" && c == "" {
-		return tokenSource{
-			Type: bearerType,
-		}
-	}
-	return tokenSource{}
+	// default
+	return &tokenSource{
+		Type: bearerType,
+	}, nil
 }
 
 func (s tokenSource) TokenValue(req *http.Request) (string, error) {
