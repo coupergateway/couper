@@ -13,66 +13,65 @@ import (
 )
 
 const (
-	Invalid tokenSourceType = iota
-	bearerType
-	cookieType
-	headerType
-	valueType
+	BearerType TokenSourceType = iota
+	CookieType
+	HeaderType
+	ValueType
 )
 
 type (
-	tokenSourceType uint8
+	TokenSourceType uint8
 	tokenSource     struct {
 		Expr hcl.Expression
 		Name string
-		Type tokenSourceType
+		Type TokenSourceType
 	}
 )
 
-func newTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*tokenSource, error) {
+func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*tokenSource, error) {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
-	types := make(map[tokenSourceType]struct{})
+	types := make(map[TokenSourceType]struct{})
 	if bearer {
-		types[bearerType] = struct{}{}
+		types[BearerType] = struct{}{}
 	}
 	if c != "" {
-		types[cookieType] = struct{}{}
+		types[CookieType] = struct{}{}
 	}
 	if h != "" {
-		types[headerType] = struct{}{}
+		types[HeaderType] = struct{}{}
 	}
 	if value != nil {
 		v, _ := value.Value(nil)
 		if !v.IsNull() {
-			types[valueType] = struct{}{}
+			types[ValueType] = struct{}{}
 		}
 	}
 	if len(types) > 1 {
 		return nil, fmt.Errorf("only one of bearer, cookie, header or token_value attributes is allowed")
 	}
 
-	if _, ok := types[valueType]; ok {
+	if _, ok := types[ValueType]; ok {
 		return &tokenSource{
 			Expr: value,
-			Type: valueType,
+			Type: ValueType,
 		}, nil
 	}
-	if _, ok := types[cookieType]; ok {
+	if _, ok := types[CookieType]; ok {
 		return &tokenSource{
 			Name: c,
-			Type: cookieType,
+			Type: CookieType,
 		}, nil
 	}
-	if _, ok := types[headerType]; ok {
+	if _, ok := types[HeaderType]; ok {
 		return &tokenSource{
 			Name: h,
-			Type: headerType,
+			Type: HeaderType,
 		}, nil
 	}
 	// default
 	return &tokenSource{
-		Type: bearerType,
+		Type: BearerType,
 	}, nil
 }
 
@@ -81,18 +80,18 @@ func (s tokenSource) TokenValue(req *http.Request) (string, error) {
 	var err error
 
 	switch s.Type {
-	case bearerType:
+	case BearerType:
 		if tokenValue = req.Header.Get("Authorization"); tokenValue != "" {
 			if tokenValue, err = getBearer(tokenValue); err != nil {
 				return "", errors.JwtTokenMissing.With(err)
 			}
 		}
-	case cookieType:
+	case CookieType:
 		cookie, cerr := req.Cookie(s.Name)
 		if cerr != http.ErrNoCookie && cookie != nil {
 			tokenValue = cookie.Value
 		}
-	case headerType:
+	case HeaderType:
 		if strings.ToLower(s.Name) == "authorization" {
 			if tokenValue = req.Header.Get(s.Name); tokenValue != "" {
 				if tokenValue, err = getBearer(tokenValue); err != nil {
@@ -102,7 +101,7 @@ func (s tokenSource) TokenValue(req *http.Request) (string, error) {
 		} else {
 			tokenValue = req.Header.Get(s.Name)
 		}
-	case valueType:
+	case ValueType:
 		requestContext := eval.ContextFromRequest(req).HCLContext()
 		value, err := eval.Value(requestContext, s.Expr)
 		if err != nil {

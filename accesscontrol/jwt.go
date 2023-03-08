@@ -130,7 +130,7 @@ func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS) (*JWT, error) {
 }
 
 func newJWT(jwtConf *config.JWT) (*JWT, error) {
-	source, err := newTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
+	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
 	if err != nil {
 		return nil, err
 	}
