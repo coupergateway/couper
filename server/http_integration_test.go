@@ -3427,7 +3427,7 @@ func TestJWTAccessControl(t *testing.T) {
 	ecdsaToken2 := "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImVzMjU2LWNydi14LXkifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.4-uNC6KGkSY1YYAmGoR-naUu2-Rxo6HSzEkecb7Ua9FVkif0X2gC55DpPU06_HH-yfK-dFozLwzuV2AT6ouOIg"
 
 	for _, tc := range []testCase{
-		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: token required"},
+		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: missing authorization header"},
 		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusForbidden, "", "access control error: JWTToken: Token is expired"},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + hmacToken}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
@@ -3445,6 +3445,7 @@ func TestJWTAccessControl(t *testing.T) {
 		{"remote RSA JWKS x5c w/ backendref", "/jwks/rsa/backendref", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"remote RSA JWKS n, e", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni1uZSIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.aGOhlWQIZvnwoEZGDBYhkkEduIVa59G57x88L3fiLc1MuWbYS84nHEZnlPDuVJ3_BxdXr6-nZ8gpk1C9vfamDzkbvzbdcJ2FzmvAONm1II3_u5OTc6ZtpREDx9ohlIvkcOcalOUhQLqU5r2uik2bGSVV3vFDbqxQeuNzh49i3VgdtwoaryNYSzbg_Ki8dHiaFrWH-r2WCU08utqpFmNdr8oNw4Y5AYJdUW2aItxDbwJ6YLBJN0_6EApbXsNqiaNXkLws3cxMvczGKODyGGVCPENa-VmTQ41HxsXB-_rMmcnMw3_MjyIueWcjeP8BNvLYt1bKFWdU0NcYCkXvEqE4-g"}}, "", http.StatusOK, "", ""},
 		{"token_value query", "/jwt/token_value_query?token=" + hmacToken, http.Header{}, "", http.StatusOK, `["foo","bar"]`, ""},
+		{"token_value query: missing token param", "/jwt/token_value_query", http.Header{}, "", http.StatusUnauthorized, `["foo","bar"]`, "access control error: JWT_token_value_query: token required"},
 		{"token_value body", "/jwt/token_value_body", http.Header{"Content-Type": {"application/json"}}, `{"token":"` + hmacToken + `"}`, http.StatusOK, `["foo","bar"]`, ""},
 		{"ECDSA JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA local JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + localToken}}, "", http.StatusOK, "", ""},
@@ -3764,7 +3765,7 @@ func Test_Permissions(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"by scope: unauthorized", http.MethodGet, "/scope/foo", false, http.StatusUnauthorized, ``, ``, "access control error: scoped_jwt: token required", "jwt_token_missing"},
+		{"by scope: unauthorized", http.MethodGet, "/scope/foo", false, http.StatusUnauthorized, ``, ``, "access control error: scoped_jwt: missing authorization header", "jwt_token_missing"},
 		{"by scope: no permission required by endpoint", http.MethodGet, "/scope/foo", true, http.StatusNoContent, `["a"]`, ``, "", ""},
 		{"by scope: permission required by endpoint: insufficient permissions", http.MethodPost, "/scope/foo", true, http.StatusForbidden, ``, ``, `access control error: required permission "foo" not granted`, "insufficient_permissions"},
 		{"by scope: method not permitted", http.MethodDelete, "/scope/foo", true, http.StatusMethodNotAllowed, ``, ``, "method not allowed error: method DELETE not allowed by required_permission", ""},
@@ -3779,7 +3780,7 @@ func Test_Permissions(t *testing.T) {
 		{"by scope: required permission bad type tuple", http.MethodGet, "/scope/bad/type/tuple", true, http.StatusInternalServerError, ``, ``, "expression evaluation error", "evaluation"},
 		{"by scope: required permission bad type null", http.MethodGet, "/scope/bad/type/null", true, http.StatusInternalServerError, ``, ``, "expression evaluation error", "evaluation"},
 		{"by scope: required permission by api only: insufficient permissions", http.MethodGet, "/scope/permission-from-api", true, http.StatusForbidden, ``, ``, `access control error: required permission "z" not granted`, "insufficient_permissions"},
-		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, ``, ``, "access control error: roled_jwt: token required", "jwt_token_missing"},
+		{"by role: unauthorized", http.MethodGet, "/role/foo", false, http.StatusUnauthorized, ``, ``, "access control error: roled_jwt: missing authorization header", "jwt_token_missing"},
 		{"by role: sufficient permission", http.MethodGet, "/role/foo", true, http.StatusNoContent, `["a","b"]`, ``, "", ""},
 		{"by role: permission required by endpoint: insufficient permissions", http.MethodPost, "/role/foo", true, http.StatusForbidden, ``, ``, `access control error: required permission "foo" not granted`, "insufficient_permissions"},
 		{"by role: method not permitted", http.MethodDelete, "/role/foo", true, http.StatusMethodNotAllowed, ``, ``, "method not allowed error: method DELETE not allowed by required_permission", ""},

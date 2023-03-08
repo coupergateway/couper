@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 	"github.com/avenga/couper/internal/seetie"
 )
@@ -78,11 +78,7 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 
 	switch s.tsType {
 	case bearerType:
-		if tokenValue = req.Header.Get("Authorization"); tokenValue != "" {
-			if tokenValue, err = getBearer(tokenValue); err != nil {
-				return "", errors.JwtTokenMissing.With(err)
-			}
-		}
+		tokenValue, err = getBearerAuth(req.Header)
 	case cookieType:
 		cookie, cerr := req.Cookie(s.name)
 		if cerr != http.ErrNoCookie && cookie != nil {
@@ -90,17 +86,14 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 		}
 	case headerType:
 		if strings.ToLower(s.name) == "authorization" {
-			if tokenValue = req.Header.Get(s.name); tokenValue != "" {
-				if tokenValue, err = getBearer(tokenValue); err != nil {
-					return "", errors.JwtTokenMissing.With(err)
-				}
-			}
+			tokenValue, err = getBearerAuth(req.Header)
 		} else {
 			tokenValue = req.Header.Get(s.name)
 		}
 	case valueType:
 		requestContext := eval.ContextFromRequest(req).HCLContext()
-		value, err := eval.Value(requestContext, s.expr)
+		var value cty.Value
+		value, err = eval.Value(requestContext, s.expr)
 		if err != nil {
 			return "", err
 		}
@@ -108,17 +101,33 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 		tokenValue = seetie.ValueToString(value)
 	}
 
+	if err != nil {
+		return "", err
+	}
+
 	if tokenValue == "" {
-		return "", errors.JwtTokenMissing.Message("token required")
+		return "", fmt.Errorf("token required")
 	}
 
 	return tokenValue, nil
 }
 
-func getBearer(val string) (string, error) {
-	const bearer = "bearer "
-	if strings.HasPrefix(strings.ToLower(val), bearer) {
-		return strings.Trim(val[len(bearer):], " "), nil
+func getBearerAuth(reqHeaders http.Header) (string, error) {
+	authorization := reqHeaders.Get("Authorization")
+	if authorization == "" {
+		return "", fmt.Errorf("missing authorization header")
 	}
-	return "", fmt.Errorf("bearer required with authorization header")
+	tokenValue, err := getBearer(authorization)
+	if err != nil {
+		return "", err
+	}
+	return tokenValue, nil
+}
+
+func getBearer(authorization string) (string, error) {
+	const bearer = "bearer "
+	if strings.HasPrefix(strings.ToLower(authorization), bearer) {
+		return strings.Trim(authorization[len(bearer):], " "), nil
+	}
+	return "", fmt.Errorf("bearer with token required in authorization header")
 }
