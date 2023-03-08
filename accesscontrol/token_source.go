@@ -2,6 +2,7 @@ package accesscontrol
 
 import (
 	"fmt"
+	"math/bits"
 	"net/http"
 	"strings"
 
@@ -31,48 +32,44 @@ type (
 func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*tokenSource, error) {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
-	types := make(map[TokenSourceType]struct{})
+	var b uint8
+	t := BearerType // default
+
 	if bearer {
-		types[BearerType] = struct{}{}
+		b |= (1 << BearerType)
 	}
 	if c != "" {
-		types[CookieType] = struct{}{}
+		b |= (1 << CookieType)
+		t = CookieType
 	}
 	if h != "" {
-		types[HeaderType] = struct{}{}
+		b |= (1 << HeaderType)
+		t = HeaderType
 	}
 	if value != nil {
 		v, _ := value.Value(nil)
 		if !v.IsNull() {
-			types[ValueType] = struct{}{}
+			b |= (1 << ValueType)
+			t = ValueType
 		}
 	}
-	if len(types) > 1 {
+	if bits.OnesCount8(b) > 1 {
 		return nil, fmt.Errorf("only one of bearer, cookie, header or token_value attributes is allowed")
 	}
 
-	if _, ok := types[ValueType]; ok {
-		return &tokenSource{
-			Expr: value,
-			Type: ValueType,
-		}, nil
+	ts := &tokenSource{
+		Type: t,
 	}
-	if _, ok := types[CookieType]; ok {
-		return &tokenSource{
-			Name: c,
-			Type: CookieType,
-		}, nil
+	switch t {
+	case CookieType:
+		ts.Name = c
+	case HeaderType:
+		ts.Name = h
+	case ValueType:
+		ts.Expr = value
 	}
-	if _, ok := types[HeaderType]; ok {
-		return &tokenSource{
-			Name: h,
-			Type: HeaderType,
-		}, nil
-	}
-	// default
-	return &tokenSource{
-		Type: BearerType,
-	}, nil
+
+	return ts, nil
 }
 
 func (s tokenSource) TokenValue(req *http.Request) (string, error) {
