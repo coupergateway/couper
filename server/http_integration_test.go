@@ -3580,7 +3580,7 @@ func TestJWTAccessControlSourceConfig(t *testing.T) {
 	log, _ := logrustest.NewNullLogger()
 	ctx := context.TODO()
 
-	expectedMsg := "configuration error: invalid-source: token source is invalid"
+	expectedMsg := "configuration error: invalid-source: only one of bearer, cookie, header or token_value attributes is allowed"
 
 	err = command.NewRun(ctx).Execute(nil, couperConfig, log.WithContext(ctx))
 	logErr, _ := err.(errors.GoError)
