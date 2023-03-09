@@ -34,7 +34,7 @@ type JWT struct {
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
-	source                tokenSource
+	source                *tokenSource
 	hmacSecret            []byte
 	name                  string
 	parser                *jwt.Parser
@@ -130,9 +130,9 @@ func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS) (*JWT, error) {
 }
 
 func newJWT(jwtConf *config.JWT) (*JWT, error) {
-	source := newTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
-	if source.Type == Invalid {
-		return nil, fmt.Errorf("token source is invalid")
+	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
+	if err != nil {
+		return nil, err
 	}
 
 	if jwtConf.RolesClaim != "" && jwtConf.RolesMap == nil {
