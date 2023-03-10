@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config"
@@ -139,7 +140,9 @@ func parseFiles(files configfile.Files) ([]*hclsyntax.Body, [][]byte, error) {
 	return parsedBodies, srcBytes, nil
 }
 
-func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env string) (*config.Couper, error) {
+func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env string, logger *logrus.Entry) (*config.Couper, error) {
+	deprecate(parsedBodies, logger)
+
 	defaultsBlock, err := mergeDefaults(parsedBodies)
 	if err != nil {
 		return nil, err
@@ -196,7 +199,7 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 	return conf, nil
 }
 
-func LoadFiles(filesList []string, env string) (*config.Couper, error) {
+func LoadFiles(filesList []string, env string, logger *logrus.Entry) (*config.Couper, error) {
 	configFiles, err := configfile.NewFiles(filesList)
 	if err != nil {
 		return nil, err
@@ -220,7 +223,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 			return nil, diags
 		}
 		if confSettings.Environment != "" {
-			return LoadFiles(filesList, confSettings.Environment)
+			return LoadFiles(filesList, confSettings.Environment, logger)
 		}
 	}
 
@@ -228,7 +231,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 		return nil, errorBeforeRetry
 	}
 
-	conf, err := bodiesToConfig(parsedBodies, srcBytes, env)
+	conf, err := bodiesToConfig(parsedBodies, srcBytes, env, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +241,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 }
 
 func LoadFile(file, env string) (*config.Couper, error) {
-	return LoadFiles([]string{file}, env)
+	return LoadFiles([]string{file}, env, nil)
 }
 
 type testContent struct {
@@ -262,7 +265,7 @@ func loadTestContents(tcs []testContent) (*config.Couper, error) {
 		srcs = append(srcs, tc.src)
 	}
 
-	return bodiesToConfig(parsedBodies, srcs, "")
+	return bodiesToConfig(parsedBodies, srcs, "", nil)
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
@@ -279,7 +282,7 @@ func LoadBytesEnv(src []byte, filename, env string) (*config.Couper, error) {
 		return nil, err
 	}
 
-	return bodiesToConfig([]*hclsyntax.Body{hclBody}, [][]byte{src}, env)
+	return bodiesToConfig([]*hclsyntax.Body{hclBody}, [][]byte{src}, env, nil)
 }
 
 func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {

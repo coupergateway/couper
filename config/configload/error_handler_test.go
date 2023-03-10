@@ -26,7 +26,7 @@ func TestErrorHandler_newKindsFromLabels(t *testing.T) {
 		},
 	}
 
-	_, err := newKindsFromLabels(b)
+	_, err := newKindsFromLabels(b, true)
 
 	exp := `message:":123,321-323: empty error_handler label; ", synopsis:"configuration error"`
 	if got := fmt.Sprintf("%#v", err); !strings.Contains(got, exp) {
