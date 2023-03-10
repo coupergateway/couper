@@ -22,13 +22,15 @@ const (
 
 type (
 	tokenSourceType uint8
-	TokenSource     struct {
+	// TokenSource represents the source from which a token is retrieved.
+	TokenSource struct {
 		expr   hcl.Expression
 		name   string
 		tsType tokenSourceType
 	}
 )
 
+// NewTokenSource creates a new token source according to various configuration attributes.
 func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*TokenSource, error) {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
@@ -72,6 +74,7 @@ func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*
 	return ts, nil
 }
 
+// TokenValue retrieves the token value from the request.
 func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 	var tokenValue string
 	var err error
@@ -112,6 +115,7 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 	return tokenValue, nil
 }
 
+// getBearerAuth retrieves a bearer token from the request headers.
 func getBearerAuth(reqHeaders http.Header) (string, error) {
 	authorization := reqHeaders.Get("Authorization")
 	if authorization == "" {
@@ -124,6 +128,7 @@ func getBearerAuth(reqHeaders http.Header) (string, error) {
 	return tokenValue, nil
 }
 
+// getBearer retrieves a bearer token from the Authorization request header field value.
 func getBearer(authorization string) (string, error) {
 	const bearer = "bearer "
 	if strings.HasPrefix(strings.ToLower(authorization), bearer) {
