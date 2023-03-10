@@ -1,8 +1,6 @@
 package configload
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 )
@@ -133,9 +131,9 @@ func deprecateLabels(block *hclsyntax.Block, logger *logrus.Entry) []string {
 // In some test cases the logger is <nil>, but not in production code.
 func (d deprecated) log(name, old string, logger *logrus.Entry) {
 	if logger != nil {
-		logger.Warn(fmt.Sprintf(
-			"Replacing %s %q with %q. As of Couper version %s, the old value is no longer supported.",
+		logger.Warnf(
+			"replacing %s %q with %q; as of Couper version %s, the old value is no longer supported",
 			name, old, d.newName, d.version,
-		))
+		)
 	}
 }

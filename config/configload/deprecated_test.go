@@ -63,7 +63,7 @@ error_handler "x" "couper_test_label" "abc couper_test_label def" "y" {
 		t.Fatal("Unexpected number of log entries given")
 	}
 
-	exp := `Replacing label "couper_test_label" with "couper_new_label". As of Couper version 1.23, the old value is no longer supported.`
+	exp := `replacing label "couper_test_label" with "couper_new_label"; as of Couper version 1.23, the old value is no longer supported`
 	if entries[0].Message != exp {
 		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
 	}
@@ -71,12 +71,12 @@ error_handler "x" "couper_test_label" "abc couper_test_label def" "y" {
 		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
 	}
 
-	exp = `Replacing attribute "couper_test_attribute" with "couper_new_attribute". As of Couper version 1.23, the old value is no longer supported.`
+	exp = `replacing attribute "couper_test_attribute" with "couper_new_attribute"; as of Couper version 1.23, the old value is no longer supported`
 	if entries[2].Message != exp {
 		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
 	}
 
-	exp = `Replacing block "couper_test_block" with "couper_new_block". As of Couper version 1.23, the old value is no longer supported.`
+	exp = `replacing block "couper_test_block" with "couper_new_block"; as of Couper version 1.23, the old value is no longer supported`
 	if entries[3].Message != exp {
 		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
 	}
