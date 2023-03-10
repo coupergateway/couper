@@ -243,6 +243,10 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenInvalid.With(err)
 	}
 
+	if err = j.source.ValidateTokenClaims(tokenValue, tokenClaims, req); err != nil {
+		return errors.JwtTokenInvalid.With(err)
+	}
+
 	err = j.validateClaims(tokenClaims, expectedClaims)
 	if err != nil {
 		// TODO throw different error?
