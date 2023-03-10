@@ -34,7 +34,7 @@ type JWT struct {
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
-	source                *tokenSource
+	source                *TokenSource
 	hmacSecret            []byte
 	name                  string
 	parser                *jwt.Parser
@@ -176,7 +176,7 @@ func (j *JWT) DisablePrivateCaching() bool {
 func (j *JWT) Validate(req *http.Request) error {
 	tokenValue, err := j.source.TokenValue(req)
 	if err != nil {
-		return err
+		return errors.JwtTokenMissing.With(err)
 	}
 
 	expectedClaims, err := j.getConfiguredClaims(req)
