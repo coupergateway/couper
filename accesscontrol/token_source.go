@@ -121,11 +121,8 @@ func getBearerAuth(reqHeaders http.Header) (string, error) {
 	if authorization == "" {
 		return "", fmt.Errorf("missing authorization header")
 	}
-	tokenValue, err := getBearer(authorization)
-	if err != nil {
-		return "", err
-	}
-	return tokenValue, nil
+
+	return getBearer(authorization)
 }
 
 // getBearer retrieves a bearer token from the Authorization request header field value.
