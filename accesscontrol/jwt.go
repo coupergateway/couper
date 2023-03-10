@@ -162,7 +162,7 @@ func (p parserConfig) newParser() *jwt.Parser {
 }
 
 func newJWT(jwtConf *config.JWT, memStore *cache.MemoryStore) (*JWT, error) {
-	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
+	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Dpop, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,7 @@ import (
 const (
 	bearerType tokenSourceType = iota
 	cookieType
+	dpopType
 	headerType
 	valueType
 )
@@ -31,7 +32,7 @@ type (
 )
 
 // NewTokenSource creates a new token source according to various configuration attributes.
-func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*TokenSource, error) {
+func NewTokenSource(bearer, dpop bool, cookie, header string, value hcl.Expression) (*TokenSource, error) {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
 	var b uint8
@@ -39,6 +40,10 @@ func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*
 
 	if bearer {
 		b |= (1 << bearerType)
+	}
+	if dpop {
+		b |= (1 << dpopType)
+		t = dpopType
 	}
 	if c != "" {
 		b |= (1 << cookieType)
@@ -81,7 +86,9 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 
 	switch s.tsType {
 	case bearerType:
-		tokenValue, err = getBearerAuth(req.Header)
+		tokenValue, err = getTokenFromAuthorization(req.Header, "Bearer")
+	case dpopType:
+		tokenValue, err = getTokenFromAuthorization(req.Header, "DPoP")
 	case cookieType:
 		cookie, cerr := req.Cookie(s.name)
 		if cerr != http.ErrNoCookie && cookie != nil {
@@ -89,7 +96,7 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 		}
 	case headerType:
 		if strings.ToLower(s.name) == "authorization" {
-			tokenValue, err = getBearerAuth(req.Header)
+			tokenValue, err = getTokenFromAuthorization(req.Header, "Bearer")
 		} else {
 			tokenValue = req.Header.Get(s.name)
 		}
@@ -115,21 +122,17 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 	return tokenValue, nil
 }
 
-// getBearerAuth retrieves a bearer token from the request headers.
-func getBearerAuth(reqHeaders http.Header) (string, error) {
+// getTokenFromAuthorization retrieves a token for the given auth scheme from the Authorization request header field.
+func getTokenFromAuthorization(reqHeaders http.Header, authScheme string) (string, error) {
 	authorization := reqHeaders.Get("Authorization")
 	if authorization == "" {
 		return "", fmt.Errorf("missing authorization header")
 	}
 
-	return getBearer(authorization)
-}
-
-// getBearer retrieves a bearer token from the Authorization request header field value.
-func getBearer(authorization string) (string, error) {
-	const bearer = "bearer "
-	if strings.HasPrefix(strings.ToLower(authorization), bearer) {
-		return strings.Trim(authorization[len(bearer):], " "), nil
+	pfx := strings.ToLower(authScheme) + " "
+	if strings.HasPrefix(strings.ToLower(authorization), pfx) {
+		return strings.Trim(authorization[len(pfx):], " "), nil
 	}
-	return "", fmt.Errorf("bearer with token required in authorization header")
+
+	return "", fmt.Errorf("auth scheme %q required in authorization header", authScheme)
 }

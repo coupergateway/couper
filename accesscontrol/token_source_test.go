@@ -18,6 +18,7 @@ func Test_NewTokenSource_error(t *testing.T) {
 	type testCase struct {
 		name   string
 		bearer bool
+		dpop   bool
 		cookie string
 		header string
 		value  hcl.Expression
@@ -25,26 +26,38 @@ func Test_NewTokenSource_error(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
-			"bearer + cookie", true, "c", "", nilExpr,
+			"bearer + dpop", true, true, "", "", nilExpr,
 		},
 		{
-			"bearer + header", true, "", "h", nilExpr,
+			"bearer + cookie", true, false, "c", "", nilExpr,
 		},
 		{
-			"bearer + value", true, "", "", sExpr,
+			"bearer + header", true, false, "", "h", nilExpr,
 		},
 		{
-			"cookie + header", false, "c", "h", nilExpr,
+			"bearer + value", true, false, "", "", sExpr,
 		},
 		{
-			"cookie + value", false, "c", "", sExpr,
+			"dpop + cookie", false, true, "c", "", nilExpr,
 		},
 		{
-			"header + value", false, "", "h", sExpr,
+			"dpop + header", false, true, "", "h", nilExpr,
+		},
+		{
+			"dpop + value", false, true, "", "", sExpr,
+		},
+		{
+			"cookie + header", false, false, "c", "h", nilExpr,
+		},
+		{
+			"cookie + value", false, false, "c", "", sExpr,
+		},
+		{
+			"header + value", false, false, "", "h", sExpr,
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
-			ts, err := ac.NewTokenSource(tc.bearer, tc.cookie, tc.header, tc.value)
+			ts, err := ac.NewTokenSource(tc.bearer, tc.dpop, tc.cookie, tc.header, tc.value)
 			if ts != nil {
 				subT.Fatal("expected nil token source")
 			}
@@ -65,6 +78,7 @@ func Test_TokenValue(t *testing.T) {
 	type testCase struct {
 		name      string
 		bearer    bool
+		dpop      bool
 		cookie    string
 		header    string
 		value     hcl.Expression
@@ -75,61 +89,73 @@ func Test_TokenValue(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{
-			"default", false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
+			"default", false, false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
 		},
 		{
-			"default, missing authorization header", false, "", "", nilExpr, http.Header{}, "", "missing authorization header",
+			"default, missing authorization header", false, false, "", "", nilExpr, http.Header{}, "", "missing authorization header",
 		},
 		{
-			"default, missing token in bearer authorization header", false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
+			"default, missing token in bearer authorization header", false, false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
 		},
 		{
-			"default, different auth scheme", false, "", "", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", "bearer with token required in authorization header",
+			"default, different auth scheme", false, false, "", "", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", `auth scheme "Bearer" required in authorization header`,
 		},
 		{
-			"bearer", true, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
+			"bearer", true, false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
 		},
 		{
-			"bearer, missing authorization header", true, "", "", nilExpr, http.Header{}, "", "missing authorization header",
+			"bearer, missing authorization header", true, false, "", "", nilExpr, http.Header{}, "", "missing authorization header",
 		},
 		{
-			"bearer, missing token in bearer authorization header", true, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
+			"bearer, missing token in bearer authorization header", true, false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
 		},
 		{
-			"bearer, different auth scheme", true, "", "", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", "bearer with token required in authorization header",
+			"bearer, different auth scheme", true, false, "", "", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", `auth scheme "Bearer" required in authorization header`,
 		},
 		{
-			"cookie", false, "c", "", nilExpr, http.Header{"Cookie": []string{"c=asdf"}}, "asdf", "",
+			"dpop", false, true, "", "", nilExpr, http.Header{"Authorization": []string{"DPoP asdf"}}, "asdf", "",
 		},
 		{
-			"cookie, missing c cookie", false, "c", "", nilExpr, http.Header{"Cookie": []string{"foo=bar"}}, "", "token required",
+			"dpop, missing authorization header", false, true, "", "", nilExpr, http.Header{}, "", "missing authorization header",
 		},
 		{
-			"header", false, "", "h", nilExpr, http.Header{"H": []string{"asdf"}}, "asdf", "",
+			"dpop, missing token in bearer authorization header", false, true, "", "", nilExpr, http.Header{"Authorization": []string{"DPoP "}}, "", "token required",
 		},
 		{
-			"header, missing h header", false, "", "h", nilExpr, http.Header{"Foo": []string{"bar"}}, "", "token required",
+			"dpop, different auth scheme", false, true, "", "", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", `auth scheme "DPoP" required in authorization header`,
 		},
 		{
-			"authorization header", false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
+			"cookie", false, false, "c", "", nilExpr, http.Header{"Cookie": []string{"c=asdf"}}, "asdf", "",
 		},
 		{
-			"authorization header, missing authorization header", false, "", "authorization", nilExpr, http.Header{}, "", "missing authorization header",
+			"cookie, missing c cookie", false, false, "c", "", nilExpr, http.Header{"Cookie": []string{"foo=bar"}}, "", "token required",
 		},
 		{
-			"authorization header, missing token in bearer authorization header", false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
+			"header", false, false, "", "h", nilExpr, http.Header{"H": []string{"asdf"}}, "asdf", "",
 		},
 		{
-			"authorization header, different auth scheme", false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", "bearer with token required in authorization header",
+			"header, missing h header", false, false, "", "h", nilExpr, http.Header{"Foo": []string{"bar"}}, "", "token required",
 		},
 		{
-			"value", false, "", "", sExpr, http.Header{}, "asdf", "",
+			"authorization header", false, false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
+		},
+		{
+			"authorization header, missing authorization header", false, false, "", "authorization", nilExpr, http.Header{}, "", "missing authorization header",
+		},
+		{
+			"authorization header, missing token in bearer authorization header", false, false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
+		},
+		{
+			"authorization header, different auth scheme", false, false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", `auth scheme "Bearer" required in authorization header`,
+		},
+		{
+			"value", false, false, "", "", sExpr, http.Header{}, "asdf", "",
 		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
-			ts, err := ac.NewTokenSource(tc.bearer, tc.cookie, tc.header, tc.value)
+			ts, err := ac.NewTokenSource(tc.bearer, tc.dpop, tc.cookie, tc.header, tc.value)
 			helper.Must(err)
 
 			req, err := http.NewRequest(http.MethodGet, "/foo", nil)
