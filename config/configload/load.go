@@ -238,22 +238,22 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		return nil, err
 	}
 
-	err = configureBlocks(helper)
+	err = helper.configureBlocks()
 	if err != nil {
 		return nil, err
 	}
 
-	e = configureJWTSigningProfile(helper)
+	e = helper.configureJWTSigningProfile()
 	if e != nil {
 		return nil, e
 	}
 
-	e = configureSAML(helper)
+	e = helper.configureSAML()
 	if e != nil {
 		return nil, e
 	}
 
-	jwtSigningConfigs, e := configureJWTSigningConfig(helper)
+	jwtSigningConfigs, e := helper.configureJWTSigningConfig()
 	if e != nil {
 		return nil, e
 	}
@@ -263,12 +263,12 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
 		WithSAML(helper.config.Definitions.SAML)
 
-	err = configureServers(helper, getDefinedACs(helper), body)
+	err = helper.configureServers(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = configureJobs(helper)
+	err = helper.configureJobs()
 	if err != nil {
 		return nil, err
 	}

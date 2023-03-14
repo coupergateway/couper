@@ -10,14 +10,19 @@ import (
 
 	"github.com/avenga/couper/config"
 	hclbody "github.com/avenga/couper/config/body"
+	"github.com/avenga/couper/config/configload/collect"
+	"github.com/avenga/couper/config/reader"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 type helper struct {
 	config       *config.Couper
 	context      *hcl.EvalContext
 	content      *hcl.BodyContent
+	defsACs      map[string]struct{}
 	defsBackends map[string]*hclsyntax.Body
 }
 
@@ -40,6 +45,7 @@ func newHelper(body hcl.Body) (*helper, error) {
 		config:       couperConfig,
 		content:      content,
 		context:      evalContext.HCLContext(),
+		defsACs:      getDefinedACs(couperConfig.Definitions),
 		defsBackends: make(map[string]*hclsyntax.Body),
 	}, nil
 }
@@ -98,6 +104,228 @@ func (h *helper) configureACBackends() error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (h *helper) configureBlocks() error {
+	var err error
+
+	for _, outerBlock := range h.content.Blocks {
+		switch outerBlock.Type {
+		case definitions:
+			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
+			if diags.HasErrors() {
+				return diags
+			}
+
+			// backends first
+			if backendContent != nil {
+				for _, be := range backendContent.Blocks {
+					h.addBackend(be)
+				}
+
+				if err = h.configureDefinedBackends(); err != nil {
+					return err
+				}
+			}
+
+			// decode all other blocks into definition struct
+			if diags = gohcl.DecodeBody(leftOver, h.context, h.config.Definitions); diags.HasErrors() {
+				return diags
+			}
+
+			if err = h.configureACBackends(); err != nil {
+				return err
+			}
+
+			acErrorHandler := collect.ErrorHandlerSetters(h.config.Definitions)
+			if err = configureErrorHandler(acErrorHandler, h); err != nil {
+				return err
+			}
+
+		case settings:
+			if diags := gohcl.DecodeBody(outerBlock.Body, h.context, h.config.Settings); diags.HasErrors() {
+				return diags
+			}
+		}
+	}
+
+	return nil
+}
+
+func (h *helper) configureJWTSigningProfile() *errors.Error {
+	for _, profile := range h.config.Definitions.JWTSigningProfile {
+		if profile.Headers != nil {
+			expression, _ := profile.Headers.Value(nil)
+			headers := seetie.ValueToMap(expression)
+
+			if _, exists := headers["alg"]; exists {
+				return errors.Configuration.Label(profile.Name).With(fmt.Errorf(`"alg" cannot be set via "headers"`))
+			}
+		}
+	}
+
+	return nil
+}
+
+func (h *helper) configureSAML() *errors.Error {
+	for _, saml := range h.config.Definitions.SAML {
+		metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
+		if err != nil {
+			return errors.Configuration.Label(saml.Name).With(err)
+		}
+
+		saml.MetadataBytes = metadata
+	}
+
+	return nil
+}
+
+func (h *helper) configureJWTSigningConfig() (map[string]*lib.JWTSigningConfig, *errors.Error) {
+	jwtSigningConfigs := make(map[string]*lib.JWTSigningConfig)
+
+	for _, profile := range h.config.Definitions.JWTSigningProfile {
+		signConf, err := lib.NewJWTSigningConfigFromJWTSigningProfile(profile, nil)
+		if err != nil {
+			return nil, errors.Configuration.Label(profile.Name).With(err)
+		}
+
+		jwtSigningConfigs[profile.Name] = signConf
+	}
+
+	for _, jwt := range h.config.Definitions.JWT {
+		signConf, err := lib.NewJWTSigningConfigFromJWT(jwt)
+		if err != nil {
+			return nil, errors.Configuration.Label(jwt.Name).With(err)
+		}
+
+		if signConf != nil {
+			jwtSigningConfigs[jwt.Name] = signConf
+		}
+	}
+
+	return jwtSigningConfigs, nil
+}
+
+// Reads per server block and merge backend settings which results in a final server configuration.
+func (h *helper) configureServers(body *hclsyntax.Body) error {
+	var err error
+
+	for _, serverBlock := range hclbody.BlocksOfType(body, server) {
+		serverConfig := &config.Server{}
+		if diags := gohcl.DecodeBody(serverBlock.Body, h.context, serverConfig); diags.HasErrors() {
+			return diags
+		}
+
+		// Set the server name since gohcl.DecodeBody decoded the body and not the block.
+		if len(serverBlock.Labels) > 0 {
+			serverConfig.Name = serverBlock.Labels[0]
+		}
+
+		if err = checkReferencedAccessControls(serverBlock.Body, serverConfig.AccessControl, serverConfig.DisableAccessControl, h.defsACs); err != nil {
+			return err
+		}
+
+		for _, fileConfig := range serverConfig.Files {
+			if err := checkReferencedAccessControls(fileConfig.HCLBody(), fileConfig.AccessControl, fileConfig.DisableAccessControl, h.defsACs); err != nil {
+				return err
+			}
+		}
+
+		for _, spaConfig := range serverConfig.SPAs {
+			if err := checkReferencedAccessControls(spaConfig.HCLBody(), spaConfig.AccessControl, spaConfig.DisableAccessControl, h.defsACs); err != nil {
+				return err
+			}
+		}
+
+		err = h.configureAPIs(serverConfig.APIs)
+		if err != nil {
+			return err
+		}
+
+		// Standalone endpoints
+		err = refineEndpoints(h, serverConfig.Endpoints, true, h.defsACs)
+		if err != nil {
+			return err
+		}
+
+		h.config.Servers = append(h.config.Servers, serverConfig)
+	}
+
+	return nil
+}
+
+// Reads api blocks and merge backends with server and definitions backends.
+func (h *helper) configureAPIs(apis config.APIs) error {
+	var err error
+
+	for _, apiConfig := range apis {
+		apiBody := apiConfig.HCLBody()
+
+		if apiConfig.AllowedMethods != nil && len(apiConfig.AllowedMethods) > 0 {
+			if err = validMethods(apiConfig.AllowedMethods, apiBody.Attributes["allowed_methods"]); err != nil {
+				return err
+			}
+		}
+
+		if err := checkReferencedAccessControls(apiBody, apiConfig.AccessControl, apiConfig.DisableAccessControl, h.defsACs); err != nil {
+			return err
+		}
+
+		rp := apiBody.Attributes["required_permission"]
+		if rp != nil {
+			apiConfig.RequiredPermission = rp.Expr
+		}
+
+		err = refineEndpoints(h, apiConfig.Endpoints, true, h.defsACs)
+		if err != nil {
+			return err
+		}
+
+		err = checkPermissionMixedConfig(apiConfig)
+		if err != nil {
+			return err
+		}
+
+		apiConfig.CatchAllEndpoint = newCatchAllEndpoint()
+
+		apiErrorHandler := collect.ErrorHandlerSetters(apiConfig)
+		if err = configureErrorHandler(apiErrorHandler, h); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (h *helper) configureJobs() error {
+	var err error
+
+	for _, job := range h.config.Definitions.Job {
+		attrs := job.Remain.(*hclsyntax.Body).Attributes
+		r := attrs["interval"].Expr.Range()
+
+		job.IntervalDuration, err = config.ParseDuration("interval", job.Interval, -1)
+		if err != nil {
+			return newDiagErr(&r, err.Error())
+		} else if job.IntervalDuration == -1 {
+			return newDiagErr(&r, "invalid duration")
+		}
+
+		endpointConf := &config.Endpoint{
+			Pattern:  job.Name, // for error messages
+			Remain:   job.Remain,
+			Requests: job.Requests,
+		}
+
+		err = refineEndpoints(h, config.Endpoints{endpointConf}, false, nil)
+		if err != nil {
+			return err
+		}
+
+		job.Endpoint = endpointConf
+	}
+
 	return nil
 }
 
@@ -195,22 +423,22 @@ func (h *helper) collectFromBlocks(authorizerBlocks hclsyntax.Blocks, name strin
 	}
 }
 
-func getDefinedACs(helper *helper) map[string]struct{} {
+func getDefinedACs(definitions *config.Definitions) map[string]struct{} {
 	definedACs := make(map[string]struct{})
 
-	for _, ac := range helper.config.Definitions.BasicAuth {
+	for _, ac := range definitions.BasicAuth {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range helper.config.Definitions.JWT {
+	for _, ac := range definitions.JWT {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range helper.config.Definitions.OAuth2AC {
+	for _, ac := range definitions.OAuth2AC {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range helper.config.Definitions.OIDC {
+	for _, ac := range definitions.OIDC {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range helper.config.Definitions.SAML {
+	for _, ac := range definitions.SAML {
 		definedACs[ac.Name] = struct{}{}
 	}
 
