@@ -1,6 +1,7 @@
 package accesscontrol_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -9,56 +10,6 @@ import (
 	ac "github.com/avenga/couper/accesscontrol"
 	"github.com/avenga/couper/internal/test"
 )
-
-func Test_NewTokenSource(t *testing.T) {
-	nilExpr := hcl.StaticExpr(cty.NilVal, hcl.Range{})
-	sExpr := hcl.StaticExpr(cty.StringVal("s"), hcl.Range{})
-
-	type testCase struct {
-		name    string
-		bearer  bool
-		cookie  string
-		header  string
-		value   hcl.Expression
-		expType ac.TokenSourceType
-		expName string
-		expExpr hcl.Expression
-	}
-
-	for _, tc := range []testCase{
-		{
-			"default", false, "", "", nilExpr, ac.BearerType, "", nil,
-		},
-		{
-			"bearer", true, "", "", nilExpr, ac.BearerType, "", nil,
-		},
-		{
-			"cookie", false, "c", "", nilExpr, ac.CookieType, "c", nil,
-		},
-		{
-			"header", false, "", "h", nilExpr, ac.HeaderType, "h", nil,
-		},
-		{
-			"value", false, "", "", sExpr, ac.ValueType, "", sExpr,
-		},
-	} {
-		t.Run(tc.name, func(subT *testing.T) {
-			helper := test.New(subT)
-			ts, err := ac.NewTokenSource(tc.bearer, tc.cookie, tc.header, tc.value)
-			helper.Must(err)
-
-			if ts.Type != tc.expType {
-				subT.Errorf("expected token source type: %v, got: %v", tc.expType, ts.Type)
-			}
-			if ts.Name != tc.expName {
-				subT.Errorf("expected token source name: %q, got: %q", tc.expName, ts.Name)
-			}
-			if ts.Expr != tc.expExpr {
-				subT.Errorf("expected token source expr: %#v, got: %#v", tc.expExpr, ts.Expr)
-			}
-		})
-	}
-}
 
 func Test_NewTokenSource_error(t *testing.T) {
 	nilExpr := hcl.StaticExpr(cty.NilVal, hcl.Range{})
@@ -102,6 +53,101 @@ func Test_NewTokenSource_error(t *testing.T) {
 			}
 			if err.Error() != "only one of bearer, cookie, header or token_value attributes is allowed" {
 				subT.Errorf("wrong error message: %q", err.Error())
+			}
+		})
+	}
+}
+
+func Test_TokenValue(t *testing.T) {
+	nilExpr := hcl.StaticExpr(cty.NilVal, hcl.Range{})
+	sExpr := hcl.StaticExpr(cty.StringVal("asdf"), hcl.Range{})
+
+	type testCase struct {
+		name      string
+		bearer    bool
+		cookie    string
+		header    string
+		value     hcl.Expression
+		reqHeader http.Header
+		expToken  string
+		expErrMsg string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"default", false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
+		},
+		{
+			"default, missing authorization header", false, "", "", nilExpr, http.Header{}, "", "missing authorization header",
+		},
+		{
+			"default, missing token in bearer authorization header", false, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
+		},
+		{
+			"default, different auth scheme", false, "", "", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", "bearer with token required in authorization header",
+		},
+		{
+			"bearer", true, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
+		},
+		{
+			"bearer, missing authorization header", true, "", "", nilExpr, http.Header{}, "", "missing authorization header",
+		},
+		{
+			"bearer, missing token in bearer authorization header", true, "", "", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
+		},
+		{
+			"bearer, different auth scheme", true, "", "", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", "bearer with token required in authorization header",
+		},
+		{
+			"cookie", false, "c", "", nilExpr, http.Header{"Cookie": []string{"c=asdf"}}, "asdf", "",
+		},
+		{
+			"cookie, missing c cookie", false, "c", "", nilExpr, http.Header{"Cookie": []string{"foo=bar"}}, "", "token required",
+		},
+		{
+			"header", false, "", "h", nilExpr, http.Header{"H": []string{"asdf"}}, "asdf", "",
+		},
+		{
+			"header, missing h header", false, "", "h", nilExpr, http.Header{"Foo": []string{"bar"}}, "", "token required",
+		},
+		{
+			"authorization header", false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Bearer asdf"}}, "asdf", "",
+		},
+		{
+			"authorization header, missing authorization header", false, "", "authorization", nilExpr, http.Header{}, "", "missing authorization header",
+		},
+		{
+			"authorization header, missing token in bearer authorization header", false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Bearer "}}, "", "token required",
+		},
+		{
+			"authorization header, different auth scheme", false, "", "authorization", nilExpr, http.Header{"Authorization": []string{"Foo Bar"}}, "", "bearer with token required in authorization header",
+		},
+		{
+			"value", false, "", "", sExpr, http.Header{}, "asdf", "",
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			ts, err := ac.NewTokenSource(tc.bearer, tc.cookie, tc.header, tc.value)
+			helper.Must(err)
+
+			req, err := http.NewRequest(http.MethodGet, "/foo", nil)
+			helper.Must(err)
+			req.Header = tc.reqHeader
+
+			token, err := ts.TokenValue(req)
+			if err != nil {
+				msg := err.Error()
+				if tc.expErrMsg == "" {
+					subT.Errorf("expected no error, but got %q", msg)
+				} else if tc.expToken != "" {
+					subT.Errorf("expected no token, but got %q", token)
+				} else if msg != tc.expErrMsg {
+					subT.Errorf("expected error message: %q, got %q", tc.expErrMsg, msg)
+				}
+			} else if token != tc.expToken {
+				subT.Errorf("expected token: %q, got %q", tc.expToken, token)
 			}
 		})
 	}
