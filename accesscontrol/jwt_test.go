@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -365,6 +367,132 @@ func Test_JWT_Validate(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func Test_JWT_DPoP(t *testing.T) {
+	log, _ := test.NewLogger()
+	h := test.New(t)
+
+	signingMethod := jwt.SigningMethodRS256
+	algo := acjwt.NewAlgorithm(signingMethod.Alg())
+
+	privKeyPEMBytes := []byte(`-----BEGIN PRIVATE KEY-----
+MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC7VJTUt9Us8cKj
+MzEfYyjiWA4R4/M2bS1GB4t7NXp98C3SC6dVMvDuictGeurT8jNbvJZHtCSuYEvu
+NMoSfm76oqFvAp8Gy0iz5sxjZmSnXyCdPEovGhLa0VzMaQ8s+CLOyS56YyCFGeJZ
+qgtzJ6GR3eqoYSW9b9UMvkBpZODSctWSNGj3P7jRFDO5VoTwCQAWbFnOjDfH5Ulg
+p2PKSQnSJP3AJLQNFNe7br1XbrhV//eO+t51mIpGSDCUv3E0DDFcWDTH9cXDTTlR
+ZVEiR2BwpZOOkE/Z0/BVnhZYL71oZV34bKfWjQIt6V/isSMahdsAASACp4ZTGtwi
+VuNd9tybAgMBAAECggEBAKTmjaS6tkK8BlPXClTQ2vpz/N6uxDeS35mXpqasqskV
+laAidgg/sWqpjXDbXr93otIMLlWsM+X0CqMDgSXKejLS2jx4GDjI1ZTXg++0AMJ8
+sJ74pWzVDOfmCEQ/7wXs3+cbnXhKriO8Z036q92Qc1+N87SI38nkGa0ABH9CN83H
+mQqt4fB7UdHzuIRe/me2PGhIq5ZBzj6h3BpoPGzEP+x3l9YmK8t/1cN0pqI+dQwY
+dgfGjackLu/2qH80MCF7IyQaseZUOJyKrCLtSD/Iixv/hzDEUPfOCjFDgTpzf3cw
+ta8+oE4wHCo1iI1/4TlPkwmXx4qSXtmw4aQPz7IDQvECgYEA8KNThCO2gsC2I9PQ
+DM/8Cw0O983WCDY+oi+7JPiNAJwv5DYBqEZB1QYdj06YD16XlC/HAZMsMku1na2T
+N0driwenQQWzoev3g2S7gRDoS/FCJSI3jJ+kjgtaA7Qmzlgk1TxODN+G1H91HW7t
+0l7VnL27IWyYo2qRRK3jzxqUiPUCgYEAx0oQs2reBQGMVZnApD1jeq7n4MvNLcPv
+t8b/eU9iUv6Y4Mj0Suo/AU8lYZXm8ubbqAlwz2VSVunD2tOplHyMUrtCtObAfVDU
+AhCndKaA9gApgfb3xw1IKbuQ1u4IF1FJl3VtumfQn//LiH1B3rXhcdyo3/vIttEk
+48RakUKClU8CgYEAzV7W3COOlDDcQd935DdtKBFRAPRPAlspQUnzMi5eSHMD/ISL
+DY5IiQHbIH83D4bvXq0X7qQoSBSNP7Dvv3HYuqMhf0DaegrlBuJllFVVq9qPVRnK
+xt1Il2HgxOBvbhOT+9in1BzA+YJ99UzC85O0Qz06A+CmtHEy4aZ2kj5hHjECgYEA
+mNS4+A8Fkss8Js1RieK2LniBxMgmYml3pfVLKGnzmng7H2+cwPLhPIzIuwytXywh
+2bzbsYEfYx3EoEVgMEpPhoarQnYPukrJO4gwE2o5Te6T5mJSZGlQJQj9q4ZB2Dfz
+et6INsK0oG8XVGXSpQvQh3RUYekCZQkBBFcpqWpbIEsCgYAnM3DQf3FJoSnXaMhr
+VBIovic5l0xFkEHskAjFTevO86Fsz1C2aSeRKSqGFoOQ0tmJzBEs1R6KqnHInicD
+TQrKhArgLXX4v3CddjfTRJkFWDbE/CkvKZNOrcf1nhaGCPspRJj2KUkj1Fhl9Cnc
+dn/RsYEONbwQSjIfMPkvxF+8HQ==
+-----END PRIVATE KEY-----`)
+	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(privKeyPEMBytes)
+	h.Must(err)
+	pubKeyBytes := []byte(`-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo
+4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0/IzW7yWR7QkrmBL7jTKEn5u
++qKhbwKfBstIs+bMY2Zkp18gnTxKLxoS2tFczGkPLPgizskuemMghRniWaoLcyeh
+kd3qqGElvW/VDL5AaWTg0nLVkjRo9z+40RQzuVaE8AkAFmxZzow3x+VJYKdjykkJ
+0iT9wCS0DRTXu269V264Vf/3jvredZiKRkgwlL9xNAwxXFg0x/XFw005UWVRIkdg
+cKWTjpBP2dPwVZ4WWC+9aGVd+Gyn1o0CLelf4rEjGoXbAAEgAqeGUxrcIlbjXfbc
+mwIDAQAB
+-----END PUBLIC KEY-----`)
+	jwk := rsaPubKeyToJWK(privKey.PublicKey)
+	jkt := ac.JwkToJKT(jwk)
+
+	jwtAC, err := ac.NewJWT(&config.JWT{
+		Dpop:               true,
+		SignatureAlgorithm: algo.String(),
+	}, pubKeyBytes)
+	h.Must(err)
+
+	type testCase struct {
+		name       string
+		authScheme string
+		setProof   bool
+		expErrMsg  string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"ok", "DPoP", true, "",
+		},
+		{
+			"missing DPoP proof", "DPoP", false, "access control error: missing DPoP request header field",
+		},
+		{
+			"bearer token", "Bearer", false, `access control error: auth scheme "DPoP" required in authorization header`,
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req, err := http.NewRequest(http.MethodGet, "/foo", nil)
+			helper.Must(err)
+			req = req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
+
+			accessTokenClaims := jwt.MapClaims{
+				"cnf": map[string]interface{}{
+					"jkt": jkt,
+				},
+			}
+			at := jwt.NewWithClaims(signingMethod, accessTokenClaims)
+			accessToken, err := at.SignedString(privKey)
+			helper.Must(err)
+			hash := sha256.Sum256([]byte(accessToken))
+			ath := base64.RawURLEncoding.EncodeToString(hash[:])
+			req.Header.Set("Authorization", tc.authScheme+" "+accessToken)
+
+			if tc.setProof {
+				proofClaims := jwt.MapClaims{
+					"ath": ath,
+					"htm": req.Method,
+					"htu": req.URL.String(),
+					"iat": time.Now().Unix(),
+					"jti": "some_id",
+				}
+				p := jwt.NewWithClaims(signingMethod, proofClaims)
+				p.Header["jwk"] = jwk
+				p.Header["typ"] = ac.DpopTyp
+				proof, err := p.SignedString(privKey)
+				helper.Must(err)
+				req.Header.Set("DPoP", proof)
+			}
+
+			err = jwtAC.Validate(req)
+			if err != nil {
+				msg := err.Error()
+				if _, ok := err.(errors.GoError); ok {
+					msg = err.(errors.GoError).LogError()
+				}
+				if tc.expErrMsg == "" {
+					subT.Errorf("expected no error, but got: %q", msg)
+				} else if msg != tc.expErrMsg {
+					subT.Errorf("expected error message: %q, got: %q", tc.expErrMsg, msg)
+				}
+			} else if tc.expErrMsg != "" {
+				subT.Errorf("expected err: %q, got no error", tc.expErrMsg)
+			}
+		})
 	}
 }
 
@@ -833,6 +961,20 @@ func TestJwtConfig(t *testing.T) {
 			    signature_algorithm = "HS256"
 			    key = "..."
 			    bearer = true
+			  }
+			}
+			`,
+			"",
+		},
+		{
+			"ok: signature_algorithm + key + dpop",
+			`
+			server "test" {}
+			definitions {
+			  jwt "myac" {
+			    signature_algorithm = "HS256"
+			    key = "..."
+			    dpop = true
 			  }
 			}
 			`,
