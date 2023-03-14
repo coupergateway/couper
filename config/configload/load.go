@@ -280,28 +280,6 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	return helper.config, nil
 }
 
-func getDefinedACs(helper *helper) map[string]struct{} {
-	definedACs := make(map[string]struct{})
-
-	for _, ac := range helper.config.Definitions.BasicAuth {
-		definedACs[ac.Name] = struct{}{}
-	}
-	for _, ac := range helper.config.Definitions.JWT {
-		definedACs[ac.Name] = struct{}{}
-	}
-	for _, ac := range helper.config.Definitions.OAuth2AC {
-		definedACs[ac.Name] = struct{}{}
-	}
-	for _, ac := range helper.config.Definitions.OIDC {
-		definedACs[ac.Name] = struct{}{}
-	}
-	for _, ac := range helper.config.Definitions.SAML {
-		definedACs[ac.Name] = struct{}{}
-	}
-
-	return definedACs
-}
-
 // checkPermissionMixedConfig checks whether, for api blocks with at least two endpoints,
 // all endpoints in api have either
 // a) no required permission set or

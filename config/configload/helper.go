@@ -194,3 +194,25 @@ func (h *helper) collectFromBlocks(authorizerBlocks hclsyntax.Blocks, name strin
 		}
 	}
 }
+
+func getDefinedACs(helper *helper) map[string]struct{} {
+	definedACs := make(map[string]struct{})
+
+	for _, ac := range helper.config.Definitions.BasicAuth {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.JWT {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.OAuth2AC {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.OIDC {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range helper.config.Definitions.SAML {
+		definedACs[ac.Name] = struct{}{}
+	}
+
+	return definedACs
+}
