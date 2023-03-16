@@ -444,3 +444,44 @@ func getDefinedACs(definitions *config.Definitions) map[string]struct{} {
 
 	return definedACs
 }
+
+// checkPermissionMixedConfig checks whether, for api blocks with at least two endpoints,
+// all endpoints in api have either
+// a) no required permission set or
+// b) required permission or disable_access_control set
+func checkPermissionMixedConfig(apiConfig *config.API) error {
+	if apiConfig.RequiredPermission != nil {
+		// default for required permission: no mixed config
+		return nil
+	}
+
+	l := len(apiConfig.Endpoints)
+	if l < 2 {
+		// too few endpoints: no mixed config
+		return nil
+	}
+
+	countEpsWithPermission := 0
+	countEpsWithPermissionOrDisableAC := 0
+	for _, e := range apiConfig.Endpoints {
+		if e.RequiredPermission != nil {
+			// endpoint has required permission attribute set
+			countEpsWithPermission++
+			countEpsWithPermissionOrDisableAC++
+		} else if e.DisableAccessControl != nil {
+			// endpoint has didable AC attribute set
+			countEpsWithPermissionOrDisableAC++
+		}
+	}
+
+	if countEpsWithPermission == 0 {
+		// no endpoints with required permission: no mixed config
+		return nil
+	}
+
+	if l > countEpsWithPermissionOrDisableAC {
+		return errors.Configuration.Messagef("api with label %q has endpoint without required permission", apiConfig.Name)
+	}
+
+	return nil
+}
