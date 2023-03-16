@@ -166,6 +166,8 @@ func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
 		WithSAML(helper.config.Definitions.SAML)
 
+	helper.defsACs = getDefinedACs(helper.config.Definitions)
+
 	err = helper.configureServers(body)
 	if err != nil {
 		return nil, err

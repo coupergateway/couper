@@ -45,7 +45,6 @@ func newHelper(body hcl.Body) (*helper, error) {
 		config:       couperConfig,
 		content:      content,
 		context:      evalContext.HCLContext(),
-		defsACs:      getDefinedACs(couperConfig.Definitions),
 		defsBackends: make(map[string]*hclsyntax.Body),
 	}, nil
 }
