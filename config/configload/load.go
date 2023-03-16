@@ -64,79 +64,6 @@ func init() {
 	}
 }
 
-func updateContext(body hcl.Body, srcBytes [][]byte, environment string) hcl.Diagnostics {
-	defaultsBlock := &config.DefaultsBlock{}
-	// defaultsCtx is a temporary one to allow env variables and functions for defaults {}
-	defaultsCtx := eval.NewContext(srcBytes, nil, environment).HCLContext()
-	if diags := gohcl.DecodeBody(body, defaultsCtx, defaultsBlock); diags.HasErrors() {
-		return diags
-	}
-	defaultsConfig = defaultsBlock.Defaults // global assign
-
-	// We need the "envContext" to be able to resolve absolute paths in the config.
-	evalContext = eval.NewContext(srcBytes, defaultsConfig, environment)
-	envContext = evalContext.HCLContext() // global assign
-
-	return nil
-}
-
-func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env string) (*config.Couper, error) {
-	defaultsBlock, err := mergeDefaults(parsedBodies)
-	if err != nil {
-		return nil, err
-	}
-
-	defs := &hclsyntax.Body{
-		Blocks: hclsyntax.Blocks{defaultsBlock},
-	}
-
-	if diags := updateContext(defs, srcBytes, env); diags.HasErrors() {
-		return nil, diags
-	}
-
-	for _, body := range parsedBodies {
-		if err = absolutizePaths(body); err != nil {
-			return nil, err
-		}
-
-		if err = validateBody(body, false); err != nil {
-			return nil, err
-		}
-	}
-
-	settingsBlock := mergeSettings(parsedBodies)
-
-	definitionsBlock, proxies, err := mergeDefinitions(parsedBodies)
-	if err != nil {
-		return nil, err
-	}
-
-	serverBlocks, err := mergeServers(parsedBodies, proxies)
-	if err != nil {
-		return nil, err
-	}
-
-	configBlocks := serverBlocks
-	configBlocks = append(configBlocks, definitionsBlock)
-	configBlocks = append(configBlocks, defaultsBlock)
-	configBlocks = append(configBlocks, settingsBlock)
-
-	configBody := &hclsyntax.Body{
-		Blocks: configBlocks,
-	}
-
-	if err = validateBody(configBody, len(parsedBodies) > 1); err != nil {
-		return nil, err
-	}
-
-	conf, err := LoadConfig(configBody)
-	if err != nil {
-		return nil, err
-	}
-
-	return conf, nil
-}
-
 func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	configFiles, err := configfile.NewFiles(filesList)
 	if err != nil {
@@ -180,30 +107,6 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 
 func LoadFile(file, env string) (*config.Couper, error) {
 	return LoadFiles([]string{file}, env)
-}
-
-type testContent struct {
-	filename string
-	src      []byte
-}
-
-func loadTestContents(tcs []testContent) (*config.Couper, error) {
-	var (
-		parsedBodies []*hclsyntax.Body
-		srcs         [][]byte
-	)
-
-	for _, tc := range tcs {
-		hclBody, err := parser.Load(tc.src, tc.filename)
-		if err != nil {
-			return nil, err
-		}
-
-		parsedBodies = append(parsedBodies, hclBody)
-		srcs = append(srcs, tc.src)
-	}
-
-	return bodiesToConfig(parsedBodies, srcs, "")
 }
 
 func LoadBytes(src []byte, filename string) (*config.Couper, error) {
@@ -331,4 +234,77 @@ func absolutizePaths(fileBody *hclsyntax.Body) error {
 		return diags
 	}
 	return nil
+}
+
+func updateContext(body hcl.Body, srcBytes [][]byte, environment string) hcl.Diagnostics {
+	defaultsBlock := &config.DefaultsBlock{}
+	// defaultsCtx is a temporary one to allow env variables and functions for defaults {}
+	defaultsCtx := eval.NewContext(srcBytes, nil, environment).HCLContext()
+	if diags := gohcl.DecodeBody(body, defaultsCtx, defaultsBlock); diags.HasErrors() {
+		return diags
+	}
+	defaultsConfig = defaultsBlock.Defaults // global assign
+
+	// We need the "envContext" to be able to resolve absolute paths in the config.
+	evalContext = eval.NewContext(srcBytes, defaultsConfig, environment)
+	envContext = evalContext.HCLContext() // global assign
+
+	return nil
+}
+
+func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env string) (*config.Couper, error) {
+	defaultsBlock, err := mergeDefaults(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	defs := &hclsyntax.Body{
+		Blocks: hclsyntax.Blocks{defaultsBlock},
+	}
+
+	if diags := updateContext(defs, srcBytes, env); diags.HasErrors() {
+		return nil, diags
+	}
+
+	for _, body := range parsedBodies {
+		if err = absolutizePaths(body); err != nil {
+			return nil, err
+		}
+
+		if err = validateBody(body, false); err != nil {
+			return nil, err
+		}
+	}
+
+	settingsBlock := mergeSettings(parsedBodies)
+
+	definitionsBlock, proxies, err := mergeDefinitions(parsedBodies)
+	if err != nil {
+		return nil, err
+	}
+
+	serverBlocks, err := mergeServers(parsedBodies, proxies)
+	if err != nil {
+		return nil, err
+	}
+
+	configBlocks := serverBlocks
+	configBlocks = append(configBlocks, definitionsBlock)
+	configBlocks = append(configBlocks, defaultsBlock)
+	configBlocks = append(configBlocks, settingsBlock)
+
+	configBody := &hclsyntax.Body{
+		Blocks: configBlocks,
+	}
+
+	if err = validateBody(configBody, len(parsedBodies) > 1); err != nil {
+		return nil, err
+	}
+
+	conf, err := LoadConfig(configBody)
+	if err != nil {
+		return nil, err
+	}
+
+	return conf, nil
 }
