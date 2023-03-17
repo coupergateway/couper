@@ -22,7 +22,6 @@ type helper struct {
 	config       *config.Couper
 	context      *hcl.EvalContext
 	content      *hcl.BodyContent
-	defsACs      map[string]struct{}
 	defsBackends map[string]*hclsyntax.Body
 }
 
@@ -209,6 +208,7 @@ func (h *helper) configureJWTSigningConfig() (map[string]*lib.JWTSigningConfig, 
 // Reads per server block and merge backend settings which results in a final server configuration.
 func (h *helper) configureServers(body *hclsyntax.Body) error {
 	var err error
+	defsACs := h.getDefinedACs()
 
 	for _, serverBlock := range hclbody.BlocksOfType(body, server) {
 		serverConfig := &config.Server{}
@@ -221,29 +221,29 @@ func (h *helper) configureServers(body *hclsyntax.Body) error {
 			serverConfig.Name = serverBlock.Labels[0]
 		}
 
-		if err = checkReferencedAccessControls(serverBlock.Body, serverConfig.AccessControl, serverConfig.DisableAccessControl, h.defsACs); err != nil {
+		if err = checkReferencedAccessControls(serverBlock.Body, serverConfig.AccessControl, serverConfig.DisableAccessControl, defsACs); err != nil {
 			return err
 		}
 
 		for _, fileConfig := range serverConfig.Files {
-			if err := checkReferencedAccessControls(fileConfig.HCLBody(), fileConfig.AccessControl, fileConfig.DisableAccessControl, h.defsACs); err != nil {
+			if err := checkReferencedAccessControls(fileConfig.HCLBody(), fileConfig.AccessControl, fileConfig.DisableAccessControl, defsACs); err != nil {
 				return err
 			}
 		}
 
 		for _, spaConfig := range serverConfig.SPAs {
-			if err := checkReferencedAccessControls(spaConfig.HCLBody(), spaConfig.AccessControl, spaConfig.DisableAccessControl, h.defsACs); err != nil {
+			if err := checkReferencedAccessControls(spaConfig.HCLBody(), spaConfig.AccessControl, spaConfig.DisableAccessControl, defsACs); err != nil {
 				return err
 			}
 		}
 
-		err = h.configureAPIs(serverConfig.APIs)
+		err = h.configureAPIs(serverConfig.APIs, defsACs)
 		if err != nil {
 			return err
 		}
 
 		// Standalone endpoints
-		err = refineEndpoints(h, serverConfig.Endpoints, true, h.defsACs)
+		err = refineEndpoints(h, serverConfig.Endpoints, true, defsACs)
 		if err != nil {
 			return err
 		}
@@ -255,7 +255,7 @@ func (h *helper) configureServers(body *hclsyntax.Body) error {
 }
 
 // Reads api blocks and merge backends with server and definitions backends.
-func (h *helper) configureAPIs(apis config.APIs) error {
+func (h *helper) configureAPIs(apis config.APIs, defsACs map[string]struct{}) error {
 	var err error
 
 	for _, apiConfig := range apis {
@@ -267,7 +267,7 @@ func (h *helper) configureAPIs(apis config.APIs) error {
 			}
 		}
 
-		if err := checkReferencedAccessControls(apiBody, apiConfig.AccessControl, apiConfig.DisableAccessControl, h.defsACs); err != nil {
+		if err := checkReferencedAccessControls(apiBody, apiConfig.AccessControl, apiConfig.DisableAccessControl, defsACs); err != nil {
 			return err
 		}
 
@@ -276,7 +276,7 @@ func (h *helper) configureAPIs(apis config.APIs) error {
 			apiConfig.RequiredPermission = rp.Expr
 		}
 
-		err = refineEndpoints(h, apiConfig.Endpoints, true, h.defsACs)
+		err = refineEndpoints(h, apiConfig.Endpoints, true, defsACs)
 		if err != nil {
 			return err
 		}
