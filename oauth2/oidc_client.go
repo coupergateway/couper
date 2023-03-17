@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
@@ -13,6 +14,10 @@ import (
 	acjwt "github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/oauth2/oidc"
+)
+
+var (
+	_ AuthCodeFlowClient = &OidcClient{}
 )
 
 // OidcClient represents an OpenID Connect client using the authorization code flow.
@@ -46,8 +51,21 @@ func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClie
 	}
 
 	o.AuthCodeClient = acClient
-	o.AuthCodeFlowClient = o
 	return o, nil
+}
+
+// ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint.
+func (o *OidcClient) ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
+	tokenResponseData, hashedVerifierValue, verifierValue, accessToken, err := o.exchangeCodeAndGetTokenResponse(req, callbackURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = o.validateTokenResponseData(req.Context(), tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
+		return nil, errors.Oauth2.Message("token response validation error").With(err)
+	}
+
+	return tokenResponseData, nil
 }
 
 // validateTokenResponseData validates the token response data
