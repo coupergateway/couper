@@ -13,7 +13,6 @@ import (
 
 	"github.com/avenga/couper/config"
 	configfile "github.com/avenga/couper/config/configload/file"
-	"github.com/avenga/couper/config/parser"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
 )
@@ -103,27 +102,6 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	conf.Files = configFiles
 
 	return conf, nil
-}
-
-func LoadFile(file, env string) (*config.Couper, error) {
-	return LoadFiles([]string{file}, env)
-}
-
-func LoadBytes(src []byte, filename string) (*config.Couper, error) {
-	return LoadBytesEnv(src, filename, "")
-}
-
-func LoadBytesEnv(src []byte, filename, env string) (*config.Couper, error) {
-	hclBody, err := parser.Load(src, filename)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = validateBody(hclBody, false); err != nil {
-		return nil, err
-	}
-
-	return bodiesToConfig([]*hclsyntax.Body{hclBody}, [][]byte{src}, env)
 }
 
 func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
