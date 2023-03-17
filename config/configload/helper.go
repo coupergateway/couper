@@ -422,7 +422,8 @@ func (h *helper) collectFromBlocks(authorizerBlocks hclsyntax.Blocks, name strin
 	}
 }
 
-func getDefinedACs(definitions *config.Definitions) map[string]struct{} {
+func (h *helper) getDefinedACs() map[string]struct{} {
+	definitions := h.config.Definitions
 	definedACs := make(map[string]struct{})
 
 	for _, ac := range definitions.BasicAuth {
