@@ -126,13 +126,13 @@ func LoadBytesEnv(src []byte, filename, env string) (*config.Couper, error) {
 	return bodiesToConfig([]*hclsyntax.Body{hclBody}, [][]byte{src}, env)
 }
 
-func LoadConfig(body *hclsyntax.Body) (*config.Couper, error) {
+func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 	var (
 		err error
 		e   *errors.Error
 	)
 
-	if diags := ValidateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
+	if diags := validateConfigSchema(body, &config.Couper{}); diags.HasErrors() {
 		return nil, diags
 	}
 
@@ -301,7 +301,7 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 		return nil, err
 	}
 
-	conf, err := LoadConfig(configBody)
+	conf, err := loadConfig(configBody)
 	if err != nil {
 		return nil, err
 	}
