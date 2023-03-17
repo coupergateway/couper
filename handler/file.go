@@ -181,10 +181,6 @@ func (f *File) removeBasePath(reqPath string) string {
 	return reqPath
 }
 
-func (f *File) Template() *errors.Template {
-	return f.errorTpl
-}
-
 func (f *File) String() string {
 	return "file"
 }
