@@ -58,7 +58,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	}
 
 	idTokenClaims := jwt.MapClaims{}
-	_, err := o.jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.Keyfunc)
+	_, err := o.jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.keyfunc)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	return nil
 }
 
-func (o *OidcClient) Keyfunc(token *jwt.Token) (interface{}, error) {
+func (o *OidcClient) keyfunc(token *jwt.Token) (interface{}, error) {
 	return o.config.JWKS().
 		GetSigKeyForToken(token)
 }
