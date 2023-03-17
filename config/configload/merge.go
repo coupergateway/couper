@@ -7,11 +7,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/eval"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/avenga/couper/config"
+	"github.com/avenga/couper/eval"
 )
 
 const (

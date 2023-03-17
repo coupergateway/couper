@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	configfile "github.com/avenga/couper/config/configload/file"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	configfile "github.com/avenga/couper/config/configload/file"
 )
 
 func parseFile(filePath string, srcBytes *[][]byte) (*hclsyntax.Body, error) {
