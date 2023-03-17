@@ -23,13 +23,19 @@ var (
 // OidcClient represents an OpenID Connect client using the authorization code flow.
 type OidcClient struct {
 	*AuthCodeClient
-	config    *oidc.Config
 	backends  map[string]http.RoundTripper
+	config    *oidc.Config
 	jwtParser *jwt.Parser
 }
 
 // NewOidcClient creates a new OIDC client.
 func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClient, error) {
+	backends := oidcConfig.Backends()
+	acClient, err := NewAuthCodeClient(evalCtx, oidcConfig, oidcConfig, backends["token_backend"])
+	if err != nil {
+		return nil, err
+	}
+
 	var algorithms []string
 	for _, a := range append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...) {
 		algorithms = append(algorithms, a.String())
@@ -40,17 +46,12 @@ func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClie
 		// jwt.WithLeeway(time.Second),
 	}
 	o := &OidcClient{
-		config:    oidcConfig,
-		backends:  oidcConfig.Backends(),
-		jwtParser: jwt.NewParser(options...),
+		AuthCodeClient: acClient,
+		backends:       backends,
+		config:         oidcConfig,
+		jwtParser:      jwt.NewParser(options...),
 	}
 
-	acClient, err := NewAuthCodeClient(evalCtx, oidcConfig, oidcConfig, o.backends["token_backend"])
-	if err != nil {
-		return nil, err
-	}
-
-	o.AuthCodeClient = acClient
 	return o, nil
 }
 
