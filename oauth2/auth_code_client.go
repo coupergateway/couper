@@ -19,6 +19,7 @@ import (
 
 // AuthCodeFlowClient represents an OAuth2 client using the authorization code flow.
 type AuthCodeFlowClient interface {
+	// ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint.
 	ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error)
 }
 
@@ -139,6 +140,7 @@ func (a *AuthCodeClient) exchangeCodeAndGetTokenResponse(req *http.Request, call
 	return tokenResponseData, hashedVerifierValue, verifierValue, accessToken, nil
 }
 
+// Base64urlSha256 creates a base64url encoded sha256 hash of the given input string.
 func Base64urlSha256(value string) string {
 	h := sha256.New()
 	h.Write([]byte(value))

@@ -55,7 +55,7 @@ func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClie
 	return o, nil
 }
 
-// ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint.
+// ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint if the ID token is valid.
 func (o *OidcClient) ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
 	tokenResponseData, hashedVerifierValue, verifierValue, accessToken, err := o.exchangeCodeAndGetTokenResponse(req, callbackURL)
 	if err != nil {
