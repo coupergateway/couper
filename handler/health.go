@@ -47,10 +47,6 @@ func (h *Health) ServeHTTP(rw http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *Health) Match(req *http.Request) bool {
-	return strings.HasPrefix(req.URL.Path, h.path)
-}
-
 func (h *Health) String() string {
 	return "health"
 }
