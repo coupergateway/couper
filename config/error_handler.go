@@ -25,7 +25,7 @@ type ErrorHandler struct {
 
 // ErrorHandlerGetter defines the <ErrorHandlerGetter> interface.
 type ErrorHandlerGetter interface {
-	DefaultErrorHandler() *ErrorHandler
+	DefaultErrorHandlers() []*ErrorHandler
 }
 
 // HCLBody implements the <Body> interface.

@@ -41,19 +41,20 @@ func configureErrorHandler(setter []collect.ErrorHandlerSetter, helper *helper) 
 		}
 
 		if handler, has := ehs.(config.ErrorHandlerGetter); has {
-			defaultHandler := handler.DefaultErrorHandler()
-			_, exist := kinds[errors.Wildcard]
-			if !exist {
-				for _, kind := range defaultHandler.Kinds {
-					_, exist = kinds[kind]
-					if exist {
-						break
+			for _, defaultHandler := range handler.DefaultErrorHandlers() {
+				_, exist := kinds[errors.Wildcard]
+				if !exist {
+					for _, kind := range defaultHandler.Kinds {
+						_, exist = kinds[kind]
+						if exist {
+							break
+						}
 					}
 				}
-			}
 
-			if !exist {
-				ehs.Set(handler.DefaultErrorHandler())
+				if !exist {
+					ehs.Set(defaultHandler)
+				}
 			}
 		}
 	}
@@ -71,7 +72,7 @@ func newErrorHandlerContent(content *hclsyntax.Body) (map[string]struct{}, []kin
 	var kindContents []kindContent
 
 	for _, block := range hclbody.BlocksOfType(content, errorHandler) {
-		kinds, err := newKindsFromLabels(block)
+		kinds, err := newKindsFromLabels(block, true)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -116,7 +117,7 @@ func newErrorHandlerContent(content *hclsyntax.Body) (map[string]struct{}, []kin
 const errorHandlerLabelSep = " "
 
 // newKindsFromLabels reads two possible kind formats and returns them per slice entry.
-func newKindsFromLabels(block *hclsyntax.Block) ([]string, error) {
+func newKindsFromLabels(block *hclsyntax.Block, addWildcard bool) ([]string, error) {
 	var allKinds []string
 	for _, kinds := range block.Labels {
 		all := strings.Split(kinds, errorHandlerLabelSep)
@@ -132,7 +133,7 @@ func newKindsFromLabels(block *hclsyntax.Block) ([]string, error) {
 		}
 		allKinds = append(allKinds, all...)
 	}
-	if len(allKinds) == 0 {
+	if addWildcard && len(allKinds) == 0 {
 		allKinds = append(allKinds, errors.Wildcard)
 	}
 	return allKinds, nil

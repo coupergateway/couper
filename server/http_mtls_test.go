@@ -64,6 +64,10 @@ func TestHTTPSServer_TLS_ServerCertificate(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("Expected statusOK, got: %d", res.StatusCode)
 	}
+
+	if !strings.HasPrefix(res.Header.Get("Location"), "https://") {
+		t.Errorf("Expected https scheme in url variable value, got: %s", res.Header.Get("Location"))
+	}
 }
 
 func TestHTTPSServer_TLS_ServerClientCertificate(t *testing.T) {

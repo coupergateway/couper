@@ -92,7 +92,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 }
 
 func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFiles([]string{file, dir}, "test")
+	couperConfig, err := configload.LoadFiles([]string{file, dir}, "test", nil)
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
@@ -3428,16 +3428,16 @@ func TestJWTAccessControl(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: missing authorization header"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusForbidden, "", "access control error: JWTToken: Token is expired"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusUnauthorized, "", "access control error: JWTToken: Token is expired"},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + hmacToken}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS1", "/jwt/rsa/pkcs1", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS8", "/jwt/rsa/pkcs8", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
-		{"RSA JWT bad algorithm", "/jwt/rsa/bad", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", "access control error: RSATokenWrongAlgorithm: signing method RS256 is invalid"},
-		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusForbidden, "", `access control error: JWKS: no matching RS256 JWK for kid ""`},
-		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusForbidden, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-unsupported"`},
-		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusForbidden, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-wrong-cert"`},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusForbidden, "", `access control error: JWKS_not_found: received no valid JWKs data: <nil>, status code 404`},
+		{"RSA JWT bad algorithm", "/jwt/rsa/bad", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", "access control error: RSATokenWrongAlgorithm: signing method RS256 is invalid"},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid ""`},
+		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-unsupported"`},
+		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-wrong-cert"`},
+		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", `access control error: JWKS_not_found: received no valid JWKs data: <nil>, status code 404`},
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
@@ -3450,7 +3450,7 @@ func TestJWTAccessControl(t *testing.T) {
 		{"ECDSA JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA local JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + localToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWT PKCS8", "/jwt/ecdsa8", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
-		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusForbidden, "", "access control error: ECDSATokenWrongAlgorithm: signing method ES256 is invalid"},
+		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusUnauthorized, "", "access control error: ECDSATokenWrongAlgorithm: signing method ES256 is invalid"},
 		{"ECDSA JWKS with certificate: kid=es256", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWKS with crv/x/y: kid=es256-crv-x-y", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken2}}, "", http.StatusOK, "", ""},
 	} {
@@ -3500,6 +3500,81 @@ func TestJWTAccessControl(t *testing.T) {
 	}
 }
 
+func TestJWT_DefaultErrorHandler(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name        string
+		path        string
+		header      http.Header
+		status      int
+		wantErrType string
+		wantWwwAuth string
+	}
+
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"
+	expiredToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"
+	invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0"
+
+	for _, tc := range []testCase{
+		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + validToken}}, http.StatusOK, "", ""},
+		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `Bearer`},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer error="invalid_token", error_description="The access token expired"`},
+		{"invalid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer error="invalid_token"`},
+
+		{"valid token in header", "/jwt/header", http.Header{"X-Token": []string{validToken}}, http.StatusOK, "", ""},
+		{"no token in header", "/jwt/header", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
+		{"expired token in header", "/jwt/header", http.Header{"X-Token": []string{expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", ""},
+		{"invalid token in header", "/jwt/header", http.Header{"X-Token": []string{invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", ""},
+
+		{"valid token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + validToken}}, http.StatusOK, "", ""},
+		{"no token in authorization header", "/jwt/header/auth", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `Bearer`},
+		{"expired token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer error="invalid_token", error_description="The access token expired"`},
+		{"invalid token in authorization header", "/jwt/header/auth", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer error="invalid_token"`},
+
+		{"valid token in cookie", "/jwt/cookie", http.Header{"Cookie": []string{"tok=" + validToken}}, http.StatusOK, "", ""},
+		{"no token in cookie", "/jwt/cookie", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
+		{"expired token in cookie", "/jwt/cookie", http.Header{"Cookie": []string{"tok=" + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", ""},
+		{"invalid token in cookie", "/jwt/cookie", http.Header{"Cookie": []string{"tok=" + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", ""},
+
+		{"valid token from token_value", "/jwt/tokenValue?tok=" + validToken, http.Header{}, http.StatusOK, "", ""},
+		{"no token from token_value", "/jwt/tokenValue", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
+		{"expired token from token_value", "/jwt/tokenValue?tok=" + expiredToken, http.Header{}, http.StatusUnauthorized, "jwt_token_expired", ""},
+		{"invalid token from token_value", "/jwt/tokenValue?tok=" + invalidToken, http.Header{}, http.StatusUnauthorized, "jwt_token_invalid", ""},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, nil)
+			helper.Must(err)
+
+			req.Header = tc.header
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.status {
+				subT.Errorf("expected Status %d, got: %d", tc.status, res.StatusCode)
+				return
+			}
+
+			errorType := getAccessLogErrorType(hook)
+			if errorType != tc.wantErrType {
+				subT.Errorf("Expected error type: %q, actual: %q", tc.wantErrType, errorType)
+			}
+
+			wwwAuth := res.Header.Get("WWW-Authenticate")
+			if wwwAuth != tc.wantWwwAuth {
+				subT.Errorf("Expected www-authenticate: %q, actual: %q", tc.wantWwwAuth, wwwAuth)
+			}
+		})
+	}
+}
+
 func TestJWKsMaxStale(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
@@ -3541,9 +3616,9 @@ func TestJWKsMaxStale(t *testing.T) {
 
 	res, err := client.Do(req)
 	helper.Must(err)
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
+		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3551,9 +3626,9 @@ func TestJWKsMaxStale(t *testing.T) {
 
 	res, err = client.Do(req)
 	helper.Must(err)
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", 200, res.StatusCode, message)
+		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3563,8 +3638,8 @@ func TestJWKsMaxStale(t *testing.T) {
 
 	time.Sleep(time.Second)
 	message := getFirstAccessLogMessage(hook)
-	if res.StatusCode != 403 {
-		t.Fatalf("expected status %d, got: %d (%s)", 403, res.StatusCode, message)
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
 	}
 
 	expectedMessage := "access control error: stale: received no valid JWKs data: <nil>, status code 500"

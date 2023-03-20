@@ -2,7 +2,11 @@ server {
   hosts = ["*:4443"]
 
   endpoint "/" {
-    response {}
+    response {
+      headers = {
+        location = request.url
+      }
+    }
   }
 
   tls {
