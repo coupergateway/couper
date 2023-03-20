@@ -372,6 +372,10 @@ func Test_JWT_Validate(t *testing.T) {
 
 func Test_JWT_DPoP(t *testing.T) {
 	log, _ := test.NewLogger()
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+	logger := log.WithContext(context.Background())
+	memStore := cache.New(logger, tmpStoreCh)
 	h := test.New(t)
 
 	signingMethod := jwt.SigningMethodRS256
@@ -416,13 +420,13 @@ kd3qqGElvW/VDL5AaWTg0nLVkjRo9z+40RQzuVaE8AkAFmxZzow3x+VJYKdjykkJ
 cKWTjpBP2dPwVZ4WWC+9aGVd+Gyn1o0CLelf4rEjGoXbAAEgAqeGUxrcIlbjXfbc
 mwIDAQAB
 -----END PUBLIC KEY-----`)
-	jwk := rsaPubKeyToJWK(privKey.PublicKey)
+	jwk := test.RSAPubKeyToJWK(privKey.PublicKey)
 	jkt := ac.JwkToJKT(jwk)
 
 	jwtAC, err := ac.NewJWT(&config.JWT{
 		Dpop:               true,
 		SignatureAlgorithm: algo.String(),
-	}, pubKeyBytes)
+	}, pubKeyBytes, memStore)
 	h.Must(err)
 
 	type testCase struct {

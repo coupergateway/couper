@@ -145,6 +145,29 @@ func (j *JWT) DefaultErrorHandlers() []*ErrorHandler {
 		// no "WWW-Authenticate: Bearer" for token_value = ...
 		return []*ErrorHandler{}
 	}
+	if j.Dpop {
+		wwwAuthenticateValue := `DPoP algs="RS256 RS384 RS512 ES256 ES384 ES512"`
+		return []*ErrorHandler{
+			{
+				Kinds: []string{"jwt_token_missing"},
+				Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+					"Www-Authenticate": wwwAuthenticateValue,
+				}), hcl.Range{Filename: "default_jwt_error_handler"}),
+			},
+			{
+				Kinds: []string{"jwt_token_invalid"},
+				Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+					"Www-Authenticate": wwwAuthenticateValue + `, error="invalid_token"`,
+				}), hcl.Range{Filename: "default_jwt_error_handler"}),
+			},
+			{
+				Kinds: []string{"jwt_token_expired"},
+				Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+					"Www-Authenticate": wwwAuthenticateValue + `, error="invalid_token", error_description="The access token expired"`,
+				}), hcl.Range{Filename: "default_jwt_error_handler"}),
+			},
+		}
+	}
 	wwwAuthenticateValue := "Bearer"
 	return []*ErrorHandler{
 		{

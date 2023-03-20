@@ -2,10 +2,8 @@ package accesscontrol_test
 
 import (
 	"crypto/ecdsa"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
-	"math/big"
 	"net/http"
 	"testing"
 	"time"
@@ -331,7 +329,7 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
 	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(privKeyPEMBytes)
 	h.Must(err)
 	pubKey := privKey.PublicKey
-	jwk := rsaPubKeyToJWK(pubKey)
+	jwk := test.RSAPubKeyToJWK(pubKey)
 	// to check removal of non-required members
 	jwk["non_required"] = "foo"
 	jkt := ac.JwkToJKT(jwk)
@@ -450,16 +448,6 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
 				subT.Errorf("expected err: %q, got no error", tc.expErrMsg)
 			}
 		})
-	}
-}
-
-func rsaPubKeyToJWK(key rsa.PublicKey) map[string]interface{} {
-	n := base64.RawURLEncoding.EncodeToString(key.N.Bytes())
-	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.E)).Bytes())
-	return map[string]interface{}{
-		"kty": "RSA",
-		"n":   n,
-		"e":   e,
 	}
 }
 
