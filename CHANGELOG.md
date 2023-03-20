@@ -1,12 +1,16 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.12.0...master)
+## [Unreleased](https://github.com/avenga/couper/compare/v1.12.1...master)
 
 Unreleased changes are available as `avenga/couper:edge` container.
 
+---
+
+## [1.12.1](https://github.com/avenga/couper/releases/tag/v1.12.1)
+
 * **Fixed**
   * Erroneously sending an empty [`Server-Timing` header](https://docs.couper.io/configuration/command-line#oberservation-options) ([#700](https://github.com/avenga/couper/pull/700))
-  * url scheme while using the [`tls` block](https://docs.couper.io/configuration/block/server_tls) ([#703](https://github.com/avenga/couper/issues/703))
+  * URL scheme while using the [`tls` block](https://docs.couper.io/configuration/block/server_tls) ([#703](https://github.com/avenga/couper/issues/703))
   * For [OIDC](https://docs.couper.io/configuration/block/oidc), trying to request userinfo from a non-existing (not required, though recommended) userinfo endpoint ([#709](https://github.com/avenga/couper/pull/709))
   * Use of [`backend_responses`'](https://docs.couper.io/configuration/variables#backend_responses) `body` or `json_body` properties in api-level [error handlers](https://docs.couper.io/configuration/block/error_handler) ([#710](https://github.com/avenga/couper/pull/710))
   * Some `..._file` attributes missing for path absolutizing ([#713](https://github.com/avenga/couper/pull/713))
@@ -14,8 +18,6 @@ Unreleased changes are available as `avenga/couper:edge` container.
   * [JWT access control](https://docs.couper.io/configuration/block/jwt) now creating `401` error status code, adding a `WWW-Authenticate: Bearer[...]` response header if appropriate ([#719](https://github.com/avenga/couper/pull/719))
   * Erroneous multiplying of [health probes](https://docs.couper.io/configuration/block/health), [jobs](https://docs.couper.io/configuration/block/job) and requests to [JWKS](https://docs.couper.io/configuration/block/jwt) and [OpenID configuration](https://docs.couper.io/configuration/block/oidc) resources after a reload with [`-watch`](https://docs.couper.io/configuration/command-line#basic-options) ([#730](https://github.com/avenga/couper/pull/730), [#736](https://github.com/avenga/couper/pull/736))
   * Reading PEM-encoded CA certificates ([`ca_file` setting](https://docs.couper.io/configuration/block/settings#attributes) or [`-ca-file` option](https://docs.couper.io/configuration/command-line#tls-options)) containing bytes trailing the PEM message ([#739](https://github.com/avenga/couper/pull/739))
-
----
 
 ## [1.12.0](https://github.com/avenga/couper/releases/tag/v1.12.0)
 
