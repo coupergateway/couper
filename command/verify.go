@@ -20,7 +20,7 @@ func NewVerify() *Verify {
 }
 
 func (v Verify) Execute(args Args, conf *config.Couper, logger *logrus.Entry) error {
-	cf, err := configload.LoadFiles(args, conf.Environment, logger)
+	cf, err := configload.LoadFiles(args, conf.Environment)
 	if diags, ok := err.(hcl.Diagnostics); ok {
 		for _, diag := range diags {
 			logger.WithError(diag).Error()
