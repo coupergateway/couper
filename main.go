@@ -139,7 +139,7 @@ func realmain(ctx context.Context, arguments []string) int {
 		return 0
 	}
 
-	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment, log)
+	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment)
 	if err != nil {
 		log.WithError(err).Error()
 		return 1
@@ -223,7 +223,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment, logger)
+			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
@@ -249,7 +249,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			}
 
 			// Create new config with non-canceled context.
-			confFile, reloadErr = configload.LoadFiles(filesList.paths, flags.Environment, logger)
+			confFile, reloadErr = configload.LoadFiles(filesList.paths, flags.Environment)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
