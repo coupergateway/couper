@@ -31,7 +31,7 @@ func TestHTTPSServer_TLS_SelfSigned(t *testing.T) {
 		t.Fatal("tls error expected, got nil")
 	}
 
-	if err.Error() != `Get "https://localhost:4443/": x509: certificate signed by unknown authority` {
+	if err.Error() != `Get "https://localhost:4443/": tls: failed to verify certificate: x509: certificate signed by unknown authority` {
 		t.Errorf("Want unknown authority error, got: %v", err)
 	}
 }
