@@ -139,7 +139,7 @@ func realmain(ctx context.Context, arguments []string) int {
 		return 0
 	}
 
-	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment)
+	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment, log)
 	if err != nil {
 		log.WithError(err).Error()
 		return 1
@@ -196,8 +196,9 @@ func realmain(ctx context.Context, arguments []string) int {
 						logger.Errorf("retry %d/%d due to listen error: %v", errRetries, flags.FileWatchRetries, netErr)
 
 						// configuration load succeeded at this point, just restart the command
-						execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
+						close(restartSignal) // but cleanup the failed one
 						time.Sleep(flags.FileWatchRetryDelay)
+						execCmd, restartSignal = newRestartableCommand(ctx, cmd) // replace previous pair
 
 						go func() {
 							errCh <- execCmd.Execute(args, confFile, logger)
@@ -222,7 +223,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment)
+			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment, logger)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
@@ -248,7 +249,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			}
 
 			// Create new config with non-canceled context.
-			confFile, reloadErr = configload.LoadFiles(filesList.paths, flags.Environment)
+			confFile, reloadErr = configload.LoadFiles(filesList.paths, flags.Environment, logger)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)

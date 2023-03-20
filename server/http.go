@@ -258,6 +258,10 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	req.URL.Host = req.Host
 	req.URL.Scheme = "http"
+	if req.TLS != nil && req.TLS.HandshakeComplete {
+		req.URL.Scheme += "s"
+	}
+
 	if s.settings.AcceptsForwardedProtocol() {
 		if xfpr := req.Header.Get("X-Forwarded-Proto"); xfpr != "" {
 			req.URL.Scheme = xfpr
