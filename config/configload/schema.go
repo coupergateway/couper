@@ -24,7 +24,7 @@ const (
 
 var reFetchUnexpectedArg = regexp.MustCompile(`An argument named (.*) is not expected here\.`)
 
-func ValidateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
+func validateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 	blocks, diags := getSchemaComponents(body, obj)
 	diags = enhanceErrors(diags, obj)
 
@@ -87,7 +87,7 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 
 		if field.Type.Kind() == reflect.Ptr {
 			o := reflect.New(field.Type.Elem()).Interface()
-			errors = errors.Extend(ValidateConfigSchema(block.Body, o))
+			errors = errors.Extend(validateConfigSchema(block.Body, o))
 
 			continue
 		} else if field.Type.Kind() == reflect.Slice {
@@ -118,7 +118,7 @@ func checkObjectFields(block *hcl.Block, obj interface{}) hcl.Diagnostics {
 				}
 
 				o := reflect.New(elem).Interface()
-				errors = errors.Extend(ValidateConfigSchema(block.Body, o))
+				errors = errors.Extend(validateConfigSchema(block.Body, o))
 
 				continue
 			}
