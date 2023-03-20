@@ -92,7 +92,7 @@ func newCouper(file string, helper *test.Helper) (func(), *logrustest.Hook) {
 }
 
 func newCouperMultiFiles(file, dir string, helper *test.Helper) (func(), *logrustest.Hook) {
-	couperConfig, err := configload.LoadFiles([]string{file, dir}, "test", nil)
+	couperConfig, err := configload.LoadFiles([]string{file, dir}, "test")
 	helper.Must(err)
 
 	return newCouperWithConfig(couperConfig, helper)
