@@ -139,7 +139,11 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			j := definitions.NewJob(job, epHandler, conf.Settings)
 			jobs = append(jobs, j)
 		}
-		jobs.Run(conf.Context, log)
+
+		// do not start go-routine on config check (-watch)
+		if _, exist := conf.Context.Value(request.ConfigDryRun).(bool); !exist {
+			jobs.Run(conf.Context, log)
+		}
 	}
 
 	for _, srvConf := range conf.Servers {
@@ -333,7 +337,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
-				epErrorHandler, err := newErrorHandler(confCtx, conf, &protectedOptions{
+				epErrorHandler, ehBufferOption, err := newErrorHandler(confCtx, conf, &protectedOptions{
 					epOpts:   epOpts,
 					memStore: memStore,
 					srvOpts:  serverOptions,
@@ -343,6 +347,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}
 				if epErrorHandler != nil {
 					epOpts.ErrorHandler = epErrorHandler
+					epOpts.BufferOpts |= ehBufferOption
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 
@@ -355,7 +360,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					protectedHandler = epHandler
 				} else {
 					permissionsControl := ac.NewPermissionsControl(requiredPermissionExpr)
-					permissionsErrorHandler, err := newErrorHandler(confCtx, conf, &protectedOptions{
+					permissionsErrorHandler, _, err := newErrorHandler(confCtx, conf, &protectedOptions{
 						epOpts:   epOpts,
 						memStore: memStore,
 						srvOpts:  serverOptions,
@@ -631,7 +636,7 @@ func configureProtectedHandler(m ACDefinitions, conf *config.Couper, ctx *hcl.Ev
 	opts *protectedOptions, log *logrus.Entry) (http.Handler, error) {
 	var list ac.List
 	for _, acName := range parentAC.Merge(handlerAC).List() {
-		eh, err := newErrorHandler(ctx, conf, opts, log, m, acName)
+		eh, _, err := newErrorHandler(ctx, conf, opts, log, m, acName)
 		if err != nil {
 			return nil, err
 		}

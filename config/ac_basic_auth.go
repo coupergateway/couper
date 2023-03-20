@@ -8,9 +8,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/internal/seetie"
-
 	"github.com/avenga/couper/config/meta"
+	"github.com/avenga/couper/internal/seetie"
 )
 
 var (
@@ -53,15 +52,17 @@ func (b *BasicAuth) Schema(inline bool) *hcl.BodySchema {
 	return schema
 }
 
-func (b *BasicAuth) DefaultErrorHandler() *ErrorHandler {
+func (b *BasicAuth) DefaultErrorHandlers() []*ErrorHandler {
 	wwwAuthenticateValue := "Basic"
 	if b.Realm != "" {
 		wwwAuthenticateValue += fmt.Sprintf(" realm=%q", b.Realm)
 	}
-	return &ErrorHandler{
-		Kinds: []string{"basic_auth"},
-		Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
-			"Www-Authenticate": wwwAuthenticateValue,
-		}), hcl.Range{Filename: "default_basic_auth_error_handler"}),
+	return []*ErrorHandler{
+		{
+			Kinds: []string{"basic_auth"},
+			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+				"Www-Authenticate": wwwAuthenticateValue,
+			}), hcl.Range{Filename: "default_basic_auth_error_handler"}),
+		},
 	}
 }

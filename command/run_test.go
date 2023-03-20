@@ -427,8 +427,25 @@ func TestReadCAFile(t *testing.T) {
 	_, err = malformedFile.Write(ssc.CACertificate.Certificate[:100]) // incomplete
 	helper.Must(err)
 
+	exp := "error parsing pem ca-certificate: has no valid X509 certificate"
 	_, err = readCertificateFile(malformedFile.Name())
-	if err == nil || err.Error() != "error parsing pem ca-certificate: missing pem block" {
-		t.Error("expected: error parsing pem ca-certificate: missing pem block")
+	if err == nil {
+		t.Errorf("expected: %s", exp)
+	} else if err.Error() != exp {
+		t.Errorf("expected: %s\nwas: %s", exp, err.Error())
+	}
+
+	okFile, err := os.CreateTemp("", "ok.cert")
+	helper.Must(err)
+	defer os.Remove(okFile.Name())
+
+	_, err = okFile.Write(ssc.CACertificate.Certificate[:])
+	helper.Must(err)
+	_, err = okFile.WriteString("bogus trailing stuff")
+	helper.Must(err)
+
+	_, err = readCertificateFile(okFile.Name())
+	if err != nil {
+		t.Error("expected no error")
 	}
 }
