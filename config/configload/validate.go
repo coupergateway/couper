@@ -315,10 +315,10 @@ func validMethods(methods []string, attr *hclsyntax.Attribute) error {
 
 // validateBackendTLS determines irrational backend certificate configuration.
 func validateBackendTLS(block *hclsyntax.Block) error {
-	validateCertAttr, _ := block.Body.Attributes["disable_certificate_validation"]
+	validateCertAttr := block.Body.Attributes["disable_certificate_validation"]
 	if tlsBlocks := bodySyntax.BlocksOfType(block.Body, "tls"); validateCertAttr != nil && len(tlsBlocks) > 0 {
 		var attrName string
-		if caCert, _ := tlsBlocks[0].Body.Attributes["server_ca_certificate"]; caCert != nil {
+		if caCert := tlsBlocks[0].Body.Attributes["server_ca_certificate"]; caCert != nil {
 			attrName = caCert.Name
 		} else if caCertFile := tlsBlocks[0].Body.Attributes["server_ca_certificate_file"]; caCertFile != nil {
 			attrName = caCertFile.Name
