@@ -46,7 +46,10 @@ var pathBearingAttributesMap map[string]struct{}
 func init() {
 	pathBearingAttributes := []string{
 		"bootstrap_file",
+		"ca_certificate_file",
 		"ca_file",
+		"client_certificate_file",
+		"client_private_key_file",
 		"document_root",
 		"error_file",
 		"file",
@@ -54,6 +57,12 @@ func init() {
 		"idp_metadata_file",
 		"jwks_url",
 		"key_file",
+		"leaf_certificate_file",
+		"permissions_map_file",
+		"private_key_file",
+		"public_key_file",
+		"roles_map_file",
+		"server_ca_certificate_file",
 		"signing_key_file",
 	}
 

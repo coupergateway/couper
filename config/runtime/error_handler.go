@@ -15,8 +15,9 @@ import (
 )
 
 func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, references ...string) (http.Handler, error) {
+	defs ACDefinitions, references ...string) (http.Handler, eval.BufferOption, error) {
 	kindsHandler := map[string]http.Handler{}
+	var ehBufferOption eval.BufferOption
 	for _, ref := range references {
 		definition, ok := defs[ref]
 		if !ok {
@@ -65,7 +66,7 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 
 			epOpts, err := NewEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, conf, opts.memStore)
 			if err != nil {
-				return nil, err
+				return nil, eval.BufferNone, err
 			}
 			if epOpts.ErrorTemplate == nil || h.ErrorFile == "" {
 				epOpts.ErrorTemplate = opts.epOpts.ErrorTemplate
@@ -83,8 +84,9 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 			epOpts.LogHandlerKind = "error_" + k
 			epOpts.IsErrorHandler = true
 			kindsHandler[k] = handler.NewEndpoint(epOpts, log, nil)
+			ehBufferOption |= epOpts.BufferOpts
 		}
 	}
 
-	return handler.NewErrorHandler(kindsHandler, opts.epOpts.ErrorTemplate), nil
+	return handler.NewErrorHandler(kindsHandler, opts.epOpts.ErrorTemplate), ehBufferOption, nil
 }

@@ -1150,6 +1150,8 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				if !strings.HasSuffix(code, "-miss-id") {
 					if strings.HasSuffix(code, "-wiss-id") {
 						mapClaims["iss"] = "https://malicious.authorization.server"
+					} else if strings.HasSuffix(code, "-wuiss-id") {
+						mapClaims["iss"] = "https://authorization.server/without/userinfo"
 					} else {
 						mapClaims["iss"] = "https://authorization.server"
 					}
@@ -1271,6 +1273,18 @@ func TestOAuth2_AccessControl(t *testing.T) {
 				t.Log(werr)
 			}
 			return
+		} else if req.URL.Path == "/without/userinfo/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server/without/userinfo",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"jwks_uri": "http://` + req.Host + `/jwks",
+			"token_endpoint": "http://` + req.Host + `/token"
+			}`)
+			_, werr := rw.Write(body)
+			if werr != nil {
+				t.Log(werr)
+			}
+			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
@@ -1324,6 +1338,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		{"code, nonce param", "07_couper.hcl", http.MethodGet, "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st}}, http.StatusOK, "code=qeuboub-id&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; client_secret_basic; PKCE; relative redirect_uri", "08_couper.hcl", http.MethodGet, "/cb?code=qeuboub", http.Header{"Cookie": []string{"pkcecv=qerbnr"}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub&code_verifier=qerbnr&grant_type=authorization_code&redirect_uri=https%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; nonce param; relative redirect_uri", "09_couper.hcl", http.MethodGet, "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub-id&grant_type=authorization_code&redirect_uri=https%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
+		{"code; without userinfo", "24_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wuiss-id", http.Header{"Cookie": []string{"nnc=" + st}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub-wuiss-id&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			h := test.New(subT)

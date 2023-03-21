@@ -175,12 +175,13 @@ func readCertificateFile(file string) ([]byte, error) {
 		return nil, fmt.Errorf("error reading ca-certificate: empty file: %q", file)
 	}
 
+	hasValidCert := false
 	pemCerts := cert[:]
 	for len(pemCerts) > 0 {
 		var block *pem.Block
 		block, pemCerts = pem.Decode(pemCerts)
 		if block == nil {
-			return nil, fmt.Errorf("error parsing pem ca-certificate: missing pem block")
+			break
 		}
 		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
 			continue
@@ -190,6 +191,12 @@ func readCertificateFile(file string) ([]byte, error) {
 		if _, err = x509.ParseCertificate(certBytes); err != nil {
 			return nil, fmt.Errorf("error parsing pem ca-certificate: %q: %v", file, err)
 		}
+
+		hasValidCert = true
+	}
+
+	if !hasValidCert {
+		return nil, fmt.Errorf("error parsing pem ca-certificate: has no valid X509 certificate")
 	}
 
 	return cert, nil
