@@ -10,10 +10,6 @@ import (
 	"github.com/avenga/couper/utils"
 )
 
-type Context interface {
-	Options() *Options
-}
-
 type Options struct {
 	APIErrTpls     map[*config.API]*errors.Template
 	FilesErrTpls   []*errors.Template

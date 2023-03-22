@@ -23,8 +23,7 @@ import (
 )
 
 var (
-	_ http.Handler   = &Spa{}
-	_ server.Context = &Spa{}
+	_ http.Handler = &Spa{}
 )
 
 type Spa struct {
@@ -165,10 +164,6 @@ func (s *Spa) replaceBootstrapData(ctx *hcl.EvalContext, reader io.ReadCloser) e
 	}
 
 	return nil
-}
-
-func (s *Spa) Options() *server.Options {
-	return s.srvOptions
 }
 
 func (s *Spa) String() string {
