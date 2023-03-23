@@ -12,7 +12,7 @@ server "api" {
 
     response {
       headers = {
-        x-body = backend_responses.default.body
+        x-body = substr(backend_responses.default.body, 0, 8)
       }
       body = backend_responses.pdf.body
     }
