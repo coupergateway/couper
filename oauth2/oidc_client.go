@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
@@ -15,16 +16,26 @@ import (
 	"github.com/avenga/couper/oauth2/oidc"
 )
 
+var (
+	_ AuthCodeFlowClient = &OidcClient{}
+)
+
 // OidcClient represents an OpenID Connect client using the authorization code flow.
 type OidcClient struct {
 	*AuthCodeClient
-	config    *oidc.Config
 	backends  map[string]http.RoundTripper
+	config    *oidc.Config
 	jwtParser *jwt.Parser
 }
 
 // NewOidcClient creates a new OIDC client.
 func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClient, error) {
+	backends := oidcConfig.Backends()
+	acClient, err := NewAuthCodeClient(evalCtx, oidcConfig, oidcConfig, backends["token_backend"])
+	if err != nil {
+		return nil, err
+	}
+
 	var algorithms []string
 	for _, a := range append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...) {
 		algorithms = append(algorithms, a.String())
@@ -35,19 +46,27 @@ func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClie
 		// jwt.WithLeeway(time.Second),
 	}
 	o := &OidcClient{
-		config:    oidcConfig,
-		backends:  oidcConfig.Backends(),
-		jwtParser: jwt.NewParser(options...),
+		AuthCodeClient: acClient,
+		backends:       backends,
+		config:         oidcConfig,
+		jwtParser:      jwt.NewParser(options...),
 	}
 
-	acClient, err := NewAuthCodeClient(evalCtx, oidcConfig, oidcConfig, o.backends["token_backend"])
+	return o, nil
+}
+
+// ExchangeCodeAndGetTokenResponse exchanges the authorization code and retrieves the response from the token endpoint if the ID token is valid.
+func (o *OidcClient) ExchangeCodeAndGetTokenResponse(req *http.Request, callbackURL *url.URL) (map[string]interface{}, error) {
+	tokenResponseData, hashedVerifierValue, verifierValue, accessToken, err := o.exchangeCodeAndGetTokenResponse(req, callbackURL)
 	if err != nil {
 		return nil, err
 	}
 
-	o.AuthCodeClient = acClient
-	o.AuthCodeFlowClient = o
-	return o, nil
+	if err = o.validateTokenResponseData(req.Context(), tokenResponseData, hashedVerifierValue, verifierValue, accessToken); err != nil {
+		return nil, errors.Oauth2.Message("token response validation error").With(err)
+	}
+
+	return tokenResponseData, nil
 }
 
 // validateTokenResponseData validates the token response data
@@ -58,7 +77,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	}
 
 	idTokenClaims := jwt.MapClaims{}
-	_, err := o.jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.Keyfunc)
+	_, err := o.jwtParser.ParseWithClaims(idTokenString, idTokenClaims, o.keyfunc)
 	if err != nil {
 		return err
 	}
@@ -79,7 +98,7 @@ func (o *OidcClient) validateTokenResponseData(ctx context.Context, tokenRespons
 	return nil
 }
 
-func (o *OidcClient) Keyfunc(token *jwt.Token) (interface{}, error) {
+func (o *OidcClient) keyfunc(token *jwt.Token) (interface{}, error) {
 	return o.config.JWKS().
 		GetSigKeyForToken(token)
 }
