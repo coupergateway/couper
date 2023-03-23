@@ -288,8 +288,8 @@ func TestEndpoints_BerespBody(t *testing.T) {
 		t.Errorf("Expected PDF file, given %s", resBytes)
 	}
 
-	if val := res.Header.Get("x-body"); !strings.HasPrefix(val, "%PDF-1.6") {
-		t.Errorf("Expected PDF file content, got: %q", val)
+	if val := res.Header.Get("x-body"); val != "%PDF-1.6" {
+		t.Errorf("x-body header: expected: %q, got: %q", "%PDF-1.6", val)
 	}
 }
 
