@@ -13,29 +13,6 @@ import (
 	"github.com/avenga/couper/handler"
 )
 
-func TestHealth_Match(t *testing.T) {
-	tests := []struct {
-		name string
-		path string
-		req  *http.Request
-		want bool
-	}{
-		{"request w/o health url", handler.DefaultHealthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/features", nil), false},
-		{"request w health url", handler.DefaultHealthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/healthz", nil), true},
-		{"request w health url & query", handler.DefaultHealthPath, httptest.NewRequest(http.MethodGet, "https://couper.io/healthz?ingress=nginx", nil), true},
-		{"request w reconfigured non health url", handler.DefaultHealthPath + "zz", httptest.NewRequest(http.MethodGet, "https://couper.io/healthz", nil), false},
-		{"request w reconfigured health url", handler.DefaultHealthPath + "zz", httptest.NewRequest(http.MethodGet, "https://couper.io/healthzzz", nil), true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(subT *testing.T) {
-			h := handler.NewHealthCheck(tt.path, nil)
-			if got := h.Match(tt.req); got != tt.want {
-				subT.Errorf("Match() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestHealth_ServeHTTP(t *testing.T) {
 	type fields struct {
 		path       string

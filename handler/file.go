@@ -20,8 +20,7 @@ import (
 const dirIndexFile = "index.html"
 
 var (
-	_ http.Handler   = &File{}
-	_ server.Context = &File{}
+	_ http.Handler = &File{}
 )
 
 type File struct {
@@ -180,14 +179,6 @@ func (f *File) removeBasePath(reqPath string) string {
 	}
 
 	return reqPath
-}
-
-func (f *File) Template() *errors.Template {
-	return f.errorTpl
-}
-
-func (f *File) Options() *server.Options {
-	return f.srvOptions
 }
 
 func (f *File) String() string {

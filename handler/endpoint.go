@@ -404,10 +404,6 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, err er
 	return true
 }
 
-func (e *Endpoint) Options() *server.Options {
-	return e.opts.ServerOpts
-}
-
 func (e *Endpoint) BufferOptions() eval.BufferOption {
 	return e.opts.BufferOpts
 }

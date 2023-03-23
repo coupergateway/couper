@@ -1,6 +1,6 @@
 module github.com/avenga/couper
 
-go 1.19
+go 1.20
 
 require (
 	github.com/docker/go-units v0.5.0
