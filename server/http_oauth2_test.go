@@ -2268,12 +2268,19 @@ func Test_OAuth2_Introspection_Caching(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 	token := res.Header.Get("access-token")
+	res, err = client.Do(req)
+	helper.Must(err)
+	token2 := res.Header.Get("access-token")
 
 	req, err = http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
 	helper.Must(err)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	resCh := make(chan int, 2)
+	req2, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+	helper.Must(err)
+	req2.Header.Set("Authorization", "Bearer "+token2)
+
+	resCh := make(chan int, 3)
 	// get resource
 	go func() {
 		res, err := client.Do(req)
@@ -2282,19 +2289,27 @@ func Test_OAuth2_Introspection_Caching(t *testing.T) {
 	}()
 	// get resource again "simultaneously"
 	go func() {
+		res, err := client.Do(req2)
+		helper.Must(err)
+		resCh <- res.StatusCode
+	}()
+	go func() {
 		res, err := client.Do(req)
 		helper.Must(err)
 		resCh <- res.StatusCode
 	}()
-	st0, st1 := <-resCh, <-resCh
+	st0, st1, st2 := <-resCh, <-resCh, <-resCh
 	if st0 != http.StatusNoContent {
 		t.Errorf("expected status NoContent, got: %d", st0)
 	}
 	if st1 != http.StatusNoContent {
 		t.Errorf("expected status NoContent, got: %d", st1)
 	}
-	if introspectCalled != 1 {
-		t.Errorf("expected 1 call to introspection endpoint, got %d", introspectCalled)
+	if st2 != http.StatusNoContent {
+		t.Errorf("expected status NoContent, got: %d", st2)
+	}
+	if introspectCalled != 2 {
+		t.Errorf("expected 2 call to introspection endpoint, got %d", introspectCalled)
 	}
 
 	time.Sleep(time.Millisecond * 2100)
@@ -2305,8 +2320,8 @@ func Test_OAuth2_Introspection_Caching(t *testing.T) {
 	if res.StatusCode != http.StatusNoContent {
 		t.Errorf("expected status NoContent, got: %d", res.StatusCode)
 	}
-	if introspectCalled != 2 {
-		t.Errorf("expected 2 calls to introspection endpoint, got %d", introspectCalled)
+	if introspectCalled != 3 {
+		t.Errorf("expected 3 calls to introspection endpoint, got %d", introspectCalled)
 	}
 
 	// deactivate token
@@ -2318,8 +2333,8 @@ func Test_OAuth2_Introspection_Caching(t *testing.T) {
 	if res.StatusCode != http.StatusNoContent {
 		t.Errorf("expected status NoContent, got: %d", res.StatusCode)
 	}
-	if introspectCalled != 2 {
-		t.Errorf("expected 2 calls to introspection endpoint, got %d", introspectCalled)
+	if introspectCalled != 3 {
+		t.Errorf("expected 3 calls to introspection endpoint, got %d", introspectCalled)
 	}
 
 	time.Sleep(time.Millisecond * 2100)
@@ -2330,8 +2345,8 @@ func Test_OAuth2_Introspection_Caching(t *testing.T) {
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected status StatusUnauthorized, got: %d", res.StatusCode)
 	}
-	if introspectCalled != 3 {
-		t.Errorf("expected 3 calls to introspection endpoint, got %d", introspectCalled)
+	if introspectCalled != 4 {
+		t.Errorf("expected 4 calls to introspection endpoint, got %d", introspectCalled)
 	}
 
 	time.Sleep(time.Millisecond * 2100)
@@ -2342,8 +2357,8 @@ func Test_OAuth2_Introspection_Caching(t *testing.T) {
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected status StatusUnauthorized, got: %d", res.StatusCode)
 	}
-	if introspectCalled != 3 {
-		t.Errorf("expected 3 calls to introspection endpoint, got %d", introspectCalled)
+	if introspectCalled != 4 {
+		t.Errorf("expected 4 calls to introspection endpoint, got %d", introspectCalled)
 	}
 }
 

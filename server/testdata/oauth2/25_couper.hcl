@@ -5,7 +5,7 @@ server {
     endpoint "/token" { # not proper OAuth2 token endpoint, but token is easier to extract from header
       response {
         headers = {
-          access-token = jwt_sign("at", {})
+          access-token = jwt_sign("at", {jti = oauth2_verifier()})
         }
       }
     }
