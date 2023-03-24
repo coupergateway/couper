@@ -20,6 +20,20 @@ import (
 	"github.com/coupergateway/couper/oauth2"
 )
 
+// IntrospectionResponse represents the response body to a token introspection request.
+type IntrospectionResponse map[string]interface{}
+
+// Active returns whether the token is active.
+func (ir IntrospectionResponse) Active() bool {
+	active, _ := ir["active"].(bool)
+	return active
+}
+
+func (ir IntrospectionResponse) exp() int64 {
+	exp, _ := ir["exp"].(int64)
+	return exp
+}
+
 type lock struct {
 	mu sync.Mutex
 }
@@ -45,20 +59,6 @@ func NewIntrospector(evalCtx *hcl.EvalContext, conf *config.Introspection, trans
 		memStore:      memStore,
 		transport:     transport,
 	}, nil
-}
-
-// IntrospectionResponse represents the response body to a token introspection request.
-type IntrospectionResponse map[string]interface{}
-
-// Active returns whether the token is active.
-func (ir IntrospectionResponse) Active() bool {
-	active, _ := ir["active"].(bool)
-	return active
-}
-
-func (ir IntrospectionResponse) exp() int64 {
-	exp, _ := ir["exp"].(int64)
-	return exp
 }
 
 // Introspect retrieves introspection data for the given token using either cached or fresh information.
