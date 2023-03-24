@@ -15,7 +15,7 @@ import (
 type Proxy struct {
 	Content          *hclsyntax.Body
 	Name             string // label
-	PreviousSequence string
+	previousSequence string
 	RoundTrip        http.RoundTripper
 }
 
@@ -26,8 +26,8 @@ func (p *Proxy) Produce(clientReq *http.Request) *Result {
 
 	outCtx := withRoundTripName(ctx, p.Name)
 	outCtx = context.WithValue(outCtx, request.RoundTripProxy, true)
-	if p.PreviousSequence != "" {
-		outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, p.PreviousSequence)
+	if p.previousSequence != "" {
+		outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, p.previousSequence)
 	}
 
 	// span end by result reader
@@ -56,10 +56,6 @@ func (p *Proxy) Produce(clientReq *http.Request) *Result {
 	return result
 }
 
-func (p *Proxy) GetPreviousSequence() string {
-	return p.PreviousSequence
-}
-
 func (p *Proxy) SetPreviousSequence(ps string) {
-	p.PreviousSequence = ps
+	p.previousSequence = ps
 }

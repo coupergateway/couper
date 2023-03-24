@@ -11,6 +11,5 @@ var (
 
 type Roundtrip interface {
 	Produce(req *http.Request) *Result
-	GetPreviousSequence() string
 	SetPreviousSequence(ps string)
 }

@@ -397,9 +397,6 @@ func (m *mockProducerResult) Produce(r *http.Request) *producer.Result {
 	}
 }
 
-func (m *mockProducerResult) GetPreviousSequence() string {
-	return ""
-}
 func (m *mockProducerResult) SetPreviousSequence(ps string) {
 }
 
