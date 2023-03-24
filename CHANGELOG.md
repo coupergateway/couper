@@ -7,6 +7,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Added**
   * [`can()` function](https://docs.couper.io/configuration/functions) ([#699](https://github.com/avenga/couper/pull/699))
   * `bearer = true` attribute for [`jwt` block](https://docs.couper.io/configuration/block/jwt#attributes) to indicate retrieving token from `Authorization: Bearer ...`. This is the new default token source indicator. `header = "Authorization"` is now _deprecated_ in favour of this new attribute. ([#724](https://github.com/avenga/couper/pull/724))
+  * If Couper starts with `-watch` CLI flag, watch referenced files, too ([#747](https://github.com/avenga/couper/pull/747))
 
 * **Fixed**
   * Erroneously sending an empty [`Server-Timing` header](https://docs.couper.io/configuration/command-line#oberservation-options) ([#700](https://github.com/avenga/couper/pull/700))
