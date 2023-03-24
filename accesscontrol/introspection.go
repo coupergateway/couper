@@ -24,6 +24,7 @@ type lock struct {
 	mu sync.Mutex
 }
 
+// Introspector represents a token introspector.
 type Introspector struct {
 	authenticator *oauth2.ClientAuthenticator
 	conf          *config.Introspection
@@ -32,6 +33,7 @@ type Introspector struct {
 	transport     http.RoundTripper
 }
 
+// NewIntrospector creates a new token introspector.
 func NewIntrospector(evalCtx *hcl.EvalContext, conf *config.Introspection, transport http.RoundTripper, memStore *cache.MemoryStore) (*Introspector, error) {
 	authenticator, err := oauth2.NewClientAuthenticator(evalCtx, conf.EndpointAuthMethod, "endpoint_auth_method", conf.ClientID, conf.ClientSecret, "", conf.JWTSigningProfile)
 	if err != nil {
@@ -45,18 +47,21 @@ func NewIntrospector(evalCtx *hcl.EvalContext, conf *config.Introspection, trans
 	}, nil
 }
 
+// IntrospectionResponse represents the response body to a token introspection request.
 type IntrospectionResponse map[string]interface{}
 
+// Active returns whether the token is active.
 func (ir IntrospectionResponse) Active() bool {
 	active, _ := ir["active"].(bool)
 	return active
 }
 
-func (ir IntrospectionResponse) Exp() int64 {
+func (ir IntrospectionResponse) exp() int64 {
 	exp, _ := ir["exp"].(int64)
 	return exp
 }
 
+// Introspect retrieves introspection data for the given token using either cached or fresh information.
 func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf int64) (IntrospectionResponse, error) {
 	var (
 		introspectionData IntrospectionResponse
@@ -79,6 +84,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 			// cached introspection response is always JSON
 			_ = json.Unmarshal(cachedIntrospectionBytes, &introspectionData)
 
+			// return cached introspection data
 			return introspectionData, nil
 		}
 	}
@@ -127,7 +133,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 	}
 
 	if exp == 0 {
-		if isdExp := introspectionData.Exp(); isdExp > 0 {
+		if isdExp := introspectionData.exp(); isdExp > 0 {
 			exp = isdExp
 		}
 	}
@@ -146,6 +152,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 			ttl = maxTTL
 		}
 	}
+	// cache introspection data
 	i.memStore.Set(key, resBytes, ttl)
 
 	return introspectionData, nil
