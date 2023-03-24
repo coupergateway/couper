@@ -20,11 +20,15 @@ import (
 	"github.com/coupergateway/couper/oauth2"
 )
 
+type lock struct {
+	mu sync.Mutex
+}
+
 type Introspector struct {
 	authenticator *oauth2.ClientAuthenticator
 	conf          *config.Introspection
+	locks         sync.Map
 	memStore      *cache.MemoryStore
-	mu            sync.Mutex
 	transport     http.RoundTripper
 }
 
@@ -60,9 +64,16 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 	)
 
 	if i.conf.TTLSeconds > 0 {
+		// lock per token
+		entry, _ := i.locks.LoadOrStore(token, &lock{})
+		l := entry.(*lock)
+		l.mu.Lock()
+		defer func() {
+			i.locks.Delete(token)
+			l.mu.Unlock()
+		}()
+
 		key = "ir:" + token
-		i.mu.Lock()
-		defer i.mu.Unlock()
 		cachedIntrospectionBytes, _ := i.memStore.Get(key).([]byte)
 		if cachedIntrospectionBytes != nil {
 			// cached introspection response is always JSON
