@@ -137,14 +137,14 @@ func NewClientAuthenticator(evalCtx *hcl.EvalContext, authMethod *string, endpoi
 }
 
 // Authenticate authenticates an OAuth2 token or introspection request by adding necessary form parameters/header fields.
-func (ca *ClientAuthenticator) Authenticate(formParams *url.Values, tokenReq *http.Request) error {
+func (ca *ClientAuthenticator) Authenticate(formParams *url.Values, req *http.Request) error {
 	if ca == nil {
 		return nil
 	}
 
 	switch ca.authnMethod {
 	case clientSecretBasic:
-		tokenReq.SetBasicAuth(url.QueryEscape(ca.clientID), url.QueryEscape(ca.clientSecret))
+		req.SetBasicAuth(url.QueryEscape(ca.clientID), url.QueryEscape(ca.clientSecret))
 	case clientSecretPost:
 		formParams.Set("client_id", ca.clientID)
 		formParams.Set("client_secret", ca.clientSecret)
