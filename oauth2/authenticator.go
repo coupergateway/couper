@@ -136,7 +136,7 @@ func NewClientAuthenticator(evalCtx *hcl.EvalContext, authMethod *string, endpoi
 	}, nil
 }
 
-// Authenticate authenticates an OAuth2 token or introspection request.
+// Authenticate authenticates an OAuth2 token or introspection request by adding necessary form parameters/header fields.
 func (ca *ClientAuthenticator) Authenticate(formParams *url.Values, tokenReq *http.Request) error {
 	if ca == nil {
 		return nil
