@@ -226,7 +226,7 @@ func markDepencencies(allProducers map[string]producer.Roundtrip, items sequence
 		for _, dep := range deps {
 			prevs = append(prevs, dep.Name)
 		}
-		pr.SetPreviousSequence(strings.Join(prevs, ","))
+		pr.SetDependsOn(strings.Join(prevs, ","))
 		markDepencencies(allProducers, deps)
 	}
 }

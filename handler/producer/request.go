@@ -17,10 +17,10 @@ import (
 
 // Request represents the producer <Request> object.
 type Request struct {
-	Backend          http.RoundTripper
-	Context          *hclsyntax.Body
-	Name             string // label
-	previousSequence string
+	Backend   http.RoundTripper
+	Context   *hclsyntax.Body
+	Name      string // label
+	dependsOn string
 }
 
 func (r *Request) Produce(req *http.Request) *Result {
@@ -32,8 +32,8 @@ func (r *Request) Produce(req *http.Request) *Result {
 
 	// span end by result reader
 	outCtx, span := telemetry.NewSpanFromContext(withRoundTripName(ctx, r.Name), r.Name, trace.WithSpanKind(trace.SpanKindClient))
-	if r.previousSequence != "" {
-		outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, r.previousSequence)
+	if r.dependsOn != "" {
+		outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, r.dependsOn)
 	}
 
 	methodVal, err := eval.ValueFromBodyAttribute(hclCtx, r.Context, "method")
@@ -95,8 +95,8 @@ func (r *Request) Produce(req *http.Request) *Result {
 	return result
 }
 
-func (r *Request) SetPreviousSequence(ps string) {
-	r.previousSequence = ps
+func (r *Request) SetDependsOn(ps string) {
+	r.dependsOn = ps
 }
 
 func withRoundTripName(ctx context.Context, name string) context.Context {

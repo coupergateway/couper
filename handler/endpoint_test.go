@@ -397,7 +397,7 @@ func (m *mockProducerResult) Produce(r *http.Request) *producer.Result {
 	}
 }
 
-func (m *mockProducerResult) SetPreviousSequence(ps string) {
+func (m *mockProducerResult) SetDependsOn(ps string) {
 }
 
 func TestEndpoint_ServeHTTP_FaultyDefaultResponse(t *testing.T) {
