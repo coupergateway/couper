@@ -76,7 +76,7 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 			rootName := traversal.RootName()
 
 			if len(traversal) == 1 {
-				if rootName == ClientRequest || rootName == BackendRequest {
+				if rootName == ClientRequest || rootName == BackendRequests || rootName == BackendRequest {
 					result |= BufferRequest
 				}
 				if rootName == BackendResponses || rootName == BackendResponse {
@@ -85,7 +85,7 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 				continue
 			}
 
-			if rootName != ClientRequest && rootName != BackendRequest && rootName != BackendResponses && rootName != BackendResponse {
+			if rootName != ClientRequest && rootName != BackendRequests && rootName != BackendRequest && rootName != BackendResponses && rootName != BackendResponse {
 				continue
 			}
 
@@ -98,6 +98,8 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 					case ClientRequest:
 						fallthrough
 					case BackendRequest:
+						fallthrough
+					case BackendRequests:
 						result |= BufferRequest
 
 					case BackendResponse:
@@ -106,11 +108,11 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 						result |= BufferResponse
 					}
 				case CTX: // e.g. jwt token (value) could be read from any (body) source
-					if rootName == ClientRequest || rootName == BackendRequest {
+					if rootName == ClientRequest || rootName == BackendRequests || rootName == BackendRequest {
 						result |= BufferRequest
 					}
 				case FormBody:
-					if rootName == ClientRequest || rootName == BackendRequest {
+					if rootName == ClientRequest || rootName == BackendRequests || rootName == BackendRequest {
 						result |= BufferRequest
 					}
 				case JSONBody:
@@ -118,6 +120,8 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 					case ClientRequest:
 						fallthrough
 					case BackendRequest:
+						fallthrough
+					case BackendRequests:
 						result |= BufferRequest
 						result |= JSONParseRequest
 
