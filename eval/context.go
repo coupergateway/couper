@@ -274,7 +274,7 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	var respBody, respJSONBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
 		if bOk && (bufferOption&BufferResponse) == BufferResponse {
-			respBody, respJSONBody = parseRespBody(beresp)
+			respBody, respJSONBody = parseRespBody(beresp, (bufferOption&JSONParseResponse) == JSONParseResponse)
 		}
 	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
 		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
@@ -505,7 +505,7 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 	return cty.StringVal(string(b)), jsonBody
 }
 
-func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
+func parseRespBody(beresp *http.Response, parseJSON bool) (cty.Value, cty.Value) {
 	jsonBody := cty.EmptyObjectVal
 
 	b := parseSetRespBody(beresp)
@@ -513,7 +513,7 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
-	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
+	if parseJSON && isJSONMediaType(beresp.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
 	return cty.StringVal(string(b)), jsonBody

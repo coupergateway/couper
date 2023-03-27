@@ -27,7 +27,7 @@ func TestMustBuffer(t *testing.T) {
 		{"buffer responses", `endpoint "/" { set_response_headers = { x = backend_responses } }`, BufferResponse},
 		{"buffer default response", `endpoint "/" { set_response_headers = { x = backend_responses.default } }`, BufferResponse},
 		{"buffer response body", `endpoint "/" { set_response_headers = { x = backend_responses.default.body } }`, BufferResponse},
-		{"buffer response json_body", `endpoint "/" { set_response_headers = { x = backend_responses.default.json_body } }`, BufferResponse},
+		{"buffer response json_body", `endpoint "/" { set_response_headers = { x = backend_responses.default.json_body } }`, BufferResponse|JSONParseResponse},
 		{"buffer request/response", `endpoint "/" {
 	set_response_headers = {
 	  x = request

@@ -18,11 +18,13 @@ const (
 	BufferNone BufferOption = iota
 	BufferRequest
 	BufferResponse
+	_
+	JSONParseResponse
 )
 
 func (i BufferOption) GoString() string {
 	var result []string
-	for _, o := range []BufferOption{BufferRequest, BufferResponse} {
+	for _, o := range []BufferOption{BufferRequest, BufferResponse, JSONParseResponse} {
 		if (i & o) == o {
 			result = append(result, o.String())
 		}
@@ -118,6 +120,7 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 						fallthrough
 					case BackendResponses:
 						result |= BufferResponse
+						result |= JSONParseResponse
 					}
 				default:
 					// e.g. backend_responses.default
