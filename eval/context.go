@@ -256,8 +256,11 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	port, _ := strconv.ParseInt(p, 10, 64)
 
 	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
+	var body, jsonBody cty.Value
 
-	body, jsonBody := parseReqBody(bereq, (bufferOption&JSONParseRequest) == JSONParseRequest)
+	if bOk && (bufferOption&BufferRequest) == BufferRequest {
+		body, jsonBody = parseReqBody(bereq, (bufferOption&JSONParseRequest) == JSONParseRequest)
+	}
 	bereqVal = cty.ObjectVal(ContextMap{
 		Method:   cty.StringVal(bereq.Method),
 		URL:      cty.StringVal(bereq.URL.String()),
