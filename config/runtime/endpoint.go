@@ -158,22 +158,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}
 
 	markDepencencies(allProducers, endpointConf.Sequences)
-	// add independent producers
-	// TODO simplify
-	allDeps := sequence.Dependencies(endpointConf.Sequences)
-	for name := range allProducers {
-		inSeq := false
-		for _, deps := range allDeps {
-			for _, dep := range deps {
-				if name == dep {
-					inSeq = true
-				}
-			}
-		}
-		if !inSeq {
-			endpointConf.Sequences = append(endpointConf.Sequences, &sequence.Item{Name: name})
-		}
-	}
+	addIndependentProducers(allProducers, endpointConf)
 
 	// TODO: redirect
 	if endpointConf.Response == nil && len(allProducers) == 0 { // && redirect == nil
@@ -228,5 +213,23 @@ func markDepencencies(allProducers map[string]producer.Roundtrip, items sequence
 		}
 		pr.SetDependsOn(strings.Join(prevs, ","))
 		markDepencencies(allProducers, deps)
+	}
+}
+
+func addIndependentProducers(allProducers map[string]producer.Roundtrip, endpointConf *config.Endpoint) {
+	// TODO simplify
+	allDeps := sequence.Dependencies(endpointConf.Sequences)
+	for name := range allProducers {
+		inSeq := false
+		for _, deps := range allDeps {
+			for _, dep := range deps {
+				if name == dep {
+					inSeq = true
+				}
+			}
+		}
+		if !inSeq {
+			endpointConf.Sequences = append(endpointConf.Sequences, &sequence.Item{Name: name})
+		}
 	}
 }
