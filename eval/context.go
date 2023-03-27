@@ -161,7 +161,8 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		}
 	}
 	port, _ := strconv.ParseInt(p, 10, 64)
-	body, jsonBody := parseReqBody(req)
+	// TODO how to set request.BufferOptions appropriately before WithClientRequest() is called
+	body, jsonBody := parseReqBody(req, true)
 
 	origin := NewRawOrigin(req.URL)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
@@ -254,7 +255,9 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	}
 	port, _ := strconv.ParseInt(p, 10, 64)
 
-	body, jsonBody := parseReqBody(bereq)
+	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
+
+	body, jsonBody := parseReqBody(bereq, (bufferOption&JSONParseRequest) == JSONParseRequest)
 	bereqVal = cty.ObjectVal(ContextMap{
 		Method:   cty.StringVal(bereq.Method),
 		URL:      cty.StringVal(bereq.URL.String()),
@@ -268,8 +271,6 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		JSONBody: jsonBody,
 		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
-
-	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
 
 	var respBody, respJSONBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
@@ -487,7 +488,7 @@ func isJSONMediaType(contentType string) bool {
 	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
 }
 
-func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
+func parseReqBody(req *http.Request, parseJSON bool) (cty.Value, cty.Value) {
 	jsonBody := cty.EmptyObjectVal
 	if req == nil || req.GetBody == nil {
 		return cty.NilVal, jsonBody
@@ -499,7 +500,7 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
-	if isJSONMediaType(req.Header.Get("Content-Type")) {
+	if parseJSON && isJSONMediaType(req.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
 	return cty.StringVal(string(b)), jsonBody

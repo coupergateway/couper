@@ -19,12 +19,16 @@ const (
 	BufferRequest
 	BufferResponse
 	_
+	JSONParseRequest
+	_
+	_
+	_
 	JSONParseResponse
 )
 
 func (i BufferOption) GoString() string {
 	var result []string
-	for _, o := range []BufferOption{BufferRequest, BufferResponse, JSONParseResponse} {
+	for _, o := range []BufferOption{BufferRequest, BufferResponse, JSONParseRequest, JSONParseResponse} {
 		if (i & o) == o {
 			result = append(result, o.String())
 		}
@@ -115,6 +119,7 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 						fallthrough
 					case BackendRequest:
 						result |= BufferRequest
+						result |= JSONParseRequest
 
 					case BackendResponse:
 						fallthrough
