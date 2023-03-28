@@ -20,14 +20,14 @@ func TestMustBuffer(t *testing.T) {
 		{"buffer request", `endpoint "/" { set_response_headers = { x = request } }`, BufferRequest},
 		{"buffer request body", `endpoint "/" { set_response_headers = { x = request.body } }`, BufferRequest},
 		{"buffer request form_body", `endpoint "/" { set_response_headers = { x = request.form_body } }`, BufferRequest},
-		{"buffer request json_body", `endpoint "/" { set_response_headers = { x = request.json_body } }`, BufferRequest|JSONParseRequest},
+		{"buffer request json_body", `endpoint "/" { set_response_headers = { x = request.json_body } }`, BufferRequest | JSONParseRequest},
 		{"buffer request add_form_params", `endpoint "/" { add_form_params = [] }`, BufferRequest},
 		{"buffer request set_form_params", `endpoint "/" { set_form_params = [] }`, BufferRequest},
 		{"buffer request remove_form_params", `endpoint "/" { remove_form_params = [] }`, BufferRequest},
 		{"buffer responses", `endpoint "/" { set_response_headers = { x = backend_responses } }`, BufferResponse},
 		{"buffer default response", `endpoint "/" { set_response_headers = { x = backend_responses.default } }`, BufferResponse},
 		{"buffer response body", `endpoint "/" { set_response_headers = { x = backend_responses.default.body } }`, BufferResponse},
-		{"buffer response json_body", `endpoint "/" { set_response_headers = { x = backend_responses.default.json_body } }`, BufferResponse|JSONParseResponse},
+		{"buffer response json_body", `endpoint "/" { set_response_headers = { x = backend_responses.default.json_body } }`, BufferResponse | JSONParseResponse},
 		{"buffer request/response", `endpoint "/" {
 	set_response_headers = {
 	  x = request
