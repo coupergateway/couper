@@ -43,7 +43,7 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=build_date::$(date +'%F')"
 
-      - uses: wangyoucao577/go-release-action@v1.25
+      - uses: wangyoucao577/go-release-action@v1.37
         id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
