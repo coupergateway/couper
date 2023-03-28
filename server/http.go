@@ -329,9 +329,9 @@ func (s *HTTPServer) cleanHostAppendPort(host string) string {
 
 func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 	meter := provider.Meter("couper/server")
-	counter, _ := meter.SyncInt64().
-		Counter(instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
-	gauge, _ := meter.SyncFloat64().UpDownCounter(
+	counter, _ := meter.Int64Counter(
+		instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
+	gauge, _ := meter.Float64UpDownCounter(
 		instrumentation.ClientConnections,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)

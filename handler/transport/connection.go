@@ -10,8 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/avenga/couper/config/request"
@@ -88,7 +86,7 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 		since := time.Since(o.createdAt)
 
 		meter := provider.Meter("couper/connection")
-		duration, _ := meter.SyncFloat64().Histogram(
+		duration, _ := meter.Float64Histogram(
 			instrumentation.BackendConnectionsLifetime,
 			instrument.WithDescription(string(unit.Dimensionless)),
 		)
@@ -119,12 +117,13 @@ func (o *OriginConn) Close() error {
 	return o.Conn.Close()
 }
 
-func newMeterCounter() (syncint64.Counter, syncfloat64.UpDownCounter) {
+func newMeterCounter() (instrument.Int64Counter, instrument.Float64UpDownCounter) {
 	meter := provider.Meter("couper/connection")
 
-	counter, _ := meter.SyncInt64().
-		Counter(instrumentation.BackendConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
-	gauge, _ := meter.SyncFloat64().UpDownCounter(
+	counter, _ := meter.Int64Counter(
+		instrumentation.BackendConnectionsTotal,
+		instrument.WithDescription(string(unit.Dimensionless)))
+	gauge, _ := meter.Float64UpDownCounter(
 		instrumentation.BackendConnections,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)

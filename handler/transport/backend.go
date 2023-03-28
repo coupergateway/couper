@@ -297,11 +297,11 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	counter, _ := meter.SyncInt64().Counter(
+	counter, _ := meter.Int64Counter(
 		instrumentation.BackendRequest,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)
-	duration, _ := meter.SyncFloat64().Histogram(
+	duration, _ := meter.Float64Histogram(
 		instrumentation.BackendRequestDuration,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)
