@@ -16,6 +16,7 @@ package metric // import "go.opentelemetry.io/otel/sdk/metric"
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -43,8 +44,8 @@ type periodicReaderConfig struct {
 // options.
 func newPeriodicReaderConfig(options []PeriodicReaderOption) periodicReaderConfig {
 	c := periodicReaderConfig{
-		interval: defaultInterval,
-		timeout:  defaultTimeout,
+		interval: envDuration(envInterval, defaultInterval),
+		timeout:  envDuration(envTimeout, defaultTimeout),
 	}
 	for _, o := range options {
 		c = o.applyPeriodic(c)
@@ -68,6 +69,9 @@ func (o periodicReaderOptionFunc) applyPeriodic(conf periodicReaderConfig) perio
 // WithTimeout configures the time a PeriodicReader waits for an export to
 // complete before canceling it.
 //
+// This option overrides any value set for the
+// OTEL_METRIC_EXPORT_TIMEOUT environment variable.
+//
 // If this option is not used or d is less than or equal to zero, 30 seconds
 // is used as the default.
 func WithTimeout(d time.Duration) PeriodicReaderOption {
@@ -82,6 +86,9 @@ func WithTimeout(d time.Duration) PeriodicReaderOption {
 
 // WithInterval configures the intervening time between exports for a
 // PeriodicReader.
+//
+// This option overrides any value set for the
+// OTEL_METRIC_EXPORT_INTERVAL environment variable.
 //
 // If this option is not used or d is less than or equal to zero, 60 seconds
 // is used as the default.
@@ -114,6 +121,7 @@ func NewPeriodicReader(exporter Exporter, options ...PeriodicReaderOption) Reade
 		cancel:   cancel,
 		done:     make(chan struct{}),
 	}
+	r.externalProducers.Store([]Producer{})
 
 	go func() {
 		defer func() { close(r.done) }()
@@ -126,7 +134,11 @@ func NewPeriodicReader(exporter Exporter, options ...PeriodicReaderOption) Reade
 // periodicReader is a Reader that continuously collects and exports metric
 // data at a set interval.
 type periodicReader struct {
-	producer atomic.Value
+	sdkProducer atomic.Value
+
+	mu                sync.Mutex
+	isShutdown        bool
+	externalProducers atomic.Value
 
 	timeout  time.Duration
 	exporter Exporter
@@ -166,12 +178,26 @@ func (r *periodicReader) run(ctx context.Context, interval time.Duration) {
 }
 
 // register registers p as the producer of this reader.
-func (r *periodicReader) register(p producer) {
+func (r *periodicReader) register(p sdkProducer) {
 	// Only register once. If producer is already set, do nothing.
-	if !r.producer.CompareAndSwap(nil, produceHolder{produce: p.produce}) {
+	if !r.sdkProducer.CompareAndSwap(nil, produceHolder{produce: p.produce}) {
 		msg := "did not register periodic reader"
 		global.Error(errDuplicateRegister, msg)
 	}
+}
+
+// RegisterProducer registers p as an external Producer of this reader.
+func (r *periodicReader) RegisterProducer(p Producer) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.isShutdown {
+		return
+	}
+	currentProducers := r.externalProducers.Load().([]Producer)
+	newProducers := []Producer{}
+	newProducers = append(newProducers, currentProducers...)
+	newProducers = append(newProducers, p)
+	r.externalProducers.Store(newProducers)
 }
 
 // temporality reports the Temporality for the instrument kind provided.
@@ -187,20 +213,29 @@ func (r *periodicReader) aggregation(kind InstrumentKind) aggregation.Aggregatio
 // collectAndExport gather all metric data related to the periodicReader r from
 // the SDK and exports it with r's exporter.
 func (r *periodicReader) collectAndExport(ctx context.Context) error {
-	m, err := r.Collect(ctx)
+	// TODO (#3047): Use a sync.Pool or persistent pointer instead of allocating rm every Collect.
+	rm := metricdata.ResourceMetrics{}
+	err := r.Collect(ctx, &rm)
 	if err == nil {
-		err = r.export(ctx, m)
+		err = r.export(ctx, rm)
 	}
 	return err
 }
 
 // Collect gathers and returns all metric data related to the Reader from
-// the SDK. The returned metric data is not exported to the configured
-// exporter, it is left to the caller to handle that if desired.
+// the SDK and other Producers and stores the result in rm. The returned metric
+// data is not exported to the configured exporter, it is left to the caller to
+// handle that if desired.
 //
-// An error is returned if this is called after Shutdown.
-func (r *periodicReader) Collect(ctx context.Context) (metricdata.ResourceMetrics, error) {
-	return r.collect(ctx, r.producer.Load())
+// An error is returned if this is called after Shutdown. An error is return if rm is nil.
+func (r *periodicReader) Collect(ctx context.Context, rm *metricdata.ResourceMetrics) error {
+	if rm == nil {
+		return errors.New("periodic reader: *metricdata.ResourceMetrics is nil")
+	}
+	// TODO (#3047): When collect is updated to accept output as param, pass rm.
+	rmTemp, err := r.collect(ctx, r.sdkProducer.Load())
+	*rm = rmTemp
+	return err
 }
 
 // collect unwraps p as a produceHolder and returns its produce results.
@@ -218,7 +253,20 @@ func (r *periodicReader) collect(ctx context.Context, p interface{}) (metricdata
 		err := fmt.Errorf("periodic reader: invalid producer: %T", p)
 		return metricdata.ResourceMetrics{}, err
 	}
-	return ph.produce(ctx)
+
+	rm, err := ph.produce(ctx)
+	if err != nil {
+		return metricdata.ResourceMetrics{}, err
+	}
+	var errs []error
+	for _, producer := range r.externalProducers.Load().([]Producer) {
+		externalMetrics, err := producer.Produce(ctx)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		rm.ScopeMetrics = append(rm.ScopeMetrics, externalMetrics...)
+	}
+	return rm, unifyErrors(errs)
 }
 
 // export exports metric data m using r's exporter.
@@ -259,7 +307,7 @@ func (r *periodicReader) Shutdown(ctx context.Context) error {
 		<-r.done
 
 		// Any future call to Collect will now return ErrReaderShutdown.
-		ph := r.producer.Swap(produceHolder{
+		ph := r.sdkProducer.Swap(produceHolder{
 			produce: shutdownProducer{}.produce,
 		})
 
@@ -276,6 +324,12 @@ func (r *periodicReader) Shutdown(ctx context.Context) error {
 		if err == nil || err == ErrReaderShutdown {
 			err = sErr
 		}
+
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		r.isShutdown = true
+		// release references to Producer(s)
+		r.externalProducers.Store([]Producer{})
 	})
 	return err
 }

@@ -15,6 +15,7 @@
 package metric // import "go.opentelemetry.io/otel/sdk/metric"
 
 import (
+	"container/list"
 	"context"
 	"errors"
 	"fmt"
@@ -22,7 +23,7 @@ import (
 	"sync"
 
 	"go.opentelemetry.io/otel/internal/global"
-	"go.opentelemetry.io/otel/metric/unit"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/internal"
@@ -46,7 +47,7 @@ type aggregator interface {
 type instrumentSync struct {
 	name        string
 	description string
-	unit        unit.Unit
+	unit        string
 	aggregator  aggregator
 }
 
@@ -74,8 +75,9 @@ type pipeline struct {
 	views  []View
 
 	sync.Mutex
-	aggregations map[instrumentation.Scope][]instrumentSync
-	callbacks    []func(context.Context)
+	aggregations   map[instrumentation.Scope][]instrumentSync
+	callbacks      []func(context.Context) error
+	multiCallbacks list.List
 }
 
 // addSync adds the instrumentSync to pipeline p with scope. This method is not
@@ -93,20 +95,28 @@ func (p *pipeline) addSync(scope instrumentation.Scope, iSync instrumentSync) {
 	p.aggregations[scope] = append(p.aggregations[scope], iSync)
 }
 
-// addCallback registers a callback to be run when `produce()` is called.
-func (p *pipeline) addCallback(callback func(context.Context)) {
+// addCallback registers a single instrument callback to be run when
+// `produce()` is called.
+func (p *pipeline) addCallback(cback func(context.Context) error) {
 	p.Lock()
 	defer p.Unlock()
-	p.callbacks = append(p.callbacks, callback)
+	p.callbacks = append(p.callbacks, cback)
 }
 
-// callbackKey is a context key type used to identify context that came from the SDK.
-type callbackKey int
+type multiCallback func(context.Context) error
 
-// produceKey is the context key to tell if a Observe is called within a callback.
-// Its value of zero is arbitrary. If this package defined other context keys,
-// they would have different integer values.
-const produceKey callbackKey = 0
+// addMultiCallback registers a multi-instrument callback to be run when
+// `produce()` is called.
+func (p *pipeline) addMultiCallback(c multiCallback) (unregister func()) {
+	p.Lock()
+	defer p.Unlock()
+	e := p.multiCallbacks.PushBack(c)
+	return func() {
+		p.Lock()
+		p.multiCallbacks.Remove(e)
+		p.Unlock()
+	}
+}
 
 // produce returns aggregated metrics from a single collection.
 //
@@ -115,11 +125,22 @@ func (p *pipeline) produce(ctx context.Context) (metricdata.ResourceMetrics, err
 	p.Lock()
 	defer p.Unlock()
 
-	ctx = context.WithValue(ctx, produceKey, struct{}{})
-
-	for _, callback := range p.callbacks {
+	var errs multierror
+	for _, c := range p.callbacks {
 		// TODO make the callbacks parallel. ( #3034 )
-		callback(ctx)
+		if err := c(ctx); err != nil {
+			errs.append(err)
+		}
+		if err := ctx.Err(); err != nil {
+			return metricdata.ResourceMetrics{}, err
+		}
+	}
+	for e := p.multiCallbacks.Front(); e != nil; e = e.Next() {
+		// TODO make the callbacks parallel. ( #3034 )
+		f := e.Value.(multiCallback)
+		if err := f(ctx); err != nil {
+			errs.append(err)
+		}
 		if err := ctx.Err(); err != nil {
 			// This means the context expired before we finished running callbacks.
 			return metricdata.ResourceMetrics{}, err
@@ -151,18 +172,38 @@ func (p *pipeline) produce(ctx context.Context) (metricdata.ResourceMetrics, err
 	return metricdata.ResourceMetrics{
 		Resource:     p.resource,
 		ScopeMetrics: sm,
-	}, nil
+	}, errs.errorOrNil()
 }
 
 // inserter facilitates inserting of new instruments from a single scope into a
 // pipeline.
 type inserter[N int64 | float64] struct {
-	cache    instrumentCache[N]
+	// aggregators is a cache that holds Aggregators inserted into the
+	// underlying reader pipeline. This cache ensures no duplicate Aggregators
+	// are inserted into the reader pipeline and if a new request during an
+	// instrument creation asks for the same Aggregator the same instance is
+	// returned.
+	aggregators *cache[streamID, aggVal[N]]
+
+	// views is a cache that holds instrument identifiers for all the
+	// instruments a Meter has created, it is provided from the Meter that owns
+	// this inserter. This cache ensures during the creation of instruments
+	// with the same name but different options (e.g. description, unit) a
+	// warning message is logged.
+	views *cache[string, streamID]
+
 	pipeline *pipeline
 }
 
-func newInserter[N int64 | float64](p *pipeline, c instrumentCache[N]) *inserter[N] {
-	return &inserter[N]{cache: c, pipeline: p}
+func newInserter[N int64 | float64](p *pipeline, vc *cache[string, streamID]) *inserter[N] {
+	if vc == nil {
+		vc = &cache[string, streamID]{}
+	}
+	return &inserter[N]{
+		aggregators: &cache[streamID, aggVal[N]]{},
+		views:       vc,
+		pipeline:    p,
+	}
 }
 
 // Instrument inserts the instrument inst with instUnit into a pipeline. All
@@ -239,6 +280,12 @@ func (i *inserter[N]) Instrument(inst Instrument) ([]internal.Aggregator[N], err
 	return aggs, errs.errorOrNil()
 }
 
+// aggVal is the cached value in an aggregators cache.
+type aggVal[N int64 | float64] struct {
+	Aggregator internal.Aggregator[N]
+	Err        error
+}
+
 // cachedAggregator returns the appropriate Aggregator for an instrument
 // configuration. If the exact instrument has been created within the
 // inst.Scope, that Aggregator instance will be returned. Otherwise, a new
@@ -266,17 +313,17 @@ func (i *inserter[N]) cachedAggregator(scope instrumentation.Scope, kind Instrum
 		)
 	}
 
-	id := i.instrumentID(kind, stream)
+	id := i.streamID(kind, stream)
 	// If there is a conflict, the specification says the view should
 	// still be applied and a warning should be logged.
 	i.logConflict(id)
-	return i.cache.LookupAggregator(id, func() (internal.Aggregator[N], error) {
+	cv := i.aggregators.Lookup(id, func() aggVal[N] {
 		agg, err := i.aggregator(stream.Aggregation, kind, id.Temporality, id.Monotonic)
 		if err != nil {
-			return nil, err
+			return aggVal[N]{nil, err}
 		}
 		if agg == nil { // Drop aggregator.
-			return nil, nil
+			return aggVal[N]{nil, nil}
 		}
 		if stream.AttributeFilter != nil {
 			agg = internal.NewFilter(agg, stream.AttributeFilter)
@@ -288,15 +335,16 @@ func (i *inserter[N]) cachedAggregator(scope instrumentation.Scope, kind Instrum
 			unit:        stream.Unit,
 			aggregator:  agg,
 		})
-		return agg, err
+		return aggVal[N]{agg, err}
 	})
+	return cv.Aggregator, cv.Err
 }
 
 // logConflict validates if an instrument with the same name as id has already
 // been created. If that instrument conflicts with id, a warning is logged.
-func (i *inserter[N]) logConflict(id instrumentID) {
-	existing, unique := i.cache.Unique(id)
-	if unique {
+func (i *inserter[N]) logConflict(id streamID) {
+	existing := i.views.Lookup(id.Name, func() streamID { return id })
+	if id == existing {
 		return
 	}
 
@@ -312,9 +360,9 @@ func (i *inserter[N]) logConflict(id instrumentID) {
 	)
 }
 
-func (i *inserter[N]) instrumentID(kind InstrumentKind, stream Stream) instrumentID {
+func (i *inserter[N]) streamID(kind InstrumentKind, stream Stream) streamID {
 	var zero N
-	id := instrumentID{
+	id := streamID{
 		Name:        stream.Name,
 		Description: stream.Description,
 		Unit:        stream.Unit,
@@ -324,7 +372,7 @@ func (i *inserter[N]) instrumentID(kind InstrumentKind, stream Stream) instrumen
 	}
 
 	switch kind {
-	case InstrumentKindAsyncCounter, InstrumentKindSyncCounter, InstrumentKindSyncHistogram:
+	case InstrumentKindObservableCounter, InstrumentKindCounter, InstrumentKindHistogram:
 		id.Monotonic = true
 	}
 
@@ -342,7 +390,7 @@ func (i *inserter[N]) aggregator(agg aggregation.Aggregation, kind InstrumentKin
 		return internal.NewLastValue[N](), nil
 	case aggregation.Sum:
 		switch kind {
-		case InstrumentKindAsyncCounter, InstrumentKindAsyncUpDownCounter:
+		case InstrumentKindObservableCounter, InstrumentKindObservableUpDownCounter:
 			// Asynchronous counters and up-down-counters are defined to record
 			// the absolute value of the count:
 			// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-counter-creation
@@ -380,18 +428,18 @@ func (i *inserter[N]) aggregator(agg aggregation.Aggregation, kind InstrumentKin
 // isAggregatorCompatible checks if the aggregation can be used by the instrument.
 // Current compatibility:
 //
-// | Instrument Kind      | Drop | LastValue | Sum | Histogram | Exponential Histogram |
-// |----------------------|------|-----------|-----|-----------|-----------------------|
-// | Sync Counter         | X    |           | X   | X         | X                     |
-// | Sync UpDown Counter  | X    |           | X   |           |                       |
-// | Sync Histogram       | X    |           | X   | X         | X                     |
-// | Async Counter        | X    |           | X   |           |                       |
-// | Async UpDown Counter | X    |           | X   |           |                       |
-// | Async Gauge          | X    | X         |     |           |                       |.
+// | Instrument Kind          | Drop | LastValue | Sum | Histogram | Exponential Histogram |
+// |--------------------------|------|-----------|-----|-----------|-----------------------|
+// | Counter                  | X    |           | X   | X         | X                     |
+// | UpDownCounter            | X    |           | X   |           |                       |
+// | Histogram                | X    |           | X   | X         | X                     |
+// | Observable Counter       | X    |           | X   |           |                       |
+// | Observable UpDownCounter | X    |           | X   |           |                       |
+// | Observable Gauge         | X    | X         |     |           |                       |.
 func isAggregatorCompatible(kind InstrumentKind, agg aggregation.Aggregation) error {
 	switch agg.(type) {
 	case aggregation.ExplicitBucketHistogram:
-		if kind == InstrumentKindSyncCounter || kind == InstrumentKindSyncHistogram {
+		if kind == InstrumentKindCounter || kind == InstrumentKindHistogram {
 			return nil
 		}
 		// TODO: review need for aggregation check after
@@ -399,7 +447,7 @@ func isAggregatorCompatible(kind InstrumentKind, agg aggregation.Aggregation) er
 		return errIncompatibleAggregation
 	case aggregation.Sum:
 		switch kind {
-		case InstrumentKindAsyncCounter, InstrumentKindAsyncUpDownCounter, InstrumentKindSyncCounter, InstrumentKindSyncHistogram, InstrumentKindSyncUpDownCounter:
+		case InstrumentKindObservableCounter, InstrumentKindObservableUpDownCounter, InstrumentKindCounter, InstrumentKindHistogram, InstrumentKindUpDownCounter:
 			return nil
 		default:
 			// TODO: review need for aggregation check after
@@ -407,7 +455,7 @@ func isAggregatorCompatible(kind InstrumentKind, agg aggregation.Aggregation) er
 			return errIncompatibleAggregation
 		}
 	case aggregation.LastValue:
-		if kind == InstrumentKindAsyncGauge {
+		if kind == InstrumentKindObservableGauge {
 			return nil
 		}
 		// TODO: review need for aggregation check after
@@ -439,10 +487,27 @@ func newPipelines(res *resource.Resource, readers []Reader, views []View) pipeli
 	return pipes
 }
 
-func (p pipelines) registerCallback(fn func(context.Context)) {
+func (p pipelines) registerCallback(cback func(context.Context) error) {
 	for _, pipe := range p {
-		pipe.addCallback(fn)
+		pipe.addCallback(cback)
 	}
+}
+
+func (p pipelines) registerMultiCallback(c multiCallback) metric.Registration {
+	unregs := make([]func(), len(p))
+	for i, pipe := range p {
+		unregs[i] = pipe.addMultiCallback(c)
+	}
+	return unregisterFuncs(unregs)
+}
+
+type unregisterFuncs []func()
+
+func (u unregisterFuncs) Unregister() error {
+	for _, f := range u {
+		f()
+	}
+	return nil
 }
 
 // resolver facilitates resolving Aggregators an instrument needs to aggregate
@@ -452,10 +517,10 @@ type resolver[N int64 | float64] struct {
 	inserters []*inserter[N]
 }
 
-func newResolver[N int64 | float64](p pipelines, c instrumentCache[N]) resolver[N] {
+func newResolver[N int64 | float64](p pipelines, vc *cache[string, streamID]) resolver[N] {
 	in := make([]*inserter[N], len(p))
 	for i := range in {
-		in[i] = newInserter(p[i], c)
+		in[i] = newInserter[N](p[i], vc)
 	}
 	return resolver[N]{in}
 }
@@ -484,6 +549,9 @@ type multierror struct {
 func (m *multierror) errorOrNil() error {
 	if len(m.errors) == 0 {
 		return nil
+	}
+	if m.wrapped == nil {
+		return errors.New(strings.Join(m.errors, "; "))
 	}
 	return fmt.Errorf("%w: %s", m.wrapped, strings.Join(m.errors, "; "))
 }
