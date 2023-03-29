@@ -210,7 +210,6 @@ func Test_ErroneousBackendResponse(t *testing.T) {
 	client := test.NewHTTPClient()
 
 	type testcase struct {
-		name             string
 		file             string
 		path             string
 		expBody          string
@@ -220,10 +219,9 @@ func Test_ErroneousBackendResponse(t *testing.T) {
 	}
 
 	for _, tc := range []testcase{
-		{"store invalid backend response", "06_couper.hcl", "/anything", `{"req_path":"/anything","resp_ct":"application/json","resp_json_body_query":{},"resp_status":200}`, 418, 200, "status is not supported"},
-		{"api-level error handlers affect endpoint's buffer options", "08_couper.hcl", "/anything", `{"resp_json_status":200}`, 418, 200, ""},
+		{"06_couper.hcl", "/anything", `{"req_path":"/anything","resp_ct":"application/json","resp_json_body_query":{},"resp_status":200}`, 418, 200, "status is not supported"},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
+		t.Run(tc.file, func(st *testing.T) {
 			shutdown, hook := newCouper("testdata/integration/error_handler/"+tc.file, test.New(t))
 			defer shutdown()
 
@@ -271,6 +269,47 @@ func getBackendLogStatusAndValidation(hook *logrustest.Hook) (int, string) {
 	}
 
 	return -1, ""
+}
+
+func Test_ApiLevelErrorHandlersAffectEndpoinBufferOptions(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	type testcase struct {
+		file      string
+		path      string
+		expBody   string
+		expStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"08_couper.hcl", "/anything", `{"resp_json_status":200}`, 418},
+	} {
+		t.Run(tc.file, func(st *testing.T) {
+			shutdown, hook := newCouper("testdata/integration/error_handler/"+tc.file, test.New(t))
+			defer shutdown()
+
+			helper := test.New(st)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("status code want: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			resBytes, err := io.ReadAll(res.Body)
+			defer res.Body.Close()
+			helper.Must(err)
+
+			if !bytes.Contains(resBytes, []byte(tc.expBody)) {
+				st.Errorf("body\nwant: %s,\ngot:  %s", tc.expBody, resBytes)
+			}
+		})
+	}
 }
 
 func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
