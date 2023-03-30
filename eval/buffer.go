@@ -137,6 +137,9 @@ func MustBuffer(bodies ...hcl.Body) BufferOption {
 						if rootName == BackendResponse || rootName == BackendResponses {
 							result |= BufferResponse
 						}
+						if rootName == BackendRequest || rootName == BackendRequests {
+							result |= BufferRequest
+						}
 					}
 				}
 			}
