@@ -12,6 +12,7 @@ Unreleased changes are available as `avenga/couper:edge` container.
 * **Fixed**
   * Erroneously sending an empty [`Server-Timing` header](https://docs.couper.io/configuration/command-line#oberservation-options) ([#700](https://github.com/avenga/couper/pull/700))
   * `WWW-Authenticate` header `realm` param value for [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth) ([#715](https://github.com/avenga/couper/pull/715))
+  * [`Server-Timing` header](https://docs.couper.io/configuration/block/settings) only reporting last requests/proxies of [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#751](https://github.com/avenga/couper/pull/751))
 
 * **Dependencies**
   * build with go 1.20 ([#745](https://github.com/avenga/couper/pull/745))
