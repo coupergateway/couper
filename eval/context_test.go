@@ -3,7 +3,6 @@ package eval_test
 import (
 	"bytes"
 	"context"
-	// "fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"

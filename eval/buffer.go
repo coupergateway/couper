@@ -15,15 +15,11 @@ import (
 type BufferOption uint8
 
 const (
-	BufferNone BufferOption = iota
-	BufferRequest
-	BufferResponse
-	_
-	JSONParseRequest
-	_
-	_
-	_
-	JSONParseResponse
+	BufferNone        BufferOption = 0
+	BufferRequest     BufferOption = 1
+	BufferResponse    BufferOption = 2
+	JSONParseRequest  BufferOption = 4
+	JSONParseResponse BufferOption = 8
 )
 
 func (i BufferOption) GoString() string {
