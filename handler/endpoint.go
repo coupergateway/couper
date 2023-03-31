@@ -248,23 +248,27 @@ func (e *Endpoint) newRedirect() *http.Response {
 	}
 }
 
-func newChannels(l sequence.List) (inputChannels, outputChannels map[string][]chan *producer.Result) {
+func newChannels(l sequence.List) (inputChannels, outputChannels map[string][]chan *producer.Result, resultChannels map[string]chan *producer.Result) {
 	inputChannels = make(map[string][]chan *producer.Result)
 	outputChannels = make(map[string][]chan *producer.Result)
+	resultChannels = make(map[string]chan *producer.Result)
 	for _, item := range l {
-		fillChannels(item, inputChannels, outputChannels)
-		ch := make(chan *producer.Result, 1)
-		outputChannels[item.Name] = []chan *producer.Result{ch}
+		fillChannels(item, inputChannels, outputChannels, resultChannels)
 	}
-	return inputChannels, outputChannels
+	return inputChannels, outputChannels, resultChannels
 }
 
-func fillChannels(item *sequence.Item, inputChannels, outputChannels map[string][]chan *producer.Result) {
+func fillChannels(item *sequence.Item, inputChannels, outputChannels map[string][]chan *producer.Result, resultChannels map[string]chan *producer.Result) {
 	for _, dep := range item.Deps() {
 		ch := make(chan *producer.Result, 1)
 		inputChannels[item.Name] = append(inputChannels[item.Name], ch)
 		outputChannels[dep.Name] = append(outputChannels[dep.Name], ch)
-		fillChannels(dep, inputChannels, outputChannels)
+		fillChannels(dep, inputChannels, outputChannels, resultChannels)
+	}
+	if _, ok := resultChannels[item.Name]; !ok {
+		ch := make(chan *producer.Result, 1)
+		outputChannels[item.Name] = append(outputChannels[item.Name], ch)
+		resultChannels[item.Name] = ch
 	}
 }
 
@@ -314,7 +318,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 
 	outreq := req.WithContext(context.WithValue(req.Context(), request.ResponseBlock, e.opts.Response != nil))
 
-	inputChannels, outputChannels := newChannels(e.opts.Items)
+	inputChannels, outputChannels, resultChannels := newChannels(e.opts.Items)
 	for name, prod := range e.opts.Producers {
 		go func(n string, rt producer.Roundtrip, intChs, outChs []chan *producer.Result) {
 			defer func() {
@@ -337,7 +341,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 			passToOutputChannels(res, outChs)
 		}(name, prod, inputChannels[name], outputChannels[name])
 	}
-	readResults(e.opts.Items, outputChannels, results)
+	readResults(resultChannels, results)
 
 	var err error // TODO: prefer default resp err
 	// TODO: additionally log all panic error types
@@ -351,12 +355,10 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	return results, err
 }
 
-func readResults(items sequence.List, outputChannels map[string][]chan *producer.Result, beresps producer.ResultMap) {
-	for _, item := range items {
-		for _, outCh := range outputChannels[item.Name] {
-			res := <-outCh
-			beresps[item.Name] = res
-		}
+func readResults(resultChannels map[string]chan *producer.Result, beresps producer.ResultMap) {
+	for name, resultCh := range resultChannels {
+		res := <-resultCh
+		beresps[name] = res
 	}
 }
 
