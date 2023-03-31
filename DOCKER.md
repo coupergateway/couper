@@ -39,6 +39,8 @@ $ docker run coupergateway/couper run -watch -p 8081
 
 | Variable                 | Default      | Description                                                                                                     |
 |:-------------------------|:-------------|:----------------------------------------------------------------------------------------------------------------|
+| COUPER_BACKEND_IPV6      | `false`      | Enables IPv6 support for all backends.                                                                          |
+| COUPER_BIND_ADDRESS      | `"*"`        | A list of addresses to bind.                                                                                    |
 | COUPER_FILE              | `couper.hcl` | Path to the configuration file.                                                                                 |
 | COUPER_FILE_DIRECTORY    | `""`         | Path to the configuration files directory.                                                                      |
 | COUPER_DEFAULT_PORT      | `8080`       | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
