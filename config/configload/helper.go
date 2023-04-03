@@ -2,6 +2,7 @@ package configload
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -323,6 +324,38 @@ func (h *helper) configureJobs() error {
 		}
 
 		job.Endpoint = endpointConf
+	}
+
+	return nil
+}
+
+func (h *helper) configureBindAddresses() error {
+	h.config.Settings.BindAddresses = make(map[string]string)
+
+	if h.config.Settings.BindAddress == "" {
+		h.config.Settings.BindAddress = "*"
+	}
+
+	for _, addr := range strings.Split(h.config.Settings.BindAddress, ",") {
+		addr = strings.TrimSpace(addr)
+
+		if addr == "*" {
+			h.config.Settings.BindAddresses[""] = "tcp"
+
+			return nil
+		} else if addr == "::" {
+			h.config.Settings.BindAddresses["[::]"] = "tcp6"
+		} else {
+			if net.ParseIP(addr) == nil {
+				return fmt.Errorf("invalid bind address given: %q", addr)
+			}
+
+			if strings.Contains(addr, ":") {
+				h.config.Settings.BindAddresses["["+addr+"]"] = "tcp6"
+			} else {
+				h.config.Settings.BindAddresses[addr] = "tcp4"
+			}
+		}
 	}
 
 	return nil

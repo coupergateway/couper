@@ -33,7 +33,7 @@ type muxers map[string]*Mux
 type HTTPServer struct {
 	commandCtx context.Context
 	evalCtx    *eval.Context
-	listener   net.Listener
+	listener   []net.Listener
 	log        logrus.FieldLogger
 	muxers     muxers
 	port       string
@@ -151,52 +151,69 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 // Addr returns the listener address.
 func (s *HTTPServer) Addr() string {
 	if s.listener != nil {
-		return s.listener.Addr().String()
+		return s.listener[0].Addr().String()
 	}
 	return ""
 }
 
 // Listen initiates the configured http handler and start listing on given port.
 func (s *HTTPServer) Listen() error {
-	if s.srv.Addr == "" {
-		s.srv.Addr = ":http"
-		if s.srv.TLSConfig != nil {
-			s.srv.Addr += "s"
-		}
-	}
-
-	ln, err := net.Listen("tcp4", s.srv.Addr)
-	if err != nil {
-		return err
-	}
-
-	s.listener = ln
-	s.log.Infof("couper is serving: %s", ln.Addr().String())
-
-	go s.listenForCtx()
-
-	go func() {
-		var serveErr error
-		if s.srv.TLSConfig != nil {
-			serveErr = s.srv.ServeTLS(s.listener, "", "")
-		} else {
-			serveErr = s.srv.Serve(ln)
-		}
-
-		if serveErr != nil {
-			if serveErr == http.ErrServerClosed {
-				s.log.Infof("%v: %s", serveErr, ln.Addr().String())
-			} else {
-				s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
+	for addr, tcpType := range s.settings.BindAddresses {
+		if s.srv.Addr == "" {
+			s.srv.Addr = ":http"
+			if s.srv.TLSConfig != nil {
+				s.srv.Addr += "s"
 			}
 		}
-	}()
+
+		if addr == "" {
+			addr = s.srv.Addr
+		}
+
+		ln, err := net.Listen(tcpType, addr)
+		if err != nil {
+			return err
+		}
+
+		s.listener = append(s.listener, ln)
+		s.log.Infof("couper is serving: %s", ln.Addr().String())
+
+		go s.listenForCtx()
+
+		go func() {
+			var serveErr error
+			if s.srv.TLSConfig != nil {
+				serveErr = s.srv.ServeTLS(ln, "", "")
+			} else {
+				serveErr = s.srv.Serve(ln)
+			}
+
+			if serveErr != nil {
+				if serveErr == http.ErrServerClosed {
+					s.log.Infof("%v: %s", serveErr, ln.Addr().String())
+				} else {
+					s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
+				}
+			}
+		}()
+	}
+
 	return nil
 }
 
 // Close closes the listener
 func (s *HTTPServer) Close() error {
-	return s.listener.Close()
+	var err error
+
+	for _, ln := range s.listener {
+		e := ln.Close()
+
+		if err == nil {
+			err = e
+		}
+	}
+
+	return err
 }
 
 func (s *HTTPServer) listenForCtx() {
