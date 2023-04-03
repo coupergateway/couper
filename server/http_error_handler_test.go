@@ -379,6 +379,71 @@ func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 
 }
 
+func TestErrorHandler_SuperKind(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	helper := test.New(t)
+	// valid token, but lacking permissions claim
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.qSLnmYgnkcOjxlOjFhUHQpCfTQ5elzKY3Mq6gRVT4iI"
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/09_couper.hcl", helper)
+	defer shutdown()
+
+	type testcase struct {
+		name          string
+		path          string
+		sendToken     bool
+		sendWrongPass bool
+		expFrom       string
+	}
+
+	for _, tc := range []testcase{
+		{"ba: *", "/ba1", false, false, "*"},
+		{"ba: *, access_control", "/ba2", false, false, "access_control"},
+		{"ba: *, access_control, basic_auth", "/ba3", false, false, "basic_auth"},
+		{"ba: *, access_control, basic_auth, basic_auth_credentials_missing", "/ba4", false, false, "basic_auth_credentials_missing"},
+		{"ba wrong password: *, access_control, basic_auth, basic_auth_credentials_missing", "/ba4", false, true, "basic_auth"},
+		{"jwt: *", "/jwt1", true, false, "*"},
+		{"jwt: *, access_control", "/jwt2", true, false, "access_control"},
+		{"jwt: *, access_control, insufficient_permissions", "/jwt3", true, false, "insufficient_permissions"},
+		{"ep: *", "/ep1", false, false, "*"},
+		{"ep: *, endpoint", "/ep2", false, false, "endpoint"},
+		{"ep: *, endpoint, unexpected_status", "/ep3", false, false, "unexpected_status"},
+		{"be: *", "/be1", false, false, "*"},
+		{"be: *, backend", "/be2", false, false, "backend"},
+		{"be: *, backend, backend_timeout", "/be3", false, false, "backend_timeout"},
+		{"be: backend, backend_timeout", "/be4", false, false, "backend_timeout"},
+		{"be: backend", "/be5", false, false, "backend"},
+		{"be dial error: *, backend", "/be-dial", false, false, "backend"},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			h.Must(err)
+
+			if tc.sendToken {
+				// not needed for non-jwt tests
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			if tc.sendWrongPass {
+				req.SetBasicAuth("", "wrong")
+			}
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusNoContent {
+				st.Errorf("Expected status code: %d, got: %d", http.StatusNoContent, res.StatusCode)
+			}
+			from := res.Header.Get("From")
+			if from != tc.expFrom {
+				st.Errorf("Expected From response header: %q, got: %q", tc.expFrom, from)
+			}
+		})
+	}
+
+}
+
 func Test_Panic_Multi_EH(t *testing.T) {
 	_, err := configload.LoadFile("testdata/settings/16_couper.hcl", "")
 
