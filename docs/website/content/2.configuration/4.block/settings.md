@@ -38,7 +38,7 @@ values: [
   },
   {
     "default": "\"*\"",
-    "description": "A list of addresses to bind.",
+    "description": "A comma-separated list of addresses to bind.",
     "name": "bind_address",
     "type": "string"
   },
