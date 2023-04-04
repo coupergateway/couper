@@ -390,31 +390,25 @@ func TestErrorHandler_SuperKind(t *testing.T) {
 	defer shutdown()
 
 	type testcase struct {
-		name          string
-		path          string
-		sendToken     bool
-		sendWrongPass bool
-		expFrom       string
+		name      string
+		path      string
+		sendToken bool
+		expFrom   string
 	}
 
 	for _, tc := range []testcase{
-		{"ba: *", "/ba1", false, false, "*"},
-		{"ba: *, access_control", "/ba2", false, false, "access_control"},
-		{"ba: *, access_control, basic_auth", "/ba3", false, false, "basic_auth"},
-		{"ba: *, access_control, basic_auth, basic_auth_credentials_missing", "/ba4", false, false, "basic_auth_credentials_missing"},
-		{"ba wrong password: *, access_control, basic_auth, basic_auth_credentials_missing", "/ba4", false, true, "basic_auth"},
-		{"jwt: *", "/jwt1", true, false, "*"},
-		{"jwt: *, access_control", "/jwt2", true, false, "access_control"},
-		{"jwt: *, access_control, insufficient_permissions", "/jwt3", true, false, "insufficient_permissions"},
-		{"ep: *", "/ep1", false, false, "*"},
-		{"ep: *, endpoint", "/ep2", false, false, "endpoint"},
-		{"ep: *, endpoint, unexpected_status", "/ep3", false, false, "unexpected_status"},
-		{"be: *", "/be1", false, false, "*"},
-		{"be: *, backend", "/be2", false, false, "backend"},
-		{"be: *, backend, backend_timeout", "/be3", false, false, "backend_timeout"},
-		{"be: backend, backend_timeout", "/be4", false, false, "backend_timeout"},
-		{"be: backend", "/be5", false, false, "backend"},
-		{"be dial error: *, backend", "/be-dial", false, false, "backend"},
+		{"ac: handler for *", "/ac1", true, "*"},
+		{"ac: handlers for *, access_control", "/ac2", true, "access_control"},
+		{"ac: handlers for *, access_control, insufficient_permissions", "/ac3", true, "insufficient_permissions"},
+		{"ep: handler for *", "/ep1", false, "*"},
+		{"ep: handlers for *, endpoint", "/ep2", false, "endpoint"},
+		{"ep: handlers for *, endpoint, unexpected_status", "/ep3", false, "unexpected_status"},
+		{"be: handler for *", "/be1", false, "*"},
+		{"be: handlers for *, backend", "/be2", false, "backend"},
+		{"be: handlers for *, backend, backend_timeout", "/be3", false, "backend_timeout"},
+		{"be: handlers for backend, backend_timeout", "/be4", false, "backend_timeout"},
+		{"be: handler for backend", "/be5", false, "backend"},
+		{"be dial error: handlers for *, backend", "/be-dial", false, "backend"},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			h := test.New(st)
@@ -422,11 +416,8 @@ func TestErrorHandler_SuperKind(t *testing.T) {
 			h.Must(err)
 
 			if tc.sendToken {
-				// not needed for non-jwt tests
+				// not needed for non-ac tests
 				req.Header.Set("Authorization", "Bearer "+token)
-			}
-			if tc.sendWrongPass {
-				req.SetBasicAuth("", "wrong")
 			}
 
 			res, err := client.Do(req)

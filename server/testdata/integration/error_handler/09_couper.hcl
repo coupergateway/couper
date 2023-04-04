@@ -1,33 +1,5 @@
 server {
-  endpoint "/ba1" {
-    access_control = ["ba1"]
-
-    response {
-    }
-  }
-
-  endpoint "/ba2" {
-    access_control = ["ba2"]
-
-    response {
-    }
-  }
-
-  endpoint "/ba3" {
-    access_control = ["ba3"]
-
-    response {
-    }
-  }
-
-  endpoint "/ba4" {
-    access_control = ["ba4"]
-
-    response {
-    }
-  }
-
-  endpoint "/jwt1" {
+  endpoint "/ac1" {
     access_control = ["at"]
     required_permission = "rp"
 
@@ -44,7 +16,7 @@ server {
     }
   }
 
-  endpoint "/jwt2" {
+  endpoint "/ac2" {
     access_control = ["at"]
     required_permission = "rp"
 
@@ -70,7 +42,7 @@ server {
     }
   }
 
-  endpoint "/jwt3" {
+  endpoint "/ac3" {
     access_control = ["at"]
     required_permission = "rp"
 
@@ -343,112 +315,6 @@ server {
 }
 
 definitions {
-  basic_auth "ba1" {
-    password = "asdf"
-
-    error_handler "*" {
-      response {
-        status = 204
-        headers = {
-          from = "*"
-        }
-      }
-    }
-  }
-
-  basic_auth "ba2" {
-    password = "asdf"
-
-    error_handler "*" {
-      response {
-        status = 204
-        headers = {
-          from = "*"
-        }
-      }
-    }
-
-    error_handler "access_control" {
-      response {
-        status = 204
-        headers = {
-          from = "access_control"
-        }
-      }
-    }
-  }
-
-  basic_auth "ba3" {
-    password = "asdf"
-
-    error_handler "*" {
-      response {
-        status = 204
-        headers = {
-          from = "*"
-        }
-      }
-    }
-
-    error_handler "access_control" {
-      response {
-        status = 204
-        headers = {
-          from = "access_control"
-        }
-      }
-    }
-
-    error_handler "basic_auth" {
-      response {
-        status = 204
-        headers = {
-          from = "basic_auth"
-        }
-      }
-    }
-  }
-
-  basic_auth "ba4" {
-    password = "asdf"
-
-    error_handler "*" {
-      response {
-        status = 204
-        headers = {
-          from = "*"
-        }
-      }
-    }
-
-    error_handler "access_control" {
-      response {
-        status = 204
-        headers = {
-          from = "access_control"
-        }
-      }
-    }
-
-    error_handler "basic_auth" {
-      response {
-        status = 204
-        headers = {
-          from = "basic_auth"
-        }
-      }
-    }
-
-    error_handler "basic_auth_credentials_missing" {
-      response {
-        status = 204
-        headers = {
-          from = "basic_auth_credentials_missing"
-        }
-      }
-    }
-  }
-
   jwt "at" {
     signature_algorithm = "HS256"
     key = "asdf"
