@@ -33,7 +33,7 @@ type muxers map[string]*Mux
 type HTTPServer struct {
 	commandCtx context.Context
 	evalCtx    *eval.Context
-	listener   []net.Listener
+	listeners  []net.Listener
 	log        logrus.FieldLogger
 	muxers     muxers
 	port       string
@@ -150,8 +150,8 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 
 // Addr returns the listener address.
 func (s *HTTPServer) Addr() string {
-	if s.listener != nil {
-		return s.listener[0].Addr().String()
+	if s.listeners != nil {
+		return s.listeners[0].Addr().String()
 	}
 	return ""
 }
@@ -175,7 +175,7 @@ func (s *HTTPServer) Listen() error {
 			return err
 		}
 
-		s.listener = append(s.listener, ln)
+		s.listeners = append(s.listeners, ln)
 		s.log.Infof("couper is serving: %s", ln.Addr().String())
 
 		go s.listenForCtx()
@@ -205,7 +205,7 @@ func (s *HTTPServer) Listen() error {
 func (s *HTTPServer) Close() error {
 	var err error
 
-	for _, ln := range s.listener {
+	for _, ln := range s.listeners {
 		e := ln.Close()
 
 		if err == nil {
