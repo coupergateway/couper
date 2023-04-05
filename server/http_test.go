@@ -961,6 +961,37 @@ func TestHTTPServer_ServerTiming(t *testing.T) {
 		t.Errorf("Unexpected header from 'second' Couper: %s", s)
 	}
 
+	req, err = http.NewRequest(http.MethodGet, "http://anyserver:9090/seq", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	headers = res.Header.Values("Server-Timing")
+	if l := len(headers); l != 2 {
+		t.Fatalf("Unexpected number of headers: %d", 2)
+	}
+
+	dataCouper1 = strings.Split(headers[0], ", ")
+	dataCouper2 = strings.Split(headers[1], ", ")
+
+	sort.Strings(dataCouper1)
+	sort.Strings(dataCouper2)
+
+	if len(dataCouper1) != 2 || len(dataCouper2) != 5 {
+		t.Fatal("Unexpected number of metrics")
+	}
+
+	exp1 = regexp.MustCompile(`b1_total_[0-9a-f]{6};dur=\d+(.\d)* b1_ttfb_[0-9a-f]{6};dur=\d+(.\d)*`)
+	if s := strings.Join(dataCouper1, " "); !exp1.MatchString(s) {
+		t.Errorf("Unexpected header from 'first' Couper: %s", s)
+	}
+
+	exp2 = regexp.MustCompile(`b1_total;dur=\d+(.\d)* b1_ttfb;dur=\d+(.\d)* b2_REQ_tcp;dur=\d+(.\d)* b2_REQ_total;dur=\d+(.\d)* b2_REQ_ttfb;dur=\d+(.\d)*`)
+	if s := strings.Join(dataCouper2, " "); !exp2.MatchString(s) {
+		t.Errorf("Unexpected header from 'second' Couper: %s", s)
+	}
+
 	req, err = http.NewRequest(http.MethodGet, "http://anyserver:9090/empty", nil)
 	helper.Must(err)
 
