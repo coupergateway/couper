@@ -117,23 +117,26 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"message": "route not found error" }`), 404},
 	} {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
-		helper.Must(err)
+		t.Run(testCase.path, func(subT *testing.T) {
+			h := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
+			h.Must(err)
 
-		res, err := connectClient.Do(req)
-		helper.Must(err)
+			res, err := connectClient.Do(req)
+			h.Must(err)
 
-		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("%.2d: expected status %d, got %d", i+1, testCase.expectedStatus, res.StatusCode)
-		}
+			if res.StatusCode != testCase.expectedStatus {
+				subT.Errorf("%.2d: expected status %d, got %d", i+1, testCase.expectedStatus, res.StatusCode)
+			}
 
-		result, err := io.ReadAll(res.Body)
-		helper.Must(err)
-		helper.Must(res.Body.Close())
+			result, err := io.ReadAll(res.Body)
+			h.Must(err)
+			h.Must(res.Body.Close())
 
-		if !bytes.Contains(result, testCase.expectedBody) {
-			t.Errorf("%.2d: expected body should contain:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
-		}
+			if !bytes.Contains(result, testCase.expectedBody) {
+				subT.Errorf("%.2d: expected body should contain:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
+			}
+		})
 	}
 
 	helper.Must(os.Chdir(currentDir)) // defer for error cases, would be to late for normal exit
@@ -250,24 +253,27 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		{"/my_app", []byte(`<html><body><h1>{"framework":"react.js"}</h1></body></html>`), http.StatusOK},
 		{"/my_app/spa.html", []byte(`<html><body><h1>{"framework":"react.js"}</h1></body></html>`), http.StatusOK},
 	} {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", couper.Addr(), testCase.path), nil)
-		helper.Must(err)
-		req.Host = "example.com"
+		t.Run(testCase.path, func(subT *testing.T) {
+			h := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", couper.Addr(), testCase.path), nil)
+			h.Must(err)
+			req.Host = "example.com"
 
-		res, err := connectClient.Do(req)
-		helper.Must(err)
+			res, err := connectClient.Do(req)
+			h.Must(err)
 
-		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
-		}
+			if res.StatusCode != testCase.expectedStatus {
+				subT.Errorf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
+			}
 
-		result, err := io.ReadAll(res.Body)
-		helper.Must(err)
-		helper.Must(res.Body.Close())
+			result, err := io.ReadAll(res.Body)
+			h.Must(err)
+			h.Must(res.Body.Close())
 
-		if !bytes.Contains(result, testCase.expectedBody) {
-			t.Errorf("%.2d: expected body for path %q:\n%s\ngot:\n%s", i+1, testCase.path, string(testCase.expectedBody), string(result))
-		}
+			if !bytes.Contains(result, testCase.expectedBody) {
+				subT.Errorf("%.2d: expected body for path %q:\n%s\ngot:\n%s", i+1, testCase.path, string(testCase.expectedBody), string(result))
+			}
+		})
 	}
 	helper.Must(os.Chdir(currentDir)) // defer for error cases, would be to late for normal exit
 }
