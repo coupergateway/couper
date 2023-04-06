@@ -84,12 +84,6 @@ values: [
     "type": "bool"
   },
   {
-    "default": "false",
-    "description": "Enables IPv6 support for current backend.",
-    "name": "ipv6",
-    "type": "bool"
-  },
-  {
     "default": "0",
     "description": "The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. Must not be used in backend refinement.",
     "name": "max_connections",

@@ -14,12 +14,6 @@ values: [
   },
   {
     "default": "false",
-    "description": "Enables IPv6 support for all backends.",
-    "name": "backend_ipv6",
-    "type": "bool"
-  },
-  {
-    "default": "false",
     "description": "Enables the Prometheus [metrics](/observation/metrics) exporter.",
     "name": "beta_metrics",
     "type": "bool"

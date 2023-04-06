@@ -38,7 +38,6 @@ type Settings struct {
 
 	CAFile                    string `hcl:"ca_file,optional" docs:"Adds the given PEM encoded CA certificate to the existing system certificate pool for all outgoing connections."`
 	AcceptForwardedURL        List   `hcl:"accept_forwarded_url,optional" docs:"Which {X-Forwarded-*} request HTTP header fields should be accepted to change the [request variables](../variables#request) {url}, {origin}, {protocol}, {host}, {port}. Valid values: {\"proto\"}, {\"host\"} and {\"port\"}. The port in a {X-Forwarded-Port} header takes precedence over a port in {X-Forwarded-Host}. Affects relative URL values for [{sp_acs_url}](saml) attribute and {redirect_uri} attribute within [{beta_oauth2}](oauth2) and [{oidc}](oidc)."`
-	BackendIPv6               bool   `hcl:"backend_ipv6,optional" docs:"Enables IPv6 support for all backends."`
 	BindAddress               string `hcl:"bind_address,optional" docs:"A comma-separated list of addresses to bind." default:"*"`
 	DefaultPort               int    `hcl:"default_port,optional" docs:"Port which will be used if not explicitly specified per host within the [{hosts}](server) attribute." default:"8080"`
 	Environment               string `hcl:"environment,optional" docs:"The [environment](../command-line#basic-options) Couper is to run in."`
