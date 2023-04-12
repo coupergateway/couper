@@ -379,6 +379,62 @@ func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 
 }
 
+func TestErrorHandler_SuperKind(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	helper := test.New(t)
+	// valid token, but lacking permissions claim
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.qSLnmYgnkcOjxlOjFhUHQpCfTQ5elzKY3Mq6gRVT4iI"
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/09_couper.hcl", helper)
+	defer shutdown()
+
+	type testcase struct {
+		name      string
+		path      string
+		sendToken bool
+		expFrom   string
+	}
+
+	for _, tc := range []testcase{
+		{"ac: handler for *", "/ac1", true, "*"},
+		{"ac: handlers for *, access_control", "/ac2", true, "access_control"},
+		{"ac: handlers for *, access_control, insufficient_permissions", "/ac3", true, "insufficient_permissions"},
+		{"ep: handler for *", "/ep1", false, "*"},
+		{"ep: handlers for *, endpoint", "/ep2", false, "endpoint"},
+		{"ep: handlers for *, endpoint, unexpected_status", "/ep3", false, "unexpected_status"},
+		{"be: handler for *", "/be1", false, "*"},
+		{"be: handlers for *, backend", "/be2", false, "backend"},
+		{"be: handlers for *, backend, backend_timeout", "/be3", false, "backend_timeout"},
+		{"be: handlers for backend, backend_timeout", "/be4", false, "backend_timeout"},
+		{"be: handler for backend", "/be5", false, "backend"},
+		{"be dial error: handlers for *, backend", "/be-dial", false, "backend"},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			h.Must(err)
+
+			if tc.sendToken {
+				// not needed for non-ac tests
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusNoContent {
+				st.Errorf("Expected status code: %d, got: %d", http.StatusNoContent, res.StatusCode)
+			}
+			from := res.Header.Get("From")
+			if from != tc.expFrom {
+				st.Errorf("Expected From response header: %q, got: %q", tc.expFrom, from)
+			}
+		})
+	}
+
+}
+
 func Test_Panic_Multi_EH(t *testing.T) {
 	_, err := configload.LoadFile("testdata/settings/16_couper.hcl", "")
 
