@@ -319,19 +319,29 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 
 	// 9. the htu claim matches the HTTP URI value for the HTTP request in
 	//    which the JWT was received, ignoring any query and fragment parts
-	// TODO:
+	//
 	// To reduce the likelihood of false negatives, servers SHOULD employ
 	// Syntax-Based Normalization (Section 6.2.2 of [RFC3986]) and Scheme-
 	// Based Normalization (Section 6.2.3 of [RFC3986]) before comparing the
 	// htu claim.
-	// https://www.rfc-editor.org/rfc/rfc3986#section-6.2.2
-	// https://www.rfc-editor.org/rfc/rfc3986#section-6.2.3
 	htu := &url.URL{
 		Scheme: req.URL.Scheme,
 		Host:   req.URL.Host,
 		Path:   req.URL.Path,
 	}
-	if proofClaims["htu"] != htu.String() {
+	htu, err = normalize(htu)
+	if err != nil {
+		return err
+	}
+	pcHtu, err := url.Parse(proofClaims["htu"].(string))
+	if err != nil {
+		return err
+	}
+	pcHtu, err = normalize(pcHtu)
+	if err != nil {
+		return err
+	}
+	if pcHtu.String() != htu.String() {
 		return fmt.Errorf("DPoP proof htu claim mismatch")
 	}
 
@@ -384,6 +394,34 @@ func toBigInt(bs []byte) *big.Int {
 
 func toInt(bs []byte) int {
 	return int(toBigInt(bs).Int64())
+}
+
+func normalize(u *url.URL) (*url.URL, error) {
+	// https://www.rfc-editor.org/rfc/rfc3986
+	// 6.2.2.  Syntax-Based Normalization
+	// 6.2.2.3.  Path Segment Normalization
+	ru, err := url.Parse(u.RequestURI())
+	if err != nil {
+		return nil, err
+	}
+	// ResolveReference also resolves . and .. segements
+	u = u.ResolveReference(ru)
+	// 6.2.2.1.  Case Normalization
+	// 6.2.2.2.  Percent-Encoding Normalization
+	u.RawPath = u.Path
+
+	// 6.2.3.  Scheme-Based Normalization
+	hostname := strings.ToLower(u.Hostname())
+	port := u.Port()
+	if port == "" ||
+		u.Scheme == "http" && port == "80" ||
+		u.Scheme == "https" && port == "443" {
+		// remove : delimiter (and default port)
+		u.Host = hostname
+	} else {
+		u.Host = hostname + ":" + port
+	}
+	return u, nil
 }
 
 /*
