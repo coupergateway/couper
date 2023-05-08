@@ -59,7 +59,7 @@ func (t *TokenRequest) GetToken(req *http.Request) error {
 	)
 	token, ttl, err = t.requestToken(req)
 	if err != nil {
-		return errors.Request.Label(t.config.Name).With(err)
+		return errors.Request.Label(t.config.Name).Message("token request failed").With(err)
 	}
 
 	t.memStore.Set(t.storageKey, token, ttl)
@@ -85,7 +85,7 @@ func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
 	outreq, _ := http.NewRequestWithContext(ctx, req.Method, "", nil)
 	result := t.reqProducer.Produce(outreq)
 	if result.Err != nil {
-		return "", 0, fmt.Errorf("token request failed") // don't propagate token request roundtrip error
+		return "", 0, result.Err
 	}
 
 	// obtain synced and already read beresp value; map to context variables
