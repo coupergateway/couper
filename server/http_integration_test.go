@@ -1199,8 +1199,7 @@ func TestHTTPServer_Backends_Reference_BasicAuth(t *testing.T) {
 
 	configPath := "testdata/integration/config/13_couper.hcl"
 
-	helper := test.New(t)
-	shutdown, _ := newCouper(configPath, helper)
+	shutdown, _ := newCouper(configPath, test.New(t))
 	defer shutdown()
 
 	type testcase struct {
@@ -1212,26 +1211,29 @@ func TestHTTPServer_Backends_Reference_BasicAuth(t *testing.T) {
 		{"/", false},
 		{"/granted", true},
 	} {
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
-		helper.Must(err)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
 
-		res, err := client.Do(req)
-		helper.Must(err)
+			res, err := client.Do(req)
+			helper.Must(err)
 
-		b, err := io.ReadAll(res.Body)
-		helper.Must(err)
+			b, err := io.ReadAll(res.Body)
+			helper.Must(err)
 
-		helper.Must(res.Body.Close())
+			helper.Must(res.Body.Close())
 
-		type result struct {
-			Headers http.Header
-		}
-		r := result{}
-		helper.Must(json.Unmarshal(b, &r))
+			type result struct {
+				Headers http.Header
+			}
+			r := result{}
+			helper.Must(json.Unmarshal(b, &r))
 
-		if tc.wantAuth && !strings.HasPrefix(r.Headers.Get("Authorization"), "Basic ") {
-			t.Error("expected Authorization header value")
-		}
+			if tc.wantAuth && !strings.HasPrefix(r.Headers.Get("Authorization"), "Basic ") {
+				subT.Error("expected Authorization header value")
+			}
+		})
 	}
 }
 
@@ -1240,8 +1242,7 @@ func TestHTTPServer_Backends_Reference_PathPrefix(t *testing.T) {
 
 	configPath := "testdata/integration/config/12_couper.hcl"
 
-	helper := test.New(t)
-	shutdown, _ := newCouper(configPath, helper)
+	shutdown, _ := newCouper(configPath, test.New(t))
 	defer shutdown()
 
 	type testcase struct {
@@ -1254,31 +1255,34 @@ func TestHTTPServer_Backends_Reference_PathPrefix(t *testing.T) {
 		{"/", "/anything", http.StatusOK},
 		{"/prefixed", "/my-prefix/anything", http.StatusNotFound},
 	} {
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
-		helper.Must(err)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
 
-		res, err := client.Do(req)
-		helper.Must(err)
+			res, err := client.Do(req)
+			helper.Must(err)
 
-		type result struct {
-			Path string
-		}
+			type result struct {
+				Path string
+			}
 
-		b, err := io.ReadAll(res.Body)
-		helper.Must(err)
+			b, err := io.ReadAll(res.Body)
+			helper.Must(err)
 
-		helper.Must(res.Body.Close())
+			helper.Must(res.Body.Close())
 
-		r := result{}
-		helper.Must(json.Unmarshal(b, &r))
+			r := result{}
+			helper.Must(json.Unmarshal(b, &r))
 
-		if res.StatusCode != tc.wantStatus {
-			t.Errorf("expected status: %d, got %d", tc.wantStatus, res.StatusCode)
-		}
+			if res.StatusCode != tc.wantStatus {
+				subT.Errorf("expected status: %d, got %d", tc.wantStatus, res.StatusCode)
+			}
 
-		if r.Path != tc.wantPath {
-			t.Errorf("expected path: %q, got: %q", tc.wantPath, r.Path)
-		}
+			if r.Path != tc.wantPath {
+				subT.Errorf("expected path: %q, got: %q", tc.wantPath, r.Path)
+			}
+		})
 	}
 }
 
@@ -1339,7 +1343,7 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			},
 		}},
 	} {
-		t.Run("File "+tc.file, func(subT *testing.T) {
+		t.Run(tc.file, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			shutdown, _ := newCouper(path.Join(configPath, tc.file), helper)
@@ -1390,7 +1394,7 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			Path: "/path/",
 		}},
 	} {
-		t.Run("TrailingSlash "+tc.path, func(subT *testing.T) {
+		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
 			shutdown, _ := newCouper(conf, helper)
 			defer shutdown()
@@ -3684,7 +3688,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 		{"separate jwt_signing_profile/jwt", "/separate", []interface{}{"g1", "g2"}},
 		{"self-signed jwt", "/self-signed", []interface{}{}},
 	} {
-		t.Run(tc.path, func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
@@ -3866,7 +3870,7 @@ func Test_Permissions(t *testing.T) {
 		{"by scope/role, mapped from scope, map files", http.MethodGet, "/scope_and_role_files/foo", true, http.StatusNoContent, `["a","b","c","d","e"]`, ``, "", ""},
 		{"by scope/role, mapped scope mapped from role, map files", http.MethodGet, "/scope_and_role_files/bar", true, http.StatusNoContent, `["a","b","c","d","e"]`, ``, "", ""},
 	} {
-		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.method, tc.path), func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
@@ -4295,7 +4299,7 @@ func TestFunctions(t *testing.T) {
 			"X-Can": `{"method":"GET","path":"/v1/can"}`,
 		}, http.StatusOK},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -4369,7 +4373,7 @@ func TestFunction_to_number_errors(t *testing.T) {
 		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:81,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
 		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:89,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -4412,7 +4416,7 @@ func TestFunction_length_errors(t *testing.T) {
 		{"string", "/v1/length/string", wd + `/01_couper.hcl:134,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
 		{"null", "/v1/length/null", wd + `/01_couper.hcl:142,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -4453,7 +4457,7 @@ func TestFunction_lookup_errors(t *testing.T) {
 	for _, tc := range []testCase{
 		{"null inputMap", "/v1/lookup/inputMap-null", wd + `/01_couper.hcl:203,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)

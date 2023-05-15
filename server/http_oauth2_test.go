@@ -196,8 +196,6 @@ func Test_OAuth2_no_retry(t *testing.T) {
 }
 
 func TestEndpoints_OAuth2_Options(t *testing.T) {
-	helper := test.New(t)
-
 	type testCase struct {
 		configFile string
 		expBody    string
@@ -236,54 +234,57 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 			"",
 		},
 	} {
-		var tokenSeenCh chan struct{}
+		t.Run(tc.configFile, func(subT *testing.T) {
+			helper := test.New(subT)
+			var tokenSeenCh chan struct{}
 
-		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == "/options" {
-				reqBody, _ := io.ReadAll(req.Body)
-				authorization := req.Header.Get("Authorization")
+			oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				if req.URL.Path == "/options" {
+					reqBody, _ := io.ReadAll(req.Body)
+					authorization := req.Header.Get("Authorization")
 
-				if tc.expBody != string(reqBody) {
-					t.Errorf("want\n%s\ngot\n%s", tc.expBody, reqBody)
+					if tc.expBody != string(reqBody) {
+						subT.Errorf("want\n%s\ngot\n%s", tc.expBody, reqBody)
+					}
+					if tc.expAuth != authorization {
+						subT.Errorf("want\n%s\ngot\n%s", tc.expAuth, authorization)
+					}
+
+					rw.WriteHeader(http.StatusNoContent)
+
+					close(tokenSeenCh)
+					return
 				}
-				if tc.expAuth != authorization {
-					t.Errorf("want\n%s\ngot\n%s", tc.expAuth, authorization)
-				}
+				rw.WriteHeader(http.StatusBadRequest)
+			}))
+			defer oauthOrigin.Close()
 
-				rw.WriteHeader(http.StatusNoContent)
+			confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
+			shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+			helper.Must(err)
+			defer shutdown()
 
-				close(tokenSeenCh)
-				return
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+			helper.Must(err)
+
+			hook.Reset()
+
+			tokenSeenCh = make(chan struct{})
+
+			req.URL.Path = "/"
+			_, err = newClient().Do(req)
+			helper.Must(err)
+
+			timer := time.NewTimer(time.Second * 2)
+			select {
+			case <-timer.C:
+				subT.Error("OAuth2 request failed")
+			case <-tokenSeenCh:
 			}
-			rw.WriteHeader(http.StatusBadRequest)
-		}))
-		defer oauthOrigin.Close()
 
-		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
-		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
-		helper.Must(err)
-		defer shutdown()
-
-		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-		helper.Must(err)
-
-		hook.Reset()
-
-		tokenSeenCh = make(chan struct{})
-
-		req.URL.Path = "/"
-		_, err = newClient().Do(req)
-		helper.Must(err)
-
-		timer := time.NewTimer(time.Second * 2)
-		select {
-		case <-timer.C:
-			t.Error("OAuth2 request failed")
-		case <-tokenSeenCh:
-		}
-
-		oauthOrigin.Close()
-		shutdown()
+			oauthOrigin.Close()
+			shutdown()
+		})
 	}
 }
 
@@ -323,75 +324,78 @@ func TestEndpoints_OAuth2_JWTBearer(t *testing.T) {
 			passedAssertion,
 		},
 	} {
-		var tokenSeenCh chan struct{}
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+			var tokenSeenCh chan struct{}
 
-		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == "/token" {
-				reqBody, _ := io.ReadAll(req.Body)
+			oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				if req.URL.Path == "/token" {
+					reqBody, _ := io.ReadAll(req.Body)
 
-				params, err := url.ParseQuery(string(reqBody))
-				helper.Must(err)
+					params, err := url.ParseQuery(string(reqBody))
+					h.Must(err)
 
-				grantType := params.Get("grant_type")
-				if expGrantType != grantType {
-					t.Errorf("%s: unexpected grant_type: want\n%s\ngot\n%s", tc.name, expGrantType, grantType)
-				}
+					grantType := params.Get("grant_type")
+					if expGrantType != grantType {
+						subT.Errorf("%s: unexpected grant_type: want\n%s\ngot\n%s", tc.name, expGrantType, grantType)
+					}
 
-				assertion := params.Get("assertion")
-				claims := jwt.MapClaims{}
-				_, err = jwtParser.ParseWithClaims(assertion, claims, keyFunc)
-				helper.Must(err)
-				if len(expClaims) != len(claims) {
-					t.Fatalf("%s: unexpected number of claims; want: %d, got: %d", tc.name, len(expClaims), len(claims))
-				}
-				for k, vExp := range expClaims {
-					v, set := claims[k]
-					if !set {
-						t.Errorf("%s: missing claim %q", tc.name, k)
-					} else {
-						if vExp != nil && vExp != v {
-							t.Errorf("%s: unexpected %s claim value; want: %#v, got: %#v", tc.name, k, vExp, v)
+					assertion := params.Get("assertion")
+					claims := jwt.MapClaims{}
+					_, err = jwtParser.ParseWithClaims(assertion, claims, keyFunc)
+					h.Must(err)
+					if len(expClaims) != len(claims) {
+						subT.Fatalf("%s: unexpected number of claims; want: %d, got: %d", tc.name, len(expClaims), len(claims))
+					}
+					for k, vExp := range expClaims {
+						v, set := claims[k]
+						if !set {
+							subT.Errorf("%s: missing claim %q", tc.name, k)
+						} else {
+							if vExp != nil && vExp != v {
+								subT.Errorf("%s: unexpected %s claim value; want: %#v, got: %#v", tc.name, k, vExp, v)
+							}
 						}
 					}
+
+					rw.WriteHeader(http.StatusNoContent)
+
+					close(tokenSeenCh)
+					return
 				}
+				rw.WriteHeader(http.StatusBadRequest)
+			}))
+			defer oauthOrigin.Close()
 
-				rw.WriteHeader(http.StatusNoContent)
+			confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
+			shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+			h.Must(err)
+			defer shutdown()
 
-				close(tokenSeenCh)
-				return
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+			h.Must(err)
+			if tc.assHeader != "" {
+				req.Header.Add("x-assertion", tc.assHeader)
 			}
-			rw.WriteHeader(http.StatusBadRequest)
-		}))
-		defer oauthOrigin.Close()
 
-		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
-		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
-		helper.Must(err)
-		defer shutdown()
+			hook.Reset()
 
-		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-		helper.Must(err)
-		if tc.assHeader != "" {
-			req.Header.Add("x-assertion", tc.assHeader)
-		}
+			tokenSeenCh = make(chan struct{})
 
-		hook.Reset()
+			req.URL.Path = "/"
+			_, err = newClient().Do(req)
+			h.Must(err)
 
-		tokenSeenCh = make(chan struct{})
+			timer := time.NewTimer(time.Second * 2)
+			select {
+			case <-timer.C:
+				subT.Error("OAuth2 request failed")
+			case <-tokenSeenCh:
+			}
 
-		req.URL.Path = "/"
-		_, err = newClient().Do(req)
-		helper.Must(err)
-
-		timer := time.NewTimer(time.Second * 2)
-		select {
-		case <-timer.C:
-			t.Error("OAuth2 request failed")
-		case <-tokenSeenCh:
-		}
-
-		oauthOrigin.Close()
-		shutdown()
+			oauthOrigin.Close()
+			shutdown()
+		})
 	}
 }
 
@@ -928,32 +932,34 @@ definitions {
 			"configuration error: be: \"alg\" cannot be set via \"headers\"",
 		},
 	} {
-		var errMsg string
-		conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
-		if conf != nil {
-			logger := log.WithContext(context.TODO())
+		t.Run(tc.name, func(subT *testing.T) {
+			var errMsg string
+			conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
+			if conf != nil {
+				logger := log.WithContext(context.TODO())
 
-			tmpStoreCh := make(chan struct{})
-			defer close(tmpStoreCh)
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
 
-			ctx, cancel := context.WithCancel(conf.Context)
-			conf.Context = ctx
-			defer cancel()
+				ctx, cancel := context.WithCancel(conf.Context)
+				conf.Context = ctx
+				defer cancel()
 
-			_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
-		}
-
-		if err != nil {
-			if _, ok := err.(errors.GoError); ok {
-				errMsg = err.(errors.GoError).LogError()
-			} else {
-				errMsg = err.Error()
+				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}
-		}
 
-		if !strings.HasPrefix(errMsg, tc.error) {
-			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
-		}
+			if err != nil {
+				if _, ok := err.(errors.GoError); ok {
+					errMsg = err.(errors.GoError).LogError()
+				} else {
+					errMsg = err.Error()
+				}
+			}
+
+			if !strings.HasPrefix(errMsg, tc.error) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
+			}
+		})
 	}
 }
 
@@ -1035,12 +1041,12 @@ func TestOAuth2_AuthnJWT(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != tc.wantStatus {
-				t.Errorf("expected status %d, got: %d", tc.wantStatus, res.StatusCode)
+				subT.Errorf("expected status %d, got: %d", tc.wantStatus, res.StatusCode)
 			}
 
 			message := getFirstAccessLogMessage(hook)
 			if message != tc.wantErrLog {
-				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+				subT.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
 			}
 
 			shutdown()
@@ -1113,12 +1119,12 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != http.StatusBadGateway {
-				t.Errorf("expected status StatusBadGateway, got: %d", res.StatusCode)
+				subT.Errorf("expected status StatusBadGateway, got: %d", res.StatusCode)
 			}
 
 			message := getFirstAccessLogMessage(hook)
 			if message != tc.wantErrLog {
-				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+				subT.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
 			}
 
 			shutdown()
@@ -1355,7 +1361,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		{"code; nonce param; relative redirect_uri", "09_couper.hcl", http.MethodGet, "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub-id&grant_type=authorization_code&redirect_uri=https%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; without userinfo", "24_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wuiss-id", http.Header{"Cookie": []string{"nnc=" + st}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub-wuiss-id&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
 			shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": oauthOrigin.URL})
@@ -2139,19 +2145,21 @@ server {
 			"couper.hcl:11,28-31: token request names (either default or explicitly set via label) must be unique: \"a\"; ",
 		},
 	} {
-		var errMsg string
-		_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
-		if err != nil {
-			if _, ok := err.(errors.GoError); ok {
-				errMsg = err.(errors.GoError).LogError()
-			} else {
-				errMsg = err.Error()
+		t.Run(tc.name, func(subT *testing.T) {
+			var errMsg string
+			_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
+			if err != nil {
+				if _, ok := err.(errors.GoError); ok {
+					errMsg = err.(errors.GoError).LogError()
+				} else {
+					errMsg = err.Error()
+				}
 			}
-		}
 
-		if !strings.HasPrefix(errMsg, tc.error) {
-			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
-		}
+			if !strings.HasPrefix(errMsg, tc.error) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
+			}
+		})
 	}
 }
 

@@ -190,7 +190,7 @@ func TestEndpoints_Protected404(t *testing.T) {
 		{"", "/v1/xxx", expectation{}},
 		{"secret", "/v1/xxx", expectation{http.StatusNotFound}},
 	} {
-		t.Run(tc.path, func(subT *testing.T) {
+		t.Run(tc.auth+"-"+tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
