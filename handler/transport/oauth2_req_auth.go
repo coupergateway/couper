@@ -223,7 +223,7 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
-		return requestError.Message("token request failed") // don't propagate token request roundtrip error
+		return requestError.Message("token request failed").With(err)
 	}
 
 	oa.updateAccessToken(token, tokenResponseData)
