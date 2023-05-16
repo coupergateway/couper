@@ -161,8 +161,12 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		}
 	}
 	port, _ := strconv.ParseInt(p, 10, 64)
-	// TODO how to set request.BufferOptions appropriately before WithClientRequest() is called
-	body, jsonBody := parseReqBody(req, true)
+
+	var parseJSON bool
+	if opts, ok := ctx.Value(request.BufferOptions).(BufferOption); ok {
+		parseJSON = opts.JSONRequest()
+	}
+	body, jsonBody := parseReqBody(req, parseJSON)
 
 	origin := NewRawOrigin(req.URL)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
@@ -472,7 +476,7 @@ func mergeBackendVariables(etx *hcl.EvalContext, key string, cmap ContextMap) {
 const defaultMaxMemory = 32 << 20 // 32 MB
 
 // parseForm populates the request PostForm field.
-// As Proxy we should not consume the request body.
+// As Proxy, we should not consume the request body.
 // Rewind body via GetBody method.
 func parseForm(r *http.Request) *http.Request {
 	if r.GetBody == nil || r.Form != nil {

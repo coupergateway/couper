@@ -252,7 +252,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		ctx = context.WithValue(ctx, request.Handler, hs.String())
 	}
 
-	if err = s.setGetBody(h, req); err != nil {
+	bufferOption, err := s.setGetBody(h, req)
+	if err != nil {
 		h = mux.opts.ServerOptions.ServerErrTpl.WithError(err)
 	}
 
@@ -283,20 +284,21 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	ctx = context.WithValue(ctx, request.BufferOptions, bufferOption)
 	// due to the middleware callee stack we have to update the 'req' value.
 	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
 
 	h.ServeHTTP(rw, req)
 }
 
-func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
+func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) (opt eval.BufferOption, err error) {
 	inner := getChildHandler(h)
 
-	var err error
 	if limitHandler, ok := inner.(handler.BodyLimit); ok {
-		err = eval.SetGetBody(req, limitHandler.BufferOptions(), limitHandler.RequestLimit())
+		opt = limitHandler.BufferOptions()
+		err = eval.SetGetBody(req, opt, limitHandler.RequestLimit())
 	}
-	return err
+	return opt, err
 }
 
 // getHost configures the host from the incoming request host based on

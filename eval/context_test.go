@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/configload"
@@ -87,10 +89,18 @@ func TestNewHTTPContext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			file, diags := hclsyntax.ParseConfig([]byte(tt.hcl), "test.hcl", hcl.InitialPos)
+			if diags.HasErrors() {
+				subT.Fatal(diags)
+			}
+			bufferOption := eval.MustBuffer(file.Body)
+
 			helper := test.New(subT)
 
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
-			*req = *req.Clone(context.WithValue(req.Context(), request.Endpoint, "couper-proxy"))
+			ctx := context.WithValue(req.Context(), request.Endpoint, "couper-proxy")
+			ctx = context.WithValue(ctx, request.BufferOptions, bufferOption)
+			*req = *req.Clone(ctx)
 
 			for k, v := range tt.reqHeader {
 				req.Header[k] = v
@@ -99,13 +109,13 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
+			helper.Must(eval.SetGetBody(req, bufferOption, 512))
 
-			ctx := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal, false).HCLContext()
-			ctx.Functions = nil // we are not interested in a functions test
+			hclCtx := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal, false).HCLContext()
+			hclCtx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
+			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), hclCtx, &resultMap)
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]

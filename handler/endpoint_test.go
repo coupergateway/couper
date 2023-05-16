@@ -206,9 +206,9 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		for _, method := range tt.methods {
 			t.Run(method+" "+tt.name, func(subT *testing.T) {
 				helper := test.New(subT)
-
+				iBody := helper.NewInlineContext(tt.inlineCtx)
 				backend := transport.NewBackend(
-					helper.NewInlineContext(tt.inlineCtx),
+					iBody,
 					&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
@@ -226,9 +226,12 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				req := httptest.NewRequest(method, "/", body)
 				tt.header.Set(req)
 
+				bufferOption := eval.MustBuffer(iBody)
+
 				// normally injected by server/http
-				helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
-				*req = *req.WithContext(eval.NewDefaultContext().WithClientRequest(req))
+				helper.Must(eval.SetGetBody(req, bufferOption, 1024))
+				ctx := context.WithValue(req.Context(), request.BufferOptions, bufferOption)
+				*req = *req.WithContext(eval.NewDefaultContext().WithClientRequest(req.WithContext(ctx)))
 
 				rec := httptest.NewRecorder()
 				rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
@@ -347,6 +350,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			} else {
 				req.Header.Set("Content-Type", "application/json")
 			}
+			req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, bufOpts))
 			req = req.WithContext(eval.NewDefaultContext().WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
