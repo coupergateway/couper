@@ -8,4 +8,10 @@ server "bodies" {
       json_body = request
     }
   }
+  endpoint "/req2" {
+    response {
+      status = 200
+      json_body = request
+    }
+  }
 }

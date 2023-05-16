@@ -2033,53 +2033,68 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 	shutdown, _ := newCouper(confPath, test.New(t))
 	defer shutdown()
 
-	helper := test.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/req?foo=bar", strings.NewReader(`{"data": true}`))
-	helper.Must(err)
-	req.Header.Set("User-Agent", "")
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := client.Do(req)
-	helper.Must(err)
-
-	resBytes, err := io.ReadAll(res.Body)
-	helper.Must(err)
-
-	_ = res.Body.Close()
-
-	type Expectation struct {
-		JSONBody map[string]interface{} `json:"json_body"`
-		Headers  test.Header            `json:"headers"`
-		Method   string                 `json:"method"`
-		Query    url.Values             `json:"query"`
-		URL      string                 `json:"url"`
+	type testCase struct {
+		name        string
+		path        string
+		expJSONBody map[string]interface{}
 	}
 
-	var jsonResult Expectation
-	err = json.Unmarshal(resBytes, &jsonResult)
-	if err != nil {
-		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
-	}
+	for _, tc := range []testCase{
+		{
+			"json-parsed", "/req", map[string]interface{}{"data": true},
+		},
+		{
+			"not json-parsed", "/req2", map[string]interface{}{},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
-	delete(jsonResult.Headers, "couper-request-id")
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path+"?foo=bar", strings.NewReader(`{"data": true}`))
+			helper.Must(err)
+			req.Header.Set("User-Agent", "")
+			req.Header.Set("Content-Type", "application/json")
 
-	exp := Expectation{
-		Method: http.MethodGet,
-		JSONBody: map[string]interface{}{
-			"data": true,
-		},
-		Headers: map[string]string{
-			"content-length": "14",
-			"content-type":   "application/json",
-		},
-		Query: map[string][]string{
-			"foo": {"bar"},
-		},
-		URL: "http://example.com:8080/req?foo=bar",
-	}
-	if !reflect.DeepEqual(jsonResult, exp) {
-		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			type Expectation struct {
+				JSONBody map[string]interface{} `json:"json_body"`
+				Headers  test.Header            `json:"headers"`
+				Method   string                 `json:"method"`
+				Query    url.Values             `json:"query"`
+				URL      string                 `json:"url"`
+			}
+
+			var jsonResult Expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			delete(jsonResult.Headers, "couper-request-id")
+
+			exp := Expectation{
+				Method:   http.MethodGet,
+				JSONBody: tc.expJSONBody,
+				Headers: map[string]string{
+					"content-length": "14",
+					"content-type":   "application/json",
+				},
+				Query: map[string][]string{
+					"foo": {"bar"},
+				},
+				URL: "http://example.com:8080" + tc.path + "?foo=bar",
+			}
+			if !reflect.DeepEqual(jsonResult, exp) {
+				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+			}
+		})
 	}
 }
 
