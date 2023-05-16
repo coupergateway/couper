@@ -256,11 +256,12 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	port, _ := strconv.ParseInt(p, 10, 64)
 
 	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
-	var body, jsonBody cty.Value
 
-	if bOk && (bufferOption&BufferRequest) == BufferRequest {
-		body, jsonBody = parseReqBody(bereq, (bufferOption&JSONParseRequest) == JSONParseRequest)
+	var body, jsonBody cty.Value
+	if bOk && bufferOption.Request() {
+		body, jsonBody = parseReqBody(bereq, bufferOption.JSONRequest())
 	}
+
 	bereqVal = cty.ObjectVal(ContextMap{
 		Method:   cty.StringVal(bereq.Method),
 		URL:      cty.StringVal(bereq.URL.String()),
@@ -277,10 +278,10 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 
 	var respBody, respJSONBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
-		if bOk && (bufferOption&BufferResponse) == BufferResponse {
-			respBody, respJSONBody = parseRespBody(beresp, (bufferOption&JSONParseResponse) == JSONParseResponse)
+		if bOk && bufferOption.Response() {
+			respBody, respJSONBody = parseRespBody(beresp, bufferOption.JSONResponse())
 		}
-	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
+	} else if bOk && !bufferOption.Response() {
 		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
 		ws, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool)
 		if name != "default" || (name == "default" && hasBlock) {

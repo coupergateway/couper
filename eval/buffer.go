@@ -22,6 +22,22 @@ const (
 	JSONParseResponse BufferOption = 8
 )
 
+func (i BufferOption) Request() bool {
+	return i&BufferRequest == BufferRequest
+}
+
+func (i BufferOption) JSONRequest() bool {
+	return i&JSONParseRequest == JSONParseRequest
+}
+
+func (i BufferOption) Response() bool {
+	return i&BufferResponse == BufferResponse
+}
+
+func (i BufferOption) JSONResponse() bool {
+	return i&JSONParseResponse == JSONParseResponse
+}
+
 func (i BufferOption) GoString() string {
 	var result []string
 	for _, o := range []BufferOption{BufferRequest, BufferResponse, JSONParseRequest, JSONParseResponse} {
@@ -33,10 +49,6 @@ func (i BufferOption) GoString() string {
 		return BufferNone.String()
 	}
 	return strings.Join(result, "|")
-}
-
-func (i BufferOption) Response() bool {
-	return i&BufferResponse == BufferResponse
 }
 
 // MustBuffer determines if any of the hcl.bodies makes use of 'body', 'form_body' or 'json_body' or
