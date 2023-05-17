@@ -552,6 +552,13 @@ func deleteHeader(val cty.Value, headerCtx http.Header) {
 }
 
 func toSlice(val interface{}) []string {
+	// as this is called with values from a map returned by seetie.ValueToMap(), val can currently be one of
+	// * nil
+	// * bool
+	// * string
+	// * float64
+	// * []string
+	// * map[string]interface{}
 	switch v := val.(type) {
 	case float64:
 		return []string{strconv.FormatFloat(v, 'f', 0, 64)}
