@@ -557,15 +557,14 @@ func toSlice(val interface{}) []string {
 	// * bool
 	// * string
 	// * float64
-	// * []string
+	// * []interface{}
 	// * map[string]interface{}
 	switch v := val.(type) {
 	case float64:
 		return []string{strconv.FormatFloat(v, 'f', 0, 64)}
 	case string:
 		return []string{v}
-	case []string:
-	// case []interface{}:
+	case []interface{}:
 		var l []string
 		for _, e := range v {
 			s := toString(e)
@@ -575,8 +574,6 @@ func toSlice(val interface{}) []string {
 			l = append(l, *s)
 		}
 		return l
-	// case []string:
-		// return v
 	}
 	return []string{}
 }
