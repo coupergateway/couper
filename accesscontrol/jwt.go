@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
@@ -306,8 +307,8 @@ func (j *JWT) validateClaims(tokenClaims jwt.MapClaims, expectedClaims map[strin
 			continue
 		}
 
-		if val != v {
-			return fmt.Errorf("unexpected value for claim %s, got %q, expected %q", k, val, v)
+		if diff := cmp.Diff(v, val); diff != "" {
+			return fmt.Errorf("unexpected value for claim %s, got %#v, expected %#v", k, val, v)
 		}
 	}
 	return nil
