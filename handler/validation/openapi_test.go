@@ -135,7 +135,7 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 	hook.Reset()
 	_, err = backend.RoundTrip(req)
 	if err != nil {
-		helper.Must(err)
+		t.Error(err)
 	}
 
 	if t.Failed() {
