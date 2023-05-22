@@ -116,19 +116,20 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
-	backendBody := body.NewHCLSyntaxBodyWithStringAttr("origin", "https://httpbin.org")
 	oa := &config.OpenAPI{
 		File: filepath.Join("testdata/backend_02_openapi.yaml"),
 	}
 	openAPI, err := validation.NewOpenAPIOptions(oa)
 	helper.Must(err)
 
+	origin := test.NewBackend()
+	defer origin.Close()
+
+	backendBody := body.NewHCLSyntaxBodyWithStringAttr("origin", origin.Addr())
+
 	backend := transport.NewBackend(backendBody, &transport.Config{}, &transport.BackendOptions{
 		OpenAPI: openAPI,
 	}, logger)
-
-	origin := test.NewBackend()
-	defer origin.Close()
 
 	req := httptest.NewRequest(http.MethodGet, origin.Addr()+"/anything", nil)
 
