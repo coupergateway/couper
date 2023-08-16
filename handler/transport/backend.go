@@ -247,7 +247,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// from this result.
 	evalCtx := eval.ContextFromRequest(req)
 	// has own body variable reference?
-	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
+	readBody := eval.MustBuffer(b.context).Response()
 	evalCtx = evalCtx.WithBeresp(beresp, backendVal, readBody)
 
 	clfValue, err := eval.EvalCustomLogFields(evalCtx.HCLContext(), ctxBody)

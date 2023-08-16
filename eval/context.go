@@ -161,7 +161,12 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		}
 	}
 	port, _ := strconv.ParseInt(p, 10, 64)
-	body, jsonBody := parseReqBody(req)
+
+	var parseJSON bool
+	if opts, ok := ctx.Value(request.BufferOptions).(BufferOption); ok {
+		parseJSON = opts.JSONRequest()
+	}
+	body, jsonBody := parseReqBody(req, parseJSON)
 
 	origin := NewRawOrigin(req.URL)
 	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
@@ -254,7 +259,13 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	}
 	port, _ := strconv.ParseInt(p, 10, 64)
 
-	body, jsonBody := parseReqBody(bereq)
+	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
+
+	var body, jsonBody cty.Value
+	if bOk && bufferOption.Request() {
+		body, jsonBody = parseReqBody(bereq, bufferOption.JSONRequest())
+	}
+
 	bereqVal = cty.ObjectVal(ContextMap{
 		Method:   cty.StringVal(bereq.Method),
 		URL:      cty.StringVal(bereq.URL.String()),
@@ -269,14 +280,12 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
-	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
-
 	var respBody, respJSONBody cty.Value
 	if readBody && !IsUpgradeResponse(bereq, beresp) {
-		if bOk && (bufferOption&BufferResponse) == BufferResponse {
-			respBody, respJSONBody = parseRespBody(beresp)
+		if bOk && bufferOption.Response() {
+			respBody, respJSONBody = parseRespBody(beresp, bufferOption.JSONResponse())
 		}
-	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
+	} else if bOk && !bufferOption.Response() {
 		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
 		ws, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool)
 		if name != "default" || (name == "default" && hasBlock) {
@@ -467,7 +476,7 @@ func mergeBackendVariables(etx *hcl.EvalContext, key string, cmap ContextMap) {
 const defaultMaxMemory = 32 << 20 // 32 MB
 
 // parseForm populates the request PostForm field.
-// As Proxy we should not consume the request body.
+// As Proxy, we should not consume the request body.
 // Rewind body via GetBody method.
 func parseForm(r *http.Request) *http.Request {
 	if r.GetBody == nil || r.Form != nil {
@@ -487,7 +496,7 @@ func isJSONMediaType(contentType string) bool {
 	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
 }
 
-func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
+func parseReqBody(req *http.Request, parseJSON bool) (cty.Value, cty.Value) {
 	jsonBody := cty.EmptyObjectVal
 	if req == nil || req.GetBody == nil {
 		return cty.NilVal, jsonBody
@@ -499,13 +508,13 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
-	if isJSONMediaType(req.Header.Get("Content-Type")) {
+	if parseJSON && isJSONMediaType(req.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
 	return cty.StringVal(string(b)), jsonBody
 }
 
-func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
+func parseRespBody(beresp *http.Response, parseJSON bool) (cty.Value, cty.Value) {
 	jsonBody := cty.EmptyObjectVal
 
 	b := parseSetRespBody(beresp)
@@ -513,7 +522,7 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
-	if isJSONMediaType(beresp.Header.Get("Content-Type")) {
+	if parseJSON && isJSONMediaType(beresp.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
 	return cty.StringVal(string(b)), jsonBody

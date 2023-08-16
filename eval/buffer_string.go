@@ -11,15 +11,29 @@ func _() {
 	_ = x[BufferNone-0]
 	_ = x[BufferRequest-1]
 	_ = x[BufferResponse-2]
+	_ = x[JSONParseRequest-4]
+	_ = x[JSONParseResponse-8]
 }
 
-const _BufferOption_name = "BufferNoneBufferRequestBufferResponse"
+const (
+	_BufferOption_name_0 = "BufferNoneBufferRequestBufferResponse"
+	_BufferOption_name_1 = "JSONParseRequest"
+	_BufferOption_name_2 = "JSONParseResponse"
+)
 
-var _BufferOption_index = [...]uint8{0, 10, 23, 37}
+var (
+	_BufferOption_index_0 = [...]uint8{0, 10, 23, 37}
+)
 
 func (i BufferOption) String() string {
-	if i >= BufferOption(len(_BufferOption_index)-1) {
+	switch {
+	case i <= 2:
+		return _BufferOption_name_0[_BufferOption_index_0[i]:_BufferOption_index_0[i+1]]
+	case i == 4:
+		return _BufferOption_name_1
+	case i == 8:
+		return _BufferOption_name_2
+	default:
 		return "BufferOption(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _BufferOption_name[_BufferOption_index[i]:_BufferOption_index[i+1]]
 }

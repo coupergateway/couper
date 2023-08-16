@@ -53,7 +53,7 @@ func SetGetBody(req *http.Request, bufferOpts BufferOption, bodyLimit int64) err
 		return nil
 	}
 
-	if (bufferOpts & BufferRequest) != BufferRequest {
+	if !bufferOpts.Request() {
 		return nil
 	}
 
