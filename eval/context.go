@@ -282,7 +282,7 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 			// beresp body is not referenced and can be closed
 			// prevent resource leak, free connection
 			_ = beresp.Body.Close()
-		} else if !ws {
+		} else if !ws && (bufferOption&BufferNone) != BufferNone {
 			parseSetRespBody(beresp)
 		}
 	}
