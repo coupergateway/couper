@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 const (

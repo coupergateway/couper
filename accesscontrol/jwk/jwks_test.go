@@ -12,10 +12,10 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/avenga/couper/accesscontrol/jwk"
-	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/accesscontrol/jwk"
+	"github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func Test_JWKS(t *testing.T) {

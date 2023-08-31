@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avenga/couper/accesscontrol/jwk"
-	"github.com/avenga/couper/backend"
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
-	jsn "github.com/avenga/couper/json"
+	"github.com/coupergateway/couper/accesscontrol/jwk"
+	"github.com/coupergateway/couper/backend"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
+	jsn "github.com/coupergateway/couper/json"
 )
 
 // OpenidConfiguration represents an OpenID configuration (.../.well-known/openid-configuration)

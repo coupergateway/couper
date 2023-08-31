@@ -9,9 +9,9 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 func newBackendsObserver(memStore *cache.MemoryStore) error {

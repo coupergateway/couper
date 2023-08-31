@@ -1,8 +1,8 @@
 # Couper
 
-![Go](https://github.com/avenga/couper/workflows/Go/badge.svg)
-[![Go Report](https://goreportcard.com/badge/github.com/avenga/couper)](https://goreportcard.com/report/github.com/avenga/couper)
-![Docker](https://github.com/avenga/couper/workflows/Docker/badge.svg)
+![Go](https://github.com/coupergateway/couper/workflows/Go/badge.svg)
+[![Go Report](https://goreportcard.com/badge/github.com/coupergateway/couper)](https://goreportcard.com/report/github.com/coupergateway/couper)
+![Docker](https://github.com/coupergateway/couper/workflows/Docker/badge.svg)
 
 ![Couper](docs/website/public/img/couper-logo.svg)
 
@@ -10,10 +10,10 @@
 
 ## Getting started
 
-* The quickest way to start is to use our [Docker image](https://hub.docker.com/r/avenga/couper).
-  * or via [homebrew](https://brew.sh/): `brew tap avenga/couper && brew install couper`
+* The quickest way to start is to use our [Docker image](https://hub.docker.com/r/coupergateway/couper).
+  * or via [homebrew](https://brew.sh/): `brew tap coupergateway/couper && brew install couper`
 * The [documentation](https://docs.couper.io/) gives an introduction to Couper.
-* Check out the [example repository](https://github.com/avenga/couper-examples) to learn about Couper's features in detail.
+* Check out the [example repository](https://github.com/coupergateway/couper-examples) to learn about Couper's features in detail.
 * Use-cases can be found on [couper.io](https://couper.io).
 
 ## Features
@@ -62,6 +62,6 @@ Couper requires a [configuration file](./docs/README.md#configuration-file). You
 
 Thanks for your interest in contributing.
 
-If you have any questions or feedback you are welcome to start a [discussion](https://github.com/avenga/couper/discussions).
+If you have any questions or feedback you are welcome to start a [discussion](https://github.com/coupergateway/couper/discussions).
 
-If you have an issue please open an [issue](https://github.com/avenga/couper/issues).
+If you have an issue please open an [issue](https://github.com/coupergateway/couper/issues).

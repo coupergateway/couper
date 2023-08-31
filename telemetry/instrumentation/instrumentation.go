@@ -1,7 +1,7 @@
 package instrumentation
 
 const (
-	Name   = "github.com/avenga/couper/telemetry"
+	Name   = "github.com/coupergateway/couper/telemetry"
 	Prefix = "couper_"
 
 	BackendInstrumentationName = "couper/backend"

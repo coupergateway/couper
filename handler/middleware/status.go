@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/server/writer"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 func NewRecordHandler(secureCookies string) Next {

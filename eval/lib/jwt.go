@@ -12,10 +12,10 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	acjwt "github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/internal/seetie"
+	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 const FnJWTSign = "jwt_sign"

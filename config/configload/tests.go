@@ -3,8 +3,8 @@ package configload
 import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/parser"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/parser"
 )
 
 type testContent struct {

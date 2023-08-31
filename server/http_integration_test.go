@@ -30,14 +30,14 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/command"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/oauth2"
+	"github.com/coupergateway/couper/command"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 var (

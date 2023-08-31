@@ -9,9 +9,9 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 var _ logrus.Hook = &Error{}

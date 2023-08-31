@@ -10,9 +10,9 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/utils"
 )
 
 func NewURLFromAttribute(hclCtx *hcl.EvalContext, content *hclsyntax.Body, attrName string, req *http.Request) (*url.URL, error) {

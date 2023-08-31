@@ -10,14 +10,14 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/oauth2"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 var supportedGrantTypes = map[string]struct{}{

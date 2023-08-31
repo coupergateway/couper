@@ -8,9 +8,9 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 type MetricsHandler struct {

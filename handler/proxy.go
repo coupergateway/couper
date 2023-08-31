@@ -14,14 +14,14 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/ascii"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/server/writer"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler/ascii"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 // headerBlacklist lists all header keys which will be removed after

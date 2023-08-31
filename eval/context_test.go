@@ -16,12 +16,12 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/utils"
 )
 
 func TestNewHTTPContext(t *testing.T) {

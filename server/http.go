@@ -13,17 +13,17 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 type muxers map[string]*Mux

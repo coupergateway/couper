@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config/body"
+	"github.com/coupergateway/couper/config/body"
 )
 
 type BufferOption uint8

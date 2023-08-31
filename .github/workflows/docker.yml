@@ -73,7 +73,7 @@ jobs:
           - image: 'coupergateway/couper'
             username_key: DOCKER_COUPER_GATEWAY_USERNAME
             password_key: DOCKER_COUPER_GATEWAY_PASSWORD
-          - image: 'avenga/couper'
+          - image: 'coupergateway/couper'
             username_key: DOCKER_USERNAME
             password_key: DOCKER_PASSWORD
     steps:
@@ -155,5 +155,5 @@ jobs:
           -X POST \
           -H "Accept: application/vnd.github+json" \
           -H "Authorization: Bearer ${{ secrets.GH_COUPER_API_TOKEN }}" \
-          https://api.github.com/repos/avenga/couper-oidc-gateway/dispatches \
+          https://api.github.com/repos/coupergateway/couper-oidc-gateway/dispatches \
           -d '{"event_type": "edge-build", "client_payload": { "version": "edge" }}'

@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
 )
 
 func Test_SetGetBody_LimitBody(t *testing.T) {

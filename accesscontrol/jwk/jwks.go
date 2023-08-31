@@ -10,8 +10,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/avenga/couper/config"
-	jsn "github.com/avenga/couper/json"
+	"github.com/coupergateway/couper/config"
+	jsn "github.com/coupergateway/couper/json"
 )
 
 var alg2kty = map[string]string{

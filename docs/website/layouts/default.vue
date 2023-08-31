@@ -18,7 +18,7 @@ import SideNavbar from "@/components/SideNavbar";
       <div class="flex justify-around w-full">
         <SearchBar class="px-4 sm:px-8 lg:px-16 xl:px-5 mx-auto" />
       </div>
-      <div class="w-1/5"><a href="https://github.com/avenga/couper" target="_blank"><github-icon class="w-8 h-8 mt-8" /></a></div>
+      <div class="w-1/5"><a href="https://github.com/coupergateway/couper" target="_blank"><github-icon class="w-8 h-8 mt-8" /></a></div>
     </header>
     <div class="flex justify-between m-2 p-2 min-h-screen">
       <SideNavbar class="w-1/5 min-w-min grow-0 p-2" />

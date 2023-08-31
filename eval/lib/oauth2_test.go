@@ -10,17 +10,17 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/accesscontrol/jwk"
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/oauth2/oidc"
+	"github.com/coupergateway/couper/accesscontrol/jwk"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/oauth2/oidc"
 )
 
 func TestNewOAuthAuthorizationURLFunction(t *testing.T) {

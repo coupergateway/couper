@@ -8,8 +8,8 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/eval"
 )
 
 type OpenAPIOptions struct {

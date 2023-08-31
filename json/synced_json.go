@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/config/request"
 )
 
 type SyncedJSONUnmarshaller interface {

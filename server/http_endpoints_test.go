@@ -21,9 +21,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
 )
 
 const testdataPath = "testdata/endpoints"

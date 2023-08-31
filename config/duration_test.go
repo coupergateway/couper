@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 func TestParseDuration(t *testing.T) {

@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/utils"
 	"github.com/google/go-cmp/cmp"
 )
 

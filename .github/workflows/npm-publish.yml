@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package-name: ['couper', '@avenga/couper']
+        package-name: ['couper', '@coupergateway/couper']
     env:
       PACKAGE_NAME: ${{ matrix.package-name }}
       PACKAGE_VERSION: ${{ github.event.inputs.package-version || github.ref_name }}

@@ -9,8 +9,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
 )
 
 var _ http.RoundTripper = &testRoundTripper{}

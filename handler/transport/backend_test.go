@@ -17,15 +17,15 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/handler/validation"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestBackend_RoundTrip_Timings(t *testing.T) {

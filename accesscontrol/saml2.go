@@ -13,10 +13,10 @@ import (
 	"github.com/russellhaering/gosaml2/types"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
 )
 
 type Saml2 struct {

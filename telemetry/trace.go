@@ -5,7 +5,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
 )
 
 func NewSpanFromContext(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {

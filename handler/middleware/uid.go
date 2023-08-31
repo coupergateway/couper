@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/xid"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
 )
 
 var regexUID = regexp.MustCompile(`^[a-zA-Z0-9@=/+-]{12,64}$`)
