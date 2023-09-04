@@ -43,9 +43,9 @@ github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kd
 github.com/apparentlymart/go-dump v0.0.0-20180507223929-23540a00eaa3/go.mod h1:oL81AME2rN47vu18xqj1S1jPIPuN7afo62yKTNn3XMM=
 github.com/apparentlymart/go-textseg/v13 v13.0.0 h1:Y+KvPE1NYz0xl601PVImeQfFyEy6iT90AvPUL1NNfNw=
 github.com/apparentlymart/go-textseg/v13 v13.0.0/go.mod h1:ZK2fH7c4NqDTLtiYLvIkEghdlcqw7yxLeM89kiTRPUo=
-github.com/coupergateway/go-cty v0.0.0-20220627115852-3ddf0a688aea h1:5WSXDatVzK2gKoubA+JrqvqiyeXWVOnG1Y3O4Yzd53E=
+github.com/coupergateway/go-cty v0.0.0-20220627115852-3ddf0a688aea h1:5jB/8FBHehHfhCVvzWlGaoBHtOTRjGu5GYvNNUA5vvo=
 github.com/coupergateway/go-cty v0.0.0-20220627115852-3ddf0a688aea/go.mod h1:s9IfD1LK5ccNMSWCVFCE2rJfHiZgi7JijgeWIMfhLvA=
-github.com/coupergateway/hcl v1.0.1-0.20220614110422-d3e10849a937 h1:jx9CNt7MzZ3hQ0137Q/Nc5oRKgLGxqdMrx7Q+AZk+Zw=
+github.com/coupergateway/hcl v1.0.1-0.20220614110422-d3e10849a937 h1:mIxvkFelIsbJQgnkECrxSYWgXwubcg5tH1VjU7Mz+x0=
 github.com/coupergateway/hcl v1.0.1-0.20220614110422-d3e10849a937/go.mod h1:VoeJE0hdBbmjvQzQRu8RK6EkZ+JqKddvjTnpcZD7dzA=
 github.com/beevik/etree v1.1.0 h1:T0xke/WvNtMoCqgzPhkX2r4rjY3GDZFi+FjpRZY2Jbs=
 github.com/beevik/etree v1.1.0/go.mod h1:r8Aw8JqVegEf0w2fDnATrX9VpkMcyFeM0FhwO62wh+A=
