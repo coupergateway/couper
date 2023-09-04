@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server/writer"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 func TestResponse_ChunkWrite(t *testing.T) {

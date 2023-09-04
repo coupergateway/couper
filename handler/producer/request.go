@@ -9,10 +9,10 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/telemetry"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/telemetry"
 )
 
 // Request represents the producer <Request> object.

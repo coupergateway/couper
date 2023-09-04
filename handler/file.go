@@ -10,11 +10,11 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/utils"
 )
 
 const dirIndexFile = "index.html"

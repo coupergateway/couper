@@ -13,11 +13,11 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler"
 )
 
 func TestSpa_ServeHTTP(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/avenga/couper/server/writer"
+	"github.com/coupergateway/couper/server/writer"
 
-	"github.com/avenga/couper/handler"
+	"github.com/coupergateway/couper/handler"
 )
 
 func TestHealth_ServeHTTP(t *testing.T) {

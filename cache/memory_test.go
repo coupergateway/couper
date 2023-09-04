@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestCache_All(t *testing.T) {

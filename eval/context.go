@@ -21,14 +21,14 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/oauth2/oidc"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/oauth2/oidc"
+	"github.com/coupergateway/couper/utils"
 )
 
 var _ context.Context = &Context{}

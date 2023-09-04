@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/utils"
 )
 
 var defaultHealthCheck = &HealthCheck{

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 func Test_refineEndpoints_noPattern(t *testing.T) {

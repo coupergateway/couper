@@ -13,13 +13,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/handler/validation"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/utils"
 )
 
 var (

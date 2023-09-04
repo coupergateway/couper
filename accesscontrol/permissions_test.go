@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
 )
 
 func Test_requiredPermissions(t *testing.T) {

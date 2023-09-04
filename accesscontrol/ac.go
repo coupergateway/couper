@@ -3,8 +3,8 @@ package accesscontrol
 import (
 	"net/http"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
 )
 
 type (

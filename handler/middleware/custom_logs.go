@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/config/request"
 )
 
 var _ http.Handler = &CustomLogs{}

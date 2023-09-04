@@ -7,10 +7,10 @@ import (
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/eval"
 )
 
 func TestServer_getEndpointsList(t *testing.T) {

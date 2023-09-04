@@ -1,10 +1,10 @@
 # Couper
 
-![Couper](https://raw.githubusercontent.com/avenga/couper/master/docs/website/public/img/couper-logo.svg)
+![Couper](https://raw.githubusercontent.com/coupergateway/couper/master/docs/website/public/img/couper-logo.svg)
 
 Couper is designed to support developers building and operating API-driven Web projects by offering security and observability functionality in a frontend gateway component.
 
-_For additional information, tutorials and documentation, please visit the [Couper repository](https://github.com/avenga/couper)._
+_For additional information, tutorials and documentation, please visit the [Couper repository](https://github.com/coupergateway/couper)._
 
 ## Usage
 
@@ -14,23 +14,23 @@ See our [documentation](https://docs.couper.io/getting-started/introduction) on 
 This image contains a basic configuration to serve files from `/htdocs` directory.
 
 ```sh
-$ docker run --rm -p 8080:8080 -v `pwd`:/htdocs avenga/couper
+$ docker run --rm -p 8080:8080 -v `pwd`:/htdocs coupergateway/couper
 ```
 
 ## Command
 
 The entrypoint of the image is the `/couper` binary. The command is `run`.
 
-Therefore `docker run avenga/couper` runs `/couper run -d /conf`.
+Therefore `docker run coupergateway/couper` runs `/couper run -d /conf`.
 
 The [directory argument](https://docs.couper.io/configuration/command-line#basic-options) allows you to mount multiple configuration files to the `/conf` directory.
 
 You could also use other commands directly:
 
 ```sh
-$ docker run avenga/couper version
+$ docker run coupergateway/couper version
 
-$ docker run avenga/couper run -watch -p 8081
+$ docker run coupergateway/couper run -watch -p 8081
 ```
 
 ## Environment Variables

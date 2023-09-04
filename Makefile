@@ -20,7 +20,7 @@ generate-docs:
 	go run config/generate/main.go
 
 image:
-	docker build -t avenga/couper:latest .
+	docker build -t coupergateway/couper:latest .
 
 test:
 	go test -v -short -race -count 1 -timeout 300s ./...

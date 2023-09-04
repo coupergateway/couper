@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 type ValueFunc interface {

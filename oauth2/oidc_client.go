@@ -11,9 +11,9 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/hcl/v2"
 
-	acjwt "github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/oauth2/oidc"
+	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/oauth2/oidc"
 )
 
 var (

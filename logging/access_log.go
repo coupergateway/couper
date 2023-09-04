@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
 )
 
 type RoundtripHandlerFunc http.HandlerFunc

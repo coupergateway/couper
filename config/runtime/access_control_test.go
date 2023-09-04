@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestDuplicateEndpoint(t *testing.T) {

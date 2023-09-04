@@ -7,7 +7,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestIntegration_FormParams(t *testing.T) {

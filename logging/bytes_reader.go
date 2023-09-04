@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/config/request"
 )
 
 var _ io.ReadCloser = &BytesCountReader{}

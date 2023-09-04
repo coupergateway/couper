@@ -9,9 +9,9 @@ import (
 	"net/textproto"
 	"strconv"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/logging"
 	"github.com/hashicorp/hcl/v2"
 )
 

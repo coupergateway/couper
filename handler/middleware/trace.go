@@ -8,9 +8,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
 )
 
 type TraceHandler struct {

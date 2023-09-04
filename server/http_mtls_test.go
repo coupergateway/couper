@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server"
 )
 
 func TestHTTPSServer_TLS_SelfSigned(t *testing.T) {

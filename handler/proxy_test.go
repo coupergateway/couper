@@ -9,13 +9,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestProxy_BlacklistHeaderRemoval(t *testing.T) {

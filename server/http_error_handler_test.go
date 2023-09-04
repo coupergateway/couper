@@ -10,13 +10,13 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestAccessControl_ErrorHandler(t *testing.T) {

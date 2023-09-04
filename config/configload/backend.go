@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
 )
 
 var backendBlockSchema = &hcl.BodySchema{

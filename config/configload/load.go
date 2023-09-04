@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	configfile "github.com/avenga/couper/config/configload/file"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config"
+	configfile "github.com/coupergateway/couper/config/configload/file"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
 )
 
 const (
