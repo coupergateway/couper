@@ -73,6 +73,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/hashicorp/hcl/v2 v2.12.0 => github.com/coupergateway/hcl v1.0.1-0.20220614110422-d3e10849a937
+replace github.com/hashicorp/hcl/v2 v2.12.0 => github.com/coupergateway/hcl v1.0.1-0.20230906142022-13cdbca9a19f
 
 replace github.com/zclconf/go-cty => github.com/coupergateway/go-cty v0.0.0-20220627115852-3ddf0a688aea
