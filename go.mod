@@ -25,8 +25,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.14.0
 	go.opentelemetry.io/otel/sdk/metric v0.37.0
 	go.opentelemetry.io/otel/trace v1.14.0
-	golang.org/x/crypto v0.2.0
-	golang.org/x/net v0.8.0
+	golang.org/x/crypto v0.13.0
+	golang.org/x/net v0.15.0
 	google.golang.org/grpc v1.54.0
 )
 
@@ -66,8 +66,8 @@ require (
 	github.com/sergi/go-diff v1.2.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20230327152035-dc694ad2151e // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
