@@ -14,7 +14,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: '1.19'
+          go-version: '1.20'
         id: go
       - run: go version
 
@@ -63,7 +63,7 @@ jobs:
         with:
           token: ${{ secrets.GH_COUPER_API_TOKEN }}
           path: 'website'
-          repository: 'avenga/couper-docs'
+          repository: 'coupergateway/couper-docs'
       - run: rm -rf website/*/ website/access-control website/command-line # clear sub-folders
       - run: cp -RTv dist/ website
       - name: setup git && push

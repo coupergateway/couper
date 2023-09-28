@@ -26,12 +26,12 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server"
 )
 
 func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
@@ -117,23 +117,26 @@ func TestHTTPServer_ServeHTTP_Files(t *testing.T) {
 		{"/apps/shiny-product/api/", nil, http.StatusNoContent},
 		{"/apps/shiny-product/api/foo%20bar:%22baz%22", []byte(`{"message": "route not found error" }`), 404},
 	} {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
-		helper.Must(err)
+		t.Run(testCase.path, func(subT *testing.T) {
+			h := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com:%s%s", port, testCase.path), nil)
+			h.Must(err)
 
-		res, err := connectClient.Do(req)
-		helper.Must(err)
+			res, err := connectClient.Do(req)
+			h.Must(err)
 
-		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("%.2d: expected status %d, got %d", i+1, testCase.expectedStatus, res.StatusCode)
-		}
+			if res.StatusCode != testCase.expectedStatus {
+				subT.Errorf("%.2d: expected status %d, got %d", i+1, testCase.expectedStatus, res.StatusCode)
+			}
 
-		result, err := io.ReadAll(res.Body)
-		helper.Must(err)
-		helper.Must(res.Body.Close())
+			result, err := io.ReadAll(res.Body)
+			h.Must(err)
+			h.Must(res.Body.Close())
 
-		if !bytes.Contains(result, testCase.expectedBody) {
-			t.Errorf("%.2d: expected body should contain:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
-		}
+			if !bytes.Contains(result, testCase.expectedBody) {
+				subT.Errorf("%.2d: expected body should contain:\n%s\ngot:\n%s", i+1, string(testCase.expectedBody), string(result))
+			}
+		})
 	}
 
 	helper.Must(os.Chdir(currentDir)) // defer for error cases, would be to late for normal exit
@@ -250,24 +253,27 @@ func TestHTTPServer_ServeHTTP_Files2(t *testing.T) {
 		{"/my_app", []byte(`<html><body><h1>{"framework":"react.js"}</h1></body></html>`), http.StatusOK},
 		{"/my_app/spa.html", []byte(`<html><body><h1>{"framework":"react.js"}</h1></body></html>`), http.StatusOK},
 	} {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", couper.Addr(), testCase.path), nil)
-		helper.Must(err)
-		req.Host = "example.com"
+		t.Run(testCase.path, func(subT *testing.T) {
+			h := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", couper.Addr(), testCase.path), nil)
+			h.Must(err)
+			req.Host = "example.com"
 
-		res, err := connectClient.Do(req)
-		helper.Must(err)
+			res, err := connectClient.Do(req)
+			h.Must(err)
 
-		if res.StatusCode != testCase.expectedStatus {
-			t.Errorf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
-		}
+			if res.StatusCode != testCase.expectedStatus {
+				subT.Errorf("%.2d: expected status for path %q %d, got %d", i+1, testCase.path, testCase.expectedStatus, res.StatusCode)
+			}
 
-		result, err := io.ReadAll(res.Body)
-		helper.Must(err)
-		helper.Must(res.Body.Close())
+			result, err := io.ReadAll(res.Body)
+			h.Must(err)
+			h.Must(res.Body.Close())
 
-		if !bytes.Contains(result, testCase.expectedBody) {
-			t.Errorf("%.2d: expected body for path %q:\n%s\ngot:\n%s", i+1, testCase.path, string(testCase.expectedBody), string(result))
-		}
+			if !bytes.Contains(result, testCase.expectedBody) {
+				subT.Errorf("%.2d: expected body for path %q:\n%s\ngot:\n%s", i+1, testCase.path, string(testCase.expectedBody), string(result))
+			}
+		})
 	}
 	helper.Must(os.Chdir(currentDir)) // defer for error cases, would be to late for normal exit
 }
@@ -957,6 +963,37 @@ func TestHTTPServer_ServerTiming(t *testing.T) {
 	}
 
 	exp2 := regexp.MustCompile(`b1_tcp;dur=\d+(.\d)* b1_total;dur=\d+(.\d)* b1_ttfb;dur=\d+(.\d)* b2_REQ_tcp;dur=\d+(.\d)* b2_REQ_total;dur=\d+(.\d)* b2_REQ_ttfb;dur=\d+(.\d)*`)
+	if s := strings.Join(dataCouper2, " "); !exp2.MatchString(s) {
+		t.Errorf("Unexpected header from 'second' Couper: %s", s)
+	}
+
+	req, err = http.NewRequest(http.MethodGet, "http://anyserver:9090/seq", nil)
+	helper.Must(err)
+
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	headers = res.Header.Values("Server-Timing")
+	if l := len(headers); l != 2 {
+		t.Fatalf("Unexpected number of headers: %d", 2)
+	}
+
+	dataCouper1 = strings.Split(headers[0], ", ")
+	dataCouper2 = strings.Split(headers[1], ", ")
+
+	sort.Strings(dataCouper1)
+	sort.Strings(dataCouper2)
+
+	if len(dataCouper1) != 2 || len(dataCouper2) != 5 {
+		t.Fatal("Unexpected number of metrics")
+	}
+
+	exp1 = regexp.MustCompile(`b1_total_[0-9a-f]{6};dur=\d+(.\d)* b1_ttfb_[0-9a-f]{6};dur=\d+(.\d)*`)
+	if s := strings.Join(dataCouper1, " "); !exp1.MatchString(s) {
+		t.Errorf("Unexpected header from 'first' Couper: %s", s)
+	}
+
+	exp2 = regexp.MustCompile(`b1_total;dur=\d+(.\d)* b1_ttfb;dur=\d+(.\d)* b2_REQ_tcp;dur=\d+(.\d)* b2_REQ_total;dur=\d+(.\d)* b2_REQ_ttfb;dur=\d+(.\d)*`)
 	if s := strings.Join(dataCouper2, " "); !exp2.MatchString(s) {
 		t.Errorf("Unexpected header from 'second' Couper: %s", s)
 	}

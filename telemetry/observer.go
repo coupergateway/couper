@@ -5,13 +5,13 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/asyncint64"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 func newBackendsObserver(memStore *cache.MemoryStore) error {
@@ -24,20 +24,20 @@ func newBackendsObserver(memStore *cache.MemoryStore) error {
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	gauge, _ := meter.AsyncInt64().
-		Gauge(
-			instrumentation.BackendHealthState,
-			instrument.WithDescription(string(unit.Dimensionless)),
-		)
+	gauge, _ := meter.Int64ObservableGauge(
+		instrumentation.BackendHealthState,
+		instrument.WithDescription(string(unit.Dimensionless)),
+	)
 
-	onObserverFn := func(ctx context.Context) {
-		backendsObserver(ctx, gauge, backends)
+	onObserverFn := func(_ context.Context, observer metric.Observer) error {
+		return backendsObserver(gauge, observer, backends)
 	}
 
-	return meter.RegisterCallback([]instrument.Asynchronous{gauge}, onObserverFn)
+	_, err := meter.RegisterCallback(onObserverFn, gauge)
+	return err
 }
 
-func backendsObserver(ctx context.Context, gauge asyncint64.Gauge, backends []interface{ Value() cty.Value }) {
+func backendsObserver(gauge instrument.Int64Observable, observer metric.Observer, backends []interface{ Value() cty.Value }) error {
 	for _, backend := range backends {
 		v := backend.Value().AsValueMap()
 		attrs := []attribute.KeyValue{
@@ -51,6 +51,7 @@ func backendsObserver(ctx context.Context, gauge asyncint64.Gauge, backends []in
 			value = 0
 		}
 
-		gauge.Observe(ctx, value, attrs...)
+		observer.ObserveInt64(gauge, value, attrs...)
 	}
+	return nil
 }

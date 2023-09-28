@@ -7,6 +7,12 @@ server "first" {
     }
   }
 
+  endpoint "/seq" {
+    proxy {
+      backend = "b1"
+    }
+  }
+
   endpoint "/empty" {
     response {
       status = 204

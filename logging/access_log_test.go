@@ -10,10 +10,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 func TestAccessLog_ServeHTTP(t *testing.T) {

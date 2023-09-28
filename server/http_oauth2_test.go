@@ -23,14 +23,14 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/oauth2"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 func TestEndpoints_OAuth2(t *testing.T) {
@@ -196,8 +196,6 @@ func Test_OAuth2_no_retry(t *testing.T) {
 }
 
 func TestEndpoints_OAuth2_Options(t *testing.T) {
-	helper := test.New(t)
-
 	type testCase struct {
 		configFile string
 		expBody    string
@@ -236,54 +234,57 @@ func TestEndpoints_OAuth2_Options(t *testing.T) {
 			"",
 		},
 	} {
-		var tokenSeenCh chan struct{}
+		t.Run(tc.configFile, func(subT *testing.T) {
+			helper := test.New(subT)
+			var tokenSeenCh chan struct{}
 
-		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == "/options" {
-				reqBody, _ := io.ReadAll(req.Body)
-				authorization := req.Header.Get("Authorization")
+			oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				if req.URL.Path == "/options" {
+					reqBody, _ := io.ReadAll(req.Body)
+					authorization := req.Header.Get("Authorization")
 
-				if tc.expBody != string(reqBody) {
-					t.Errorf("want\n%s\ngot\n%s", tc.expBody, reqBody)
+					if tc.expBody != string(reqBody) {
+						subT.Errorf("want\n%s\ngot\n%s", tc.expBody, reqBody)
+					}
+					if tc.expAuth != authorization {
+						subT.Errorf("want\n%s\ngot\n%s", tc.expAuth, authorization)
+					}
+
+					rw.WriteHeader(http.StatusNoContent)
+
+					close(tokenSeenCh)
+					return
 				}
-				if tc.expAuth != authorization {
-					t.Errorf("want\n%s\ngot\n%s", tc.expAuth, authorization)
-				}
+				rw.WriteHeader(http.StatusBadRequest)
+			}))
+			defer oauthOrigin.Close()
 
-				rw.WriteHeader(http.StatusNoContent)
+			confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
+			shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+			helper.Must(err)
+			defer shutdown()
 
-				close(tokenSeenCh)
-				return
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+			helper.Must(err)
+
+			hook.Reset()
+
+			tokenSeenCh = make(chan struct{})
+
+			req.URL.Path = "/"
+			_, err = newClient().Do(req)
+			helper.Must(err)
+
+			timer := time.NewTimer(time.Second * 2)
+			select {
+			case <-timer.C:
+				subT.Error("OAuth2 request failed")
+			case <-tokenSeenCh:
 			}
-			rw.WriteHeader(http.StatusBadRequest)
-		}))
-		defer oauthOrigin.Close()
 
-		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
-		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
-		helper.Must(err)
-		defer shutdown()
-
-		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-		helper.Must(err)
-
-		hook.Reset()
-
-		tokenSeenCh = make(chan struct{})
-
-		req.URL.Path = "/"
-		_, err = newClient().Do(req)
-		helper.Must(err)
-
-		timer := time.NewTimer(time.Second * 2)
-		select {
-		case <-timer.C:
-			t.Error("OAuth2 request failed")
-		case <-tokenSeenCh:
-		}
-
-		oauthOrigin.Close()
-		shutdown()
+			oauthOrigin.Close()
+			shutdown()
+		})
 	}
 }
 
@@ -323,75 +324,78 @@ func TestEndpoints_OAuth2_JWTBearer(t *testing.T) {
 			passedAssertion,
 		},
 	} {
-		var tokenSeenCh chan struct{}
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+			var tokenSeenCh chan struct{}
 
-		oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == "/token" {
-				reqBody, _ := io.ReadAll(req.Body)
+			oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				if req.URL.Path == "/token" {
+					reqBody, _ := io.ReadAll(req.Body)
 
-				params, err := url.ParseQuery(string(reqBody))
-				helper.Must(err)
+					params, err := url.ParseQuery(string(reqBody))
+					h.Must(err)
 
-				grantType := params.Get("grant_type")
-				if expGrantType != grantType {
-					t.Errorf("%s: unexpected grant_type: want\n%s\ngot\n%s", tc.name, expGrantType, grantType)
-				}
+					grantType := params.Get("grant_type")
+					if expGrantType != grantType {
+						subT.Errorf("%s: unexpected grant_type: want\n%s\ngot\n%s", tc.name, expGrantType, grantType)
+					}
 
-				assertion := params.Get("assertion")
-				claims := jwt.MapClaims{}
-				_, err = jwtParser.ParseWithClaims(assertion, claims, keyFunc)
-				helper.Must(err)
-				if len(expClaims) != len(claims) {
-					t.Fatalf("%s: unexpected number of claims; want: %d, got: %d", tc.name, len(expClaims), len(claims))
-				}
-				for k, vExp := range expClaims {
-					v, set := claims[k]
-					if !set {
-						t.Errorf("%s: missing claim %q", tc.name, k)
-					} else {
-						if vExp != nil && vExp != v {
-							t.Errorf("%s: unexpected %s claim value; want: %#v, got: %#v", tc.name, k, vExp, v)
+					assertion := params.Get("assertion")
+					claims := jwt.MapClaims{}
+					_, err = jwtParser.ParseWithClaims(assertion, claims, keyFunc)
+					h.Must(err)
+					if len(expClaims) != len(claims) {
+						subT.Fatalf("%s: unexpected number of claims; want: %d, got: %d", tc.name, len(expClaims), len(claims))
+					}
+					for k, vExp := range expClaims {
+						v, set := claims[k]
+						if !set {
+							subT.Errorf("%s: missing claim %q", tc.name, k)
+						} else {
+							if vExp != nil && vExp != v {
+								subT.Errorf("%s: unexpected %s claim value; want: %#v, got: %#v", tc.name, k, vExp, v)
+							}
 						}
 					}
+
+					rw.WriteHeader(http.StatusNoContent)
+
+					close(tokenSeenCh)
+					return
 				}
+				rw.WriteHeader(http.StatusBadRequest)
+			}))
+			defer oauthOrigin.Close()
 
-				rw.WriteHeader(http.StatusNoContent)
+			confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
+			shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+			h.Must(err)
+			defer shutdown()
 
-				close(tokenSeenCh)
-				return
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
+			h.Must(err)
+			if tc.assHeader != "" {
+				req.Header.Add("x-assertion", tc.assHeader)
 			}
-			rw.WriteHeader(http.StatusBadRequest)
-		}))
-		defer oauthOrigin.Close()
 
-		confPath := fmt.Sprintf("testdata/oauth2/%s", tc.configFile)
-		shutdown, hook, err := newCouperWithTemplate(confPath, test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
-		helper.Must(err)
-		defer shutdown()
+			hook.Reset()
 
-		req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/", nil)
-		helper.Must(err)
-		if tc.assHeader != "" {
-			req.Header.Add("x-assertion", tc.assHeader)
-		}
+			tokenSeenCh = make(chan struct{})
 
-		hook.Reset()
+			req.URL.Path = "/"
+			_, err = newClient().Do(req)
+			h.Must(err)
 
-		tokenSeenCh = make(chan struct{})
+			timer := time.NewTimer(time.Second * 2)
+			select {
+			case <-timer.C:
+				subT.Error("OAuth2 request failed")
+			case <-tokenSeenCh:
+			}
 
-		req.URL.Path = "/"
-		_, err = newClient().Do(req)
-		helper.Must(err)
-
-		timer := time.NewTimer(time.Second * 2)
-		select {
-		case <-timer.C:
-			t.Error("OAuth2 request failed")
-		case <-tokenSeenCh:
-		}
-
-		oauthOrigin.Close()
-		shutdown()
+			oauthOrigin.Close()
+			shutdown()
+		})
 	}
 }
 
@@ -928,32 +932,34 @@ definitions {
 			"configuration error: be: \"alg\" cannot be set via \"headers\"",
 		},
 	} {
-		var errMsg string
-		conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
-		if conf != nil {
-			logger := log.WithContext(context.TODO())
+		t.Run(tc.name, func(subT *testing.T) {
+			var errMsg string
+			conf, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
+			if conf != nil {
+				logger := log.WithContext(context.TODO())
 
-			tmpStoreCh := make(chan struct{})
-			defer close(tmpStoreCh)
+				tmpStoreCh := make(chan struct{})
+				defer close(tmpStoreCh)
 
-			ctx, cancel := context.WithCancel(conf.Context)
-			conf.Context = ctx
-			defer cancel()
+				ctx, cancel := context.WithCancel(conf.Context)
+				conf.Context = ctx
+				defer cancel()
 
-			_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
-		}
-
-		if err != nil {
-			if _, ok := err.(errors.GoError); ok {
-				errMsg = err.(errors.GoError).LogError()
-			} else {
-				errMsg = err.Error()
+				_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
 			}
-		}
 
-		if !strings.HasPrefix(errMsg, tc.error) {
-			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
-		}
+			if err != nil {
+				if _, ok := err.(errors.GoError); ok {
+					errMsg = err.(errors.GoError).LogError()
+				} else {
+					errMsg = err.Error()
+				}
+			}
+
+			if !strings.HasPrefix(errMsg, tc.error) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
+			}
+		})
 	}
 }
 
@@ -1035,12 +1041,12 @@ func TestOAuth2_AuthnJWT(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != tc.wantStatus {
-				t.Errorf("expected status %d, got: %d", tc.wantStatus, res.StatusCode)
+				subT.Errorf("expected status %d, got: %d", tc.wantStatus, res.StatusCode)
 			}
 
 			message := getFirstAccessLogMessage(hook)
 			if message != tc.wantErrLog {
-				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+				subT.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
 			}
 
 			shutdown()
@@ -1067,6 +1073,19 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 			helper.Must(werr)
 			return
 		}
+		if req.URL.Path == "/token/error" {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusBadRequest)
+
+			body := []byte(`{
+				"error": "the_error",
+				"error_description": "the error description",
+				"error_uri": "https://as/error/uri"
+			}`)
+			_, werr := rw.Write(body)
+			helper.Must(werr)
+			return
+		}
 		rw.WriteHeader(http.StatusBadRequest)
 	}))
 	defer asOrigin.Close()
@@ -1074,13 +1093,15 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 	type testCase struct {
 		name       string
 		filename   string
+		path       string
 		wantErrLog string
 	}
 
 	for _, tc := range []testCase{
-		{"null assertion", "17_couper.hcl", "backend error: be: request error: oauth2: assertion expression evaluates to null"},
-		{"non-string assertion", "18_couper.hcl", "backend error: be: request error: oauth2: assertion expression must evaluate to a string"},
-		{"token request error", "19_couper.hcl", "backend error: be: request error: oauth2: token request failed"},
+		{"null assertion", "17_couper.hcl", "/resource", "backend error: be: request error: oauth2: assertion expression evaluates to null"},
+		{"non-string assertion", "18_couper.hcl", "/resource", "backend error: be: request error: oauth2: assertion expression must evaluate to a string"},
+		{"token request error: connect error", "19_couper.hcl", "/resource", "backend error: be: request error: oauth2: token request failed: backend error: as_down: proxyconnect tcp: connecting to as_down '1.2.3.4:80' failed: dial tcp 127.0.0.1:9999: connect: connection refused"},
+		{"token request error: AS responding with error", "19_couper.hcl", "/other/resource", "backend error: be2: request error: oauth2: token request failed: error=the_error, error_description=the error description, error_uri=https://as/error/uri"},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
@@ -1089,7 +1110,7 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 			h.Must(err)
 			defer shutdown()
 
-			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080/resource", nil)
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
 			h.Must(err)
 
 			hook.Reset()
@@ -1098,12 +1119,12 @@ func TestOAuth2_Runtime_Errors(t *testing.T) {
 			h.Must(err)
 
 			if res.StatusCode != http.StatusBadGateway {
-				t.Errorf("expected status StatusBadGateway, got: %d", res.StatusCode)
+				subT.Errorf("expected status StatusBadGateway, got: %d", res.StatusCode)
 			}
 
 			message := getFirstAccessLogMessage(hook)
 			if message != tc.wantErrLog {
-				t.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
+				subT.Errorf("error log\nwant: %q\ngot:  %q", tc.wantErrLog, message)
 			}
 
 			shutdown()
@@ -1340,7 +1361,7 @@ func TestOAuth2_AccessControl(t *testing.T) {
 		{"code; nonce param; relative redirect_uri", "09_couper.hcl", http.MethodGet, "/cb?code=qeuboub-id", http.Header{"Cookie": []string{"nnc=" + st}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub-id&grant_type=authorization_code&redirect_uri=https%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 		{"code; without userinfo", "24_couper.hcl", http.MethodGet, "/cb?code=qeuboub-wuiss-id", http.Header{"Cookie": []string{"nnc=" + st}, "X-Forwarded-Proto": []string{"https"}, "X-Forwarded-Host": []string{"www.example.com"}}, http.StatusOK, "code=qeuboub-wuiss-id&grant_type=authorization_code&redirect_uri=http%3A%2F%2Fwww.example.com%2Fcb", "Basic Zm9vOmV0YmluYnA0aW4=", ""},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)
 
 			shutdown, hook, err := newCouperWithTemplate("testdata/oauth2/"+tc.filename, h, map[string]interface{}{"asOrigin": oauthOrigin.URL})
@@ -2124,19 +2145,21 @@ server {
 			"couper.hcl:11,28-31: token request names (either default or explicitly set via label) must be unique: \"a\"; ",
 		},
 	} {
-		var errMsg string
-		_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
-		if err != nil {
-			if _, ok := err.(errors.GoError); ok {
-				errMsg = err.(errors.GoError).LogError()
-			} else {
-				errMsg = err.Error()
+		t.Run(tc.name, func(subT *testing.T) {
+			var errMsg string
+			_, err := configload.LoadBytes([]byte(tc.hcl), "couper.hcl")
+			if err != nil {
+				if _, ok := err.(errors.GoError); ok {
+					errMsg = err.(errors.GoError).LogError()
+				} else {
+					errMsg = err.Error()
+				}
 			}
-		}
 
-		if !strings.HasPrefix(errMsg, tc.error) {
-			t.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
-		}
+			if !strings.HasPrefix(errMsg, tc.error) {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tc.name, tc.error, errMsg)
+			}
+		})
 	}
 }
 
@@ -2169,14 +2192,14 @@ func TestTokenRequest_Runtime_Errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"token request error, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr: token request failed"},
+		{"token request error, handled by error handler", "01_token_request_error.hcl", http.StatusNoContent, "backend error: be: request error: tr: token request failed: backend error: down: proxyconnect tcp: connecting to down '1.2.3.4:80' failed: dial tcp 127.0.0.1:9999: connect: connection refused"},
 		{"token expression evaluation error", "02_token_request_error.hcl", http.StatusBadGateway, "couper-bytes.hcl:23,15-31: Call to unknown function; There is no function named \"evaluation_error\"."},
-		{"null token", "03_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression evaluates to null"},
-		{"non-string token", "04_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token expression must evaluate to a string"},
+		{"null token", "03_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token request failed: token expression evaluates to null"},
+		{"non-string token", "04_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token request failed: token expression must evaluate to a string"},
 		{"ttl expression evaluation error", "05_token_request_error.hcl", http.StatusBadGateway, "couper-bytes.hcl:24,13-29: Call to unknown function; There is no function named \"evaluation_error\"."},
-		{"null ttl", "06_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl expression evaluates to null"},
-		{"non-string ttl", "07_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl expression must evaluate to a string"},
-		{"non-duration ttl", "08_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: ttl: time: invalid duration \"no duration\""},
+		{"null ttl", "06_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token request failed: ttl expression evaluates to null"},
+		{"non-string ttl", "07_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token request failed: ttl expression must evaluate to a string"},
+		{"non-duration ttl", "08_token_request_error.hcl", http.StatusBadGateway, "backend error: be: request error: tr: token request failed: ttl: time: invalid duration \"no duration\""},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			h := test.New(subT)

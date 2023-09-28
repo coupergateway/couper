@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/config/request"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 

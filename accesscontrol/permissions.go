@@ -6,11 +6,11 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/internal/seetie"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 type requiredPermissions struct {

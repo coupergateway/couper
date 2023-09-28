@@ -39,7 +39,7 @@ values: [
   },
   {
     "default": "",
-    "description": "Request HTTP header fields.",
+    "description": "Same as `set_request_headers` in [Modifiers - Request Header](../modifiers#request-header).",
     "name": "headers",
     "type": "object"
   },
@@ -95,6 +95,6 @@ request {
 }
 ```
 
-* [Sending requests](https://github.com/avenga/couper-examples/tree/master/custom-requests)
-* [Sending JSON](https://github.com/avenga/couper-examples/tree/master/sending-json)
-* [Sending forms](https://github.com/avenga/couper-examples/tree/master/sending-form)
+* [Sending requests](https://github.com/coupergateway/couper-examples/tree/master/custom-requests)
+* [Sending JSON](https://github.com/coupergateway/couper-examples/tree/master/sending-json)
+* [Sending forms](https://github.com/coupergateway/couper-examples/tree/master/sending-form)

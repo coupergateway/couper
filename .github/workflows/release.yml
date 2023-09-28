@@ -23,7 +23,7 @@ jobs:
     needs:
       - test
     env:
-      VERSION_PACKAGE: 'github.com/avenga/couper/utils'
+      VERSION_PACKAGE: 'github.com/coupergateway/couper/utils'
     strategy:
       matrix:
         goos: [linux, windows]
@@ -43,13 +43,13 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=build_date::$(date +'%F')"
 
-      - uses: wangyoucao577/go-release-action@v1.25
+      - uses: wangyoucao577/go-release-action@v1.37
         id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: '1.19'
+          goversion: '1.20'
           binary_name: 'couper'
           ldflags: '-X ${{ env.VERSION_PACKAGE }}.VersionName=${{ github.ref_name }} -X ${{ env.VERSION_PACKAGE }}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${{ env.VERSION_PACKAGE }}.BuildDate=${{ steps.vars.outputs.build_date }}'
           sha256sum: true
@@ -71,7 +71,7 @@ jobs:
     env:
       AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      VERSION_PACKAGE: 'github.com/avenga/couper/utils'
+      VERSION_PACKAGE: 'github.com/coupergateway/couper/utils'
     outputs:
       amd64: ${{ steps.upload.outputs.amd64 }}
       arm64: ${{ steps.upload.outputs.arm64 }}
@@ -81,7 +81,7 @@ jobs:
       - name: 'setup go'
         uses: actions/setup-go@v2
         with:
-          go-version: '1.19'
+          go-version: '1.20'
 
       - name: 'import certificate'
         uses: devbotsxyz/import-signing-certificate@v1
@@ -104,7 +104,7 @@ jobs:
       - name: 'verify identity'
         run: security find-identity -v
       - name: 'sign Couper binary'
-        run: codesign -i "binary.com.avenga.couper" -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/Couper.app/Contents/couper
+        run: codesign -i "binary.com.xxx.couper" -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/Couper.app/Contents/couper
       - name: 'create signed binary archive' # keep utf8 things with ditto
         run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/couper ./.macos/couper.zip
 #      - name: 'create macOS dmg with signed binary'
@@ -120,11 +120,11 @@ jobs:
       - name: 'upload archive'
         id: 'upload'
         run: |
-          mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
+          mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
+          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
           echo "::set-output name=${{ matrix.goarch }}::$(cat ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256)"
 #      - name: 'upload image'
-#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
+#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
   brewlease:
     name: 'update homebrew formula'
     runs-on: ubuntu-latest
@@ -150,7 +150,7 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.GH_COUPER_API_TOKEN }}
         with:
           source_file: '${{ github.workspace }}/.github/workflows/couper.rb'
-          destination_repo: 'avenga/homebrew-couper'
+          destination_repo: 'coupergateway/homebrew-couper'
           destination_folder: './'
           destination_branch: 'main'
           destination_branch_create: 'release.${{ github.ref_name }}' # due to testing purposes; create branch for merging later on

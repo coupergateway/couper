@@ -10,12 +10,12 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/producer"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/producer"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func Test_ProduceExpectedStatus(t *testing.T) {
@@ -83,21 +83,21 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 			content.Attributes[tt.attr.Name] = tt.attr
 		}
 
-		requests := producer.Requests{&producer.Request{
-			Backend: backend,
-			Context: content,
-			Name:    "request",
-		}}
-
-		proxies := producer.Proxies{&producer.Proxy{
-			Content:   content,
-			Name:      "proxy",
-			RoundTrip: handler.NewProxy(backend, content, false, logEntry),
-		}}
-
+		producers := []producer.Roundtrip{
+			&producer.Request{
+				Backend: backend,
+				Context: content,
+				Name:    "request",
+			},
+			&producer.Proxy{
+				Content:   content,
+				Name:      "proxy",
+				RoundTrip: handler.NewProxy(backend, content, false, logEntry),
+			},
+		}
 		testNames := []string{"request", "proxy"}
 
-		for i, rt := range []producer.Roundtrip{requests, proxies} {
+		for i, rt := range producers {
 			t.Run(testNames[i]+"_"+tt.name, func(t *testing.T) {
 
 				ctx := eval.NewDefaultContext().WithClientRequest(clientRequest)
@@ -105,7 +105,7 @@ func Test_ProduceExpectedStatus(t *testing.T) {
 				outreq := clientRequest.WithContext(ctx)
 				outreq.Header.Set("X-Status", strconv.Itoa(tt.reflectStatus))
 
-				result := <-rt.Produce(outreq, nil)
+				result := rt.Produce(outreq)
 
 				if !errors.Equals(tt.expectedErr, result.Err) {
 					t.Fatalf("expected error: %v, got %v", tt.expectedErr, result.Err)

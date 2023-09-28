@@ -22,20 +22,20 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/ratelimit"
-	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/telemetry"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler/ratelimit"
+	"github.com/coupergateway/couper/handler/validation"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/telemetry"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
+	"github.com/coupergateway/couper/utils"
 )
 
 var (
@@ -247,7 +247,7 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// from this result.
 	evalCtx := eval.ContextFromRequest(req)
 	// has own body variable reference?
-	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
+	readBody := eval.MustBuffer(b.context).Response()
 	evalCtx = evalCtx.WithBeresp(beresp, backendVal, readBody)
 
 	clfValue, err := eval.EvalCustomLogFields(evalCtx.HCLContext(), ctxBody)
@@ -297,11 +297,11 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	counter, _ := meter.SyncInt64().Counter(
+	counter, _ := meter.Int64Counter(
 		instrumentation.BackendRequest,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)
-	duration, _ := meter.SyncFloat64().Histogram(
+	duration, _ := meter.Float64Histogram(
 		instrumentation.BackendRequestDuration,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)

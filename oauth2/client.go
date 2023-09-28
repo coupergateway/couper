@@ -12,12 +12,12 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	pkce "github.com/jimlambrt/go-oauth-pkce-code-verifier"
 
-	acjwt "github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
+	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 const (

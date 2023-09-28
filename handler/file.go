@@ -10,18 +10,17 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/utils"
 )
 
 const dirIndexFile = "index.html"
 
 var (
-	_ http.Handler   = &File{}
-	_ server.Context = &File{}
+	_ http.Handler = &File{}
 )
 
 type File struct {
@@ -180,14 +179,6 @@ func (f *File) removeBasePath(reqPath string) string {
 	}
 
 	return reqPath
-}
-
-func (f *File) Template() *errors.Template {
-	return f.errorTpl
-}
-
-func (f *File) Options() *server.Options {
-	return f.srvOptions
 }
 
 func (f *File) String() string {

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestMultiFiles_Server(t *testing.T) {
@@ -56,32 +56,35 @@ func TestMultiFiles_Server(t *testing.T) {
 		{"http://example.com:8083/", nil, http.StatusNotFound, ""},
 		{"http://example.com:9084/", nil, http.StatusNotFound, ""},
 	} {
-		req, err = http.NewRequest(http.MethodGet, tc.url, nil)
-		helper.Must(err)
+		t.Run(tc.url, func(subT *testing.T) {
+			h := test.New(subT)
+			req, err = http.NewRequest(http.MethodGet, tc.url, nil)
+			h.Must(err)
 
-		for k, v := range tc.header {
-			req.Header.Set(k, v)
-		}
+			for k, v := range tc.header {
+				req.Header.Set(k, v)
+			}
 
-		res, err := client.Do(req)
-		helper.Must(err)
+			res, err := client.Do(req)
+			h.Must(err)
 
-		if res.StatusCode != tc.expStatus {
-			t.Errorf("request %q: want status %d, got %d", tc.url, tc.expStatus, res.StatusCode)
-		}
+			if res.StatusCode != tc.expStatus {
+				subT.Errorf("request %q: want status %d, got %d", tc.url, tc.expStatus, res.StatusCode)
+			}
 
-		if tc.expBody == "" {
-			continue
-		}
+			if tc.expBody == "" {
+				return
+			}
 
-		var resBytes []byte
-		resBytes, err = io.ReadAll(res.Body)
-		helper.Must(err)
-		_ = res.Body.Close()
+			var resBytes []byte
+			resBytes, err = io.ReadAll(res.Body)
+			h.Must(err)
+			_ = res.Body.Close()
 
-		if string(resBytes) != tc.expBody {
-			t.Errorf("request %q unexpected content: %s", tc.url, resBytes)
-		}
+			if string(resBytes) != tc.expBody {
+				subT.Errorf("request %q unexpected content: %s", tc.url, resBytes)
+			}
+		})
 	}
 }
 

@@ -212,6 +212,14 @@ server "api" {
         }
       }
     }
+
+    endpoint "/can" {
+      response {
+        headers = {
+          x-can = json_encode({ for k in ["not_there", "method", "path"] : k => request[k] if can(request[k]) })
+        }
+      }
+    }
   }
 }
 

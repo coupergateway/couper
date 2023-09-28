@@ -12,16 +12,16 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/backend"
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/producer"
-	"github.com/avenga/couper/handler/ratelimit"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/handler/validation"
+	"github.com/coupergateway/couper/backend"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler/producer"
+	"github.com/coupergateway/couper/handler/ratelimit"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/handler/validation"
 )
 
 func NewBackend(ctx *hcl.EvalContext, body *hclsyntax.Body, log *logrus.Entry,
@@ -181,12 +181,12 @@ func newRequestAuthorizer(evalCtx *hcl.EvalContext, block *hclsyntax.Block,
 	case *config.OAuth2ReqAuth:
 		return transport.NewOAuth2ReqAuth(evalCtx, impl, memStore, authorizerBackend)
 	case *config.TokenRequest:
-		reqs := producer.Requests{&producer.Request{
+		req := &producer.Request{
 			Backend: authorizerBackend,
 			Context: impl.HCLBody(),
 			Name:    impl.Name,
-		}}
-		return transport.NewTokenRequest(impl, memStore, reqs)
+		}
+		return transport.NewTokenRequest(impl, memStore, req)
 	default:
 		return nil, errors.Configuration.Message("unknown authorizer type")
 	}

@@ -13,17 +13,17 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 type muxers map[string]*Mux
@@ -252,7 +252,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		ctx = context.WithValue(ctx, request.Handler, hs.String())
 	}
 
-	if err = s.setGetBody(h, req); err != nil {
+	bufferOption, err := s.setGetBody(h, req)
+	if err != nil {
 		h = mux.opts.ServerOptions.ServerErrTpl.WithError(err)
 	}
 
@@ -283,20 +284,21 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	ctx = context.WithValue(ctx, request.BufferOptions, bufferOption)
 	// due to the middleware callee stack we have to update the 'req' value.
 	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
 
 	h.ServeHTTP(rw, req)
 }
 
-func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
+func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) (opt eval.BufferOption, err error) {
 	inner := getChildHandler(h)
 
-	var err error
 	if limitHandler, ok := inner.(handler.BodyLimit); ok {
-		err = eval.SetGetBody(req, limitHandler.BufferOptions(), limitHandler.RequestLimit())
+		opt = limitHandler.BufferOptions()
+		err = eval.SetGetBody(req, opt, limitHandler.RequestLimit())
 	}
-	return err
+	return opt, err
 }
 
 // getHost configures the host from the incoming request host based on
@@ -329,9 +331,9 @@ func (s *HTTPServer) cleanHostAppendPort(host string) string {
 
 func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 	meter := provider.Meter("couper/server")
-	counter, _ := meter.SyncInt64().
-		Counter(instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
-	gauge, _ := meter.SyncFloat64().UpDownCounter(
+	counter, _ := meter.Int64Counter(
+		instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
+	gauge, _ := meter.Float64UpDownCounter(
 		instrumentation.ClientConnections,
 		instrument.WithDescription(string(unit.Dimensionless)),
 	)

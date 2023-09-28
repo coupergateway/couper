@@ -353,6 +353,7 @@ definitions {
   }
   jwt "RSAToken1" {
     signature_algorithm = "RS256"
+    bearer = true # default
     key =<<-EOF
         -----BEGIN RSA PUBLIC KEY-----
         MIIBCgKCAQEAxOubq8QN8gBVEwINCfVNvmZAhO+ZLeKZapT38OyZkqm+8BUs98cB
@@ -365,7 +366,7 @@ definitions {
     EOF
   }
   jwt "RSAToken8" {
-    header = "Authorization"
+    header = "Authorization" # keep for now
     signature_algorithm = "RS256"
     key =<<-EOF
         -----BEGIN PUBLIC KEY-----
@@ -418,7 +419,6 @@ definitions {
   }
 
   jwt "JWKS_not_found" {
-    header = "Authorization"
     jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/not.found"
   }
 

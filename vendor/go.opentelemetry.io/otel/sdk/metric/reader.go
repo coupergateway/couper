@@ -34,6 +34,10 @@ var ErrReaderNotRegistered = fmt.Errorf("reader is not registered")
 // reader has been Shutdown once.
 var ErrReaderShutdown = fmt.Errorf("reader is shutdown")
 
+// errNonPositiveDuration is logged when an environmental variable
+// has non-positive value.
+var errNonPositiveDuration = fmt.Errorf("non-positive duration")
+
 // Reader is the interface used between the SDK and an
 // exporter.  Control flow is bi-directional through the
 // Reader, since the SDK initiates ForceFlush and Shutdown
@@ -51,7 +55,12 @@ type Reader interface {
 	// register registers a Reader with a MeterProvider.
 	// The producer argument allows the Reader to signal the sdk to collect
 	// and send aggregated metric measurements.
-	register(producer)
+	register(sdkProducer)
+
+	// RegisterProducer registers a an external Producer with this Reader.
+	// The Producer is used as a source of aggregated metric data which is
+	// incorporated into metrics collected from the SDK.
+	RegisterProducer(Producer)
 
 	// temporality reports the Temporality for the instrument kind provided.
 	temporality(InstrumentKind) metricdata.Temporality
@@ -60,8 +69,9 @@ type Reader interface {
 	aggregation(InstrumentKind) aggregation.Aggregation // nolint:revive  // import-shadow for method scoped by type.
 
 	// Collect gathers and returns all metric data related to the Reader from
-	// the SDK. An error is returned if this is called after Shutdown.
-	Collect(context.Context) (metricdata.ResourceMetrics, error)
+	// the SDK and stores it in out. An error is returned if this is called
+	// after Shutdown or if out is nil.
+	Collect(ctx context.Context, rm *metricdata.ResourceMetrics) error
 
 	// ForceFlush flushes all metric measurements held in an export pipeline.
 	//
@@ -84,12 +94,20 @@ type Reader interface {
 	Shutdown(context.Context) error
 }
 
-// producer produces metrics for a Reader.
-type producer interface {
+// sdkProducer produces metrics for a Reader.
+type sdkProducer interface {
 	// produce returns aggregated metrics from a single collection.
 	//
 	// This method is safe to call concurrently.
 	produce(context.Context) (metricdata.ResourceMetrics, error)
+}
+
+// Producer produces metrics for a Reader from an external source.
+type Producer interface {
+	// Produce returns aggregated metrics from an external source.
+	//
+	// This method should be safe to call concurrently.
+	Produce(context.Context) ([]metricdata.ScopeMetrics, error)
 }
 
 // produceHolder is used as an atomic.Value to wrap the non-concrete producer
@@ -123,16 +141,16 @@ type AggregationSelector func(InstrumentKind) aggregation.Aggregation
 // DefaultAggregationSelector returns the default aggregation and parameters
 // that will be used to summarize measurement made from an instrument of
 // InstrumentKind. This AggregationSelector using the following selection
-// mapping: Counter ⇨ Sum, Asynchronous Counter ⇨ Sum, UpDownCounter ⇨ Sum,
-// Asynchronous UpDownCounter ⇨ Sum, Asynchronous Gauge ⇨ LastValue,
+// mapping: Counter ⇨ Sum, Observable Counter ⇨ Sum, UpDownCounter ⇨ Sum,
+// Observable UpDownCounter ⇨ Sum, Observable Gauge ⇨ LastValue,
 // Histogram ⇨ ExplicitBucketHistogram.
 func DefaultAggregationSelector(ik InstrumentKind) aggregation.Aggregation {
 	switch ik {
-	case InstrumentKindSyncCounter, InstrumentKindSyncUpDownCounter, InstrumentKindAsyncCounter, InstrumentKindAsyncUpDownCounter:
+	case InstrumentKindCounter, InstrumentKindUpDownCounter, InstrumentKindObservableCounter, InstrumentKindObservableUpDownCounter:
 		return aggregation.Sum{}
-	case InstrumentKindAsyncGauge:
+	case InstrumentKindObservableGauge:
 		return aggregation.LastValue{}
-	case InstrumentKindSyncHistogram:
+	case InstrumentKindHistogram:
 		return aggregation.ExplicitBucketHistogram{
 			Boundaries: []float64{0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000},
 			NoMinMax:   false,

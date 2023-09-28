@@ -20,18 +20,18 @@ import (
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/command"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/configload/file"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/logging/hooks"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/command"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/configload/file"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/logging/hooks"
+	"github.com/coupergateway/couper/utils"
 )
 
 var (
@@ -139,7 +139,7 @@ func realmain(ctx context.Context, arguments []string) int {
 		return 0
 	}
 
-	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment, log)
+	confFile, err := configload.LoadFiles(filesList.paths, flags.Environment)
 	if err != nil {
 		log.WithError(err).Error()
 		return 1
@@ -223,7 +223,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			errRetries = 0 // reset
 			logger.Info("reloading couper configuration")
 
-			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment, logger)
+			cf, reloadErr := configload.LoadFiles(filesList.paths, flags.Environment)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)
@@ -249,7 +249,7 @@ func realmain(ctx context.Context, arguments []string) int {
 			}
 
 			// Create new config with non-canceled context.
-			confFile, reloadErr = configload.LoadFiles(filesList.paths, flags.Environment, logger)
+			confFile, reloadErr = configload.LoadFiles(filesList.paths, flags.Environment)
 			if reloadErr != nil {
 				logger.WithError(reloadErr).Error("reload failed")
 				time.Sleep(flags.FileWatchRetryDelay)

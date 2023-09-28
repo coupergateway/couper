@@ -15,12 +15,12 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	"github.com/avenga/couper/config/meta"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config/meta"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/utils"
 )
 
 // common "inline" meta-attributes
@@ -53,7 +53,7 @@ func SetGetBody(req *http.Request, bufferOpts BufferOption, bodyLimit int64) err
 		return nil
 	}
 
-	if (bufferOpts & BufferRequest) != BufferRequest {
+	if !bufferOpts.Request() {
 		return nil
 	}
 

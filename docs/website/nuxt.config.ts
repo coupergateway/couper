@@ -72,7 +72,7 @@ export default defineNuxtConfig({
         }
     },
     github: {
-        owner: 'avenga',
+        owner: 'coupergateway',
         repo: 'couper-docs',
         branch: 'main',
         releases: false

@@ -8,12 +8,12 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/producer"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler/producer"
 )
 
 var (
@@ -59,7 +59,7 @@ func (t *TokenRequest) GetToken(req *http.Request) error {
 	)
 	token, ttl, err = t.requestToken(req)
 	if err != nil {
-		return errors.Request.Label(t.config.Name).With(err)
+		return errors.Request.Label(t.config.Name).Message("token request failed").With(err)
 	}
 
 	t.memStore.Set(t.storageKey, token, ttl)
@@ -79,13 +79,13 @@ func (t *TokenRequest) readToken() string {
 }
 
 func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
-	ctx := context.WithValue(req.Context(), request.Wildcard, nil)           // disable handling this
-	ctx = context.WithValue(ctx, request.BufferOptions, eval.BufferResponse) // always read out a possible token
-	ctx = context.WithValue(ctx, request.TokenRequest, t.config.Name)        // set the name for variable mapping purposes
+	ctx := context.WithValue(req.Context(), request.Wildcard, nil)                                  // disable handling this
+	ctx = context.WithValue(ctx, request.BufferOptions, eval.BufferResponse|eval.JSONParseResponse) // always read out a possible token
+	ctx = context.WithValue(ctx, request.TokenRequest, t.config.Name)                               // set the name for variable mapping purposes
 	outreq, _ := http.NewRequestWithContext(ctx, req.Method, "", nil)
-	result := <-t.reqProducer.Produce(outreq, nil)
+	result := t.reqProducer.Produce(outreq)
 	if result.Err != nil {
-		return "", 0, fmt.Errorf("token request failed") // don't propagate token request roundtrip error
+		return "", 0, result.Err
 	}
 
 	// obtain synced and already read beresp value; map to context variables

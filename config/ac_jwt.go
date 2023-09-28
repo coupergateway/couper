@@ -8,10 +8,10 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/meta"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/seetie"
+	"github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/meta"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 var (
@@ -27,11 +27,12 @@ type Claims hcl.Expression
 type JWT struct {
 	ErrorHandlerSetter
 	BackendName           string              `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for JWKS requests. Mutually exclusive with {backend} block."`
+	Bearer                bool                `hcl:"bearer,optional" docs:"If set to {true} the token is obtained from a {Authorization: Bearer ...} request header. Cannot be used together with {cookie}, {header} or {token_value}."`
 	Claims                Claims              `hcl:"claims,optional" docs:"Object with claims that must be given for a valid token (equals comparison with JWT payload). The claim values are evaluated per request."`
 	ClaimsRequired        []string            `hcl:"required_claims,optional" docs:"List of claim names that must be given for a valid token."`
-	Cookie                string              `hcl:"cookie,optional" docs:"Read token value from a cookie. Cannot be used together with {header} or {token_value}"`
+	Cookie                string              `hcl:"cookie,optional" docs:"Read token value from a cookie. Cannot be used together with {bearer}, {header} or {token_value}"`
 	DisablePrivateCaching bool                `hcl:"disable_private_caching,optional" docs:"If set to {true}, Couper does not add the {private} directive to the {Cache-Control} HTTP header field value."`
-	Header                string              `hcl:"header,optional" docs:"Read token value from the given request header field. Implies {Bearer} if {Authorization} (case-insensitive) is used, otherwise any other header name can be used. Cannot be used together with {cookie} or {token_value}."`
+	Header                string              `hcl:"header,optional" docs:"Read token value from the given request header field. Implies {Bearer} if {Authorization} (case-insensitive) is used (deprecated!), otherwise any other header name can be used. Cannot be used together with {bearer}, {cookie} or {token_value}."`
 	JWKsURL               string              `hcl:"jwks_url,optional" docs:"URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)"`
 	JWKsTTL               string              `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
 	JWKsMaxStale          string              `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
@@ -49,7 +50,7 @@ type JWT struct {
 	SigningKey            string              `hcl:"signing_key,optional" docs:"Private key (in PEM format) for {RS*} and {ES*} variants. Mutually exclusive with {signing_key_file}."`
 	SigningKeyFile        string              `hcl:"signing_key_file,optional" docs:"Reference to file containing signing key. Mutually exclusive with {signing_key}. See {signing_key} for more information."`
 	SigningTTL            string              `hcl:"signing_ttl,optional" docs:"The token's time-to-live (creates the {exp} claim)." type:"duration"`
-	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {cookie} or {header}." type:"string"`
+	TokenValue            hcl.Expression      `hcl:"token_value,optional" docs:"Expression to obtain the token. Cannot be used together with {bearer}, {cookie} or {header}." type:"string"`
 
 	// Internally used
 	Backend *hclsyntax.Body

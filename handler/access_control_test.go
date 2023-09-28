@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	ac "github.com/avenga/couper/accesscontrol"
-	"github.com/avenga/couper/errors"
+	ac "github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/errors"
 )
 
 func TestAccessControl_ServeHTTP(t *testing.T) {

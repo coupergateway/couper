@@ -1,10 +1,11 @@
 package configload
 
 import (
+	"testing"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
-	"testing"
 )
 
 func Test_absPath(t *testing.T) {

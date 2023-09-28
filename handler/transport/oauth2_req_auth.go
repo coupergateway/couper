@@ -10,14 +10,14 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/oauth2"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 var supportedGrantTypes = map[string]struct{}{
@@ -223,7 +223,7 @@ func (oa *OAuth2ReqAuth) GetToken(req *http.Request) error {
 
 	tokenResponseData, token, err := oa.oauth2Client.GetTokenResponse(req.Context(), formParams)
 	if err != nil {
-		return requestError.Message("token request failed") // don't propagate token request roundtrip error
+		return requestError.Message("token request failed").With(err)
 	}
 
 	oa.updateAccessToken(token, tokenResponseData)

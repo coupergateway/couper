@@ -1,15 +1,12 @@
 package producer
 
 import (
-	"fmt"
 	"net/http"
-	"runtime/debug"
-	"sync"
 
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
 )
 
 // Result represents the producer <Result> object.
@@ -18,15 +15,6 @@ type Result struct {
 	Err           error
 	RoundTripName string
 	// TODO: trace
-}
-
-type ResultPanic struct {
-	err   error
-	stack []byte
-}
-
-func (r ResultPanic) Error() string {
-	return fmt.Sprintf("panic: %v\n%s", r.err, string(r.stack))
 }
 
 // Results represents the producer <Result> channel.
@@ -42,38 +30,19 @@ func (rm ResultMap) List() []*http.Response {
 	return list
 }
 
-func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func roundtrip(rt http.RoundTripper, req *http.Request) *Result {
 	rtn := req.Context().Value(request.RoundTripName).(string)
 	span := trace.SpanFromContext(req.Context())
-
-	defer func() {
-		if rp := recover(); rp != nil {
-			err := errors.Server.With(&ResultPanic{
-				err:   fmt.Errorf("%v", rp),
-				stack: debug.Stack(),
-			})
-			span.End()
-
-			results <- &Result{
-				Err:           err,
-				RoundTripName: rtn,
-			}
-		}
-	}()
 
 	beresp, err := rt.RoundTrip(req)
 	span.End()
 
 	if _, ok := err.(*errors.Error); ok {
-		results <- &Result{
+		return &Result{
 			Beresp:        beresp,
 			Err:           err,
 			RoundTripName: rtn,
 		}
-
-		return
 	}
 
 	if expStatus, ok := req.Context().Value(request.EndpointExpectedStatus).([]int64); beresp != nil &&
@@ -87,16 +56,15 @@ func roundtrip(rt http.RoundTripper, req *http.Request, results chan<- *Result, 
 		}
 
 		if !seen {
-			results <- &Result{
+			return &Result{
 				Beresp:        beresp,
 				Err:           errors.UnexpectedStatus.With(err),
 				RoundTripName: rtn,
 			}
-			return
 		}
 	}
 
-	results <- &Result{
+	return &Result{
 		Beresp:        beresp,
 		Err:           err,
 		RoundTripName: rtn,

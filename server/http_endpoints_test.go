@@ -21,9 +21,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
 )
 
 const testdataPath = "testdata/endpoints"
@@ -61,7 +61,12 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 		responseLogs, _ := entry.Data["response"].(logging.Fields)
 		data, _ := entry.Data["custom"].(logrus.Fields)
 
-		if data != nil && entry.Data["backend"] == "anonymous_76_16" {
+		if data == nil {
+			t.Error("missing custom logs")
+			continue
+		}
+
+		if entry.Data["backend"] == "anonymous_76_16" {
 			expected := logrus.Fields{
 				"x-from-request-body":       "grant_type=client_credentials",
 				"x-from-request-form-body":  "client_credentials",
@@ -82,7 +87,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 			if diff := cmp.Diff(responseLogs["headers"], expectedHeaders); diff != "" {
 				t.Error(diff)
 			}
-		} else {
+		} else if entry.Data["backend"] == "anonymous_44_23" {
 			expected := logrus.Fields{
 				"x-from-request-json-body":   float64(1),
 				"x-from-request-header":      "bar",
@@ -96,6 +101,54 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 			if diff := cmp.Diff(data, expected); diff != "" {
 				t.Error(diff)
 			}
+		} else {
+			t.Error("wrong backend log")
+		}
+	}
+}
+
+func TestBackend_BackendVariable_RequestResponse2(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/backends/02_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/request2", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.Header.Get("X-From-Requests-Json-Body") != "2" ||
+		res.Header.Get("X-From-Requests-Body") != `{"b":2}` {
+		t.Errorf("Unexpected header given: %#v", res.Header)
+	}
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		data, _ := entry.Data["custom"].(logrus.Fields)
+
+		if data == nil {
+			t.Error("missing custom logs")
+			continue
+		}
+
+		if entry.Data["backend"] == "anonymous_101_17" {
+			expected := logrus.Fields{
+				"x-from-requests-json-body": float64(2),
+				"x-from-requests-body":      `{"b":2}`,
+			}
+
+			if diff := cmp.Diff(data, expected); diff != "" {
+				t.Error(diff)
+			}
+		} else {
+			t.Error("wrong backend log")
 		}
 	}
 }
@@ -190,7 +243,7 @@ func TestEndpoints_Protected404(t *testing.T) {
 		{"", "/v1/xxx", expectation{}},
 		{"secret", "/v1/xxx", expectation{http.StatusNotFound}},
 	} {
-		t.Run(tc.path, func(subT *testing.T) {
+		t.Run(tc.auth+"-"+tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -288,8 +341,8 @@ func TestEndpoints_BerespBody(t *testing.T) {
 		t.Errorf("Expected PDF file, given %s", resBytes)
 	}
 
-	if val := res.Header.Get("x-body"); !strings.HasPrefix(val, "%PDF-1.6") {
-		t.Errorf("Expected PDF file content, got: %q", val)
+	if val := res.Header.Get("x-body"); val != "%PDF-1.6" {
+		t.Errorf("x-body header: expected: %q, got: %q", "%PDF-1.6", val)
 	}
 }
 

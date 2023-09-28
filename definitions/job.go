@@ -8,14 +8,14 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/utils"
 )
 
 type Job struct {

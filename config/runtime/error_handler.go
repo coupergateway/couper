@@ -3,15 +3,16 @@ package runtime
 import (
 	"net/http"
 	"reflect"
+	"sort"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler"
 )
 
 func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedOptions, log *logrus.Entry,
@@ -35,7 +36,16 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 			// expand super-kinds:
 			// * set super-kind error handler for mapped sub-kinds, if no error handler for this sub-kind is already set
 			// * remove super-kind error handler for super-kind
-			for superKind, subKinds := range superKindMap {
+			// for superKind, subKinds := range superKindMap {
+			keys := make([]string, len(superKindMap))
+			i := 0
+			for k := range superKindMap {
+				keys[i] = k
+				i++
+			}
+			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
+			for _, superKind := range keys {
+				subKinds := superKindMap[superKind]
 				if skHandler, skExists := handlersPerKind[superKind]; skExists {
 					for _, subKind := range subKinds {
 						if _, exists := handlersPerKind[subKind]; !exists {
@@ -43,7 +53,9 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 						}
 					}
 
-					delete(handlersPerKind, superKind)
+					if superKind == "*" {
+						delete(handlersPerKind, superKind)
+					}
 				}
 			}
 		}

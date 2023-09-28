@@ -10,13 +10,13 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestAccessControl_ErrorHandler(t *testing.T) {
@@ -210,7 +210,6 @@ func Test_ErroneousBackendResponse(t *testing.T) {
 	client := test.NewHTTPClient()
 
 	type testcase struct {
-		name             string
 		file             string
 		path             string
 		expBody          string
@@ -220,10 +219,9 @@ func Test_ErroneousBackendResponse(t *testing.T) {
 	}
 
 	for _, tc := range []testcase{
-		{"store invalid backend response", "06_couper.hcl", "/anything", `{"req_path":"/anything","resp_ct":"application/json","resp_json_body_query":{},"resp_status":200}`, 418, 200, "status is not supported"},
-		{"api-level error handlers affect endpoint's buffer options", "08_couper.hcl", "/anything", `{"resp_json_status":200}`, 418, 200, ""},
+		{"06_couper.hcl", "/anything", `{"req_path":"/anything","resp_ct":"application/json","resp_json_body_query":{},"resp_status":200}`, 418, 200, "status is not supported"},
 	} {
-		t.Run(tc.path, func(st *testing.T) {
+		t.Run(tc.file, func(st *testing.T) {
 			shutdown, hook := newCouper("testdata/integration/error_handler/"+tc.file, test.New(t))
 			defer shutdown()
 
@@ -271,6 +269,47 @@ func getBackendLogStatusAndValidation(hook *logrustest.Hook) (int, string) {
 	}
 
 	return -1, ""
+}
+
+func Test_ApiLevelErrorHandlersAffectEndpoinBufferOptions(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	type testcase struct {
+		file      string
+		path      string
+		expBody   string
+		expStatus int
+	}
+
+	for _, tc := range []testcase{
+		{"08_couper.hcl", "/anything", `{"resp_json_status":200}`, 418},
+	} {
+		t.Run(tc.file, func(st *testing.T) {
+			shutdown, hook := newCouper("testdata/integration/error_handler/"+tc.file, test.New(t))
+			defer shutdown()
+
+			helper := test.New(st)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("status code want: %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			resBytes, err := io.ReadAll(res.Body)
+			defer res.Body.Close()
+			helper.Must(err)
+
+			if !bytes.Contains(resBytes, []byte(tc.expBody)) {
+				st.Errorf("body\nwant: %s,\ngot:  %s", tc.expBody, resBytes)
+			}
+		})
+	}
 }
 
 func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
@@ -334,6 +373,62 @@ func TestAccessControl_ErrorHandler_Permissions(t *testing.T) {
 
 			if res.StatusCode != tc.ExpStatus {
 				st.Errorf("Expected statusCode: %d, got: %d", tc.ExpStatus, res.StatusCode)
+			}
+		})
+	}
+
+}
+
+func TestErrorHandler_SuperKind(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	helper := test.New(t)
+	// valid token, but lacking permissions claim
+	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.qSLnmYgnkcOjxlOjFhUHQpCfTQ5elzKY3Mq6gRVT4iI"
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/09_couper.hcl", helper)
+	defer shutdown()
+
+	type testcase struct {
+		name      string
+		path      string
+		sendToken bool
+		expFrom   string
+	}
+
+	for _, tc := range []testcase{
+		{"ac: handler for *", "/ac1", true, "*"},
+		{"ac: handlers for *, access_control", "/ac2", true, "access_control"},
+		{"ac: handlers for *, access_control, insufficient_permissions", "/ac3", true, "insufficient_permissions"},
+		{"ep: handler for *", "/ep1", false, "*"},
+		{"ep: handlers for *, endpoint", "/ep2", false, "endpoint"},
+		{"ep: handlers for *, endpoint, unexpected_status", "/ep3", false, "unexpected_status"},
+		{"be: handler for *", "/be1", false, "*"},
+		{"be: handlers for *, backend", "/be2", false, "backend"},
+		{"be: handlers for *, backend, backend_timeout", "/be3", false, "backend_timeout"},
+		{"be: handlers for backend, backend_timeout", "/be4", false, "backend_timeout"},
+		{"be: handler for backend", "/be5", false, "backend"},
+		{"be dial error: handlers for *, backend", "/be-dial", false, "backend"},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			h := test.New(st)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			h.Must(err)
+
+			if tc.sendToken {
+				// not needed for non-ac tests
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+
+			res, err := client.Do(req)
+			h.Must(err)
+
+			if res.StatusCode != http.StatusNoContent {
+				st.Errorf("Expected status code: %d, got: %d", http.StatusNoContent, res.StatusCode)
+			}
+			from := res.Header.Get("From")
+			if from != tc.expFrom {
+				st.Errorf("Expected From response header: %q, got: %q", tc.expFrom, from)
 			}
 		})
 	}

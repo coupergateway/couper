@@ -16,22 +16,22 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	ac "github.com/avenga/couper/accesscontrol"
-	"github.com/avenga/couper/accesscontrol/jwk"
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload/collect"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/definitions"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/oauth2"
-	"github.com/avenga/couper/oauth2/oidc"
-	"github.com/avenga/couper/utils"
+	ac "github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/accesscontrol/jwk"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload/collect"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/definitions"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/oauth2"
+	"github.com/coupergateway/couper/oauth2/oidc"
+	"github.com/coupergateway/couper/utils"
 )
 
 const (
@@ -583,28 +583,16 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	log *logrus.Entry, memStore *cache.MemoryStore) (*ac.JWT, error) {
 	var (
-		jwt                      *ac.JWT
-		err                      error
-		rolesMap, permissionsMap map[string][]string
+		jwt *ac.JWT
+		err error
 	)
-	rolesMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt roles map", jwtConf.RolesMap, jwtConf.RolesMapFile)
+	jwtConf.RolesMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt roles map", jwtConf.RolesMap, jwtConf.RolesMapFile)
 	if err != nil {
 		return nil, err
 	}
-	permissionsMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt permissions map", jwtConf.PermissionsMap, jwtConf.PermissionsMapFile)
+	jwtConf.PermissionsMap, err = reader.ReadFromAttrFileJSONObjectOptional("jwt permissions map", jwtConf.PermissionsMap, jwtConf.PermissionsMapFile)
 	if err != nil {
 		return nil, err
-	}
-	jwtOptions := &ac.JWTOptions{
-		Claims:                jwtConf.Claims,
-		ClaimsRequired:        jwtConf.ClaimsRequired,
-		DisablePrivateCaching: jwtConf.DisablePrivateCaching,
-		Name:                  jwtConf.Name,
-		RolesClaim:            jwtConf.RolesClaim,
-		RolesMap:              rolesMap,
-		PermissionsClaim:      jwtConf.PermissionsClaim,
-		PermissionsMap:        permissionsMap,
-		Source:                ac.NewJWTSource(jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue),
 	}
 	if jwtConf.JWKsURL != "" {
 		jwks, jerr := configureJWKS(jwtConf, confCtx, log, conf, memStore)
@@ -612,17 +600,14 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 			return nil, jerr
 		}
 
-		jwtOptions.JWKS = jwks
-		jwt, err = ac.NewJWTFromJWKS(jwtOptions)
+		jwt, err = ac.NewJWTFromJWKS(jwtConf, jwks)
 	} else {
 		key, kerr := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 		if kerr != nil {
 			return nil, kerr
 		}
 
-		jwtOptions.Algorithm = jwtConf.SignatureAlgorithm
-		jwtOptions.Key = key
-		jwt, err = ac.NewJWT(jwtOptions)
+		jwt, err = ac.NewJWT(jwtConf, key)
 	}
 	if err != nil {
 		return nil, err

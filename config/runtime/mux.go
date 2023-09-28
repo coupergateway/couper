@@ -3,7 +3,7 @@ package runtime
 import (
 	"net/http"
 
-	"github.com/avenga/couper/config/runtime/server"
+	"github.com/coupergateway/couper/config/runtime/server"
 )
 
 type MuxOptions struct {

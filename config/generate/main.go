@@ -17,8 +17,8 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/meta"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/meta"
 )
 
 type entry struct {

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/server"
 )
 
 type Backend struct {

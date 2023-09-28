@@ -193,13 +193,11 @@ server "scoped jwt" {
 }
 definitions {
   jwt "scoped_jwt" {
-    header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
     permissions_claim = "scp"
   }
   jwt "roled_jwt" {
-    header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
     roles_claim = "rl"
@@ -208,7 +206,6 @@ definitions {
     }
   }
   jwt "scoped_and_roled_jwt" {
-    header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
     permissions_claim = "scp"
@@ -224,7 +221,6 @@ definitions {
     }
   }
   jwt "scoped_and_roled_jwt_files" {
-    header = "authorization"
     signature_algorithm = "HS256"
     key = "asdf"
     permissions_claim = "scp"

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/seetie"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 var _ http.Handler = &CORS{}

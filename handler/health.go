@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 const DefaultHealthPath = "/healthz"
@@ -45,10 +45,6 @@ func (h *Health) ServeHTTP(rw http.ResponseWriter, _ *http.Request) {
 		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte("healthy"))
 	}
-}
-
-func (h *Health) Match(req *http.Request) bool {
-	return strings.HasPrefix(req.URL.Path, h.path)
 }
 
 func (h *Health) String() string {

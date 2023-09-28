@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
+
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/errors"
 )
 
 func Test_VerifyBodyAttributes(t *testing.T) {

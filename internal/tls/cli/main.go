@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/server"
 )
 
 func main() {

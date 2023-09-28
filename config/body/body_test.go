@@ -6,8 +6,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/eval"
 )
 
 func TestBody_MergeBodies(t *testing.T) {

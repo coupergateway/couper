@@ -96,6 +96,28 @@ server {
       }
     }
   }
+
+  endpoint "/request2" {
+    request "r" {
+      url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
+
+      json_body = {
+        b = 2
+      }
+      backend {
+        custom_log_fields = {
+          x-from-requests-body = backend_requests.r.body
+          x-from-requests-json-body = backend_requests.r.json_body.b
+        }
+      }
+    }
+    response {
+      headers = {
+        x-from-requests-body = backend_requests.r.body
+        x-from-requests-json-body = backend_requests.r.json_body.b
+      }
+    }
+  }
 }
 
 definitions {

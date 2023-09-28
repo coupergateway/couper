@@ -6,7 +6,7 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/config/request"
 )
 
 const TokenRequestPrefix = "_tr_"

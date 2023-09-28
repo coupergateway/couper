@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestServeMetrics(t *testing.T) {

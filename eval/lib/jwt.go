@@ -1,10 +1,7 @@
 package lib
 
 import (
-	"crypto/ecdsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
@@ -15,10 +12,10 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	acjwt "github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/internal/seetie"
+	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 const FnJWTSign = "jwt_sign"
@@ -57,7 +54,7 @@ func getKey(keyBytes []byte, signatureAlgorithm string) (interface{}, error) {
 	if strings.HasPrefix(signatureAlgorithm, "RS") {
 		key, parseErr = jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
 	} else if strings.HasPrefix(signatureAlgorithm, "ES") {
-		key, parseErr = parseECPrivateKeyFromPEM(keyBytes)
+		key, parseErr = jwt.ParseECPrivateKeyFromPEM(keyBytes)
 	}
 
 	return key, parseErr
@@ -244,30 +241,4 @@ func CreateJWT(signatureAlgorithm string, key interface{}, mapClaims jwt.MapClai
 
 	// sign token
 	return token.SignedString(key)
-}
-
-func parseECPrivateKeyFromPEM(key []byte) (*ecdsa.PrivateKey, error) {
-	var err error
-
-	// Parse PEM block
-	var block *pem.Block
-	if block, _ = pem.Decode(key); block == nil {
-		return nil, jwt.ErrKeyMustBePEMEncoded
-	}
-
-	// Parse the key
-	var parsedKey interface{}
-	if parsedKey, err = x509.ParseECPrivateKey(block.Bytes); err != nil {
-		if parsedKey, err = x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
-			return nil, err
-		}
-	}
-
-	var pkey *ecdsa.PrivateKey
-	var ok bool
-	if pkey, ok = parsedKey.(*ecdsa.PrivateKey); !ok {
-		return nil, jwt.ErrNotECPrivateKey
-	}
-
-	return pkey, nil
 }

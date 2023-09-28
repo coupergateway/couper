@@ -6,10 +6,10 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/sequence"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/sequence"
+	"github.com/coupergateway/couper/eval"
 )
 
 // buildSequences collects possible dependencies from 'backend_responses' variable.
