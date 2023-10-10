@@ -1,6 +1,7 @@
 package eval
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -27,22 +28,26 @@ type syncPair struct {
 	bereq, beresp cty.Value
 }
 
-// Set finalized cty req/resp pair.
-func (sv *SyncedVariables) Set(beresp *http.Response) {
+func (sv *SyncedVariables) SetResp(beresp *http.Response) {
 	ctx := beresp.Request.Context()
-	name, bereqV, berespV := newBerespValues(ctx, true, beresp)
+	name, bereqV, berespV := newBerespValues(ctx, beresp)
 
+	sv.Set(ctx, name, bereqV, berespV)
+}
+
+// Set finalized cty req/resp pair.
+func (sv *SyncedVariables) Set(ctx context.Context, reqName string, bereqV, berespV cty.Value) {
 	if tr, ok := ctx.Value(request.TokenRequest).(string); ok && tr != "" {
-		name = TokenRequestPrefix + tr
+		reqName = TokenRequestPrefix + tr
 	}
 
 	backendName, _ := ctx.Value(request.BackendName).(string)
 
-	sv.items.Store(name, &syncPair{
+	sv.items.Store(reqName, &syncPair{
 		backendName: backendName,
 		bereq:       bereqV,
 		beresp:      berespV,
-		name:        name,
+		name:        reqName,
 	})
 }
 

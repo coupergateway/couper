@@ -99,11 +99,12 @@ func TestNewHTTPContext(t *testing.T) {
 
 			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
 
-			ctx := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal, false).HCLContext()
-			ctx.Functions = nil // we are not interested in a functions test
+			ctx, _, _, _ := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal)
+			hclCtx := ctx.HCLContext()
+			hclCtx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
+			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), hclCtx, &resultMap)
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]

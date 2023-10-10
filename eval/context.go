@@ -189,20 +189,22 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	return ctx
 }
 
-func (c *Context) WithBeresp(beresp *http.Response, backendVal cty.Value, readBody bool) *Context {
+func (c *Context) WithBeresp(beresp *http.Response, backendVal cty.Value) (*Context, string, cty.Value, cty.Value) {
 	ctx := c.clone()
 	ctx.inner = context.WithValue(c.inner, request.ContextType, ctx)
 
 	resps := make(ContextMap)
 	bereqs := make(ContextMap)
 
+	var reqV, respV cty.Value
+	var name string
 	if beresp != nil {
-		name, bereqVal, berespVal := newBerespValues(ctx, readBody, beresp)
-		bereqs[name] = bereqVal
-		resps[name] = berespVal
+		name, reqV, respV = newBerespValues(ctx, beresp)
+		bereqs[name] = reqV
+		resps[name] = respV
 
-		ctx.eval.Variables[BackendRequest] = bereqVal
-		ctx.eval.Variables[BackendResponse] = berespVal
+		ctx.eval.Variables[BackendRequest] = reqV
+		ctx.eval.Variables[BackendResponse] = respV
 		ctx.eval.Variables[Backend] = backendVal
 	}
 
@@ -214,7 +216,7 @@ func (c *Context) WithBeresp(beresp *http.Response, backendVal cty.Value, readBo
 
 	ctx.updateFunctions()
 
-	return ctx
+	return ctx, name, reqV, respV
 }
 
 // clone returns a new copy of Context with possible field updates in mind.
@@ -236,7 +238,7 @@ func (c *Context) clone() *Context {
 	}
 }
 
-func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
+func newBerespValues(ctx context.Context, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
 	name = "default"
 	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
@@ -268,22 +270,21 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
-	bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption)
+	var readRespBody bool
+	if bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption); bOk {
+		readRespBody = bufferOption.Response()
+	}
+
+	isUpgradeResponse := IsUpgradeResponse(bereq, beresp)
 
 	var respBody, respJSONBody cty.Value
-	if readBody && !IsUpgradeResponse(bereq, beresp) {
-		if bOk && (bufferOption&BufferResponse) == BufferResponse {
-			respBody, respJSONBody = parseRespBody(beresp)
-		}
-	} else if bOk && (bufferOption&BufferResponse) != BufferResponse {
-		hasBlock, _ := bereq.Context().Value(request.ResponseBlock).(bool)
-		ws, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool)
-		if name != "default" || (name == "default" && hasBlock) {
-			// beresp body is not referenced and can be closed
-			// prevent resource leak, free connection
-			_ = beresp.Body.Close()
-		} else if !ws {
-			parseSetRespBody(beresp)
+	if websocket, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool); websocket && isUpgradeResponse {
+		// do not touch the body
+	} else {
+		if readRespBody {
+			respBody, respJSONBody = parseRespJsonBody(beresp)
+		} else if !readRespBody && beresp.Body != nil {
+			go closeNonParsedBody(ctx, beresp.Body)
 		}
 	}
 
@@ -294,6 +295,12 @@ func newBerespValues(ctx context.Context, readBody bool, beresp *http.Response) 
 	}.Merge(newVariable(ctx, beresp.Cookies(), beresp.Header)))
 
 	return name, bereqVal, berespVal
+}
+
+// closeNonParsedBody prevents resource leaks if the related context is done.
+func closeNonParsedBody(ctx context.Context, body io.ReadCloser) {
+	<-ctx.Done()
+	_ = body.Close()
 }
 
 func (c *Context) syncBackendVariables() map[string]cty.Value {
@@ -466,7 +473,7 @@ func mergeBackendVariables(etx *hcl.EvalContext, key string, cmap ContextMap) {
 const defaultMaxMemory = 32 << 20 // 32 MB
 
 // parseForm populates the request PostForm field.
-// As Proxy we should not consume the request body.
+// As Proxy, we should not consume the request body.
 // Rewind body via GetBody method.
 func parseForm(r *http.Request) *http.Request {
 	if r.GetBody == nil || r.Form != nil {
@@ -504,7 +511,7 @@ func parseReqBody(req *http.Request) (cty.Value, cty.Value) {
 	return cty.StringVal(string(b)), jsonBody
 }
 
-func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
+func parseRespJsonBody(beresp *http.Response) (cty.Value, cty.Value) {
 	jsonBody := cty.EmptyObjectVal
 
 	b := parseSetRespBody(beresp)
@@ -519,6 +526,20 @@ func parseRespBody(beresp *http.Response) (cty.Value, cty.Value) {
 }
 
 func parseSetRespBody(beresp *http.Response) []byte {
+	b := parseRespBody(beresp)
+	if b == nil {
+		return b
+	}
+
+	// prevent resource leak
+	_ = beresp.Body.Close()
+
+	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
+
+	return b
+}
+
+func parseRespBody(beresp *http.Response) []byte {
 	if beresp == nil || beresp.Body == nil {
 		return nil
 	}
@@ -527,11 +548,6 @@ func parseSetRespBody(beresp *http.Response) []byte {
 	if err != nil {
 		return nil
 	}
-
-	// prevent resource leak
-	_ = beresp.Body.Close()
-
-	beresp.Body = io.NopCloser(bytes.NewBuffer(b)) // reset
 
 	return b
 }
