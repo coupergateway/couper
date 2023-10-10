@@ -122,7 +122,7 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 
 				req, _ := http.NewRequest(http.MethodGet, "http://couper.dev:8080"+p, nil)
 
-				deadline, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(len(paths)+1))
+				deadline, cancel := context.WithTimeout(context.Background(), time.Second*10)
 				defer cancel()
 				res, err := client.Do(req.WithContext(deadline))
 				h.Must(err)

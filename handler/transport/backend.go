@@ -120,16 +120,14 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		ctxBody = hclbody.MergeBodies(ctxBody, b.context, false)
 	}
 
-	outreq := req.WithContext(context.WithValue(req.Context(), request.BackendName, b.name))
-
 	// originalReq for token-request retry purposes
-	originalReq, err := b.withTokenRequest(outreq)
+	originalReq, err := b.withTokenRequest(req)
 	if err != nil {
 		return nil, errors.BetaBackendTokenRequest.Label(b.name).With(err)
 	}
 
 	var backendVal cty.Value
-	hclCtx := eval.ContextFromRequest(outreq).HCLContextSync()
+	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
 	if v, ok := hclCtx.Variables[eval.Backends]; ok {
 		if m, exist := v.AsValueMap()[b.name]; exist {
 			hclCtx.Variables[eval.Backend] = m
@@ -139,18 +137,18 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if err = b.isUnhealthy(hclCtx, ctxBody); err != nil {
 		return &http.Response{
-			Request: req, // provide outreq (variable) on error cases
+			Request: req, // provide req (variable) on error cases
 		}, err
 	}
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err = eval.ApplyRequestContext(hclCtx, ctxBody, outreq); err != nil {
+	if err = eval.ApplyRequestContext(hclCtx, ctxBody, req); err != nil {
 		return nil, err
 	}
 
 	// TODO: split timing eval
-	tc, err := b.evalTransport(hclCtx, ctxBody, outreq)
+	tc, err := b.evalTransport(hclCtx, ctxBody, req)
 	if err != nil {
 		return nil, err
 	}
@@ -168,72 +166,73 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	tconf.TTFBTimeout = tc.TTFBTimeout
 	tconf.Timeout = tc.Timeout
 
-	deadlineErr := b.withTimeout(outreq, &tconf)
+	deadlineErr := b.withTimeout(req, &tconf)
 
-	outreq.URL.Host = tconf.Origin
-	outreq.URL.Scheme = tconf.Scheme
-	outreq.Host = tconf.Hostname
+	req.URL.Host = tconf.Origin
+	req.URL.Scheme = tconf.Scheme
+	req.Host = tconf.Hostname
 
 	// handler.Proxy marks proxy round-trips since we should not handle headers twice.
-	_, isProxyReq := outreq.Context().Value(request.RoundTripProxy).(bool)
+	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
 
 	if !isProxyReq {
-		RemoveConnectionHeaders(outreq.Header)
-		RemoveHopHeaders(outreq.Header)
+		RemoveConnectionHeaders(req.Header)
+		RemoveHopHeaders(req.Header)
 	}
 
-	writer.ModifyAcceptEncoding(outreq.Header)
+	writer.ModifyAcceptEncoding(req.Header)
 
-	if xff, ok := outreq.Context().Value(request.XFF).(string); ok {
+	if xff, ok := req.Context().Value(request.XFF).(string); ok {
 		if xff != "" {
-			outreq.Header.Set("X-Forwarded-For", xff)
+			req.Header.Set("X-Forwarded-For", xff)
 		} else {
-			outreq.Header.Del("X-Forwarded-For")
+			req.Header.Del("X-Forwarded-For")
 		}
 	}
 
-	b.withBasicAuth(outreq, hclCtx, ctxBody)
-	if err = b.withPathPrefix(outreq, hclCtx, ctxBody); err != nil {
+	b.withBasicAuth(req, hclCtx, ctxBody)
+	if err = b.withPathPrefix(req, hclCtx, ctxBody); err != nil {
 		return nil, err
 	}
 
-	setUserAgent(outreq)
-	outreq.Close = false
+	setUserAgent(req)
+	req.Close = false
 
 	if _, ok := req.Context().Value(request.WebsocketsAllowed).(bool); !ok {
-		outreq.Header.Del("Connection")
-		outreq.Header.Del("Upgrade")
+		req.Header.Del("Connection")
+		req.Header.Del("Upgrade")
 	}
 
 	var beresp *http.Response
+	req = req.WithContext(context.WithValue(req.Context(), request.BackendName, b.name))
 	if b.openAPIValidator != nil {
-		beresp, err = b.openAPIValidate(outreq, &tconf, deadlineErr)
+		beresp, err = b.openAPIValidate(req, &tconf, deadlineErr)
 	} else {
-		beresp, err = b.innerRoundTrip(outreq, &tconf, deadlineErr)
+		beresp, err = b.innerRoundTrip(req, &tconf, deadlineErr)
 	}
 
 	if err != nil {
 		if beresp == nil {
 			beresp = &http.Response{
-				Request: outreq,
-			} // provide outreq (variable) on error cases
+				Request: req,
+			} // provide req (variable) on error cases
 		}
-		if varSync, ok := outreq.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
 			varSync.SetResp(beresp)
 		}
 		return beresp, err
 	}
 
-	if retry, rerr := b.withRetryTokenRequest(outreq, beresp); rerr != nil {
+	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
 		return beresp, errors.BetaBackendTokenRequest.Label(b.name).With(rerr)
 	} else if retry {
 		return b.RoundTrip(originalReq)
 	}
 
-	if !eval.IsUpgradeResponse(outreq, beresp) {
+	if !eval.IsUpgradeResponse(req, beresp) {
 		beresp.Body = logging.NewBytesCountReader(beresp)
 		if err = setGzipReader(beresp); err != nil {
-			b.upstreamLog.LogEntry().WithContext(outreq.Context()).WithError(err).Error()
+			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
 		}
 	}
 
@@ -245,24 +244,24 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Backend response context creates the beresp variables in first place and applies this context
 	// to the current beresp obj. Downstream response context evals reading their beresp variable values
 	// from this result.
-	evalCtx := eval.ContextFromRequest(outreq)
+	evalCtx := eval.ContextFromRequest(req)
 	var bereqV, berespV cty.Value
 	var reqName string
 	evalCtx, reqName, bereqV, berespV = evalCtx.WithBeresp(beresp, backendVal)
 
 	clfValue, err := eval.EvalCustomLogFields(evalCtx.HCLContext(), ctxBody)
 	if err != nil {
-		logError, _ := outreq.Context().Value(request.LogCustomUpstreamError).(*error)
+		logError, _ := req.Context().Value(request.LogCustomUpstreamError).(*error)
 		*logError = err
 	} else if clfValue != cty.NilVal {
-		logValue, _ := outreq.Context().Value(request.LogCustomUpstreamValue).(*cty.Value)
+		logValue, _ := req.Context().Value(request.LogCustomUpstreamValue).(*cty.Value)
 		*logValue = clfValue
 	}
 
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
-	if varSync, ok := outreq.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
-		varSync.Set(outreq.Context(), reqName, bereqV, berespV)
+	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+		varSync.Set(req.Context(), reqName, bereqV, berespV)
 	}
 
 	return beresp, err
