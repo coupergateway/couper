@@ -295,12 +295,6 @@ func newBerespValues(ctx context.Context, beresp *http.Response) (name string, b
 	return name, bereqVal, berespVal
 }
 
-// closeNonParsedBody prevents resource leaks if the related context is done.
-func closeNonParsedBody(ctx context.Context, body io.ReadCloser) {
-	<-ctx.Done()
-	_ = body.Close()
-}
-
 func (c *Context) syncBackendVariables() map[string]cty.Value {
 	backendsVariable := make(map[string]cty.Value)
 	for _, backend := range c.backends[:] {
