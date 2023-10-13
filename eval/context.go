@@ -240,7 +240,7 @@ func (c *Context) clone() *Context {
 
 func newBerespValues(ctx context.Context, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
-	name = "default"
+	name = config.DefaultNameLabel
 	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
 		name = n
 	}
@@ -280,12 +280,10 @@ func newBerespValues(ctx context.Context, beresp *http.Response) (name string, b
 	var respBody, respJSONBody cty.Value
 	if websocket, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool); websocket && isUpgradeResponse {
 		// do not touch the body
-	} else {
-		if readRespBody {
-			respBody, respJSONBody = parseRespJsonBody(beresp)
-		} else if !readRespBody && beresp.Body != nil {
-			go closeNonParsedBody(ctx, beresp.Body)
-		}
+	} else if readRespBody {
+		respBody, respJSONBody = parseRespJsonBody(beresp)
+	} else if name != config.DefaultNameLabel && beresp.Body != nil {
+		_ = beresp.Body.Close()
 	}
 
 	berespVal = cty.ObjectVal(ContextMap{
@@ -667,7 +665,7 @@ func newCtyCouperVariablesMap(environment string) cty.Value {
 
 func MapTokenResponse(evalCtx *hcl.EvalContext, name string) {
 	if name == "" {
-		name = "default"
+		name = config.DefaultNameLabel
 	}
 
 	responses := evalCtx.Variables[BackendResponses].AsValueMap()
