@@ -695,6 +695,7 @@ func newFunctionsMap() map[string]function.Function {
 		"to_upper":         stdlib.UpperFunc,
 		"trim":             stdlib.TrimSpaceFunc,
 		"unixtime":         lib.UnixtimeFunc,
+		"url_decode":       lib.URLDecodeFunc,
 		"url_encode":       lib.URLEncodeFunc,
 	}
 }

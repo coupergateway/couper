@@ -13,9 +13,29 @@ import (
 var (
 	// https://datatracker.ietf.org/doc/html/rfc3986#page-50
 	regexParseURL   = regexp.MustCompile(`^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?`)
+	URLDecodeFunc   = newURLDecodeFunction()
 	URLEncodeFunc   = newURLEncodeFunction()
 	RelativeURLFunc = newRelativeURLFunction()
 )
+
+func newURLDecodeFunction() function.Function {
+	return function.New(&function.Spec{
+		Params: []function.Parameter{{
+			Name: "s",
+			Type: cty.String,
+		}},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, _ cty.Type) (ret cty.Value, err error) {
+			first := args[0]
+			result, err := url.QueryUnescape(first.AsString())
+			if err != nil {
+				return cty.StringVal(""), err
+			}
+
+			return cty.StringVal(string(result)), nil
+		},
+	})
+}
 
 func newURLEncodeFunction() function.Function {
 	return function.New(&function.Spec{
