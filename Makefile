@@ -1,5 +1,5 @@
 .PHONY: docker-telemetry build generate image
-.PHONY: test test-docker coverage test-coverage test-coverage-show
+.PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
 
 build:
 	go build -race -v -o couper main.go
@@ -35,7 +35,6 @@ test-coverage:
 	go test -short -timeout 300s -covermode=count -coverprofile=cache.coverage ./cache
 	go test -short -timeout 300s -covermode=count -coverprofile=command.coverage ./command
 	go test -short -timeout 300s -covermode=count -coverprofile=config.coverage ./config
-	go test -short -timeout 300s -covermode=count -coverprofile=docs.coverage ./docs
 	go test -short -timeout 300s -covermode=count -coverprofile=errors.coverage ./errors
 	go test -short -timeout 300s -covermode=count -coverprofile=eval.coverage ./eval
 	go test -short -timeout 300s -covermode=count -coverprofile=handler.coverage ./handler
@@ -43,6 +42,19 @@ test-coverage:
 	go test -short -timeout 300s -covermode=count -coverprofile=logging.coverage ./logging
 	go test -short -timeout 300s -covermode=count -coverprofile=server.coverage ./server
 	go test -short -timeout 300s -covermode=count -coverprofile=main.coverage ./
+
+convert-test-coverage:
+	gocov convert ac.coverage > ac_.gocov
+	gocov convert cache.coverage > cache.gocov
+	gocov convert command.coverage > command.gocov
+	gocov convert config.coverage > config.gocov
+	gocov convert errors.coverage > errors.gocov
+	gocov convert eval.coverage > eval.gocov
+	gocov convert handler.coverage > handler.gocov
+	gocov convert producer.coverage > producer.gocov
+	gocov convert logging.coverage > logging.gocov
+	gocov convert server.coverage > server.gocov
+	gocov convert main.coverage > main.gocov
 
 test-coverage-show:
 	go tool cover -html=ac.coverage

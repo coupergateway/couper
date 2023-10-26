@@ -1,0 +1,28 @@
+name: 'go test-coverage report'
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '!*' # Do not execute on tags
+  pull_request:
+    paths:
+      - '!*.MD'
+jobs:
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.20'
+      - run: go install github.com/axw/gocov/gocov@latest
+      - uses: actions/checkout@master
+      - uses: paambaati/codeclimate-action@v2.2.4
+        env:
+          CC_TEST_REPORTER_ID: 8b070e62baadacda6fdfd7bac69c3f46795b7cae456073982599e9dd87c66ce9
+        with:
+          coverageCommand: make test-coverage convert-test-coverage
+          coverageLocations: |
+            ${{github.workspace}}/*.gocov:gocov
