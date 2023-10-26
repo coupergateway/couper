@@ -44,7 +44,7 @@ test-coverage:
 	go test -short -timeout 300s -covermode=count -coverprofile=main.coverage ./
 
 convert-test-coverage:
-	gocov convert ac.coverage > ac_.gocov
+	gocov convert ac.coverage > ac.gocov
 	gocov convert cache.coverage > cache.gocov
 	gocov convert command.coverage > command.gocov
 	gocov convert config.coverage > config.gocov
