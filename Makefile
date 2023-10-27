@@ -31,44 +31,31 @@ test-docker:
 coverage: test-coverage test-coverage-show
 
 test-coverage:
-	go test -short -timeout 300s -covermode=count -coverprofile=ac.coverage ./accesscontrol
-	go test -short -timeout 300s -covermode=count -coverprofile=cache.coverage ./cache
-	go test -short -timeout 300s -covermode=count -coverprofile=command.coverage ./command
-	go test -short -timeout 300s -covermode=count -coverprofile=config.coverage ./config
-	go test -short -timeout 300s -covermode=count -coverprofile=errors.coverage ./errors
-	go test -short -timeout 300s -covermode=count -coverprofile=eval.coverage ./eval
-	go test -short -timeout 300s -covermode=count -coverprofile=handler.coverage ./handler
-	go test -short -timeout 300s -covermode=count -coverprofile=producer.coverage ./handler/producer
-	go test -short -timeout 300s -covermode=count -coverprofile=logging.coverage ./logging
-	go test -short -timeout 300s -covermode=count -coverprofile=server.coverage ./server
-	go test -short -timeout 300s -covermode=count -coverprofile=main.coverage ./
-
-convert-test-coverage:
-	gocov convert ac.coverage > ac.gocov
-	gocov convert cache.coverage > cache.gocov
-	gocov convert command.coverage > command.gocov
-	gocov convert config.coverage > config.gocov
-	gocov convert errors.coverage > errors.gocov
-	gocov convert eval.coverage > eval.gocov
-	gocov convert handler.coverage > handler.gocov
-	gocov convert producer.coverage > producer.gocov
-	gocov convert logging.coverage > logging.gocov
-	gocov convert server.coverage > server.gocov
-	gocov convert main.coverage > main.gocov
+	go test -short -timeout 300s -covermode=count -coverprofile=ac.out ./accesscontrol
+	go test -short -timeout 300s -covermode=count -coverprofile=cache.out ./cache
+	go test -short -timeout 300s -covermode=count -coverprofile=command.out ./command
+	go test -short -timeout 300s -covermode=count -coverprofile=config.out ./config
+	go test -short -timeout 300s -covermode=count -coverprofile=errors.out ./errors
+	go test -short -timeout 300s -covermode=count -coverprofile=eval.out ./eval
+	go test -short -timeout 300s -covermode=count -coverprofile=handler.out ./handler
+	go test -short -timeout 300s -covermode=count -coverprofile=producer.out ./handler/producer
+	go test -short -timeout 300s -covermode=count -coverprofile=logging.out ./logging
+	go test -short -timeout 300s -covermode=count -coverprofile=server.out ./server
+	go test -short -timeout 300s -covermode=count -coverprofile=main.out ./
 
 test-coverage-show:
-	go tool cover -html=ac.coverage
-	go tool cover -html=cache.coverage
-	go tool cover -html=command.coverage
-	go tool cover -html=config.coverage
-	go tool cover -html=docs.coverage
-	go tool cover -html=errors.coverage
-	go tool cover -html=eval.coverage
-	go tool cover -html=handler.coverage
-	go tool cover -html=producer.coverage
-	go tool cover -html=logging.coverage
-	go tool cover -html=server.coverage
-	go tool cover -html=main.coverage
+	go tool cover -html=ac.out
+	go tool cover -html=cache.out
+	go tool cover -html=command.out
+	go tool cover -html=config.out
+	go tool cover -html=docs.out
+	go tool cover -html=errors.out
+	go tool cover -html=eval.out
+	go tool cover -html=handler.out
+	go tool cover -html=producer.out
+	go tool cover -html=logging.out
+	go tool cover -html=server.out
+	go tool cover -html=main.out
 
 .PHONY: mtls-certificates
 mtls-certificates:

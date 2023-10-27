@@ -1,5 +1,4 @@
-/*.coverage
-/*.gocov
+/*.out
 
 .vscode/settings.json
 
