@@ -3598,7 +3598,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	config := `
+	cfg := `
 	  server {
 	    endpoint "/" {
 	    access_control = ["stale"]
@@ -3622,7 +3622,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	  }
 	`
 
-	shutdown, hook, err := newCouperWithBytes([]byte(config), helper)
+	shutdown, hook, err := newCouperWithBytes([]byte(cfg), helper)
 	defer shutdown()
 	helper.Must(err)
 
@@ -3637,7 +3637,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
+		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3647,7 +3647,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
+		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3658,7 +3658,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	time.Sleep(time.Second)
 	message := getFirstAccessLogMessage(hook)
 	if res.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
+		t.Fatalf("C) expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
 	}
 
 	expectedMessage := "access control error: stale: received no valid JWKs data: <nil>, status code 500"
