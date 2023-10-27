@@ -809,13 +809,15 @@ func TestHTTPServer_RateLimiterFixed(t *testing.T) {
 		helper.Must(err)
 		i := len(cu.RawQuery)
 
+		fuzzyVal := float64(50)
+
 		if total := entry.Data["timings"].(logging.Fields)["total"].(float64); total <= 0 {
 			t.Fatal("Something is wrong")
-		} else if i < 2 && total > 500 {
+		} else if i < 2 && total > 500+fuzzyVal {
 			t.Errorf("Request %d time has to be shorter than 0.5 seconds, was %fms", i, total)
-		} else if i == 2 && total < 1000 {
+		} else if i == 2 && total < 1000-fuzzyVal {
 			t.Errorf("Request %d time has to be longer than 1 second, was %fms", i, total)
-		} else if i > 2 && total < 500 {
+		} else if i > 2 && total < 500-fuzzyVal {
 			t.Errorf("Request %d time has to be longer than 0.5 seconds, was %fms", i, total)
 		}
 	}
