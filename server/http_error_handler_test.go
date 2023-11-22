@@ -210,6 +210,7 @@ func Test_ErroneousBackendResponse(t *testing.T) {
 	client := test.NewHTTPClient()
 
 	type testcase struct {
+		name             string
 		file             string
 		path             string
 		expBody          string
@@ -219,9 +220,10 @@ func Test_ErroneousBackendResponse(t *testing.T) {
 	}
 
 	for _, tc := range []testcase{
-		{"06_couper.hcl", "/anything", `{"req_path":"/anything","resp_ct":"application/json","resp_json_body_query":{},"resp_status":200}`, 418, 200, "status is not supported"},
+		{"store invalid backend response", "06_couper.hcl", "/anything", `{"req_path":"/anything","resp_ct":"application/json","resp_json_body_query":{},"resp_status":200}`, 418, 200, "status is not supported"},
+		{"api-level error handlers affect endpoint's buffer options", "08_couper.hcl", "/anything", `{"resp_json_status":200}`, 418, 0, ""},
 	} {
-		t.Run(tc.file, func(st *testing.T) {
+		t.Run(tc.name, func(st *testing.T) {
 			shutdown, hook := newCouper("testdata/integration/error_handler/"+tc.file, test.New(t))
 			defer shutdown()
 
