@@ -332,7 +332,7 @@ func TestBackend_director(t *testing.T) {
 		ctx       context.Context
 		expReq    *http.Request
 	}{
-		{"proxy url settings", `origin = "http://1.2.3.4"`, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings", `origin = "http://1.2.3.4"`, "", bgCtx, &http.Request{URL: &url.URL{Scheme: "http", Host: "1.2.3.4"}, Host: "example.com"}},
 		{"proxy url settings w/hostname", `
 			origin = "http://1.2.3.4"
 			hostname =  "couper.io"
