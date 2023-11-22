@@ -56,6 +56,33 @@ server {
       backend = "be"
     }
   }
+
+  endpoint "/proxy-seq" {
+    request "p" {
+      url = "{{ .origin }}/"
+      backend = "be"
+    }
+
+    proxy {
+      url = "{{ .origin }}/"
+      backend = "be"
+    }
+  }
+
+  endpoint "/proxy-seq-ref" {
+    request "seq" {
+      url = "{{ .origin }}/"
+      backend = "be"
+    }
+
+    proxy {
+      set_response_headers = {
+        x-a: backend_responses.be.a.body
+      }
+      url = "{{ .origin }}/"
+      backend = "be"
+    }
+  }
 }
 
 definitions {

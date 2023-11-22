@@ -8,6 +8,7 @@ import (
 
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/body"
+	srvpkg "github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/eval"
 )
@@ -56,7 +57,9 @@ func buildSequences(names map[string]*hclsyntax.Body, endpoint *config.Endpoint)
 		}
 	}
 
-	for _, s := range sequences {
+	sortedSequences := srvpkg.SortDefault(sequences)
+	for _, name := range sortedSequences {
+		s := sequences[name]
 		if !s.HasParent() {
 			endpoint.Sequences = append(endpoint.Sequences, s)
 		}

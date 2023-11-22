@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -308,14 +309,16 @@ func (r ResultPanic) Error() string {
 }
 
 // produce hands over all possible outgoing requests to the producer interface and reads
-// the backend response results afterwards. Returns first occurred backend error.
+// the backend response results afterward. Returns first occurred backend error.
 func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	results := make(producer.ResultMap)
 
 	outreq := req.WithContext(context.WithValue(req.Context(), request.ResponseBlock, e.opts.Response != nil))
 
 	inputChannels, outputChannels := newChannels(e.opts.Items)
-	for name, prod := range e.opts.Producers {
+	sortedProducers := server.SortDefault(e.opts.Producers)
+	for _, name := range sortedProducers {
+		prod := e.opts.Producers[name]
 		go func(n string, rt producer.Roundtrip, intChs, outChs []chan *producer.Result) {
 			defer func() {
 				if rp := recover(); rp != nil {
@@ -336,6 +339,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 			res := rt.Produce(outreq)
 			passToOutputChannels(res, outChs)
 		}(name, prod, inputChannels[name], outputChannels[name])
+		time.Sleep(time.Millisecond * 2)
 	}
 	readResults(e.opts.Items, outputChannels, results)
 

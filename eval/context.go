@@ -238,11 +238,11 @@ func (c *Context) clone() *Context {
 	}
 }
 
-func newBerespValues(ctx context.Context, beresp *http.Response) (name string, bereqVal cty.Value, berespVal cty.Value) {
+func newBerespValues(ctx context.Context, beresp *http.Response) (roundtripName string, bereqVal cty.Value, berespVal cty.Value) {
 	bereq := beresp.Request
-	name = "default"
+	roundtripName = config.DefaultNameLabel
 	if n, ok := bereq.Context().Value(request.RoundTripName).(string); ok {
-		name = n
+		roundtripName = n
 	}
 
 	p := bereq.URL.Port()
@@ -279,14 +279,12 @@ func newBerespValues(ctx context.Context, beresp *http.Response) (name string, b
 
 	var respBody, respJSONBody cty.Value
 	if websocket, _ := bereq.Context().Value(request.WebsocketsAllowed).(bool); websocket && isUpgradeResponse {
-		// do not touch the body
-	} else {
-		if readRespBody {
-			respBody, respJSONBody = parseRespJsonBody(beresp)
-		} else if !readRespBody && beresp.Body != nil {
-			go closeNonParsedBody(ctx, beresp.Body)
-		}
-	}
+		// do not touch the body; closed by endpoint handler
+	} else if readRespBody {
+		respBody, respJSONBody = parseRespJsonBody(beresp) // closes the beresp body
+	} else if !readRespBody && beresp.Body != nil && roundtripName != config.DefaultNameLabel {
+		_ = beresp.Body.Close()
+	} // otherwise "default" gets closed by endpoint handler
 
 	berespVal = cty.ObjectVal(ContextMap{
 		HTTPStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
@@ -294,13 +292,7 @@ func newBerespValues(ctx context.Context, beresp *http.Response) (name string, b
 		Body:       respBody,
 	}.Merge(newVariable(ctx, beresp.Cookies(), beresp.Header)))
 
-	return name, bereqVal, berespVal
-}
-
-// closeNonParsedBody prevents resource leaks if the related context is done.
-func closeNonParsedBody(ctx context.Context, body io.ReadCloser) {
-	<-ctx.Done()
-	_ = body.Close()
+	return roundtripName, bereqVal, berespVal
 }
 
 func (c *Context) syncBackendVariables() map[string]cty.Value {

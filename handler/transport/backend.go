@@ -522,6 +522,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params *hclsyntax.Body
 		attrName string
 		target   *string
 	}
+
 	for _, p := range []pair{
 		{"origin", &origin},
 		{"hostname", &hostname},
