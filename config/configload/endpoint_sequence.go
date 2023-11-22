@@ -10,7 +10,7 @@ import (
 	"github.com/avenga/couper/config/body"
 	srvpkg "github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/config/sequence"
-	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/variables"
 )
 
 // buildSequences collects possible dependencies from 'backend_responses' variable.
@@ -74,7 +74,7 @@ func responseReferences(b *hclsyntax.Body) []string {
 
 	for _, expr := range body.CollectExpressions(b) {
 		for _, traversal := range expr.Variables() {
-			if traversal.RootName() != eval.BackendResponses || len(traversal) < 2 {
+			if traversal.RootName() != variables.BackendResponses || len(traversal) < 2 {
 				continue
 			}
 

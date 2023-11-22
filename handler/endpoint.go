@@ -19,6 +19,7 @@ import (
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
@@ -38,7 +39,7 @@ type Endpoint struct {
 
 type EndpointOptions struct {
 	APIName           string
-	BufferOpts        eval.BufferOption
+	BufferOpts        buffer.Option
 	Context           *hclsyntax.Body
 	ErrorTemplate     *errors.Template
 	ErrorHandler      http.Handler
@@ -58,7 +59,7 @@ type EndpointOptions struct {
 
 type BodyLimit interface {
 	RequestLimit() int64
-	BufferOptions() eval.BufferOption
+	BufferOptions() buffer.Option
 }
 
 func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) *Endpoint {
@@ -412,7 +413,7 @@ func (e *Endpoint) Options() *server.Options {
 	return e.opts.ServerOpts
 }
 
-func (e *Endpoint) BufferOptions() eval.BufferOption {
+func (e *Endpoint) BufferOptions() buffer.Option {
 	return e.opts.BufferOpts
 }
 

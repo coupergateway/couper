@@ -12,7 +12,7 @@ import (
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/producer"
 )
@@ -181,7 +181,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}}
 	}
 
-	bufferOpts := eval.MustBuffer(append(blockBodies, endpointConf.Remain)...)
+	bufferOpts := buffer.Must(append(blockBodies, endpointConf.Remain)...)
 
 	apiName := ""
 	if apiConf != nil {

@@ -27,6 +27,8 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
+	"github.com/avenga/couper/eval/variables"
 	"github.com/avenga/couper/handler/ratelimit"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
@@ -130,9 +132,9 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	var backendVal cty.Value
 	hclCtx := eval.ContextFromRequest(outreq).HCLContextSync()
-	if v, ok := hclCtx.Variables[eval.Backends]; ok {
+	if v, ok := hclCtx.Variables[variables.Backends]; ok {
 		if m, exist := v.AsValueMap()[b.name]; exist {
-			hclCtx.Variables[eval.Backend] = m
+			hclCtx.Variables[variables.Backend] = m
 			backendVal = m
 		}
 	}
@@ -643,7 +645,7 @@ func setGzipReader(beresp *http.Response) error {
 		return nil
 	}
 
-	bufOpt := beresp.Request.Context().Value(request.BufferOptions).(eval.BufferOption)
+	bufOpt := beresp.Request.Context().Value(request.BufferOptions).(buffer.Option)
 	if !bufOpt.Response() {
 		return nil
 	}

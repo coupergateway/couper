@@ -3,6 +3,7 @@ package json
 import (
 	"context"
 	"fmt"
+	"github.com/avenga/couper/eval/buffer"
 	"io"
 	"net/http"
 	"time"
@@ -123,6 +124,8 @@ func (s *SyncedJSON) fetch(ctx context.Context) error {
 
 	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, s.roundTripName))
 	defer cancel()
+	// Set the buffer option otherwise the resp body gets closed due to a non default roundtrip name. Have to read it anyway.
+	outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Response)
 
 	req = req.WithContext(outCtx)
 

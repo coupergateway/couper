@@ -15,6 +15,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/utils"
@@ -97,7 +98,7 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
+			helper.Must(eval.SetGetBody(req, buffer.Request, 512))
 
 			ctx, _, _, _ := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal)
 			hclCtx := ctx.HCLContext()

@@ -8,6 +8,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval/variables"
 )
 
 const TokenRequestPrefix = "_tr_"
@@ -51,13 +52,13 @@ func (sv *SyncedVariables) Set(ctx context.Context, reqName string, bereqV, bere
 	})
 }
 
-func (sv *SyncedVariables) Sync(variables map[string]cty.Value) {
+func (sv *SyncedVariables) Sync(vars map[string]cty.Value) {
 	var bereqs, beresps map[string]cty.Value
-	if brs, ok := variables[BackendRequests]; ok {
+	if brs, ok := vars[variables.BackendRequests]; ok {
 		bereqs = brs.AsValueMap()
 	}
 
-	if brps, ok := variables[BackendResponses]; ok {
+	if brps, ok := vars[variables.BackendResponses]; ok {
 		beresps = brps.AsValueMap()
 	}
 
@@ -77,6 +78,6 @@ func (sv *SyncedVariables) Sync(variables map[string]cty.Value) {
 		return true
 	})
 
-	variables[BackendRequests] = cty.ObjectVal(bereqs)
-	variables[BackendResponses] = cty.ObjectVal(beresps)
+	vars[variables.BackendRequests] = cty.ObjectVal(bereqs)
+	vars[variables.BackendResponses] = cty.ObjectVal(beresps)
 }

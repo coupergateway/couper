@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
-	"github.com/zclconf/go-cty/cty"
 
 	"github.com/avenga/couper/accesscontrol/jwt"
 	"github.com/avenga/couper/config"
@@ -17,6 +16,7 @@ import (
 	"github.com/avenga/couper/eval/lib"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestAccessControl_ErrorHandler(t *testing.T) {

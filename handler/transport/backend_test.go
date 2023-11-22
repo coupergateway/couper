@@ -22,6 +22,7 @@ import (
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler/transport"
 	"github.com/avenga/couper/handler/validation"
 	"github.com/avenga/couper/internal/seetie"
@@ -139,7 +140,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
-	req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, eval.BufferResponse))
+	req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, buffer.Response))
 	req.Header.Set("Accept-Encoding", "br, gzip")
 	res, err := backend.RoundTrip(req)
 	helper.Must(err)

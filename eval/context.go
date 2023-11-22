@@ -24,7 +24,9 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/config/env"
 	"github.com/avenga/couper/config/request"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/eval/variables"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/oauth2/oidc"
 	"github.com/avenga/couper/utils"
@@ -62,13 +64,13 @@ func NewContext(srcBytes [][]byte, defaults *config.Defaults, environment string
 		defaultEnvVariables = defaults.EnvironmentVariables
 	}
 
-	variables := make(map[string]cty.Value)
-	variables[Environment] = newCtyEnvMap(srcBytes, defaultEnvVariables)
-	variables[Couper] = newCtyCouperVariablesMap(environment)
+	vars := make(map[string]cty.Value)
+	vars[variables.Environment] = newCtyEnvMap(srcBytes, defaultEnvVariables)
+	vars[variables.Couper] = newCtyCouperVariablesMap(environment)
 
 	return &Context{
 		eval: &hcl.EvalContext{
-			Variables: variables,
+			Variables: vars,
 			Functions: newFunctionsMap(),
 		},
 		inner: context.TODO(), // usually replaced with request context
@@ -138,7 +140,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 
 	ctxMap := ContextMap{}
 	if endpoint, ok := ctx.inner.Value(request.Endpoint).(string); ok {
-		ctxMap[Endpoint] = cty.StringVal(endpoint)
+		ctxMap[variables.Endpoint] = cty.StringVal(endpoint)
 	}
 
 	var id string
@@ -163,26 +165,26 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 	body, jsonBody := parseReqBody(req)
 
 	origin := NewRawOrigin(req.URL)
-	ctx.eval.Variables[ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
-		ID:        cty.StringVal(id),
-		Method:    cty.StringVal(req.Method),
-		PathParam: seetie.MapToValue(pathParams),
-		URL:       cty.StringVal(req.URL.String()),
-		Origin:    cty.StringVal(origin.String()),
-		Protocol:  cty.StringVal(req.URL.Scheme),
-		Host:      cty.StringVal(req.URL.Hostname()),
-		Port:      cty.NumberIntVal(port),
-		Path:      cty.StringVal(req.URL.Path),
-		Query:     seetie.ValuesMapToValue(req.URL.Query()),
-		Body:      body,
-		JSONBody:  jsonBody,
-		FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
+	ctx.eval.Variables[variables.ClientRequest] = cty.ObjectVal(ctxMap.Merge(ContextMap{
+		variables.ID:        cty.StringVal(id),
+		variables.Method:    cty.StringVal(req.Method),
+		variables.PathParam: seetie.MapToValue(pathParams),
+		variables.URL:       cty.StringVal(req.URL.String()),
+		variables.Origin:    cty.StringVal(origin.String()),
+		variables.Protocol:  cty.StringVal(req.URL.Scheme),
+		variables.Host:      cty.StringVal(req.URL.Hostname()),
+		variables.Port:      cty.NumberIntVal(port),
+		variables.Path:      cty.StringVal(req.URL.Path),
+		variables.Query:     seetie.ValuesMapToValue(req.URL.Query()),
+		variables.Body:      body,
+		variables.JSONBody:  jsonBody,
+		variables.FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
 	}.Merge(newVariable(ctx.inner, req.Cookies(), req.Header))))
 
-	ctx.eval.Variables[BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
-	ctx.eval.Variables[BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
+	ctx.eval.Variables[variables.BackendRequests] = cty.ObjectVal(make(map[string]cty.Value))
+	ctx.eval.Variables[variables.BackendResponses] = cty.ObjectVal(make(map[string]cty.Value))
 
-	mergeBackendVariables(ctx.eval, Backends, ctx.syncBackendVariables())
+	mergeBackendVariables(ctx.eval, variables.Backends, ctx.syncBackendVariables())
 	ctx.updateRequestRelatedFunctions(origin)
 	ctx.updateFunctions()
 
@@ -203,16 +205,16 @@ func (c *Context) WithBeresp(beresp *http.Response, backendVal cty.Value) (*Cont
 		bereqs[name] = reqV
 		resps[name] = respV
 
-		ctx.eval.Variables[BackendRequest] = reqV
-		ctx.eval.Variables[BackendResponse] = respV
-		ctx.eval.Variables[Backend] = backendVal
+		ctx.eval.Variables[variables.BackendRequest] = reqV
+		ctx.eval.Variables[variables.BackendResponse] = respV
+		ctx.eval.Variables[variables.Backend] = backendVal
 	}
 
 	// Prevent overriding existing variables with successive calls to this method.
 	// Could happen with error_handler within an endpoint. Merge them.
-	mergeBackendVariables(ctx.eval, Backends, ctx.syncBackendVariables())
-	mergeBackendVariables(ctx.eval, BackendRequests, bereqs)
-	mergeBackendVariables(ctx.eval, BackendResponses, resps)
+	mergeBackendVariables(ctx.eval, variables.Backends, ctx.syncBackendVariables())
+	mergeBackendVariables(ctx.eval, variables.BackendRequests, bereqs)
+	mergeBackendVariables(ctx.eval, variables.BackendResponses, resps)
 
 	ctx.updateFunctions()
 
@@ -257,21 +259,21 @@ func newBerespValues(ctx context.Context, beresp *http.Response) (roundtripName 
 
 	body, jsonBody := parseReqBody(bereq)
 	bereqVal = cty.ObjectVal(ContextMap{
-		Method:   cty.StringVal(bereq.Method),
-		URL:      cty.StringVal(bereq.URL.String()),
-		Origin:   cty.StringVal(NewRawOrigin(bereq.URL).String()),
-		Protocol: cty.StringVal(bereq.URL.Scheme),
-		Host:     cty.StringVal(bereq.URL.Hostname()),
-		Port:     cty.NumberIntVal(port),
-		Path:     cty.StringVal(bereq.URL.Path),
-		Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
-		Body:     body,
-		JSONBody: jsonBody,
-		FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
+		variables.Method:   cty.StringVal(bereq.Method),
+		variables.URL:      cty.StringVal(bereq.URL.String()),
+		variables.Origin:   cty.StringVal(NewRawOrigin(bereq.URL).String()),
+		variables.Protocol: cty.StringVal(bereq.URL.Scheme),
+		variables.Host:     cty.StringVal(bereq.URL.Hostname()),
+		variables.Port:     cty.NumberIntVal(port),
+		variables.Path:     cty.StringVal(bereq.URL.Path),
+		variables.Query:    seetie.ValuesMapToValue(bereq.URL.Query()),
+		variables.Body:     body,
+		variables.JSONBody: jsonBody,
+		variables.FormBody: seetie.ValuesMapToValue(parseForm(bereq).PostForm),
 	}.Merge(newVariable(ctx, bereq.Cookies(), bereq.Header)))
 
 	var readRespBody bool
-	if bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(BufferOption); bOk {
+	if bufferOption, bOk := bereq.Context().Value(request.BufferOptions).(buffer.Option); bOk {
 		readRespBody = bufferOption.Response()
 	}
 
@@ -287,9 +289,9 @@ func newBerespValues(ctx context.Context, beresp *http.Response) (roundtripName 
 	} // otherwise "default" gets closed by endpoint handler
 
 	berespVal = cty.ObjectVal(ContextMap{
-		HTTPStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
-		JSONBody:   respJSONBody,
-		Body:       respBody,
+		variables.HTTPStatus: cty.NumberIntVal(int64(beresp.StatusCode)),
+		variables.JSONBody:   respJSONBody,
+		variables.Body:       respBody,
 	}.Merge(newVariable(ctx, beresp.Cookies(), beresp.Header)))
 
 	return roundtripName, bereqVal, berespVal
@@ -383,7 +385,7 @@ func (c *Context) HCLContextSync() *hcl.EvalContext {
 	c.syncedVariables.Sync(e.Variables)
 
 	backendsValue := c.syncBackendVariables()
-	mergeBackendVariables(e, Backends, backendsValue)
+	mergeBackendVariables(e, variables.Backends, backendsValue)
 
 	return e
 }
@@ -606,9 +608,9 @@ func newVariable(ctx context.Context, cookies []*http.Cookie, headers http.Heade
 	}
 
 	return map[string]cty.Value{
-		CTX:     ctxAcMapValue,
-		Cookies: seetie.CookiesToMapValue(cookies),
-		Headers: seetie.HeaderToMapValue(headers),
+		variables.CTX:     ctxAcMapValue,
+		variables.Cookies: seetie.CookiesToMapValue(cookies),
+		variables.Headers: seetie.HeaderToMapValue(headers),
 	}
 }
 
@@ -662,10 +664,10 @@ func MapTokenResponse(evalCtx *hcl.EvalContext, name string) {
 		name = "default"
 	}
 
-	responses := evalCtx.Variables[BackendResponses].AsValueMap()
+	responses := evalCtx.Variables[variables.BackendResponses].AsValueMap()
 	respValue := responses[TokenRequestPrefix+name]
 
-	evalCtx.Variables[TokenResponse] = respValue
+	evalCtx.Variables[variables.TokenResponse] = respValue
 }
 
 // Functions

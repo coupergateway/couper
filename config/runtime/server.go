@@ -27,6 +27,7 @@ import (
 	"github.com/avenga/couper/definitions"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/middleware"
 	"github.com/avenga/couper/oauth2"
@@ -315,7 +316,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				newAC(srvConf, parentAPI).
 					Merge(config.
 						NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl)).List(), nil)
-			epOpts.BufferOpts |= eval.MustBuffer(acBodies...)
+			epOpts.BufferOpts |= buffer.Must(acBodies...)
 
 			errorHandlerDefinitions := ACDefinitions{ // misuse of definitions obj for now
 				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},
