@@ -115,8 +115,8 @@ func TestBackend_MaxConnections_BodyClose(t *testing.T) {
 	}
 
 	t.Run("parallel", func(t *testing.T) {
-		for _, p := range paths {
-			p := p
+		for _, path := range paths {
+			p := path // we need a local copy due to ref in parallel test func
 			t.Run("_"+p, func(st *testing.T) {
 				st.Parallel()
 
