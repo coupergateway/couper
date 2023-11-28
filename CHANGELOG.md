@@ -6,6 +6,11 @@ Unreleased changes are available as `avenga/couper:edge` container.
 
 ---
 
+## [1.12.2](https://github.com/coupergateway/couper/releases/tag/v1.12.2)
+
+* **Fixed**
+  * Reading the origin response-body even if there is no variables reference; piping the response-body again to the client ([#766](https://github.com/coupergateway/couper/issues/766))
+
 ## [1.12.1](https://github.com/avenga/couper/releases/tag/v1.12.1)
 
 * **Fixed**
