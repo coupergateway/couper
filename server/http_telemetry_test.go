@@ -38,7 +38,7 @@ func TestServeMetrics(t *testing.T) {
 		t.Fatalf("metrics endpoint could not be reached: %v", err)
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 4)
 	res, err := client.Do(mreq)
 	if err != nil {
 		t.Fatalf("metrics endpoint could not be reached: %v", err)
