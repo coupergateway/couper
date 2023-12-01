@@ -135,11 +135,11 @@ jobs:
       - name: 'upload archive'
         id: 'upload'
         run: |
-          mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
+          mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
+          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
           echo "::set-output name=${{ matrix.goarch }}::$(cat ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256)"
 #      - name: 'upload image'
-#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo avenga/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
+#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
   brewlease:
     name: 'update homebrew formula'
     runs-on: ubuntu-latest
