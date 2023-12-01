@@ -77,7 +77,7 @@ server {
 
     proxy {
       set_response_headers = {
-        x-a: backend_responses.be.a.body
+        x-a: backend_responses.seq.body
       }
       url = "{{ .origin }}/"
       backend = "be"
