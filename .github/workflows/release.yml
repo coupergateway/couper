@@ -84,15 +84,30 @@ jobs:
           go-version: '1.19'
 
       - name: 'import certificate'
-        uses: devbotsxyz/import-signing-certificate@v1
-        with:
-          certificate-data: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
-          certificate-passphrase: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-          keychain-password: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
       - name: 'install gon'
-        run: go install github.com/mitchellh/gon/...@v0.2.3
+        run: go install github.com/mitchellh/gon/...@v0.2.5
       - name: 'install assets-uploader'
-        run: go install github.com/wangyoucao577/assets-uploader/...@v0.9.0
+        run: go install github.com/wangyoucao577/assets-uploader/...@v0.10.0
       - name: 'build Couper'
         run: |
           go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -v -o ./.macos/Couper.app/Contents/couper main.go
@@ -150,7 +165,7 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.GH_COUPER_API_TOKEN }}
         with:
           source_file: '${{ github.workspace }}/.github/workflows/couper.rb'
-          destination_repo: 'avenga/homebrew-couper'
+          destination_repo: 'coupergateway/homebrew-couper'
           destination_folder: './'
           destination_branch: 'main'
           destination_branch_create: 'release.${{ github.ref_name }}' # due to testing purposes; create branch for merging later on
