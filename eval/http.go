@@ -18,42 +18,24 @@ import (
 	"github.com/avenga/couper/config/meta"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/errors"
+	"github.com/avenga/couper/eval/attributes"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/eval/lib"
+	"github.com/avenga/couper/eval/variables"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/utils"
-)
-
-// common "inline" meta-attributes
-// TODO: move to config(meta?) package, ask there for req /res related attrs (direction type <> )
-const (
-	attrPath           = "path"
-	attrSetReqHeaders  = "set_request_headers"
-	attrAddReqHeaders  = "add_request_headers"
-	attrDelReqHeaders  = "remove_request_headers"
-	attrAddQueryParams = "add_query_params"
-	attrDelQueryParams = "remove_query_params"
-	attrSetQueryParams = "set_query_params"
-	attrAddFormParams  = "add_form_params"
-	attrDelFormParams  = "remove_form_params"
-	attrSetFormParams  = "set_form_params"
-
-	attrSetResHeaders = "set_response_headers"
-	attrAddResHeaders = "add_response_headers"
-	attrDelResHeaders = "remove_response_headers"
-
-	attrCustomLogFields = "custom_log_fields"
 )
 
 // SetGetBody determines if we have to buffer a request body for further processing.
 // First the user has a related reference within a related options' context declaration.
 // Additionally, the request body is nil or a NoBody-Type and the http method has no
 // http-body restrictions like 'TRACE'.
-func SetGetBody(req *http.Request, bufferOpts BufferOption, bodyLimit int64) error {
+func SetGetBody(req *http.Request, bufferOpts buffer.Option, bodyLimit int64) error {
 	if req.Method == http.MethodTrace {
 		return nil
 	}
 
-	if (bufferOpts & BufferRequest) != BufferRequest {
+	if (bufferOpts & buffer.Request) != buffer.Request {
 		return nil
 	}
 
@@ -107,7 +89,7 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body *hclsyntax.Body, req *ht
 
 	headerCtx := req.Header
 
-	pathAttr := body.Attributes[attrPath]
+	pathAttr := body.Attributes[variables.Path]
 	if pathAttr != nil {
 		if err := evalPathAttr(req, pathAttr, httpCtx); err != nil {
 			return err
@@ -121,7 +103,7 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body *hclsyntax.Body, req *ht
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
 	if err = applyHeaderOps(attrs,
-		[]string{attrDelReqHeaders, attrSetReqHeaders, attrAddReqHeaders}, httpCtx, headerCtx); err != nil {
+		[]string{attributes.DelReqHeaders, attributes.SetReqHeaders, attributes.AddReqHeaders}, httpCtx, headerCtx); err != nil {
 		return err
 	}
 
@@ -132,7 +114,7 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body *hclsyntax.Body, req *ht
 	var modifyQuery bool
 
 	// apply query params in hierarchical and logical order: delete, set, add
-	attr, ok := attrs[attrDelQueryParams]
+	attr, ok := attrs[attributes.DelQueryParams]
 	if ok {
 		val, attrErr := Value(httpCtx, attr.Expr)
 		if attrErr != nil {
@@ -144,7 +126,7 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body *hclsyntax.Body, req *ht
 		modifyQuery = true
 	}
 
-	attr, ok = attrs[attrSetQueryParams]
+	attr, ok = attrs[attributes.SetQueryParams]
 	if ok {
 		val, attrErr := Value(httpCtx, attr.Expr)
 		if attrErr != nil {
@@ -161,7 +143,7 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body *hclsyntax.Body, req *ht
 		modifyQuery = true
 	}
 
-	attr, ok = attrs[attrAddQueryParams]
+	attr, ok = attrs[attributes.AddQueryParams]
 	if ok {
 		val, attrErr := Value(httpCtx, attr.Expr)
 		if attrErr != nil {
@@ -193,9 +175,9 @@ func ApplyRequestContext(httpCtx *hcl.EvalContext, body *hclsyntax.Body, req *ht
 func getFormParams(ctx *hcl.EvalContext, req *http.Request, attrs map[string]*hcl.Attribute) error {
 	const contentTypeValue = "application/x-www-form-urlencoded"
 
-	attrDel, okDel := attrs[attrDelFormParams]
-	attrSet, okSet := attrs[attrSetFormParams]
-	attrAdd, okAdd := attrs[attrAddFormParams]
+	attrDel, okDel := attrs[attributes.DelFormParams]
+	attrSet, okSet := attrs[attributes.SetFormParams]
+	attrAdd, okAdd := attrs[attributes.AddFormParams]
 
 	if !okAdd && !okDel && !okSet {
 		return nil
@@ -330,11 +312,11 @@ func IsUpgradeResponse(req *http.Request, res *http.Response) bool {
 }
 
 var customLogFieldsSchema = &hcl.BodySchema{Attributes: []hcl.AttributeSchema{
-	{Name: attrCustomLogFields},
+	{Name: attributes.CustomLogFields},
 }}
 
 func EvalCustomLogFields(httpCtx *hcl.EvalContext, body *hclsyntax.Body) (cty.Value, error) {
-	attr, ok := body.Attributes[attrCustomLogFields]
+	attr, ok := body.Attributes[attributes.CustomLogFields]
 	if !ok {
 		return cty.NilVal, nil
 	}
@@ -352,7 +334,7 @@ func ApplyCustomLogs(httpCtx *hcl.EvalContext, bodies []hcl.Body, logger *logrus
 
 		bodyContent, _, _ := body.PartialContent(customLogFieldsSchema)
 
-		logs, ok := bodyContent.Attributes[attrCustomLogFields]
+		logs, ok := bodyContent.Attributes[attributes.CustomLogFields]
 		if !ok {
 			continue
 		}
@@ -431,7 +413,7 @@ func ApplyResponseHeaderOps(httpCtx *hcl.EvalContext, body hcl.Body, headers ...
 	}
 
 	// sort and apply header values in hierarchical and logical order: delete, set, add
-	h := []string{attrDelResHeaders, attrSetResHeaders, attrAddResHeaders}
+	h := []string{attributes.DelResHeaders, attributes.SetResHeaders, attributes.AddResHeaders}
 	err = applyHeaderOps(attrs, h, httpCtx, headers...)
 	return err
 }
@@ -467,11 +449,11 @@ func applyHeaderOps(attrs map[string]*hcl.Attribute, names []string, httpCtx *hc
 			}
 
 			switch name {
-			case attrDelReqHeaders, attrDelResHeaders:
+			case attributes.DelReqHeaders, attributes.DelResHeaders:
 				deleteHeader(val, headerCtx)
-			case attrSetReqHeaders, attrSetResHeaders:
+			case attributes.SetReqHeaders, attributes.SetResHeaders:
 				SetHeader(val, headerCtx)
-			case attrAddReqHeaders, attrAddResHeaders:
+			case attributes.AddReqHeaders, attributes.AddResHeaders:
 				addedHeaders := make(http.Header)
 				SetHeader(val, addedHeaders)
 				for k, v := range addedHeaders {

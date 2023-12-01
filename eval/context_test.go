@@ -15,6 +15,7 @@ import (
 	"github.com/avenga/couper/config/configload"
 	"github.com/avenga/couper/config/request"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/internal/seetie"
 	"github.com/avenga/couper/internal/test"
 	"github.com/avenga/couper/utils"
@@ -97,13 +98,14 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
+			helper.Must(eval.SetGetBody(req, buffer.Request, 512))
 
-			ctx := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal, false).HCLContext()
-			ctx.Functions = nil // we are not interested in a functions test
+			ctx, _, _, _ := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal)
+			hclCtx := ctx.HCLContext()
+			hclCtx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
+			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), hclCtx, &resultMap)
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]

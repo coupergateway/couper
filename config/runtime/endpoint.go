@@ -12,7 +12,7 @@ import (
 	"github.com/avenga/couper/config/runtime/server"
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/producer"
 )
@@ -157,7 +157,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		blockBodies = append(blockBodies, requestConf.Backend, requestConf.HCLBody())
 	}
 
-	markDepencencies(allProducers, endpointConf.Sequences)
+	markDependencies(allProducers, endpointConf.Sequences)
 	addIndependentProducers(allProducers, endpointConf)
 
 	// TODO: redirect
@@ -181,7 +181,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		}}
 	}
 
-	bufferOpts := eval.MustBuffer(append(blockBodies, endpointConf.Remain)...)
+	bufferOpts := buffer.Must(append(blockBodies, endpointConf.Remain)...)
 
 	apiName := ""
 	if apiConf != nil {
@@ -203,33 +203,35 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 	}, nil
 }
 
-func markDepencencies(allProducers map[string]producer.Roundtrip, items sequence.List) {
+func markDependencies(allProducers map[string]producer.Roundtrip, items sequence.List) {
 	for _, item := range items {
 		pr := allProducers[item.Name]
 		var prevs []string
 		deps := item.Deps()
+		if deps == nil {
+			continue
+		}
 		for _, dep := range deps {
 			prevs = append(prevs, dep.Name)
 		}
 		pr.SetDependsOn(strings.Join(prevs, ","))
-		markDepencencies(allProducers, deps)
+		markDependencies(allProducers, deps)
 	}
 }
 
 func addIndependentProducers(allProducers map[string]producer.Roundtrip, endpointConf *config.Endpoint) {
 	// TODO simplify
 	allDeps := sequence.Dependencies(endpointConf.Sequences)
-	for name := range allProducers {
-		inSeq := false
+	sortedProducers := server.SortDefault(allProducers)
+outer:
+	for _, name := range sortedProducers {
 		for _, deps := range allDeps {
 			for _, dep := range deps {
 				if name == dep {
-					inSeq = true
+					continue outer // in sequence
 				}
 			}
 		}
-		if !inSeq {
-			endpointConf.Sequences = append(endpointConf.Sequences, &sequence.Item{Name: name})
-		}
+		endpointConf.Sequences = append(endpointConf.Sequences, &sequence.Item{Name: name})
 	}
 }

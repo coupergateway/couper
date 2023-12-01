@@ -21,6 +21,7 @@ import (
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/handler/transport"
@@ -102,7 +103,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			}
 
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
+			helper.Must(eval.SetGetBody(req, buffer.Request, 1024))
 			*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
@@ -227,7 +228,7 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				tt.header.Set(req)
 
 				// normally injected by server/http
-				helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
+				helper.Must(eval.SetGetBody(req, buffer.Request, 1024))
 				*req = *req.WithContext(eval.NewDefaultContext().WithClientRequest(req))
 
 				rec := httptest.NewRecorder()
@@ -329,7 +330,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				hclbody.NewHCLSyntaxBodyWithStringAttr("origin", "http://"+origin.Listener.Addr().String()),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
-			bufOpts := eval.MustBuffer(helper.NewInlineContext(tc.remain))
+			bufOpts := buffer.Must(helper.NewInlineContext(tc.remain))
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
 				BufferOpts:    bufOpts,

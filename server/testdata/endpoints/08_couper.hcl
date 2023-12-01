@@ -6,15 +6,14 @@ server "api" {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/pdf"
     }
 
+    response {
+      body = backend_responses.pdf.body
+    }
+  }
+
+  endpoint "/pdf-proxy" {
     proxy {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/pdf"
-    }
-
-    response {
-      headers = {
-        x-body = backend_responses.default.body
-      }
-      body = backend_responses.pdf.body
     }
   }
 

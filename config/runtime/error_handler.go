@@ -11,13 +11,14 @@ import (
 	"github.com/avenga/couper/config"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler"
 )
 
 func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, references ...string) (http.Handler, eval.BufferOption, error) {
+	defs ACDefinitions, references ...string) (http.Handler, buffer.Option, error) {
 	kindsHandler := map[string]http.Handler{}
-	var ehBufferOption eval.BufferOption
+	var ehBufferOption buffer.Option
 	for _, ref := range references {
 		definition, ok := defs[ref]
 		if !ok {
@@ -66,7 +67,7 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 
 			epOpts, err := NewEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, conf, opts.memStore)
 			if err != nil {
-				return nil, eval.BufferNone, err
+				return nil, buffer.None, err
 			}
 			if epOpts.ErrorTemplate == nil || h.ErrorFile == "" {
 				epOpts.ErrorTemplate = opts.epOpts.ErrorTemplate

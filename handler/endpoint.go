@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -18,6 +19,7 @@ import (
 	"github.com/avenga/couper/config/sequence"
 	"github.com/avenga/couper/errors"
 	"github.com/avenga/couper/eval"
+	"github.com/avenga/couper/eval/buffer"
 	"github.com/avenga/couper/handler/producer"
 	"github.com/avenga/couper/server/writer"
 	"github.com/avenga/couper/telemetry"
@@ -37,7 +39,7 @@ type Endpoint struct {
 
 type EndpointOptions struct {
 	APIName           string
-	BufferOpts        eval.BufferOption
+	BufferOpts        buffer.Option
 	Context           *hclsyntax.Body
 	ErrorTemplate     *errors.Template
 	ErrorHandler      http.Handler
@@ -57,7 +59,7 @@ type EndpointOptions struct {
 
 type BodyLimit interface {
 	RequestLimit() int64
-	BufferOptions() eval.BufferOption
+	BufferOptions() buffer.Option
 }
 
 func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) *Endpoint {
@@ -308,14 +310,16 @@ func (r ResultPanic) Error() string {
 }
 
 // produce hands over all possible outgoing requests to the producer interface and reads
-// the backend response results afterwards. Returns first occurred backend error.
+// the backend response results afterward. Returns first occurred backend error.
 func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	results := make(producer.ResultMap)
 
 	outreq := req.WithContext(context.WithValue(req.Context(), request.ResponseBlock, e.opts.Response != nil))
 
 	inputChannels, outputChannels := newChannels(e.opts.Items)
-	for name, prod := range e.opts.Producers {
+	sortedProducers := server.SortDefault(e.opts.Producers)
+	for _, name := range sortedProducers {
+		prod := e.opts.Producers[name]
 		go func(n string, rt producer.Roundtrip, intChs, outChs []chan *producer.Result) {
 			defer func() {
 				if rp := recover(); rp != nil {
@@ -336,6 +340,7 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 			res := rt.Produce(outreq)
 			passToOutputChannels(res, outChs)
 		}(name, prod, inputChannels[name], outputChannels[name])
+		time.Sleep(time.Millisecond * 2)
 	}
 	readResults(e.opts.Items, outputChannels, results)
 
@@ -408,7 +413,7 @@ func (e *Endpoint) Options() *server.Options {
 	return e.opts.ServerOpts
 }
 
-func (e *Endpoint) BufferOptions() eval.BufferOption {
+func (e *Endpoint) BufferOptions() buffer.Option {
 	return e.opts.BufferOpts
 }
 
