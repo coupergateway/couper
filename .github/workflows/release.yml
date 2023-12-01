@@ -43,13 +43,13 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=build_date::$(date +'%F')"
 
-      - uses: wangyoucao577/go-release-action@v1.25
+      - uses: wangyoucao577/go-release-action@v1.40
         id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: '1.19'
+          goversion: 1.19
           binary_name: 'couper'
           ldflags: '-X ${{ env.VERSION_PACKAGE }}.VersionName=${{ github.ref_name }} -X ${{ env.VERSION_PACKAGE }}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${{ env.VERSION_PACKAGE }}.BuildDate=${{ steps.vars.outputs.build_date }}'
           sha256sum: true
