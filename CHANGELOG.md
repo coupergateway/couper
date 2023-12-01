@@ -1,15 +1,15 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/avenga/couper/compare/v1.12.1...master)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.12.2...master)
 
-Unreleased changes are available as `avenga/couper:edge` container.
+Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
 
 ## [1.12.2](https://github.com/coupergateway/couper/releases/tag/v1.12.2)
 
 * **Fixed**
-  * Reading the origin response-body even if there is no variables reference; piping the response-body again to the client ([#766](https://github.com/coupergateway/couper/issues/766))
+  * Reading the origin response-body even if there is no origin `body` or `json_body` variable reference; piping the response-body again to the client ([#766](https://github.com/coupergateway/couper/issues/766))
 
 ## [1.12.1](https://github.com/avenga/couper/releases/tag/v1.12.1)
 
