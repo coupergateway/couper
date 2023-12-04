@@ -18,7 +18,7 @@ jobs:
       INPUT_TOKEN: ''
     steps:
       - name: 'checkout'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: 'prepare package'
         run: |
           cp LICENSE .npm

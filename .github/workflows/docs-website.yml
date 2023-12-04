@@ -12,7 +12,7 @@ jobs:
     steps:
 
       - name: Set up Go 1.x
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4.1.0
         with:
           go-version: '1.20'
         id: go
@@ -23,7 +23,7 @@ jobs:
           node-version: 16
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: install algolia-client
         run: |
@@ -59,7 +59,7 @@ jobs:
           name: dist
           path: 'dist'
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_COUPER_API_TOKEN }}
           path: 'website'

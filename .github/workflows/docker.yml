@@ -33,11 +33,11 @@ jobs:
         wait-interval: 10
 
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event_name != 'workflow_dispatch'
 
     - name: checkout given tag
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event_name == 'workflow_dispatch'
       with:
         ref: ${{ github.event.inputs.tag }}
@@ -78,11 +78,11 @@ jobs:
             password_key: DOCKER_PASSWORD
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         if: github.event_name != 'workflow_dispatch'
 
       - name: checkout given tag
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         if: github.event_name == 'workflow_dispatch'
         with:
           ref: 'refs/tags/${{ github.event.inputs.tag }}'
