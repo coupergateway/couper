@@ -24,6 +24,6 @@ jobs:
           chmod +x ./cc-test-reporter
           ./cc-test-reporter before-build
           make test-coverage
-          ./cc-test-reporter after-build --debug --exit-code $?
+          ./cc-test-reporter after-build --debug --prefix "github.com/coupergateway/couper" --exit-code $?
         env:
           CC_TEST_REPORTER_ID: 8b070e62baadacda6fdfd7bac69c3f46795b7cae456073982599e9dd87c66ce9

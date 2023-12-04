@@ -31,31 +31,10 @@ test-docker:
 coverage: test-coverage test-coverage-show
 
 test-coverage:
-	go test -short -timeout 300s -covermode=count -coverprofile=ac.out ./accesscontrol
-	go test -short -timeout 300s -covermode=count -coverprofile=cache.out ./cache
-	go test -short -timeout 300s -covermode=count -coverprofile=command.out ./command
-	go test -short -timeout 300s -covermode=count -coverprofile=config.out ./config
-	go test -short -timeout 300s -covermode=count -coverprofile=errors.out ./errors
-	go test -short -timeout 300s -covermode=count -coverprofile=eval.out ./eval
-	go test -short -timeout 300s -covermode=count -coverprofile=handler.out ./handler
-	go test -short -timeout 300s -covermode=count -coverprofile=producer.out ./handler/producer
-	go test -short -timeout 300s -covermode=count -coverprofile=logging.out ./logging
-	go test -short -timeout 300s -covermode=count -coverprofile=server.out ./server
-	go test -short -timeout 300s -covermode=count -coverprofile=main.out ./
+	go test -v -short -timeout 300s -coverprofile=c.out ./...
 
 test-coverage-show:
-	go tool cover -html=ac.out
-	go tool cover -html=cache.out
-	go tool cover -html=command.out
-	go tool cover -html=config.out
-	go tool cover -html=docs.out
-	go tool cover -html=errors.out
-	go tool cover -html=eval.out
-	go tool cover -html=handler.out
-	go tool cover -html=producer.out
-	go tool cover -html=logging.out
-	go tool cover -html=server.out
-	go tool cover -html=main.out
+	go tool cover -html=c.out
 
 .PHONY: mtls-certificates
 mtls-certificates:
