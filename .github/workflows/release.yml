@@ -24,6 +24,7 @@ jobs:
       - test
     env:
       VERSION_PACKAGE: 'github.com/avenga/couper/utils'
+    permissions: read-all
     strategy:
       matrix:
         goos: [linux, windows]
