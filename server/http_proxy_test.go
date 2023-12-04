@@ -14,7 +14,7 @@ import (
 func TestHTTPProxy_Stream(t *testing.T) {
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/integration/proxy/01_couper.hcl", helper)
+	shutdown, _ := newCouper("testdata/integration/proxy/01_couper.hcl", helper)
 	defer shutdown()
 
 	randomBytes := make([]byte, 64*1024) // doubled amount of the proxy byte buffer (32k)
@@ -25,11 +25,6 @@ func TestHTTPProxy_Stream(t *testing.T) {
 	helper.Must(err)
 
 	client := newClient()
-	time.Sleep(time.Second)
-	for _, e := range hook.AllEntries() {
-		t.Log(e.String())
-	}
-
 	res, err := client.Do(outreq)
 	helper.Must(err)
 
@@ -37,33 +32,29 @@ func TestHTTPProxy_Stream(t *testing.T) {
 		t.Errorf("expected status OK, got %d", res.StatusCode)
 	}
 
-	lastRead := time.Now()
-	lastReadAv := time.Duration(0)
+	if ct := res.Header.Get("Content-Type"); ct != "application/octet-stream" {
+		t.Errorf("expected CT to be 'application/octet-stream', got: %s", ct)
+	}
+
+	readBodyStart := time.Now()
 	totalBytes := 0
-	readCount := 0
 	for {
-		lrd := time.Since(lastRead)
-		lastReadAv += lrd
 		bf := make([]byte, 1024)
 		n, rerr := res.Body.Read(bf)
 		totalBytes += n
 		if rerr == io.EOF {
 			break
 		}
-
-		lastRead = time.Now()
-		readCount += 1
 	}
+	readBodyTotal := time.Since(readBodyStart)
 	helper.Must(res.Body.Close())
 
 	if totalBytes != 65536 {
 		t.Errorf("expected 64k bytes, got: %d", totalBytes)
 	}
 
-	// lastReadAv is within nanosecond range (<100ns),
-	// should be greater than 0.3 millisecond range while streaming since the backend delays the response chunks.
-	if lastReadAv/time.Duration(readCount) < time.Nanosecond*300 {
-		t.Errorf("expected slower read times with delayed streaming, got an average of: %s", lastReadAv/time.Duration(readCount))
+	// backend delays...
+	if readBodyTotal < time.Second*6 {
+		t.Errorf("expected slower read times with delayed streaming, got a total time of: %s, expected more than 6s", readBodyTotal)
 	}
-	t.Log(lastReadAv / time.Duration(readCount))
 }
