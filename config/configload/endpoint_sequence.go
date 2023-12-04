@@ -8,8 +8,9 @@ import (
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/body"
+	srvpkg "github.com/coupergateway/couper/config/runtime/server"
 	"github.com/coupergateway/couper/config/sequence"
-	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/variables"
 )
 
 // buildSequences collects possible dependencies from 'backend_responses' variable.
@@ -56,7 +57,9 @@ func buildSequences(names map[string]*hclsyntax.Body, endpoint *config.Endpoint)
 		}
 	}
 
-	for _, s := range sequences {
+	sortedSequences := srvpkg.SortDefault(sequences)
+	for _, name := range sortedSequences {
+		s := sequences[name]
 		if !s.HasParent() {
 			endpoint.Sequences = append(endpoint.Sequences, s)
 		}
@@ -71,7 +74,7 @@ func responseReferences(b *hclsyntax.Body) []string {
 
 	for _, expr := range body.CollectExpressions(b) {
 		for _, traversal := range expr.Variables() {
-			if traversal.RootName() != eval.BackendResponses || len(traversal) < 2 {
+			if traversal.RootName() != variables.BackendResponses || len(traversal) < 2 {
 				continue
 			}
 

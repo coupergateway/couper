@@ -26,7 +26,7 @@ test:
 	go test -v -short -race -count 1 -timeout 300s ./...
 
 test-docker:
-	docker run --rm -v $(CURDIR):/go/app -w /go/app golang sh -c "go test -short -count 1 -v -timeout 300s -race ./..."
+	docker run --rm -v $(CURDIR):/go/app -w /go/app golang:1.19 sh -c "go test -short -count 1 -v -timeout 300s -race ./..."
 
 coverage: test-coverage test-coverage-show
 

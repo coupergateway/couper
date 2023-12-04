@@ -13,6 +13,7 @@ import (
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/handler/producer"
 )
 
@@ -79,9 +80,9 @@ func (t *TokenRequest) readToken() string {
 }
 
 func (t *TokenRequest) requestToken(req *http.Request) (string, int64, error) {
-	ctx := context.WithValue(req.Context(), request.Wildcard, nil)                                  // disable handling this
-	ctx = context.WithValue(ctx, request.BufferOptions, eval.BufferResponse|eval.JSONParseResponse) // always read out a possible token
-	ctx = context.WithValue(ctx, request.TokenRequest, t.config.Name)                               // set the name for variable mapping purposes
+	ctx := context.WithValue(req.Context(), request.Wildcard, nil)                                // disable handling this
+	ctx = context.WithValue(ctx, request.BufferOptions, buffer.Response|buffer.JSONParseResponse) // always read out a possible token
+	ctx = context.WithValue(ctx, request.TokenRequest, t.config.Name)                             // set the name for variable mapping purposes
 	outreq, _ := http.NewRequestWithContext(ctx, req.Method, "", nil)
 	result := t.reqProducer.Produce(outreq)
 	if result.Err != nil {

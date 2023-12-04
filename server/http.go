@@ -19,6 +19,7 @@ import (
 	"github.com/coupergateway/couper/config/runtime"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/handler"
 	"github.com/coupergateway/couper/handler/middleware"
 	"github.com/coupergateway/couper/logging"
@@ -291,7 +292,7 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	h.ServeHTTP(rw, req)
 }
 
-func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) (opt eval.BufferOption, err error) {
+func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) (opt buffer.Option, err error) {
 	inner := getChildHandler(h)
 
 	if limitHandler, ok := inner.(handler.BodyLimit); ok {

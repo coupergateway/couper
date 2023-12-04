@@ -9,6 +9,7 @@ import (
 
 	"github.com/coupergateway/couper/config/reader"
 	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval/buffer"
 )
 
 type SyncedJSONUnmarshaller interface {
@@ -123,6 +124,8 @@ func (s *SyncedJSON) fetch(ctx context.Context) error {
 
 	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, s.roundTripName))
 	defer cancel()
+	// Set the buffer option otherwise the resp body gets closed due to a non default roundtrip name. Have to read it anyway.
+	outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Option(buffer.Response|buffer.JSONParseResponse))
 
 	req = req.WithContext(outCtx)
 

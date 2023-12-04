@@ -27,6 +27,7 @@ import (
 	"github.com/coupergateway/couper/definitions"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/handler"
 	"github.com/coupergateway/couper/handler/middleware"
 	"github.com/coupergateway/couper/oauth2"
@@ -315,7 +316,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				newAC(srvConf, parentAPI).
 					Merge(config.
 						NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl)).List(), nil)
-			epOpts.BufferOpts |= eval.MustBuffer(acBodies...)
+			epOpts.BufferOpts |= buffer.Must(acBodies...)
 
 			errorHandlerDefinitions := ACDefinitions{ // misuse of definitions obj for now
 				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},

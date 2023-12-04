@@ -1,6 +1,7 @@
 package test
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"io"
@@ -70,20 +71,21 @@ func NewExpiredBackend() (*Backend, *server.SelfSignedCertificate) {
 
 func registerHTTPHandler(b *Backend) {
 	// test handler
+	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
+	b.mux.HandleFunc("/.well-known/openid-configuration", oidc)
 	b.mux.HandleFunc("/anything", createAnythingHandler(http.StatusOK))
 	b.mux.HandleFunc("/anything/", createAnythingHandler(http.StatusOK))
-	b.mux.HandleFunc("/", createAnythingHandler(http.StatusNotFound))
-	b.mux.HandleFunc("/ws", echo)
-	b.mux.HandleFunc("/redirect", redirect)
-	b.mux.HandleFunc("/pdf", pdf)
-	b.mux.HandleFunc("/small", small)
-	b.mux.HandleFunc("/health", health)
-	b.mux.HandleFunc("/jwks.json", jwks)
-	b.mux.HandleFunc("/.well-known/openid-configuration", oidc)
 	b.mux.HandleFunc("/error", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
+	b.mux.HandleFunc("/health", health)
+	b.mux.HandleFunc("/jwks.json", jwks)
+	b.mux.HandleFunc("/pdf", pdf)
+	b.mux.HandleFunc("/redirect", redirect)
 	b.mux.HandleFunc("/reflect", reflect)
+	b.mux.HandleFunc("/reflectDelay", reflectDelay)
+	b.mux.HandleFunc("/small", small)
+	b.mux.HandleFunc("/ws", echo)
 }
 
 func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Request) {
@@ -277,4 +279,30 @@ func reflect(rw http.ResponseWriter, req *http.Request) {
 		rw.Header()[k] = v
 	}
 	_, _ = io.Copy(rw, req.Body)
+}
+
+func reflectDelay(rw http.ResponseWriter, req *http.Request) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_ = req.Body.Close()
+
+	bb := bytes.NewBuffer(body)
+	for bb.Len() > 0 {
+		chunk := make([]byte, 1024)
+		n, readErr := bb.Read(chunk)
+		if readErr == io.EOF {
+			if n == 0 {
+				break
+			}
+		}
+		_, _ = rw.Write(chunk[:n])
+		if fl, ok := rw.(http.Flusher); ok {
+			fl.Flush()
+		}
+
+		time.Sleep(time.Millisecond * 100) // related to backend flush writer default interval
+	}
 }

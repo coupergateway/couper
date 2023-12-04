@@ -19,6 +19,8 @@ import (
 	"github.com/coupergateway/couper/config/configload"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/eval/variables"
 	"github.com/coupergateway/couper/internal/seetie"
 	"github.com/coupergateway/couper/internal/test"
 	"github.com/coupergateway/couper/utils"
@@ -93,7 +95,7 @@ func TestNewHTTPContext(t *testing.T) {
 			if diags.HasErrors() {
 				subT.Fatal(diags)
 			}
-			bufferOption := eval.MustBuffer(file.Body)
+			bufferOption := buffer.Must(file.Body)
 
 			helper := test.New(subT)
 
@@ -109,9 +111,10 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			helper.Must(eval.SetGetBody(req, bufferOption, 512))
+			helper.Must(eval.SetGetBody(req, buffer.Request, 512))
 
-			hclCtx := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal, false).HCLContext()
+			ctx, _, _, _ = baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal)
+			hclCtx := ctx.Value(request.ContextType).(*eval.Context).HCLContext()
 			hclCtx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
@@ -136,7 +139,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 	baseCtx := eval.NewDefaultContext()
 	tests := []struct {
 		name                  string
-		bufferOptions         eval.BufferOption
+		bufferOptions         buffer.Option
 		contentType           string
 		expBereqsDefBody      interface{}
 		expBereqsDefJsonBody  interface{}
@@ -149,7 +152,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 	}{
 		{
 			"buffer both, json-parse both, application/json",
-			eval.BufferRequest | eval.JSONParseRequest | eval.BufferResponse | eval.JSONParseResponse,
+			buffer.Request | buffer.JSONParseRequest | buffer.Response | buffer.JSONParseResponse,
 			"application/json",
 			`{"a":"1"}`,
 			map[string]interface{}{"a": "1"},
@@ -162,7 +165,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 		},
 		{
 			"buffer both, json-parse both, application/foo+json",
-			eval.BufferRequest | eval.JSONParseRequest | eval.BufferResponse | eval.JSONParseResponse,
+			buffer.Request | buffer.JSONParseRequest | buffer.Response | buffer.JSONParseResponse,
 			"application/foo+json",
 			`{"a":"1"}`,
 			map[string]interface{}{"a": "1"},
@@ -175,7 +178,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 		},
 		{
 			"buffer req, json-parse req",
-			eval.BufferRequest | eval.JSONParseRequest,
+			buffer.Request | buffer.JSONParseRequest,
 			"application/json",
 			`{"a":"1"}`,
 			map[string]interface{}{"a": "1"},
@@ -188,7 +191,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 		},
 		{
 			"buffer resp, json-parse resp",
-			eval.BufferResponse | eval.JSONParseResponse,
+			buffer.Response | buffer.JSONParseResponse,
 			"application/json",
 			nil,
 			nil,
@@ -201,7 +204,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 		},
 		{
 			"buffer both, don't json-parse",
-			eval.BufferRequest | eval.BufferResponse,
+			buffer.Request | buffer.Response,
 			"application/json",
 			`{"a":"1"}`,
 			map[string]interface{}{},
@@ -214,7 +217,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 		},
 		{
 			"don't buffer, don't json-parse",
-			eval.BufferNone,
+			buffer.None,
 			"application/json",
 			nil,
 			nil,
@@ -227,7 +230,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 		},
 		{
 			"don't buffer, json-parse both",
-			eval.BufferNone,
+			buffer.None,
 			"application/json",
 			nil,
 			nil,
@@ -240,7 +243,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 		},
 		{
 			"buffer both, json-parse both, text/plain",
-			eval.BufferRequest | eval.JSONParseRequest | eval.BufferResponse | eval.JSONParseResponse,
+			buffer.Request | buffer.JSONParseRequest | buffer.Response | buffer.JSONParseResponse,
 			"text/plain",
 			`{"a":"1"}`,
 			map[string]interface{}{},
@@ -259,7 +262,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodPost, "/test", io.NopCloser(strings.NewReader(`{"a":"1"}`)))
 			req.Header.Set("Content-Type", tt.contentType)
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
+			helper.Must(eval.SetGetBody(req, buffer.Request, 512))
 
 			ctx := context.WithValue(req.Context(), request.BufferOptions, tt.bufferOptions)
 			resp := &http.Response{
@@ -270,9 +273,10 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 				Request: req.WithContext(ctx),
 			}
 
-			hclContext := baseCtx.WithBeresp(resp, cty.NilVal, true).HCLContext()
+			ctx, _, _, _ = baseCtx.WithBeresp(resp, cty.NilVal)
+			hclContext := ctx.Value(request.ContextType).(*eval.Context).HCLContext()
 
-			beRequests := seetie.ValueToMap(hclContext.Variables[eval.BackendRequests])
+			beRequests := seetie.ValueToMap(hclContext.Variables[variables.BackendRequests])
 			defaultRequest := beRequests["default"].(map[string]interface{})
 			if defaultRequest["body"] != tt.expBereqsDefBody {
 				subT.Errorf("backend_requests.default.body expected: %#v, got: %#v", tt.expBereqsDefBody, defaultRequest["body"])
@@ -281,7 +285,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 				subT.Errorf("backend_requests.default.json_body expected: %#v, got: %#v", tt.expBereqsDefJsonBody, defaultRequest["json_body"])
 			}
 
-			beRequest := seetie.ValueToMap(hclContext.Variables[eval.BackendRequest])
+			beRequest := seetie.ValueToMap(hclContext.Variables[variables.BackendRequest])
 			if beRequest["body"] != tt.expBereqBody {
 				subT.Errorf("backend_request.body expected: %#v, got: %#v", tt.expBereqBody, beRequest["body"])
 			}
@@ -289,7 +293,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 				subT.Errorf("backend_request.json_body expected: %#v, got: %#v", tt.expBereqJsonBody, beRequest["json_body"])
 			}
 
-			beResponses := seetie.ValueToMap(hclContext.Variables[eval.BackendResponses])
+			beResponses := seetie.ValueToMap(hclContext.Variables[variables.BackendResponses])
 			defaultResponse := beResponses["default"].(map[string]interface{})
 			if defaultResponse["body"] != tt.expBerespsDefBody {
 				subT.Errorf("backend_responses.default.body expected: %#v, got: %#v", tt.expBerespsDefBody, defaultResponse["body"])
@@ -298,7 +302,7 @@ func TestContext_buffer_parseJSON(t *testing.T) {
 				subT.Errorf("backend_responses.default.json_body expected: %#v, got: %#v", tt.expBerespsDefJsonBody, defaultResponse["json_body"])
 			}
 
-			beResponse := seetie.ValueToMap(hclContext.Variables[eval.BackendResponse])
+			beResponse := seetie.ValueToMap(hclContext.Variables[variables.BackendResponse])
 			if beResponse["body"] != tt.expBerespBody {
 				subT.Errorf("backend_response.body expected: %#v, got: %#v", tt.expBerespBody, beResponse["body"])
 			}

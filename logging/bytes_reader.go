@@ -13,7 +13,7 @@ var _ io.ReadCloser = &BytesCountReader{}
 
 type BytesCountReader struct {
 	c context.Context
-	n int64
+	n atomic.Int64
 	r io.ReadCloser
 }
 
@@ -27,14 +27,14 @@ func NewBytesCountReader(beresp *http.Response) io.ReadCloser {
 
 func (b *BytesCountReader) Read(p []byte) (n int, err error) {
 	n, err = b.r.Read(p)
-	b.n += int64(n)
+	b.n.Add(int64(n))
 	return n, err
 }
 
 func (b *BytesCountReader) Close() error {
 	bytesPtr, ok := b.c.Value(request.BackendBytes).(*int64)
 	if ok {
-		atomic.StoreInt64(bytesPtr, b.n)
+		atomic.StoreInt64(bytesPtr, b.n.Load())
 	}
 	return b.r.Close()
 }

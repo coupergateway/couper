@@ -323,26 +323,32 @@ func TestEndpoints_BerespBody(t *testing.T) {
 		}
 	}()
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pdf", nil)
-	helper.Must(err)
+	for _, path := range []string{"/pdf", "/pdf-proxy"} {
+		t.Run(path[1:], func(st *testing.T) {
+			sh := test.New(st)
 
-	res, err := client.Do(req)
-	helper.Must(err)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pdf", nil)
+			sh.Must(err)
 
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("Expected status 200, given %d", res.StatusCode)
-	}
+			res, err := client.Do(req)
+			sh.Must(err)
 
-	resBytes, err := io.ReadAll(res.Body)
-	helper.Must(err)
-	res.Body.Close()
+			if res.StatusCode != http.StatusOK {
+				st.Fatalf("Expected status 200, given %d", res.StatusCode)
+			}
 
-	if !bytes.HasPrefix(resBytes, []byte("%PDF-1.6")) {
-		t.Errorf("Expected PDF file, given %s", resBytes)
-	}
+			resBytes, err := io.ReadAll(res.Body)
+			sh.Must(err)
+			res.Body.Close()
 
-	if val := res.Header.Get("x-body"); val != "%PDF-1.6" {
-		t.Errorf("x-body header: expected: %q, got: %q", "%PDF-1.6", val)
+			if !bytes.HasPrefix(resBytes, []byte("%PDF-1.6")) {
+				st.Errorf("Expected PDF file, given %s", resBytes)
+			}
+
+			if val := res.Header.Get("x-body"); val != "%PDF-1.6" {
+				st.Errorf("x-body header: expected: %q, got: %q", "%PDF-1.6", val)
+			}
+		})
 	}
 }
 

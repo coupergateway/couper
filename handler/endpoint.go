@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -18,6 +19,7 @@ import (
 	"github.com/coupergateway/couper/config/sequence"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/handler/producer"
 	"github.com/coupergateway/couper/server/writer"
 	"github.com/coupergateway/couper/telemetry"
@@ -37,7 +39,7 @@ type Endpoint struct {
 
 type EndpointOptions struct {
 	APIName           string
-	BufferOpts        eval.BufferOption
+	BufferOpts        buffer.Option
 	Context           *hclsyntax.Body
 	ErrorTemplate     *errors.Template
 	ErrorHandler      http.Handler
@@ -57,7 +59,7 @@ type EndpointOptions struct {
 
 type BodyLimit interface {
 	RequestLimit() int64
-	BufferOptions() eval.BufferOption
+	BufferOptions() buffer.Option
 }
 
 func NewEndpoint(opts *EndpointOptions, log *logrus.Entry, modifier []hcl.Body) *Endpoint {
@@ -312,14 +314,16 @@ func (r ResultPanic) Error() string {
 }
 
 // produce hands over all possible outgoing requests to the producer interface and reads
-// the backend response results afterwards. Returns first occurred backend error.
+// the backend response results afterward. Returns first occurred backend error.
 func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	results := make(producer.ResultMap)
 
 	outreq := req.WithContext(context.WithValue(req.Context(), request.ResponseBlock, e.opts.Response != nil))
 
 	inputChannels, outputChannels, resultChannels := newChannels(e.opts.Items)
-	for name, prod := range e.opts.Producers {
+	sortedProducers := server.SortDefault(e.opts.Producers)
+	for _, name := range sortedProducers {
+		prod := e.opts.Producers[name]
 		go func(n string, rt producer.Roundtrip, intChs, outChs []chan *producer.Result) {
 			defer func() {
 				if rp := recover(); rp != nil {
@@ -340,8 +344,9 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 			res := rt.Produce(outreq)
 			passToOutputChannels(res, outChs)
 		}(name, prod, inputChannels[name], outputChannels[name])
+		time.Sleep(time.Millisecond * 2)
 	}
-	readResults(resultChannels, results)
+	readResults(e.opts.Items, resultChannels, results)
 
 	var err error // TODO: prefer default resp err
 	// TODO: additionally log all panic error types
@@ -355,10 +360,10 @@ func (e *Endpoint) produce(req *http.Request) (producer.ResultMap, error) {
 	return results, err
 }
 
-func readResults(resultChannels map[string]chan *producer.Result, beresps producer.ResultMap) {
-	for name, resultCh := range resultChannels {
-		res := <-resultCh
-		beresps[name] = res
+func readResults(items sequence.List, resultChannels map[string]chan *producer.Result, beresps producer.ResultMap) {
+	for _, item := range items {
+		res := <-resultChannels[item.Name]
+		beresps[item.Name] = res
 	}
 }
 
@@ -406,7 +411,7 @@ func (e *Endpoint) handleError(rw http.ResponseWriter, req *http.Request, err er
 	return true
 }
 
-func (e *Endpoint) BufferOptions() eval.BufferOption {
+func (e *Endpoint) BufferOptions() buffer.Option {
 	return e.opts.BufferOpts
 }
 
