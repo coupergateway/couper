@@ -17,11 +17,11 @@ import (
 type Option uint8
 
 const (
-	None              Option = iota
-	Request                  = 1
-	Response                 = 2
-	JSONParseRequest         = 4
-	JSONParseResponse        = 8
+	None              Option = 0
+	Request           Option = 1
+	Response          Option = 2
+	JSONParseRequest  Option = 4
+	JSONParseResponse Option = 8
 )
 
 func (i Option) Request() bool {
@@ -86,7 +86,7 @@ func Must(bodies ...hcl.Body) Option {
 			rootName := traversal.RootName()
 
 			if len(traversal) == 1 {
-				if rootName == variables.ClientRequest || rootName == variables.BackendRequest {
+				if rootName == variables.ClientRequest || rootName == variables.BackendRequest || rootName == variables.BackendRequests {
 					result |= Request
 				}
 				if rootName == variables.BackendResponses || rootName == variables.BackendResponse {
@@ -95,8 +95,8 @@ func Must(bodies ...hcl.Body) Option {
 				continue
 			}
 
-			if rootName != variables.ClientRequest && rootName != variables.BackendRequest &&
-				rootName != variables.BackendResponses && rootName != variables.BackendResponse {
+			if rootName != variables.ClientRequest && rootName != variables.BackendRequest && rootName != variables.BackendRequests &&
+				rootName != variables.BackendResponse && rootName != variables.BackendResponses {
 				continue
 			}
 
