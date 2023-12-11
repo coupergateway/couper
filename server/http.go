@@ -109,7 +109,10 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		telemetryHandler = middleware.NewMetricsHandler()(httpSrv)
 	}
 	if settings.TelemetryTraces {
-		telemetryHandler = middleware.NewTraceHandler()(telemetryHandler)
+		telemetryHandler = middleware.NewTraceHandler(
+			settings.TelemetryTracesWithParentOnly,
+			settings.TelemetryTracesTrustParent,
+		)(telemetryHandler)
 	}
 
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(telemetryHandler)
