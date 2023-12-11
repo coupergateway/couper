@@ -48,18 +48,16 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		trace.WithAttributes(attribute.String("couper.uid", req.Context().Value(request.UID).(string))),
 	}
 
-	traceCtx := &propagation.TraceContext{}
 	parentCtx := req.Context()
 	if th.trustParent {
-		parentCtx = traceCtx.Extract(parentCtx, propagation.HeaderCarrier(req.Header))
+		parentCtx = otel.GetTextMapPropagator().Extract(parentCtx, propagation.HeaderCarrier(req.Header))
 	}
 
 	tracer := otel.GetTracerProvider().Tracer(instrumentation.Name)
 	ctx, span := tracer.Start(parentCtx, spanName, opts...)
 	defer span.End()
 
-	traceCtx.Inject(ctx, propagation.HeaderCarrier(req.Header))
-
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 	*req = *req.WithContext(ctx)
 	th.handler.ServeHTTP(rw, req)
 
