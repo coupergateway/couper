@@ -51,6 +51,7 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	parentCtx := req.Context()
 	if th.trustParent {
 		parentCtx = otel.GetTextMapPropagator().Extract(parentCtx, propagation.HeaderCarrier(req.Header))
+		opts = append(opts, trace.WithLinks(trace.Link{SpanContext: trace.SpanContextFromContext(parentCtx)}))
 	}
 
 	tracer := otel.GetTracerProvider().Tracer(instrumentation.Name)
