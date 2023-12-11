@@ -17,8 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
+	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -299,14 +298,8 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	counter, _ := meter.Int64Counter(
-		instrumentation.BackendRequest,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
-	duration, _ := meter.Float64Histogram(
-		instrumentation.BackendRequestDuration,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
+	counter, _ := meter.Int64Counter(instrumentation.BackendRequest)
+	duration, _ := meter.Float64Histogram(instrumentation.BackendRequestDuration)
 
 	attrs := []attribute.KeyValue{
 		attribute.String("backend_name", tc.BackendName),
@@ -326,8 +319,9 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		attrs = append(attrs, statusKey.Int(beresp.StatusCode))
 	}
 
-	defer counter.Add(req.Context(), 1, attrs...)
-	defer duration.Record(req.Context(), endSeconds, attrs...)
+	option := metric.WithAttributes(attrs...)
+	defer counter.Add(req.Context(), 1, option)
+	defer duration.Record(req.Context(), endSeconds, option)
 
 	if err != nil {
 		select {
