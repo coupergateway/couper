@@ -5,6 +5,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
@@ -14,18 +15,30 @@ import (
 )
 
 type TraceHandler struct {
-	handler http.Handler
+	handler     http.Handler
+	parentOnly  bool
+	trustParent bool
 }
 
-func NewTraceHandler() Next {
+func NewTraceHandler(parentOnly, trustParent bool) Next {
 	return func(handler http.Handler) *NextHandler {
 		return NewHandler(&TraceHandler{
-			handler: handler,
+			handler:     handler,
+			parentOnly:  parentOnly,
+			trustParent: trustParent,
 		}, handler)
 	}
 }
 
 func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	traceParent := req.Header.Get("Traceparent")
+	if th.parentOnly && traceParent == "" {
+		// Only trace if a 'traceparent' header is present.
+		// This allows e.g. an ingress to trace based on percentage configuration.
+		th.handler.ServeHTTP(rw, req)
+		return
+	}
+
 	spanName := req.URL.EscapedPath()
 	opts := []trace.SpanStartOption{
 		trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", req)...),
@@ -35,9 +48,17 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		trace.WithAttributes(attribute.String("couper.uid", req.Context().Value(request.UID).(string))),
 	}
 
+	traceCtx := &propagation.TraceContext{}
+	parentCtx := req.Context()
+	if th.trustParent {
+		parentCtx = traceCtx.Extract(parentCtx, propagation.HeaderCarrier(req.Header))
+	}
+
 	tracer := otel.GetTracerProvider().Tracer(instrumentation.Name)
-	ctx, span := tracer.Start(req.Context(), spanName, opts...)
+	ctx, span := tracer.Start(parentCtx, spanName, opts...)
 	defer span.End()
+
+	traceCtx.Inject(ctx, propagation.HeaderCarrier(req.Header))
 
 	*req = *req.WithContext(ctx)
 	th.handler.ServeHTTP(rw, req)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/env"
@@ -53,6 +54,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields := Fields{
 		"uid":    req.Context().Value(request.UID),
 		"method": req.Method,
+	}
+
+	if span := trace.SpanContextFromContext(req.Context()); span.IsValid() {
+		fields["trace_id"] = span.TraceID()
 	}
 
 	if depOn, ok := req.Context().Value(request.EndpointSequenceDependsOn).(string); ok && depOn != "" {
