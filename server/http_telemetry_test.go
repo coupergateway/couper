@@ -14,7 +14,6 @@ import (
 )
 
 func TestServeMetrics(t *testing.T) {
-	t.Skip("TODO: stabilize metrics")
 	helper := test.New(t)
 	shutdown, _ := newCouper("testdata/integration/telemetry/01_couper.hcl", helper)
 	defer shutdown()
