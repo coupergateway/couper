@@ -40,7 +40,7 @@ type lock struct {
 
 // Introspector represents a token introspector.
 type Introspector struct {
-	authenticator *oauth2.ClientAuthenticator
+	authenticator oauth2.ClientAuthenticator
 	conf          *config.Introspection
 	locks         sync.Map
 	memStore      *cache.MemoryStore
