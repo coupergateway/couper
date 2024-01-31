@@ -24,7 +24,7 @@ const (
 
 // Client represents an OAuth2 client.
 type Client struct {
-	authenticator *ClientAuthenticator
+	authenticator ClientAuthenticator
 	backend       http.RoundTripper
 	asConfig      config.OAuth2AS
 	clientConfig  config.OAuth2Client
@@ -32,7 +32,7 @@ type Client struct {
 }
 
 func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
-	var authenticator *ClientAuthenticator
+	var authenticator ClientAuthenticator
 	if clientConfig.ClientAuthenticationRequired() {
 		tokenEndpoint, err := asConfig.GetTokenEndpoint()
 		if err != nil {
@@ -87,9 +87,11 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 
 	formParams.Set("grant_type", c.grantType)
 
-	err = c.authenticator.Authenticate(&formParams, outreq)
-	if err != nil {
-		return nil, err
+	if c.authenticator != nil {
+		err = c.authenticator.Authenticate(&formParams, outreq)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
