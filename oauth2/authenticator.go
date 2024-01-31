@@ -125,6 +125,13 @@ type JwtClientAuthenticator struct {
 	jsc      *lib.JWTSigningConfig
 }
 
+func csjAlgCheckFunc(algo acjwt.Algorithm) error {
+	if !algo.IsHMAC() {
+		return fmt.Errorf("inappropriate signature algorithm with %s", clientSecretJwt)
+	}
+	return nil
+}
+
 func newCsjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret, aud string, jwtSigningProfile *config.JWTSigningProfile) (ClientAuthenticator, error) {
 	if clientSecret == "" {
 		return nil, fmt.Errorf("client_secret must not be empty with %s", clientSecretJwt)
@@ -140,13 +147,7 @@ func newCsjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret,
 	}
 	jwtSigningProfile.Key = clientSecret
 
-	algCheckFunc := func(algo acjwt.Algorithm) error {
-		if !algo.IsHMAC() {
-			return fmt.Errorf("inappropriate signature algorithm with %s", clientSecretJwt)
-		}
-		return nil
-	}
-	signingConfig, headers, claims, err := getFromSigningProfile(evalCtx, clientID, aud, jwtSigningProfile, algCheckFunc)
+	signingConfig, headers, claims, err := getFromSigningProfile(evalCtx, clientID, aud, jwtSigningProfile, csjAlgCheckFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +158,13 @@ func newCsjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret,
 		headers,
 		signingConfig,
 	}, nil
+}
+
+func pkjAlgCheckFunc(algo acjwt.Algorithm) error {
+	if algo.IsHMAC() {
+		return fmt.Errorf("inappropriate signature algorithm with %s", privateKeyJwt)
+	}
+	return nil
 }
 
 func newPkjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret, aud string, jwtSigningProfile *config.JWTSigningProfile) (ClientAuthenticator, error) {
@@ -170,13 +178,7 @@ func newPkjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret,
 		return nil, fmt.Errorf("key and key_file must not both be empty with %s", privateKeyJwt)
 	}
 
-	algCheckFunc := func(algo acjwt.Algorithm) error {
-		if algo.IsHMAC() {
-			return fmt.Errorf("inappropriate signature algorithm with %s", privateKeyJwt)
-		}
-		return nil
-	}
-	signingConfig, headers, claims, err := getFromSigningProfile(evalCtx, clientID, aud, jwtSigningProfile, algCheckFunc)
+	signingConfig, headers, claims, err := getFromSigningProfile(evalCtx, clientID, aud, jwtSigningProfile, pkjAlgCheckFunc)
 	if err != nil {
 		return nil, err
 	}
