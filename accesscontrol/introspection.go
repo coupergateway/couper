@@ -89,46 +89,20 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		}
 	}
 
-	req, _ := http.NewRequest("POST", i.conf.Endpoint, nil)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, "introspection"))
+	req, cancel, err := i.prepareIntrospectionRequest(ctx, token)
 	defer cancel()
-	outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Response)
-
-	formParams := &url.Values{}
-	formParams.Add("token", token)
-
-	err := i.authenticator.Authenticate(formParams, req)
 	if err != nil {
 		return nil, err
 	}
 
-	eval.SetBody(req, []byte(formParams.Encode()))
-
-	req = req.WithContext(outCtx)
-
-	response, err := i.transport.RoundTrip(req)
+	var resBytes []byte
+	resBytes, introspectionData, err = i.requestIntrospection(req)
 	if err != nil {
-		return nil, fmt.Errorf("introspection response: %s", err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("introspection response status code %d", response.StatusCode)
-	}
-
-	resBytes, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("introspection response cannot be read: %s", err)
-	}
-
-	err = json.Unmarshal(resBytes, &introspectionData)
-	if err != nil {
-		return nil, fmt.Errorf("introspection response is not JSON: %s", err)
+		return nil, err
 	}
 
 	if i.conf.TTLSeconds <= 0 {
+		// do not cache
 		return introspectionData, nil
 	}
 
@@ -138,12 +112,65 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		}
 	}
 
+	ttl := i.getTtl(exp, nbf, introspectionData.Active())
+	// cache introspection data
+	i.memStore.Set(key, resBytes, ttl)
+
+	return introspectionData, nil
+}
+
+func (i *Introspector) prepareIntrospectionRequest(ctx context.Context, token string) (*http.Request, context.CancelFunc, error) {
+	req, _ := http.NewRequest("POST", i.conf.Endpoint, nil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, "introspection"))
+	outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Response)
+
+	formParams := &url.Values{}
+	formParams.Add("token", token)
+
+	err := i.authenticator.Authenticate(formParams, req)
+	if err != nil {
+		return nil, cancel, err
+	}
+
+	eval.SetBody(req, []byte(formParams.Encode()))
+
+	return req.WithContext(outCtx), cancel, nil
+}
+
+func (i *Introspector) requestIntrospection(req *http.Request) ([]byte, IntrospectionResponse, error) {
+	response, err := i.transport.RoundTrip(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("introspection response: %s", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("introspection response status code %d", response.StatusCode)
+	}
+
+	resBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("introspection response cannot be read: %s", err)
+	}
+
+	var introspectionData IntrospectionResponse
+	err = json.Unmarshal(resBytes, &introspectionData)
+	if err != nil {
+		return nil, nil, fmt.Errorf("introspection response is not JSON: %s", err)
+	}
+
+	return resBytes, introspectionData, nil
+}
+
+func (i *Introspector) getTtl(exp, nbf int64, active bool) int64 {
 	ttl := i.conf.TTLSeconds
 
 	if exp > 0 {
 		now := time.Now().Unix()
 		maxTTL := exp - now
-		if !introspectionData.Active() && (nbf <= 0 || now > nbf) {
+		if !active && (nbf <= 0 || now > nbf) {
 			// nbf is unknown (token has never been inactive before being active)
 			// or nbf lies in the past (token has become active after having been inactive):
 			// token will not become active again, so we can store the response until token expires anyway
@@ -152,8 +179,5 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 			ttl = maxTTL
 		}
 	}
-	// cache introspection data
-	i.memStore.Set(key, resBytes, ttl)
-
-	return introspectionData, nil
+	return ttl
 }
