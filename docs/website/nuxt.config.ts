@@ -20,13 +20,6 @@ export default defineNuxtConfig({
         instantSearch: {
             theme: 'algolia'
         },
-        crawler: {
-            apiKey: '<WriteKey>',
-            indexName: 'docs',
-            include: undefined, // all routes
-            meta: ['title', 'description', '_path']
-        },
-
         // @ts-ignore
         indexer: {} // throws err if not set
     },
