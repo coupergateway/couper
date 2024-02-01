@@ -99,7 +99,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		}
 	}
 
-	introspectionData, err := i.requestIntrospection(ctx, token)
+	introspectionData, err := i.doRequestIntrospection(ctx, token)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		}
 	}
 
-	ttl := i.getTtl(exp, nbf, introspectionData.Active())
+	ttl := i.getTTL(exp, nbf, introspectionData.Active())
 	// cache introspection data
 	i.memStore.Set(key, introspectionData, ttl)
 
@@ -142,7 +142,7 @@ func (i *Introspector) newIntrospectionRequest(ctx context.Context, token string
 	return req.WithContext(outCtx), cancel, nil
 }
 
-func (i *Introspector) requestIntrospection(ctx context.Context, token string) (IntrospectionResponse, error) {
+func (i *Introspector) doRequestIntrospection(ctx context.Context, token string) (IntrospectionResponse, error) {
 	req, cancel, err := i.newIntrospectionRequest(ctx, token)
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func (i *Introspector) requestIntrospection(ctx context.Context, token string) (
 	return introspectionData, nil
 }
 
-func (i *Introspector) getTtl(exp, nbf int64, active bool) int64 {
+func (i *Introspector) getTTL(exp, nbf int64, active bool) int64 {
 	ttl := i.conf.TTLSeconds
 
 	if exp > 0 {
