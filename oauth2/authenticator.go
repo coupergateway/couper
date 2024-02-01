@@ -136,14 +136,8 @@ func newCsjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret,
 	if clientSecret == "" {
 		return nil, fmt.Errorf("client_secret must not be empty with %s", clientSecretJwt)
 	}
-	if jwtSigningProfile == nil {
-		return nil, fmt.Errorf("jwt_signing_profile block must be set with %s", clientSecretJwt)
-	}
-	if jwtSigningProfile.Key != "" {
-		return nil, fmt.Errorf("key must not be set with %s", clientSecretJwt)
-	}
-	if jwtSigningProfile.KeyFile != "" {
-		return nil, fmt.Errorf("key_file must not be set with %s", clientSecretJwt)
+	if err := validateSigningProfileCSJ(jwtSigningProfile); err != nil {
+		return nil, err
 	}
 	jwtSigningProfile.Key = clientSecret
 
@@ -160,6 +154,19 @@ func newCsjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret,
 	}, nil
 }
 
+func validateSigningProfileCSJ(jwtSigningProfile *config.JWTSigningProfile) error {
+	if jwtSigningProfile == nil {
+		return fmt.Errorf("jwt_signing_profile block must be set with %s", clientSecretJwt)
+	}
+	if jwtSigningProfile.Key != "" {
+		return fmt.Errorf("key must not be set with %s", clientSecretJwt)
+	}
+	if jwtSigningProfile.KeyFile != "" {
+		return fmt.Errorf("key_file must not be set with %s", clientSecretJwt)
+	}
+	return nil
+}
+
 func pkjAlgCheckFunc(algo acjwt.Algorithm) error {
 	if algo.IsHMAC() {
 		return fmt.Errorf("inappropriate signature algorithm with %s", privateKeyJwt)
@@ -171,11 +178,8 @@ func newPkjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret,
 	if clientSecret != "" {
 		return nil, fmt.Errorf("client_secret must not be set with %s", privateKeyJwt)
 	}
-	if jwtSigningProfile == nil {
-		return nil, fmt.Errorf("jwt_signing_profile block must be set with %s", privateKeyJwt)
-	}
-	if jwtSigningProfile.Key == "" && jwtSigningProfile.KeyFile == "" {
-		return nil, fmt.Errorf("key and key_file must not both be empty with %s", privateKeyJwt)
+	if err := validateSigningProfilePKJ(jwtSigningProfile); err != nil {
+		return nil, err
 	}
 
 	signingConfig, headers, claims, err := getFromSigningProfile(evalCtx, clientID, aud, jwtSigningProfile, pkjAlgCheckFunc)
@@ -189,6 +193,16 @@ func newPkjClientAuthenticator(evalCtx *hcl.EvalContext, clientID, clientSecret,
 		headers,
 		signingConfig,
 	}, nil
+}
+
+func validateSigningProfilePKJ(jwtSigningProfile *config.JWTSigningProfile) error {
+	if jwtSigningProfile == nil {
+		return fmt.Errorf("jwt_signing_profile block must be set with %s", privateKeyJwt)
+	}
+	if jwtSigningProfile.Key == "" && jwtSigningProfile.KeyFile == "" {
+		return fmt.Errorf("key and key_file must not both be empty with %s", privateKeyJwt)
+	}
+	return nil
 }
 
 func getFromSigningProfile(evalCtx *hcl.EvalContext, clientID, aud string, jwtSigningProfile *config.JWTSigningProfile, algCheckFunc func(algo acjwt.Algorithm) error) (signingConfig *lib.JWTSigningConfig, headers, claims map[string]interface{}, err error) {
