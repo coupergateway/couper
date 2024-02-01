@@ -21,6 +21,7 @@ export default defineNuxtConfig({
             theme: 'algolia'
         },
         crawler: {
+            apiKey: '<WriteKey>',
             indexName: 'docs',
             include: undefined, // all routes
             meta: ['title', 'description', '_path']

@@ -18,9 +18,9 @@ jobs:
         id: go
       - run: go version
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 'lts'
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
@@ -37,7 +37,11 @@ jobs:
 
       - name: build website
         working-directory: docs/website
-        run: npm ci && npm run build && npm run generate
+        env:
+          ALGOLIA_API_KEY: ${{ secrets.SEARCH_CLIENT_API_KEY }}
+        run: |
+          sed -i '' 's/<WriteKey>/'"$ALGOLIA_API_KEY"'/g' nuxt.config.ts
+          npm ci && npm run build && npm run generate
 
       - name: create artifact
         uses: actions/upload-artifact@v2
