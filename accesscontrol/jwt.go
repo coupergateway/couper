@@ -18,6 +18,7 @@ import (
 
 	"github.com/coupergateway/couper/accesscontrol/jwk"
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
@@ -44,11 +45,12 @@ type JWT struct {
 	permissionsClaim      string
 	permissionsMap        map[string][]string
 	jwks                  *jwk.JWKS
+	memStore              *cache.MemoryStore
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(jwtConf *config.JWT, key []byte) (*JWT, error) {
-	jwtAC, err := newJWT(jwtConf)
+func NewJWT(jwtConf *config.JWT, key []byte, memStore *cache.MemoryStore) (*JWT, error) {
+	jwtAC, err := newJWT(jwtConf, memStore)
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +114,12 @@ func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
 	return pubKey, nil
 }
 
-func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS) (*JWT, error) {
+func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS, memStore *cache.MemoryStore) (*JWT, error) {
 	if jwks == nil {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	jwtAC, err := newJWT(jwtConf)
+	jwtAC, err := newJWT(jwtConf, memStore)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +143,7 @@ type parserConfig struct {
 }
 
 func (p parserConfig) key() string {
-	return fmt.Sprintf("%s:%s:%s", p.algorithms, p.audience, p.issuer)
+	return fmt.Sprintf("pc:%s:%s:%s", p.algorithms, p.audience, p.issuer)
 }
 
 func (p parserConfig) newParser() *jwt.Parser {
@@ -159,25 +161,7 @@ func (p parserConfig) newParser() *jwt.Parser {
 	return jwt.NewParser(options...)
 }
 
-// parsers stores JWT parser for a (serialized) parser config
-var parsers map[string]*jwt.Parser
-
-// getParser returns a JWT parser for a parser config
-func getParser(p parserConfig) *jwt.Parser {
-	key := p.key()
-	if parsers == nil {
-		parsers = map[string]*jwt.Parser{}
-	}
-	if parser, ok := parsers[key]; ok {
-		return parser
-	}
-
-	parser := p.newParser()
-	parsers[key] = parser
-	return parser
-}
-
-func newJWT(jwtConf *config.JWT) (*JWT, error) {
+func newJWT(jwtConf *config.JWT, memStore *cache.MemoryStore) (*JWT, error) {
 	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
 	if err != nil {
 		return nil, err
@@ -191,6 +175,7 @@ func newJWT(jwtConf *config.JWT) (*JWT, error) {
 		claims:                jwtConf.Claims,
 		claimsRequired:        jwtConf.ClaimsRequired,
 		disablePrivateCaching: jwtConf.DisablePrivateCaching,
+		memStore:              memStore,
 		name:                  jwtConf.Name,
 		rolesClaim:            jwtConf.RolesClaim,
 		rolesMap:              jwtConf.RolesMap,
@@ -203,6 +188,18 @@ func newJWT(jwtConf *config.JWT) (*JWT, error) {
 
 func (j *JWT) DisablePrivateCaching() bool {
 	return j.disablePrivateCaching
+}
+
+// getParser returns a JWT parser for a parser config
+func (j *JWT) getParser(p parserConfig) *jwt.Parser {
+	key := p.key()
+	if parser, ok := j.memStore.Get(key).(*jwt.Parser); ok {
+		return parser
+	}
+
+	parser := p.newParser()
+	j.memStore.Set(key, parser, 3600)
+	return parser
 }
 
 // Validate reading the token from configured source and validates against the key.
@@ -226,7 +223,7 @@ func (j *JWT) Validate(req *http.Request) error {
 	if iss, ok := expectedClaims["iss"].(string); ok {
 		parserConfig.issuer = iss
 	}
-	parser := getParser(parserConfig)
+	parser := j.getParser(parserConfig)
 
 	if j.jwks != nil {
 		// load JWKS if needed

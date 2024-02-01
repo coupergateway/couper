@@ -601,14 +601,14 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 			return nil, jerr
 		}
 
-		jwt, err = ac.NewJWTFromJWKS(jwtConf, jwks)
+		jwt, err = ac.NewJWTFromJWKS(jwtConf, jwks, memStore)
 	} else {
 		key, kerr := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 		if kerr != nil {
 			return nil, kerr
 		}
 
-		jwt, err = ac.NewJWT(jwtConf, key)
+		jwt, err = ac.NewJWT(jwtConf, key, memStore)
 	}
 	if err != nil {
 		return nil, err
