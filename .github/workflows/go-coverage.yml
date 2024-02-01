@@ -1,0 +1,29 @@
+name: 'go test-coverage report'
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '!*' # Do not execute on tags
+  pull_request:
+    paths:
+      - '!*.MD'
+jobs:
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4.1.0
+        with:
+          go-version: '1.20'
+      - uses: actions/checkout@v4
+      - name: 'test & report'
+        run: |
+          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+          chmod +x ./cc-test-reporter
+          ./cc-test-reporter before-build
+          make test-coverage
+          ./cc-test-reporter after-build --debug --prefix "github.com/coupergateway/couper" --exit-code $?
+        env:
+          CC_TEST_REPORTER_ID: 8b070e62baadacda6fdfd7bac69c3f46795b7cae456073982599e9dd87c66ce9

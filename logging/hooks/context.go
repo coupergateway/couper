@@ -5,8 +5,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/logging"
 )
 
 var _ logrus.Hook = &Context{}

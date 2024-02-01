@@ -23,4 +23,4 @@ values: [
 
 Examples:
 
-- [`environment_variables`](https://github.com/avenga/couper-examples/blob/master/env-var/README.md)
+- [`environment_variables`](https://github.com/coupergateway/couper-examples/blob/master/env-var/README.md)

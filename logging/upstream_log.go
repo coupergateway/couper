@@ -12,14 +12,15 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
+	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/handler/validation"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/utils"
 )
 
 var (
@@ -53,6 +54,10 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 	fields := Fields{
 		"uid":    req.Context().Value(request.UID),
 		"method": req.Method,
+	}
+
+	if span := trace.SpanContextFromContext(req.Context()); span.IsValid() {
+		fields["trace_id"] = span.TraceID()
 	}
 
 	if depOn, ok := req.Context().Value(request.EndpointSequenceDependsOn).(string); ok && depOn != "" {

@@ -8,12 +8,12 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/eval/buffer"
 )
 
 type OpenAPIOptions struct {
-	buffer                   eval.BufferOption
+	buffer                   buffer.Option
 	ignoreRequestViolations  bool
 	ignoreResponseViolations bool
 	filterOptions            *openapi3filter.Options
@@ -52,7 +52,7 @@ func NewOpenAPIOptionsFromBytes(openapi *config.OpenAPI, bytes []byte) (*OpenAPI
 
 	// Always buffer if openAPI is active. Request buffering is handled by openapifilter too.
 	// Anyway adding request buffer option to let Couper check the body limits.
-	bufferBodies := eval.BufferRequest | eval.BufferResponse
+	bufferBodies := buffer.Option(buffer.Request | buffer.Response)
 
 	return &OpenAPIOptions{
 		buffer: bufferBodies,

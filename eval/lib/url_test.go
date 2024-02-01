@@ -6,11 +6,41 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/internal/test"
 )
+
+func TestURLDecode(t *testing.T) {
+	helper := test.New(t)
+
+	cf, err := configload.LoadBytes([]byte(`server "test" {}`), "couper.hcl")
+	helper.Must(err)
+
+	hclContext := cf.Context.Value(request.ContextType).(*eval.Context).HCLContext()
+
+	s := "ABC123abc%0A%20%3A%2F%3F%23%5B%5D%40%21%24%26%27%28%29%2A%2B%2C%3B%3D%25"
+	decodedV, err := hclContext.Functions["url_decode"].Call([]cty.Value{cty.StringVal(s)})
+	helper.Must(err)
+
+	if !cty.String.Equals(decodedV.Type()) {
+		t.Errorf("Wrong return type; expected %s, got: %s", cty.String.FriendlyName(), decodedV.Type().FriendlyName())
+	}
+
+	decoded := decodedV.AsString()
+	expected := "ABC123abc\n :/?#[]@!$&'()*+,;=%"
+	if decoded != expected {
+		t.Errorf("Wrong return value; expected %s, got: %s", expected, decoded)
+	}
+
+	// error case
+	s = "%"
+	_, err = hclContext.Functions["url_decode"].Call([]cty.Value{cty.StringVal(s)})
+	if err == nil {
+		t.Error("Expected error")
+	}
+}
 
 func TestURLEncode(t *testing.T) {
 	helper := test.New(t)

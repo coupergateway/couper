@@ -17,15 +17,16 @@ import (
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/handler/validation"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestBackend_RoundTrip_Timings(t *testing.T) {
@@ -139,7 +140,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	}, nil, log)
 
 	req := httptest.NewRequest(http.MethodOptions, "http://1.2.3.4/", nil)
-	req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, eval.BufferResponse))
+	req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, buffer.Response))
 	req.Header.Set("Accept-Encoding", "br, gzip")
 	res, err := backend.RoundTrip(req)
 	helper.Must(err)
@@ -332,7 +333,7 @@ func TestBackend_director(t *testing.T) {
 		ctx       context.Context
 		expReq    *http.Request
 	}{
-		{"proxy url settings", `origin = "http://1.2.3.4"`, "", bgCtx, httptest.NewRequest("GET", "http://1.2.3.4", nil)},
+		{"proxy url settings", `origin = "http://1.2.3.4"`, "", bgCtx, &http.Request{URL: &url.URL{Scheme: "http", Host: "1.2.3.4"}, Host: "example.com"}},
 		{"proxy url settings w/hostname", `
 			origin = "http://1.2.3.4"
 			hostname =  "couper.io"

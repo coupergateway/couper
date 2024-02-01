@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestCookies_IntegrationStrip(t *testing.T) {

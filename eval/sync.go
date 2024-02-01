@@ -1,12 +1,14 @@
 package eval
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval/variables"
 )
 
 const TokenRequestPrefix = "_tr_"
@@ -27,32 +29,36 @@ type syncPair struct {
 	bereq, beresp cty.Value
 }
 
-// Set finalized cty req/resp pair.
-func (sv *SyncedVariables) Set(beresp *http.Response) {
+func (sv *SyncedVariables) SetResp(beresp *http.Response) {
 	ctx := beresp.Request.Context()
-	name, bereqV, berespV := newBerespValues(ctx, true, beresp)
+	name, bereqV, berespV := newBerespValues(ctx, beresp)
 
+	sv.Set(ctx, name, bereqV, berespV)
+}
+
+// Set finalized cty req/resp pair.
+func (sv *SyncedVariables) Set(ctx context.Context, reqName string, bereqV, berespV cty.Value) {
 	if tr, ok := ctx.Value(request.TokenRequest).(string); ok && tr != "" {
-		name = TokenRequestPrefix + tr
+		reqName = TokenRequestPrefix + tr
 	}
 
 	backendName, _ := ctx.Value(request.BackendName).(string)
 
-	sv.items.Store(name, &syncPair{
+	sv.items.Store(reqName, &syncPair{
 		backendName: backendName,
 		bereq:       bereqV,
 		beresp:      berespV,
-		name:        name,
+		name:        reqName,
 	})
 }
 
-func (sv *SyncedVariables) Sync(variables map[string]cty.Value) {
+func (sv *SyncedVariables) Sync(vars map[string]cty.Value) {
 	var bereqs, beresps map[string]cty.Value
-	if brs, ok := variables[BackendRequests]; ok {
+	if brs, ok := vars[variables.BackendRequests]; ok {
 		bereqs = brs.AsValueMap()
 	}
 
-	if brps, ok := variables[BackendResponses]; ok {
+	if brps, ok := vars[variables.BackendResponses]; ok {
 		beresps = brps.AsValueMap()
 	}
 
@@ -72,6 +78,6 @@ func (sv *SyncedVariables) Sync(variables map[string]cty.Value) {
 		return true
 	})
 
-	variables[BackendRequests] = cty.ObjectVal(bereqs)
-	variables[BackendResponses] = cty.ObjectVal(beresps)
+	vars[variables.BackendRequests] = cty.ObjectVal(bereqs)
+	vars[variables.BackendResponses] = cty.ObjectVal(beresps)
 }

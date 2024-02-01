@@ -10,7 +10,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 const (

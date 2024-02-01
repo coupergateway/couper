@@ -12,11 +12,11 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/handler/validation"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 // TestOpenAPIValidator_ValidateRequest should not test the openapi validation functionality but must
@@ -116,26 +116,27 @@ func TestOpenAPIValidator_RelativeServerURL(t *testing.T) {
 
 	log, hook := test.NewLogger()
 	logger := log.WithContext(context.Background())
-	backendBody := body.NewHCLSyntaxBodyWithStringAttr("origin", "https://httpbin.org")
 	oa := &config.OpenAPI{
 		File: filepath.Join("testdata/backend_02_openapi.yaml"),
 	}
 	openAPI, err := validation.NewOpenAPIOptions(oa)
 	helper.Must(err)
 
+	origin := test.NewBackend()
+	defer origin.Close()
+
+	backendBody := body.NewHCLSyntaxBodyWithStringAttr("origin", origin.Addr())
+
 	backend := transport.NewBackend(backendBody, &transport.Config{}, &transport.BackendOptions{
 		OpenAPI: openAPI,
 	}, logger)
-
-	origin := test.NewBackend()
-	defer origin.Close()
 
 	req := httptest.NewRequest(http.MethodGet, origin.Addr()+"/anything", nil)
 
 	hook.Reset()
 	_, err = backend.RoundTrip(req)
 	if err != nil {
-		helper.Must(err)
+		t.Error(err)
 	}
 
 	if t.Failed() {

@@ -17,25 +17,26 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
+	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/ratelimit"
-	"github.com/avenga/couper/handler/validation"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/telemetry"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/eval/variables"
+	"github.com/coupergateway/couper/handler/ratelimit"
+	"github.com/coupergateway/couper/handler/validation"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/telemetry"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
+	"github.com/coupergateway/couper/utils"
 )
 
 var (
@@ -120,17 +121,19 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 		ctxBody = hclbody.MergeBodies(ctxBody, b.context, false)
 	}
 
+	outreq := req.WithContext(context.WithValue(req.Context(), request.BackendName, b.name))
+
 	// originalReq for token-request retry purposes
-	originalReq, err := b.withTokenRequest(req)
+	originalReq, err := b.withTokenRequest(outreq)
 	if err != nil {
 		return nil, errors.BetaBackendTokenRequest.Label(b.name).With(err)
 	}
 
 	var backendVal cty.Value
-	hclCtx := eval.ContextFromRequest(req).HCLContextSync()
-	if v, ok := hclCtx.Variables[eval.Backends]; ok {
+	hclCtx := eval.ContextFromRequest(outreq).HCLContextSync()
+	if v, ok := hclCtx.Variables[variables.Backends]; ok {
 		if m, exist := v.AsValueMap()[b.name]; exist {
-			hclCtx.Variables[eval.Backend] = m
+			hclCtx.Variables[variables.Backend] = m
 			backendVal = m
 		}
 	}
@@ -143,12 +146,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Execute before <b.evalTransport()> due to right
 	// handling of query-params in the URL attribute.
-	if err = eval.ApplyRequestContext(hclCtx, ctxBody, req); err != nil {
+	if err = eval.ApplyRequestContext(hclCtx, ctxBody, outreq); err != nil {
 		return nil, err
 	}
 
 	// TODO: split timing eval
-	tc, err := b.evalTransport(hclCtx, ctxBody, req)
+	tc, err := b.evalTransport(hclCtx, ctxBody, outreq)
 	if err != nil {
 		return nil, err
 	}
@@ -166,74 +169,72 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	tconf.TTFBTimeout = tc.TTFBTimeout
 	tconf.Timeout = tc.Timeout
 
-	deadlineErr := b.withTimeout(req, &tconf)
+	deadlineErr := b.withTimeout(outreq, &tconf)
 
-	req.URL.Host = tconf.Origin
-	req.URL.Scheme = tconf.Scheme
-	req.Host = tconf.Hostname
+	outreq.URL.Host = tconf.Origin
+	outreq.URL.Scheme = tconf.Scheme
+	outreq.Host = tconf.Hostname
 
 	// handler.Proxy marks proxy round-trips since we should not handle headers twice.
-	_, isProxyReq := req.Context().Value(request.RoundTripProxy).(bool)
+	_, isProxyReq := outreq.Context().Value(request.RoundTripProxy).(bool)
 
 	if !isProxyReq {
-		RemoveConnectionHeaders(req.Header)
-		RemoveHopHeaders(req.Header)
+		RemoveConnectionHeaders(outreq.Header)
+		RemoveHopHeaders(outreq.Header)
 	}
 
-	writer.ModifyAcceptEncoding(req.Header)
+	writer.ModifyAcceptEncoding(outreq.Header)
 
-	if xff, ok := req.Context().Value(request.XFF).(string); ok {
+	if xff, ok := outreq.Context().Value(request.XFF).(string); ok {
 		if xff != "" {
-			req.Header.Set("X-Forwarded-For", xff)
+			outreq.Header.Set("X-Forwarded-For", xff)
 		} else {
-			req.Header.Del("X-Forwarded-For")
+			outreq.Header.Del("X-Forwarded-For")
 		}
 	}
 
-	b.withBasicAuth(req, hclCtx, ctxBody)
-	if err = b.withPathPrefix(req, hclCtx, ctxBody); err != nil {
+	b.withBasicAuth(outreq, hclCtx, ctxBody)
+	if err = b.withPathPrefix(outreq, hclCtx, ctxBody); err != nil {
 		return nil, err
 	}
 
-	setUserAgent(req)
-	req.Close = false
+	setUserAgent(outreq)
+	outreq.Close = false
 
 	if _, ok := req.Context().Value(request.WebsocketsAllowed).(bool); !ok {
-		req.Header.Del("Connection")
-		req.Header.Del("Upgrade")
+		outreq.Header.Del("Connection")
+		outreq.Header.Del("Upgrade")
 	}
 
 	var beresp *http.Response
 	if b.openAPIValidator != nil {
-		beresp, err = b.openAPIValidate(req, &tconf, deadlineErr)
+		beresp, err = b.openAPIValidate(outreq, &tconf, deadlineErr)
 	} else {
-		beresp, err = b.innerRoundTrip(req, &tconf, deadlineErr)
+		beresp, err = b.innerRoundTrip(outreq, &tconf, deadlineErr)
 	}
 
 	if err != nil {
 		if beresp == nil {
 			beresp = &http.Response{
-				Request: req,
+				Request: outreq,
 			} // provide outreq (variable) on error cases
 		}
-		if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
-			varSync.Set(beresp)
+		if varSync, ok := outreq.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+			varSync.SetResp(beresp)
 		}
 		return beresp, err
 	}
 
-	req = req.WithContext(context.WithValue(req.Context(), request.BackendName, b.name))
-
-	if retry, rerr := b.withRetryTokenRequest(req, beresp); rerr != nil {
+	if retry, rerr := b.withRetryTokenRequest(outreq, beresp); rerr != nil {
 		return beresp, errors.BetaBackendTokenRequest.Label(b.name).With(rerr)
 	} else if retry {
 		return b.RoundTrip(originalReq)
 	}
 
-	if !eval.IsUpgradeResponse(req, beresp) {
+	if !eval.IsUpgradeResponse(outreq, beresp) {
 		beresp.Body = logging.NewBytesCountReader(beresp)
 		if err = setGzipReader(beresp); err != nil {
-			b.upstreamLog.LogEntry().WithContext(req.Context()).WithError(err).Error()
+			b.upstreamLog.LogEntry().WithContext(outreq.Context()).WithError(err).Error()
 		}
 	}
 
@@ -245,24 +246,24 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Backend response context creates the beresp variables in first place and applies this context
 	// to the current beresp obj. Downstream response context evals reading their beresp variable values
 	// from this result.
-	evalCtx := eval.ContextFromRequest(req)
-	// has own body variable reference?
-	readBody := eval.MustBuffer(b.context)&eval.BufferResponse == eval.BufferResponse
-	evalCtx = evalCtx.WithBeresp(beresp, backendVal, readBody)
+	evalCtx := eval.ContextFromRequest(outreq)
+	var bereqV, berespV cty.Value
+	var reqName string
+	evalCtx, reqName, bereqV, berespV = evalCtx.WithBeresp(beresp, backendVal)
 
 	clfValue, err := eval.EvalCustomLogFields(evalCtx.HCLContext(), ctxBody)
 	if err != nil {
-		logError, _ := req.Context().Value(request.LogCustomUpstreamError).(*error)
+		logError, _ := outreq.Context().Value(request.LogCustomUpstreamError).(*error)
 		*logError = err
 	} else if clfValue != cty.NilVal {
-		logValue, _ := req.Context().Value(request.LogCustomUpstreamValue).(*cty.Value)
+		logValue, _ := outreq.Context().Value(request.LogCustomUpstreamValue).(*cty.Value)
 		*logValue = clfValue
 	}
 
 	err = eval.ApplyResponseContext(evalCtx.HCLContext(), ctxBody, beresp)
 
-	if varSync, ok := req.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
-		varSync.Set(beresp)
+	if varSync, ok := outreq.Context().Value(request.ContextVariablesSynced).(*eval.SyncedVariables); ok {
+		varSync.Set(outreq.Context(), reqName, bereqV, berespV)
 	}
 
 	return beresp, err
@@ -297,14 +298,8 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	counter, _ := meter.Int64Counter(
-		instrumentation.BackendRequest,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
-	duration, _ := meter.Float64Histogram(
-		instrumentation.BackendRequestDuration,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
+	counter, _ := meter.Int64Counter(instrumentation.BackendRequest)
+	duration, _ := meter.Float64Histogram(instrumentation.BackendRequestDuration)
 
 	attrs := []attribute.KeyValue{
 		attribute.String("backend_name", tc.BackendName),
@@ -324,8 +319,9 @@ func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-ch
 		attrs = append(attrs, statusKey.Int(beresp.StatusCode))
 	}
 
-	defer counter.Add(req.Context(), 1, attrs...)
-	defer duration.Record(req.Context(), endSeconds, attrs...)
+	option := metric.WithAttributes(attrs...)
+	defer counter.Add(req.Context(), 1, option)
+	defer duration.Record(req.Context(), endSeconds, option)
 
 	if err != nil {
 		select {
@@ -522,6 +518,7 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params *hclsyntax.Body
 		attrName string
 		target   *string
 	}
+
 	for _, p := range []pair{
 		{"origin", &origin},
 		{"hostname", &hostname},
@@ -642,7 +639,7 @@ func setGzipReader(beresp *http.Response) error {
 		return nil
 	}
 
-	bufOpt := beresp.Request.Context().Value(request.BufferOptions).(eval.BufferOption)
+	bufOpt := beresp.Request.Context().Value(request.BufferOptions).(buffer.Option)
 	if !bufOpt.Response() {
 		return nil
 	}

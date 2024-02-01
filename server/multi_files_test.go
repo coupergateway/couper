@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestMultiFiles_Server(t *testing.T) {

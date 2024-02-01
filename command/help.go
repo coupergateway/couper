@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 	"github.com/sirupsen/logrus"
 )
 

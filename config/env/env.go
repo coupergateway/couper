@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 const PREFIX = "COUPER_"

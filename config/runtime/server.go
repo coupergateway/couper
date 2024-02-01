@@ -16,22 +16,23 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	ac "github.com/avenga/couper/accesscontrol"
-	"github.com/avenga/couper/accesscontrol/jwk"
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload/collect"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/definitions"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/oauth2"
-	"github.com/avenga/couper/oauth2/oidc"
-	"github.com/avenga/couper/utils"
+	ac "github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/accesscontrol/jwk"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload/collect"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/definitions"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/oauth2"
+	"github.com/coupergateway/couper/oauth2/oidc"
+	"github.com/coupergateway/couper/utils"
 )
 
 const (
@@ -315,7 +316,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				newAC(srvConf, parentAPI).
 					Merge(config.
 						NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl)).List(), nil)
-			epOpts.BufferOpts |= eval.MustBuffer(acBodies...)
+			epOpts.BufferOpts |= buffer.Must(acBodies...)
 
 			errorHandlerDefinitions := ACDefinitions{ // misuse of definitions obj for now
 				"endpoint": &AccessControl{ErrorHandler: endpointConf.ErrorHandler},

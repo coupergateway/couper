@@ -26,7 +26,7 @@ basic_auth "ba" {
 }
 ```
 
-- [Error Handling for Access Controls](https://github.com/avenga/couper-examples/blob/master/error-handling-ba/README.md).
+- [Error Handling for Access Controls](https://github.com/coupergateway/couper-examples/blob/master/error-handling-ba/README.md).
 
 ::attributes
 ---

@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/logging/hooks"
+	"github.com/coupergateway/couper/logging/hooks"
 )
 
 func NewLogger() (*logrus.Logger, *logrustest.Hook) {

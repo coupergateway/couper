@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestNewTLSProxy(t *testing.T) {

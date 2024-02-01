@@ -25,7 +25,7 @@ jobs:
     steps:
 
     - name: 'wait for tests'
-      uses: lewagon/wait-on-check-action@v1.0.0
+      uses: lewagon/wait-on-check-action@v1.3.3
       with:
         ref: ${{ github.ref }}
         check-name: 'go test & build'
@@ -33,11 +33,11 @@ jobs:
         wait-interval: 10
 
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event_name != 'workflow_dispatch'
 
     - name: checkout given tag
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       if: github.event_name == 'workflow_dispatch'
       with:
         ref: ${{ github.event.inputs.tag }}
@@ -73,16 +73,16 @@ jobs:
           - image: 'coupergateway/couper'
             username_key: DOCKER_COUPER_GATEWAY_USERNAME
             password_key: DOCKER_COUPER_GATEWAY_PASSWORD
-          - image: 'avenga/couper'
+          - image: 'avenga/couper' # TODO: remove later
             username_key: DOCKER_USERNAME
             password_key: DOCKER_PASSWORD
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         if: github.event_name != 'workflow_dispatch'
 
       - name: checkout given tag
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         if: github.event_name == 'workflow_dispatch'
         with:
           ref: 'refs/tags/${{ github.event.inputs.tag }}'
@@ -155,5 +155,5 @@ jobs:
           -X POST \
           -H "Accept: application/vnd.github+json" \
           -H "Authorization: Bearer ${{ secrets.GH_COUPER_API_TOKEN }}" \
-          https://api.github.com/repos/avenga/couper-oidc-gateway/dispatches \
+          https://api.github.com/repos/coupergateway/couper-oidc-gateway/dispatches \
           -d '{"event_type": "edge-build", "client_payload": { "version": "edge" }}'

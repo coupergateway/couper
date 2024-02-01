@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/noop"
 )
 
 var meterProvider metric.MeterProvider
@@ -13,7 +13,7 @@ var meterMu sync.RWMutex
 func init() {
 	meterMu.Lock()
 	defer meterMu.Unlock()
-	meterProvider = global.MeterProvider() // defaults to noop
+	meterProvider = noop.NewMeterProvider()
 }
 
 func SetMeterProvider(provider metric.MeterProvider) {

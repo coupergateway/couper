@@ -7,17 +7,23 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/eval/variables"
+	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/utils"
 )
 
 func TestNewHTTPContext(t *testing.T) {
@@ -85,10 +91,18 @@ func TestNewHTTPContext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			file, diags := hclsyntax.ParseConfig([]byte(tt.hcl), "test.hcl", hcl.InitialPos)
+			if diags.HasErrors() {
+				subT.Fatal(diags)
+			}
+			bufferOption := buffer.Must(file.Body)
+
 			helper := test.New(subT)
 
 			req := httptest.NewRequest(tt.reqMethod, "https://couper.io/"+tt.query, tt.body)
-			*req = *req.Clone(context.WithValue(req.Context(), request.Endpoint, "couper-proxy"))
+			ctx := context.WithValue(req.Context(), request.Endpoint, "couper-proxy")
+			ctx = context.WithValue(ctx, request.BufferOptions, bufferOption)
+			*req = *req.Clone(ctx)
 
 			for k, v := range tt.reqHeader {
 				req.Header[k] = v
@@ -97,13 +111,14 @@ func TestNewHTTPContext(t *testing.T) {
 			bereq := req.Clone(context.Background())
 			beresp := newBeresp(bereq)
 
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 512))
+			helper.Must(eval.SetGetBody(req, buffer.Request, 512))
 
-			ctx := baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal, false).HCLContext()
-			ctx.Functions = nil // we are not interested in a functions test
+			ctx, _, _, _ = baseCtx.WithClientRequest(req).WithBeresp(beresp, cty.NilVal)
+			hclCtx := ctx.Value(request.ContextType).(*eval.Context).HCLContext()
+			hclCtx.Functions = nil // we are not interested in a functions test
 
 			var resultMap map[string]cty.Value
-			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), ctx, &resultMap)
+			_ = hclsimple.Decode(tt.name+".hcl", []byte(tt.hcl), hclCtx, &resultMap)
 
 			for k, v := range tt.want {
 				cv, ok := resultMap[k]
@@ -115,6 +130,184 @@ func TestNewHTTPContext(t *testing.T) {
 				if !reflect.DeepEqual(v, result) {
 					subT.Errorf("Expected %q, got: %#v, type: %#v", v, result, cv)
 				}
+			}
+		})
+	}
+}
+
+func TestContext_buffer_parseJSON(t *testing.T) {
+	baseCtx := eval.NewDefaultContext()
+	tests := []struct {
+		name                  string
+		bufferOptions         buffer.Option
+		contentType           string
+		expBereqsDefBody      interface{}
+		expBereqsDefJsonBody  interface{}
+		expBereqBody          interface{}
+		expBereqJsonBody      interface{}
+		expBerespsDefBody     interface{}
+		expBerespsDefJsonBody interface{}
+		expBerespBody         interface{}
+		expBerespJsonBody     interface{}
+	}{
+		{
+			"buffer both, json-parse both, application/json",
+			buffer.Request | buffer.JSONParseRequest | buffer.Response | buffer.JSONParseResponse,
+			"application/json",
+			`{"a":"1"}`,
+			map[string]interface{}{"a": "1"},
+			`{"a":"1"}`,
+			map[string]interface{}{"a": "1"},
+			`{"b":"2"}`,
+			map[string]interface{}{"b": "2"},
+			`{"b":"2"}`,
+			map[string]interface{}{"b": "2"},
+		},
+		{
+			"buffer both, json-parse both, application/foo+json",
+			buffer.Request | buffer.JSONParseRequest | buffer.Response | buffer.JSONParseResponse,
+			"application/foo+json",
+			`{"a":"1"}`,
+			map[string]interface{}{"a": "1"},
+			`{"a":"1"}`,
+			map[string]interface{}{"a": "1"},
+			`{"b":"2"}`,
+			map[string]interface{}{"b": "2"},
+			`{"b":"2"}`,
+			map[string]interface{}{"b": "2"},
+		},
+		{
+			"buffer req, json-parse req",
+			buffer.Request | buffer.JSONParseRequest,
+			"application/json",
+			`{"a":"1"}`,
+			map[string]interface{}{"a": "1"},
+			`{"a":"1"}`,
+			map[string]interface{}{"a": "1"},
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"buffer resp, json-parse resp",
+			buffer.Response | buffer.JSONParseResponse,
+			"application/json",
+			nil,
+			nil,
+			nil,
+			nil,
+			`{"b":"2"}`,
+			map[string]interface{}{"b": "2"},
+			`{"b":"2"}`,
+			map[string]interface{}{"b": "2"},
+		},
+		{
+			"buffer both, don't json-parse",
+			buffer.Request | buffer.Response,
+			"application/json",
+			`{"a":"1"}`,
+			map[string]interface{}{},
+			`{"a":"1"}`,
+			map[string]interface{}{},
+			`{"b":"2"}`,
+			map[string]interface{}{},
+			`{"b":"2"}`,
+			map[string]interface{}{},
+		},
+		{
+			"don't buffer, don't json-parse",
+			buffer.None,
+			"application/json",
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"don't buffer, json-parse both",
+			buffer.None,
+			"application/json",
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"buffer both, json-parse both, text/plain",
+			buffer.Request | buffer.JSONParseRequest | buffer.Response | buffer.JSONParseResponse,
+			"text/plain",
+			`{"a":"1"}`,
+			map[string]interface{}{},
+			`{"a":"1"}`,
+			map[string]interface{}{},
+			`{"b":"2"}`,
+			map[string]interface{}{},
+			`{"b":"2"}`,
+			map[string]interface{}{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			helper := test.New(subT)
+
+			req := httptest.NewRequest(http.MethodPost, "/test", io.NopCloser(strings.NewReader(`{"a":"1"}`)))
+			req.Header.Set("Content-Type", tt.contentType)
+			helper.Must(eval.SetGetBody(req, buffer.Request, 512))
+
+			ctx := context.WithValue(req.Context(), request.BufferOptions, tt.bufferOptions)
+			resp := &http.Response{
+				Body: io.NopCloser(strings.NewReader(`{"b":"2"}`)),
+				Header: http.Header{
+					"Content-Type": []string{tt.contentType},
+				},
+				Request: req.WithContext(ctx),
+			}
+
+			ctx, _, _, _ = baseCtx.WithBeresp(resp, cty.NilVal)
+			hclContext := ctx.Value(request.ContextType).(*eval.Context).HCLContext()
+
+			beRequests := seetie.ValueToMap(hclContext.Variables[variables.BackendRequests])
+			defaultRequest := beRequests["default"].(map[string]interface{})
+			if defaultRequest["body"] != tt.expBereqsDefBody {
+				subT.Errorf("backend_requests.default.body expected: %#v, got: %#v", tt.expBereqsDefBody, defaultRequest["body"])
+			}
+			if diff := cmp.Diff(defaultRequest["json_body"], tt.expBereqsDefJsonBody); diff != "" {
+				subT.Errorf("backend_requests.default.json_body expected: %#v, got: %#v", tt.expBereqsDefJsonBody, defaultRequest["json_body"])
+			}
+
+			beRequest := seetie.ValueToMap(hclContext.Variables[variables.BackendRequest])
+			if beRequest["body"] != tt.expBereqBody {
+				subT.Errorf("backend_request.body expected: %#v, got: %#v", tt.expBereqBody, beRequest["body"])
+			}
+			if diff := cmp.Diff(beRequest["json_body"], tt.expBereqJsonBody); diff != "" {
+				subT.Errorf("backend_request.json_body expected: %#v, got: %#v", tt.expBereqJsonBody, beRequest["json_body"])
+			}
+
+			beResponses := seetie.ValueToMap(hclContext.Variables[variables.BackendResponses])
+			defaultResponse := beResponses["default"].(map[string]interface{})
+			if defaultResponse["body"] != tt.expBerespsDefBody {
+				subT.Errorf("backend_responses.default.body expected: %#v, got: %#v", tt.expBerespsDefBody, defaultResponse["body"])
+			}
+			if diff := cmp.Diff(defaultResponse["json_body"], tt.expBerespsDefJsonBody); diff != "" {
+				subT.Errorf("backend_responses.default.json_body expected: %#v, got: %#v", tt.expBerespsDefJsonBody, defaultResponse["json_body"])
+			}
+
+			beResponse := seetie.ValueToMap(hclContext.Variables[variables.BackendResponse])
+			if beResponse["body"] != tt.expBerespBody {
+				subT.Errorf("backend_response.body expected: %#v, got: %#v", tt.expBerespBody, beResponse["body"])
+			}
+			if diff := cmp.Diff(beResponse["json_body"], tt.expBerespJsonBody); diff != "" {
+				subT.Errorf("backend_response.json_body expected: %#v, got: %#v", tt.expBerespJsonBody, beResponse["json_body"])
 			}
 		})
 	}

@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 // TestChangelog_Links ensures that every added/changed/fixed listing has a link (pr/issue).

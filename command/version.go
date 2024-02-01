@@ -5,8 +5,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/utils"
 )
 
 var _ Cmd = &Version{}

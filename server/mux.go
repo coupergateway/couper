@@ -8,13 +8,13 @@ import (
 
 	gmux "github.com/gorilla/mux"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/utils"
 )
 
 // Mux is a http request router and dispatches requests

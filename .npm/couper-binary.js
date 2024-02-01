@@ -38,7 +38,7 @@ class CouperBinary {
 		this.name = "couper"
 		this.platform = getPlatform()
 		// require from package.json fails for older node versions!
-		this.url = "https://github.com/avenga/couper/releases/download/" +
+		this.url = "https://github.com/coupergateway/couper/releases/download/" +
 				   `v${version}/${this.name}-v${version}-` +
 				   `${this.platform.os}-${this.platform.arch}.${this.platform.archive}`
 

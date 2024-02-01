@@ -6,8 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
 )
 
 func Test_SetGetBody_LimitBody(t *testing.T) {
@@ -26,7 +27,7 @@ func Test_SetGetBody_LimitBody(t *testing.T) {
 		t.Run(testcase.name, func(subT *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/", bytes.NewBufferString(testcase.payload))
 
-			err := eval.SetGetBody(req, eval.BufferRequest, testcase.limit)
+			err := eval.SetGetBody(req, buffer.Request, testcase.limit)
 			if testcase.wantErrMsg == "" && err == nil {
 				return
 			}

@@ -450,7 +450,7 @@
         {
           "targetBlank": true,
           "title": "Release notes",
-          "url": "https://github.com/avenga/couper/releases/tag/v${version}"
+          "url": "https://github.com/coupergateway/couper/releases/tag/v${version}"
         }
       ],
       "options": {

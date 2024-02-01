@@ -30,14 +30,14 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/command"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/oauth2"
+	"github.com/coupergateway/couper/command"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 var (
@@ -2033,53 +2033,68 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 	shutdown, _ := newCouper(confPath, test.New(t))
 	defer shutdown()
 
-	helper := test.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/req?foo=bar", strings.NewReader(`{"data": true}`))
-	helper.Must(err)
-	req.Header.Set("User-Agent", "")
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := client.Do(req)
-	helper.Must(err)
-
-	resBytes, err := io.ReadAll(res.Body)
-	helper.Must(err)
-
-	_ = res.Body.Close()
-
-	type Expectation struct {
-		JSONBody map[string]interface{} `json:"json_body"`
-		Headers  test.Header            `json:"headers"`
-		Method   string                 `json:"method"`
-		Query    url.Values             `json:"query"`
-		URL      string                 `json:"url"`
+	type testCase struct {
+		name        string
+		path        string
+		expJSONBody map[string]interface{}
 	}
 
-	var jsonResult Expectation
-	err = json.Unmarshal(resBytes, &jsonResult)
-	if err != nil {
-		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
-	}
+	for _, tc := range []testCase{
+		{
+			"json-parsed", "/req", map[string]interface{}{"data": true},
+		},
+		{
+			"not json-parsed", "/req2", map[string]interface{}{},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
-	delete(jsonResult.Headers, "couper-request-id")
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path+"?foo=bar", strings.NewReader(`{"data": true}`))
+			helper.Must(err)
+			req.Header.Set("User-Agent", "")
+			req.Header.Set("Content-Type", "application/json")
 
-	exp := Expectation{
-		Method: http.MethodGet,
-		JSONBody: map[string]interface{}{
-			"data": true,
-		},
-		Headers: map[string]string{
-			"content-length": "14",
-			"content-type":   "application/json",
-		},
-		Query: map[string][]string{
-			"foo": {"bar"},
-		},
-		URL: "http://example.com:8080/req?foo=bar",
-	}
-	if !reflect.DeepEqual(jsonResult, exp) {
-		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			type Expectation struct {
+				JSONBody map[string]interface{} `json:"json_body"`
+				Headers  test.Header            `json:"headers"`
+				Method   string                 `json:"method"`
+				Query    url.Values             `json:"query"`
+				URL      string                 `json:"url"`
+			}
+
+			var jsonResult Expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			delete(jsonResult.Headers, "couper-request-id")
+
+			exp := Expectation{
+				Method:   http.MethodGet,
+				JSONBody: tc.expJSONBody,
+				Headers: map[string]string{
+					"content-length": "14",
+					"content-type":   "application/json",
+				},
+				Query: map[string][]string{
+					"foo": {"bar"},
+				},
+				URL: "http://example.com:8080" + tc.path + "?foo=bar",
+			}
+			if !reflect.DeepEqual(jsonResult, exp) {
+				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+			}
+		})
 	}
 }
 
@@ -3583,7 +3598,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	config := `
+	cfg := `
 	  server {
 	    endpoint "/" {
 	    access_control = ["stale"]
@@ -3607,7 +3622,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	  }
 	`
 
-	shutdown, hook, err := newCouperWithBytes([]byte(config), helper)
+	shutdown, hook, err := newCouperWithBytes([]byte(cfg), helper)
 	defer shutdown()
 	helper.Must(err)
 
@@ -3622,7 +3637,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
+		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3632,7 +3647,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
+		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3643,7 +3658,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	time.Sleep(time.Second)
 	message := getFirstAccessLogMessage(hook)
 	if res.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
+		t.Fatalf("C) expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
 	}
 
 	expectedMessage := "access control error: stale: received no valid JWKs data: <nil>, status code 500"

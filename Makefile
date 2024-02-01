@@ -1,5 +1,5 @@
 .PHONY: docker-telemetry build generate image
-.PHONY: test test-docker coverage test-coverage test-coverage-show
+.PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
 
 build:
 	go build -race -v -o couper main.go
@@ -20,43 +20,21 @@ generate-docs:
 	go run config/generate/main.go
 
 image:
-	docker build -t avenga/couper:latest .
+	docker build -t coupergateway/couper:latest .
 
 test:
 	go test -v -short -race -count 1 -timeout 300s ./...
 
 test-docker:
-	docker run --rm -v $(CURDIR):/go/app -w /go/app golang sh -c "go test -short -count 1 -v -timeout 300s -race ./..."
+	docker run --rm -v $(CURDIR):/go/app -w /go/app golang:1.20 sh -c "go test -short -count 1 -v -timeout 300s -race ./..."
 
 coverage: test-coverage test-coverage-show
 
 test-coverage:
-	go test -short -timeout 300s -covermode=count -coverprofile=ac.coverage ./accesscontrol
-	go test -short -timeout 300s -covermode=count -coverprofile=cache.coverage ./cache
-	go test -short -timeout 300s -covermode=count -coverprofile=command.coverage ./command
-	go test -short -timeout 300s -covermode=count -coverprofile=config.coverage ./config
-	go test -short -timeout 300s -covermode=count -coverprofile=docs.coverage ./docs
-	go test -short -timeout 300s -covermode=count -coverprofile=errors.coverage ./errors
-	go test -short -timeout 300s -covermode=count -coverprofile=eval.coverage ./eval
-	go test -short -timeout 300s -covermode=count -coverprofile=handler.coverage ./handler
-	go test -short -timeout 300s -covermode=count -coverprofile=producer.coverage ./handler/producer
-	go test -short -timeout 300s -covermode=count -coverprofile=logging.coverage ./logging
-	go test -short -timeout 300s -covermode=count -coverprofile=server.coverage ./server
-	go test -short -timeout 300s -covermode=count -coverprofile=main.coverage ./
+	go test -v -short -timeout 300s -coverprofile=c.out ./...
 
 test-coverage-show:
-	go tool cover -html=ac.coverage
-	go tool cover -html=cache.coverage
-	go tool cover -html=command.coverage
-	go tool cover -html=config.coverage
-	go tool cover -html=docs.coverage
-	go tool cover -html=errors.coverage
-	go tool cover -html=eval.coverage
-	go tool cover -html=handler.coverage
-	go tool cover -html=producer.coverage
-	go tool cover -html=logging.coverage
-	go tool cover -html=server.coverage
-	go tool cover -html=main.coverage
+	go tool cover -html=c.out
 
 .PHONY: mtls-certificates
 mtls-certificates:
