@@ -99,13 +99,7 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		}
 	}
 
-	req, cancel, err := i.newIntrospectionRequest(ctx, token)
-	defer cancel()
-	if err != nil {
-		return nil, err
-	}
-
-	introspectionData, err = i.requestIntrospection(req)
+	introspectionData, err := i.requestIntrospection(ctx, token)
 	if err != nil {
 		return nil, err
 	}
@@ -132,23 +126,29 @@ func (i *Introspector) newIntrospectionRequest(ctx context.Context, token string
 	req, _ := http.NewRequest("POST", i.conf.Endpoint, nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, "introspection"))
-	outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Response)
-
 	formParams := &url.Values{}
 	formParams.Add("token", token)
 
 	err := i.authenticator.Authenticate(formParams, req)
 	if err != nil {
-		return nil, cancel, err
+		return nil, nil, err
 	}
 
 	eval.SetBody(req, []byte(formParams.Encode()))
 
+	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, "introspection"))
+	outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Response)
+
 	return req.WithContext(outCtx), cancel, nil
 }
 
-func (i *Introspector) requestIntrospection(req *http.Request) (IntrospectionResponse, error) {
+func (i *Introspector) requestIntrospection(ctx context.Context, token string) (IntrospectionResponse, error) {
+	req, cancel, err := i.newIntrospectionRequest(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+
 	response, err := i.transport.RoundTrip(req)
 	if err != nil {
 		return nil, fmt.Errorf("introspection response: %s", err)
