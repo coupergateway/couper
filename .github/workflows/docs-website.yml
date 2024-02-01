@@ -40,7 +40,7 @@ jobs:
         env:
           ALGOLIA_API_KEY: ${{ secrets.SEARCH_CLIENT_API_KEY }}
         run: |
-          sed -i '' 's/<WriteKey>/'"$ALGOLIA_API_KEY"'/g' nuxt.config.ts
+          sed -i 's/<WriteKey>/'"$ALGOLIA_API_KEY"'/g' nuxt.config.ts
           npm ci && npm run build && npm run generate
 
       - name: create artifact
