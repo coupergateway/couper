@@ -1,5 +1,4 @@
-import colors from 'tailwindcss/colors.js'
-import { defineNuxtConfig } from 'nuxt'
+import { defineNuxtConfig } from 'nuxt/config'
 
 // https://v3.nuxtjs.org/api/configuration/nuxt.config
 export default defineNuxtConfig({
@@ -76,21 +75,6 @@ export default defineNuxtConfig({
         repo: 'couper-docs',
         branch: 'main',
         releases: false
-    },
-    tailwindcss: {
-        config: {
-            /* Extend the Tailwind config here */
-            content: [
-                'content/**/**.md'
-            ],
-            theme: {
-                extend: {
-                    colors: {
-                        primary: colors.emerald
-                    }
-                }
-            }
-        }
     },
     build: {
         postcss: {
