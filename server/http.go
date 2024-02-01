@@ -181,25 +181,27 @@ func (s *HTTPServer) Listen() error {
 
 		go s.listenForCtx()
 
-		go func() {
-			var serveErr error
-			if s.srv.TLSConfig != nil {
-				serveErr = s.srv.ServeTLS(ln, "", "")
-			} else {
-				serveErr = s.srv.Serve(ln)
-			}
-
-			if serveErr != nil {
-				if serveErr == http.ErrServerClosed {
-					s.log.Infof("%v: %s", serveErr, ln.Addr().String())
-				} else {
-					s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
-				}
-			}
-		}()
+		go s.serve(ln)
 	}
 
 	return nil
+}
+
+func (s *HTTPServer) serve(ln net.Listener) {
+	var serveErr error
+	if s.srv.TLSConfig != nil {
+		serveErr = s.srv.ServeTLS(ln, "", "")
+	} else {
+		serveErr = s.srv.Serve(ln)
+	}
+
+	if serveErr != nil {
+		if serveErr == http.ErrServerClosed {
+			s.log.Infof("%v: %s", serveErr, ln.Addr().String())
+		} else {
+			s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
+		}
+	}
 }
 
 // Close closes the listener
