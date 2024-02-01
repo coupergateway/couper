@@ -245,8 +245,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return errors.JwtTokenInvalid.With(err)
 	}
 
-	err = j.validateClaims(tokenClaims, expectedClaims)
-	if err != nil {
+	if err = j.validateClaims(tokenClaims, expectedClaims); err != nil {
 		// TODO throw different error?
 		return errors.JwtTokenInvalid.With(err)
 	}
