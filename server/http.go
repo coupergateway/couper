@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/env"
@@ -109,7 +107,10 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		telemetryHandler = middleware.NewMetricsHandler()(httpSrv)
 	}
 	if settings.TelemetryTraces {
-		telemetryHandler = middleware.NewTraceHandler()(telemetryHandler)
+		telemetryHandler = middleware.NewTraceHandler(
+			settings.TelemetryTracesWithParentOnly,
+			settings.TelemetryTracesTrustParent,
+		)(telemetryHandler)
 	}
 
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(telemetryHandler)
@@ -349,12 +350,8 @@ func (s *HTTPServer) cleanHostAppendPort(host string) string {
 
 func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 	meter := provider.Meter("couper/server")
-	counter, _ := meter.Int64Counter(
-		instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
-	gauge, _ := meter.Float64UpDownCounter(
-		instrumentation.ClientConnections,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
+	counter, _ := meter.Int64Counter(instrumentation.ClientConnectionsTotal)
+	gauge, _ := meter.Float64UpDownCounter(instrumentation.ClientConnections)
 
 	if state == http.StateNew {
 		counter.Add(context.Background(), 1)

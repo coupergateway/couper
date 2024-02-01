@@ -6,8 +6,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
 
 	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/telemetry/instrumentation"
@@ -24,10 +22,7 @@ func newBackendsObserver(memStore *cache.MemoryStore) error {
 	}
 
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	gauge, _ := meter.Int64ObservableGauge(
-		instrumentation.BackendHealthState,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
+	gauge, _ := meter.Int64ObservableGauge(instrumentation.BackendHealthState)
 
 	onObserverFn := func(_ context.Context, observer metric.Observer) error {
 		return backendsObserver(gauge, observer, backends)
@@ -37,7 +32,7 @@ func newBackendsObserver(memStore *cache.MemoryStore) error {
 	return err
 }
 
-func backendsObserver(gauge instrument.Int64Observable, observer metric.Observer, backends []interface{ Value() cty.Value }) error {
+func backendsObserver(gauge metric.Int64Observable, observer metric.Observer, backends []interface{ Value() cty.Value }) error {
 	for _, backend := range backends {
 		v := backend.Value().AsValueMap()
 		attrs := []attribute.KeyValue{
@@ -51,7 +46,8 @@ func backendsObserver(gauge instrument.Int64Observable, observer metric.Observer
 			value = 0
 		}
 
-		observer.ObserveInt64(gauge, value, attrs...)
+		option := metric.WithAttributes(attrs...)
+		observer.ObserveInt64(gauge, value, option)
 	}
 	return nil
 }

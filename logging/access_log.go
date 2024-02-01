@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
@@ -61,6 +62,10 @@ func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 
 	if uid := req.Context().Value(request.UID); uid != nil {
 		fields["uid"] = uid
+	}
+
+	if span := trace.SpanContextFromContext(req.Context()); span.IsValid() {
+		fields["trace_id"] = span.TraceID()
 	}
 
 	requestFields := Fields{
