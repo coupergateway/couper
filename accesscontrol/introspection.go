@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"sync"
@@ -22,6 +21,21 @@ import (
 
 // IntrospectionResponse represents the response body to a token introspection request.
 type IntrospectionResponse map[string]interface{}
+
+func NewIntrospectionResponse(res *http.Response) (IntrospectionResponse, error) {
+	var introspectionData IntrospectionResponse
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("introspection response status code %d", res.StatusCode)
+	}
+
+	if !eval.IsJSONMediaType(res.Header.Get("Content-Type")) {
+		return nil, fmt.Errorf("introspection response is not JSON")
+	}
+
+	err := json.NewDecoder(res.Body).Decode(&introspectionData)
+	return introspectionData, err
+}
 
 // Active returns whether the token is active.
 func (ir IntrospectionResponse) Active() bool {
@@ -79,24 +93,19 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 		}()
 
 		key = "ir:" + token
-		cachedIntrospectionBytes, _ := i.memStore.Get(key).([]byte)
-		if cachedIntrospectionBytes != nil {
-			// cached introspection response is always JSON
-			_ = json.Unmarshal(cachedIntrospectionBytes, &introspectionData)
-
-			// return cached introspection data
-			return introspectionData, nil
+		cachedIntrospection, _ := i.memStore.Get(key).(IntrospectionResponse)
+		if cachedIntrospection != nil {
+			return cachedIntrospection, nil
 		}
 	}
 
-	req, cancel, err := i.prepareIntrospectionRequest(ctx, token)
+	req, cancel, err := i.newIntrospectionRequest(ctx, token)
 	defer cancel()
 	if err != nil {
 		return nil, err
 	}
 
-	var resBytes []byte
-	resBytes, introspectionData, err = i.requestIntrospection(req)
+	introspectionData, err = i.requestIntrospection(req)
 	if err != nil {
 		return nil, err
 	}
@@ -114,12 +123,12 @@ func (i *Introspector) Introspect(ctx context.Context, token string, exp, nbf in
 
 	ttl := i.getTtl(exp, nbf, introspectionData.Active())
 	// cache introspection data
-	i.memStore.Set(key, resBytes, ttl)
+	i.memStore.Set(key, introspectionData, ttl)
 
 	return introspectionData, nil
 }
 
-func (i *Introspector) prepareIntrospectionRequest(ctx context.Context, token string) (*http.Request, context.CancelFunc, error) {
+func (i *Introspector) newIntrospectionRequest(ctx context.Context, token string) (*http.Request, context.CancelFunc, error) {
 	req, _ := http.NewRequest("POST", i.conf.Endpoint, nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -139,29 +148,19 @@ func (i *Introspector) prepareIntrospectionRequest(ctx context.Context, token st
 	return req.WithContext(outCtx), cancel, nil
 }
 
-func (i *Introspector) requestIntrospection(req *http.Request) ([]byte, IntrospectionResponse, error) {
+func (i *Introspector) requestIntrospection(req *http.Request) (IntrospectionResponse, error) {
 	response, err := i.transport.RoundTrip(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("introspection response: %s", err)
+		return nil, fmt.Errorf("introspection response: %s", err)
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("introspection response status code %d", response.StatusCode)
-	}
-
-	resBytes, err := io.ReadAll(response.Body)
+	introspectionData, err := NewIntrospectionResponse(response)
 	if err != nil {
-		return nil, nil, fmt.Errorf("introspection response cannot be read: %s", err)
+		return nil, fmt.Errorf("introspection response: %s", err)
 	}
 
-	var introspectionData IntrospectionResponse
-	err = json.Unmarshal(resBytes, &introspectionData)
-	if err != nil {
-		return nil, nil, fmt.Errorf("introspection response is not JSON: %s", err)
-	}
-
-	return resBytes, introspectionData, nil
+	return introspectionData, nil
 }
 
 func (i *Introspector) getTtl(exp, nbf int64, active bool) int64 {
