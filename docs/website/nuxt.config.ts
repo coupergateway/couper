@@ -15,13 +15,12 @@ export default defineNuxtConfig({
         // baseURL: process.env.NODE_ENV === 'production' ? '/couper-docs/' : '/'
     },
     algolia: {
-        apiKey: '5551c3e4dfb61914988abf95fd9b762f',
+        apiKey: '5551c3e4dfb61914988abf95fd9b762f', // search only
         applicationId: 'MSIN2HU7WH',
         instantSearch: {
             theme: 'algolia'
         },
         crawler: {
-            apiKey: '<WriteKey>',
             indexName: 'docs',
             include: undefined, // all routes
             meta: ['title', 'description', '_path']
