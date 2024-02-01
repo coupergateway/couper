@@ -32,16 +32,20 @@ func ValueToGo(val cty.Value) interface{} {
 	case cty.Map(cty.NilType):
 		return nil
 	default:
-		if isMapOrObject(val) {
-			return ValueToMap(val)
+		return valueToGoDefault(val)
+	}
+}
+
+func valueToGoDefault(val cty.Value) interface{} {
+	if isMapOrObject(val) {
+		return ValueToMap(val)
+	}
+	if isListOrTuple(val) {
+		var l []interface{}
+		for _, v := range val.AsValueSlice() {
+			l = append(l, ValueToGo(v))
 		}
-		if isListOrTuple(val) {
-			var l []interface{}
-			for _, v := range val.AsValueSlice() {
-				l = append(l, ValueToGo(v))
-			}
-			return l
-		}
+		return l
 	}
 	return nil
 }
