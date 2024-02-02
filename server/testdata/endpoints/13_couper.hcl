@@ -5,7 +5,7 @@ server { # sequences
         origin = "${backend_responses.resolve_first.headers.origin}"
         hostname = "test.local"
         path = "/"
-        timeout = "1s"
+        timeout = "950ms"
       }
     }
 
