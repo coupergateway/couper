@@ -94,3 +94,26 @@ func TestNumericKey(t *testing.T) {
 		t.Fatalf("entry for 01234 must be %q, but is %q", "foo", mappedValStr)
 	}
 }
+
+func TestNumericHeaderFieldName(t *testing.T) {
+	h := http.Header{
+		"01234": []string{"foo"},
+	}
+	val := HeaderToMapValue(h)
+	valType := val.Type()
+	if !valType.IsMapType() {
+		t.Fatalf("type must be map, but is %#v", valType)
+	}
+	values := val.AsValueMap()
+	if len(values) == 0 {
+		t.Fatal("map must not be empty")
+	}
+	mappedVal, ok := values["01234"]
+	if !ok {
+		t.Fatal("map lacks required key")
+	}
+	mappedValStr := mappedVal.AsString()
+	if "foo" != mappedVal.AsString() {
+		t.Fatalf("entry for 01234 must be %q, but is %q", "foo", mappedValStr)
+	}
+}
