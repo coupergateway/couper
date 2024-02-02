@@ -20,6 +20,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `WWW-Authenticate` header `realm` param value for [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth) ([#715](https://github.com/coupergateway/couper/pull/715))
   * [`Server-Timing` header](https://docs.couper.io/configuration/block/settings) only reporting last requests/proxies of [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#751](https://github.com/coupergateway/couper/pull/751))
   * Selecting of appropriate [error handler](https://docs.couper.io/configuration/block/error_handler) in two cases ([#753](https://github.com/coupergateway/couper/pull/753))
+  * Storing of digit-starting string object keys in [request context](https://docs.couper.io/configuration/variables#request) and of digit-starting string header field names in [request](https://docs.couper.io/configuration/variables#request) variable ([#799](https://github.com/coupergateway/couper/pull/799))
 
 * **Dependencies**
   * build with go 1.20 ([#745](https://github.com/coupergateway/couper/pull/745))
