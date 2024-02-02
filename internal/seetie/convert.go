@@ -138,9 +138,6 @@ func MapToValue(m map[string]interface{}) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 
 	for k, v := range m {
-		if !validKey.MatchString(k) {
-			continue
-		}
 		switch v := v.(type) {
 		case []string:
 			ctyMap[k] = stringListToValue(v)

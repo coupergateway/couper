@@ -73,3 +73,24 @@ func Test_ValueToLogFields(t *testing.T) {
 		})
 	}
 }
+
+func TestNumericKey(t *testing.T) {
+	m := map[string]interface{}{"01234": "foo"}
+	val := MapToValue(m)
+	valType := val.Type()
+	if !valType.IsObjectType() {
+		t.Fatalf("type must be object, but is %#v", valType)
+	}
+	values := val.AsValueMap()
+	if len(values) == 0 {
+		t.Fatal("object must not be empty")
+	}
+	mappedVal, ok := values["01234"]
+	if !ok {
+		t.Fatal("object lacks required key")
+	}
+	mappedValStr := mappedVal.AsString()
+	if "foo" != mappedVal.AsString() {
+		t.Fatalf("entry for 01234 must be %q, but is %q", "foo", mappedValStr)
+	}
+}
