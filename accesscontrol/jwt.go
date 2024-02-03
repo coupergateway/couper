@@ -144,6 +144,19 @@ type parserConfig struct {
 	issuer     string
 }
 
+func newParserConfig(algorithms []string, expectedClaims map[string]interface{}) parserConfig {
+	parserConfig := parserConfig{
+		algorithms: algorithms,
+	}
+	if aud, ok := expectedClaims["aud"].(string); ok {
+		parserConfig.audience = aud
+	}
+	if iss, ok := expectedClaims["iss"].(string); ok {
+		parserConfig.issuer = iss
+	}
+	return parserConfig
+}
+
 func (p parserConfig) key() string {
 	return fmt.Sprintf("pc:%s:%s:%s", p.algorithms, p.audience, p.issuer)
 }
@@ -239,16 +252,8 @@ func (j *JWT) Validate(req *http.Request) error {
 	}
 
 	tokenClaims := jwt.MapClaims{}
-	_, err = parser.ParseWithClaims(tokenValue, tokenClaims, j.getValidationKey)
-	if err != nil {
-		if goerrors.Is(err, jwt.ErrTokenExpired) {
-			return errors.JwtTokenExpired.With(err)
-		}
-		if goerrors.Is(err, jwt.ErrTokenInvalidClaims) {
-			// TODO throw different error?
-			return errors.JwtTokenInvalid.With(err)
-		}
-		return errors.JwtTokenInvalid.With(err)
+	if err = j.parse(parser, tokenValue, tokenClaims); err != nil {
+		return err
 	}
 
 	if err = j.source.ValidateTokenClaims(tokenValue, tokenClaims, req); err != nil {
@@ -293,6 +298,21 @@ func (j *JWT) Validate(req *http.Request) error {
 
 	*req = *req.WithContext(ctx)
 
+	return nil
+}
+
+func (j *JWT) parse(parser *jwt.Parser, tokenValue string, tokenClaims jwt.MapClaims) error {
+	_, err := parser.ParseWithClaims(tokenValue, tokenClaims, j.getValidationKey)
+	if err != nil {
+		if goerrors.Is(err, jwt.ErrTokenExpired) {
+			return errors.JwtTokenExpired.With(err)
+		}
+		if goerrors.Is(err, jwt.ErrTokenInvalidClaims) {
+			// TODO throw different error?
+			return errors.JwtTokenInvalid.With(err)
+		}
+		return errors.JwtTokenInvalid.With(err)
+	}
 	return nil
 }
 
