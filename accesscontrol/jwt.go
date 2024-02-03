@@ -10,13 +10,15 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/coupergateway/couper/accesscontrol/jwk"
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
@@ -30,37 +32,37 @@ var (
 )
 
 type JWT struct {
-	algorithm             acjwt.Algorithm
+	algos                 []string
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
 	source                *TokenSource
 	hmacSecret            []byte
 	name                  string
-	parser                *jwt.Parser
 	pubKey                interface{}
 	rolesClaim            string
 	rolesMap              map[string][]string
 	permissionsClaim      string
 	permissionsMap        map[string][]string
 	jwks                  *jwk.JWKS
+	memStore              *cache.MemoryStore
 }
 
 // NewJWT parses the key and creates Validation obj which can be referenced in related handlers.
-func NewJWT(jwtConf *config.JWT, key []byte) (*JWT, error) {
-	jwtAC, err := newJWT(jwtConf)
+func NewJWT(jwtConf *config.JWT, key []byte, memStore *cache.MemoryStore) (*JWT, error) {
+	jwtAC, err := newJWT(jwtConf, memStore)
 	if err != nil {
 		return nil, err
 	}
 
-	jwtAC.algorithm = acjwt.NewAlgorithm(jwtConf.SignatureAlgorithm)
-	if jwtAC.algorithm == acjwt.AlgorithmUnknown {
+	algorithm := acjwt.NewAlgorithm(jwtConf.SignatureAlgorithm)
+	if algorithm == acjwt.AlgorithmUnknown {
 		return nil, fmt.Errorf("algorithm %q is not supported", jwtConf.SignatureAlgorithm)
 	}
 
-	jwtAC.parser = newParser([]acjwt.Algorithm{jwtAC.algorithm})
+	jwtAC.algos = []string{jwtConf.SignatureAlgorithm}
 
-	if jwtAC.algorithm.IsHMAC() {
+	if algorithm.IsHMAC() {
 		jwtAC.hmacSecret = key
 		return jwtAC, nil
 	}
@@ -112,24 +114,54 @@ func parsePublicPEMKey(key []byte) (pub interface{}, err error) {
 	return pubKey, nil
 }
 
-func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS) (*JWT, error) {
+func NewJWTFromJWKS(jwtConf *config.JWT, jwks *jwk.JWKS, memStore *cache.MemoryStore) (*JWT, error) {
 	if jwks == nil {
 		return nil, fmt.Errorf("invalid JWKS")
 	}
 
-	jwtAC, err := newJWT(jwtConf)
+	jwtAC, err := newJWT(jwtConf, memStore)
 	if err != nil {
 		return nil, err
 	}
 
 	algorithms := append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
-	jwtAC.parser = newParser(algorithms)
+	var algos []string
+	for _, a := range algorithms {
+		algos = append(algos, a.String())
+	}
+
+	jwtAC.algos = algos
 	jwtAC.jwks = jwks
 
 	return jwtAC, nil
 }
 
-func newJWT(jwtConf *config.JWT) (*JWT, error) {
+type parserConfig struct {
+	algorithms []string
+	audience   string
+	issuer     string
+}
+
+func (p parserConfig) key() string {
+	return fmt.Sprintf("pc:%s:%s:%s", p.algorithms, p.audience, p.issuer)
+}
+
+func (p parserConfig) newParser() *jwt.Parser {
+	options := []jwt.ParserOption{
+		jwt.WithValidMethods(p.algorithms),
+		jwt.WithLeeway(time.Second),
+	}
+	if p.audience != "" {
+		options = append(options, jwt.WithAudience(p.audience))
+	}
+	if p.issuer != "" {
+		options = append(options, jwt.WithIssuer(p.issuer))
+	}
+
+	return jwt.NewParser(options...)
+}
+
+func newJWT(jwtConf *config.JWT, memStore *cache.MemoryStore) (*JWT, error) {
 	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
 	if err != nil {
 		return nil, err
@@ -143,6 +175,7 @@ func newJWT(jwtConf *config.JWT) (*JWT, error) {
 		claims:                jwtConf.Claims,
 		claimsRequired:        jwtConf.ClaimsRequired,
 		disablePrivateCaching: jwtConf.DisablePrivateCaching,
+		memStore:              memStore,
 		name:                  jwtConf.Name,
 		rolesClaim:            jwtConf.RolesClaim,
 		rolesMap:              jwtConf.RolesMap,
@@ -153,23 +186,20 @@ func newJWT(jwtConf *config.JWT) (*JWT, error) {
 	return jwtAC, nil
 }
 
-// newParser creates a new parser
-func newParser(algos []acjwt.Algorithm) *jwt.Parser {
-	var algorithms []string
-	for _, a := range algos {
-		algorithms = append(algorithms, a.String())
-	}
-	options := []jwt.ParserOption{
-		jwt.WithValidMethods(algorithms),
-		// no equivalent in new lib
-		// jwt.WithLeeway(time.Second),
-	}
-
-	return jwt.NewParser(options...)
-}
-
 func (j *JWT) DisablePrivateCaching() bool {
 	return j.disablePrivateCaching
+}
+
+// getParser returns a JWT parser for a parser config
+func (j *JWT) getParser(p parserConfig) *jwt.Parser {
+	key := p.key()
+	if parser, ok := j.memStore.Get(key).(*jwt.Parser); ok {
+		return parser
+	}
+
+	parser := p.newParser()
+	j.memStore.Set(key, parser, 3600)
+	return parser
 }
 
 // Validate reading the token from configured source and validates against the key.
@@ -184,22 +214,38 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
+	parserConfig := parserConfig{
+		algorithms: j.algos,
+	}
+	if aud, ok := expectedClaims["aud"].(string); ok {
+		parserConfig.audience = aud
+	}
+	if iss, ok := expectedClaims["iss"].(string); ok {
+		parserConfig.issuer = iss
+	}
+	parser := j.getParser(parserConfig)
+
 	if j.jwks != nil {
 		// load JWKS if needed
 		j.jwks.Data()
 	}
 
 	tokenClaims := jwt.MapClaims{}
-	_, err = j.parser.ParseWithClaims(tokenValue, tokenClaims, j.getValidationKey)
+	_, err = parser.ParseWithClaims(tokenValue, tokenClaims, j.getValidationKey)
 	if err != nil {
 		if goerrors.Is(err, jwt.ErrTokenExpired) {
 			return errors.JwtTokenExpired.With(err)
+		}
+		if goerrors.Is(err, jwt.ErrTokenInvalidClaims) {
+			// TODO throw different error?
+			return errors.JwtTokenInvalid.With(err)
 		}
 		return errors.JwtTokenInvalid.With(err)
 	}
 
 	err = j.validateClaims(tokenClaims, expectedClaims)
 	if err != nil {
+		// TODO throw different error?
 		return errors.JwtTokenInvalid.With(err)
 	}
 
@@ -231,14 +277,12 @@ func (j *JWT) getValidationKey(token *jwt.Token) (interface{}, error) {
 		return j.jwks.GetSigKeyForToken(token)
 	}
 
-	switch j.algorithm {
-	case acjwt.AlgorithmRSA256, acjwt.AlgorithmRSA384, acjwt.AlgorithmRSA512:
+	if j.pubKey != nil {
 		return j.pubKey, nil
-	case acjwt.AlgorithmECDSA256, acjwt.AlgorithmECDSA384, acjwt.AlgorithmECDSA512:
-		return j.pubKey, nil
-	case acjwt.AlgorithmHMAC256, acjwt.AlgorithmHMAC384, acjwt.AlgorithmHMAC512:
+	} else if j.hmacSecret != nil {
 		return j.hmacSecret, nil
-	default: // this error case gets normally caught on configuration level
+	} else {
+		// this error case gets normally caught on configuration level
 		return nil, errors.Configuration.Message("algorithm is not supported")
 	}
 }
@@ -294,15 +338,11 @@ func (j *JWT) validateClaims(tokenClaims jwt.MapClaims, expectedClaims map[strin
 		}
 
 		if k == "iss" {
-			if !tokenClaims.VerifyIssuer(v.(string), true) {
-				return errors.JwtTokenInvalid.Message("invalid issuer")
-			}
+			// ignore, already handled during parsing
 			continue
 		}
 		if k == "aud" {
-			if !tokenClaims.VerifyAudience(v.(string), true) {
-				return errors.JwtTokenInvalid.Message("invalid audience")
-			}
+			// ignore, already handled during parsing
 			continue
 		}
 

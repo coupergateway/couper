@@ -24,6 +24,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 
 * **Dependencies**
   * build with go 1.20 ([#745](https://github.com/coupergateway/couper/pull/745))
+  * upgrade jwt library from v4 to v5 ([#769](https://github.com/coupergateway/couper/issues/769))
 
 ---
 

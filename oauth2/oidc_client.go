@@ -7,8 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/hcl/v2"
 
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
@@ -40,10 +41,15 @@ func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClie
 	for _, a := range append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...) {
 		algorithms = append(algorithms, a.String())
 	}
+	issuer, err := oidcConfig.GetIssuer()
+	if err != nil {
+		return nil, errors.Oauth2.With(err)
+	}
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods(algorithms),
-		// no equivalent in new lib
-		// jwt.WithLeeway(time.Second),
+		jwt.WithLeeway(time.Second),
+		jwt.WithAudience(oidcConfig.GetClientID()),
+		jwt.WithIssuer(issuer),
 	}
 	o := &OidcClient{
 		AuthCodeClient: acClient,
@@ -107,7 +113,7 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, idTokenClaims jw
 	// 2.  ID Token
 	// iss
 	// 		REQUIRED.
-	//      handled by VerifyIssuer(issuer, true)
+	//      handled by VerifyIssuer()
 	// sub
 	// 		REQUIRED.
 	var subIdtoken string
@@ -118,7 +124,7 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, idTokenClaims jw
 	}
 	// aud
 	// 		REQUIRED.
-	//      handled by VerifyAudience(issuer, true)
+	//      handled by VerifyAudience()
 	// exp
 	// 		REQUIRED.
 	if _, expExists := idTokenClaims["exp"]; !expExists {
@@ -126,22 +132,20 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, idTokenClaims jw
 	}
 	// iat
 	// 		REQUIRED.
-	_, iatExists := idTokenClaims["iat"]
+	iat, iatExists := idTokenClaims["iat"]
 	if !iatExists {
 		return nil, errors.Oauth2.Message("missing iat claim in ID token")
+	}
+	if _, ok := iat.(float64); !ok {
+		return nil, errors.Oauth2.Message("iat claim in ID has invalid type")
 	}
 
 	// 3.1.3.7.  ID Token Validation
 	// 2. The Issuer Identifier for the OpenID Provider (which is typically
 	//    obtained during Discovery) MUST exactly match the value of the
 	//    iss (issuer) Claim.
-	issuer, err := o.config.GetIssuer()
-	if err != nil {
-		return nil, errors.Oauth2.With(err)
-	}
-	if !idTokenClaims.VerifyIssuer(issuer, true) {
-		return nil, errors.Oauth2.Message("invalid issuer in ID token")
-	}
+	// handled by VerifyIssuer()
+
 	// 3. The Client MUST validate that the aud (audience) Claim contains
 	//    its client_id value registered at the Issuer identified by the
 	//    iss (issuer) Claim as an audience. The aud (audience) Claim MAY
@@ -149,9 +153,8 @@ func (o *OidcClient) validateIDTokenClaims(ctx context.Context, idTokenClaims jw
 	//    be rejected if the ID Token does not list the Client as a valid
 	//    audience, or if it contains additional audiences not trusted by
 	//    the Client.
-	if !idTokenClaims.VerifyAudience(o.config.GetClientID(), true) {
-		return nil, errors.Oauth2.Message("invalid audience in ID token")
-	}
+	// handled by WithAudience()
+
 	// 4. If the ID Token contains multiple audiences, the Client SHOULD verify
 	//    that an azp Claim is present.
 	azp, azpExists := idTokenClaims["azp"]
