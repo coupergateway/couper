@@ -31,6 +31,12 @@ values: [
     "type": "string"
   },
   {
+    "default": "\"*\"",
+    "description": "A comma-separated list of addresses to bind.",
+    "name": "bind_address",
+    "type": "string"
+  },
+  {
     "default": "",
     "description": "Adds the given PEM encoded CA certificate to the existing system certificate pool for all outgoing connections.",
     "name": "ca_file",
