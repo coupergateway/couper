@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/coupergateway/couper/config"
 	jsn "github.com/coupergateway/couper/json"

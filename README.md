@@ -1,6 +1,6 @@
 # Couper
 
-![Go](https://github.com/coupergateway/couper/workflows/Go/badge.svg)
+[![Go Test](https://github.com/coupergateway/couper/actions/workflows/go.yml/badge.svg)](https://github.com/coupergateway/couper/actions/workflows/go.yml)
 [![Go Report](https://goreportcard.com/badge/github.com/coupergateway/couper)](https://goreportcard.com/report/github.com/coupergateway/couper)
 ![Docker](https://github.com/coupergateway/couper/workflows/Docker/badge.svg)
 

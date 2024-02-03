@@ -154,6 +154,11 @@ func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
 		WithSAML(helper.config.Definitions.SAML)
 
+	err = helper.configureBindAddresses()
+	if err != nil {
+		return nil, e
+	}
+
 	err = helper.configureServers(body)
 	if err != nil {
 		return nil, err

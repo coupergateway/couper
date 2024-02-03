@@ -25,7 +25,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
@@ -3447,16 +3447,16 @@ func TestJWTAccessControl(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: missing authorization header"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusUnauthorized, "", "access control error: JWTToken: Token is expired"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusUnauthorized, "", "access control error: JWTToken: token has invalid claims: token is expired"},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + hmacToken}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS1", "/jwt/rsa/pkcs1", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS8", "/jwt/rsa/pkcs8", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
-		{"RSA JWT bad algorithm", "/jwt/rsa/bad", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", "access control error: RSATokenWrongAlgorithm: signing method RS256 is invalid"},
-		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid ""`},
-		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-unsupported"`},
-		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-wrong-cert"`},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", `access control error: JWKS_not_found: received no valid JWKs data: <nil>, status code 404`},
+		{"RSA JWT bad algorithm", "/jwt/rsa/bad", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", "access control error: RSATokenWrongAlgorithm: token signature is invalid: signing method RS256 is invalid"},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: token is unverifiable: error while executing keyfunc: no matching RS256 JWK for kid ""`},
+		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: token is unverifiable: error while executing keyfunc: no matching RS256 JWK for kid "rs256-unsupported"`},
+		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: token is unverifiable: error while executing keyfunc: no matching RS256 JWK for kid "rs256-wrong-cert"`},
+		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", `access control error: JWKS_not_found: token is unverifiable: error while executing keyfunc: received no valid JWKs data: <nil>, status code 404`},
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
@@ -3469,7 +3469,7 @@ func TestJWTAccessControl(t *testing.T) {
 		{"ECDSA JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA local JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + localToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWT PKCS8", "/jwt/ecdsa8", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
-		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusUnauthorized, "", "access control error: ECDSATokenWrongAlgorithm: signing method ES256 is invalid"},
+		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusUnauthorized, "", "access control error: ECDSATokenWrongAlgorithm: token signature is invalid: signing method ES256 is invalid"},
 		{"ECDSA JWKS with certificate: kid=es256", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWKS with crv/x/y: kid=es256-crv-x-y", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken2}}, "", http.StatusOK, "", ""},
 	} {
@@ -3661,7 +3661,7 @@ func TestJWKsMaxStale(t *testing.T) {
 		t.Fatalf("C) expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
 	}
 
-	expectedMessage := "access control error: stale: received no valid JWKs data: <nil>, status code 500"
+	expectedMessage := "access control error: stale: token is unverifiable: error while executing keyfunc: received no valid JWKs data: <nil>, status code 500"
 	if message != expectedMessage {
 		t.Fatalf("expected message %q, got: %q", expectedMessage, message)
 	}

@@ -13,8 +13,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var validKey = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")
-
 func ValueToGo(val cty.Value) interface{} {
 	if val.IsNull() || !val.IsKnown() {
 		return nil
@@ -151,9 +149,6 @@ func MapToValue(m map[string]interface{}) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 
 	for k, v := range m {
-		if !validKey.MatchString(k) {
-			continue
-		}
 		switch v := v.(type) {
 		case []string:
 			ctyMap[k] = stringListToValue(v)
@@ -176,13 +171,11 @@ func MapToValue(m map[string]interface{}) cty.Value {
 func HeaderToMapValue(headers http.Header) cty.Value {
 	ctyMap := make(map[string]cty.Value)
 	for k, v := range headers {
-		if validKey.MatchString(k) {
-			if len(v) == 0 {
-				ctyMap[strings.ToLower(k)] = cty.StringVal("")
-				continue
-			}
-			ctyMap[strings.ToLower(k)] = cty.StringVal(v[0]) // TODO: ListVal??
+		if len(v) == 0 {
+			ctyMap[strings.ToLower(k)] = cty.StringVal("")
+			continue
 		}
+		ctyMap[strings.ToLower(k)] = cty.StringVal(v[0]) // TODO: ListVal??
 	}
 	if len(ctyMap) == 0 {
 		return cty.MapValEmpty(cty.String)

@@ -55,6 +55,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	filesList := filesList{}
 
 	type globalFlags struct {
+		BindAddress         string        `env:"bind_address"`
 		DebugEndpoint       bool          `env:"pprof"`
 		DebugPort           int           `env:"pprof_port"`
 		FilePath            string        `env:"file"`
@@ -72,6 +73,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	defaultSettings := config.NewDefaultSettings()
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
+	set.StringVar(&flags.BindAddress, "bind-address", "", "-bind-address=0.0.0.0,1.2.3.4")
 	set.BoolVar(&flags.DebugEndpoint, "pprof", false, "-pprof")
 	set.IntVar(&flags.DebugPort, "pprof-port", defaultSettings.PProfPort, "-pprof-port 1234")
 	set.Var(&filesList, "f", "-f /path/to/couper.hcl ...")
