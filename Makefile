@@ -1,6 +1,8 @@
 .PHONY: docker-telemetry build generate image
 .PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
 
+GO_VERSION := 1.21
+
 build:
 	go build -race -v -o couper main.go
 
@@ -26,7 +28,7 @@ test:
 	go test -v -short -race -count 1 -timeout 300s ./...
 
 test-docker:
-	docker run --rm -v $(CURDIR):/go/app -w /go/app golang:1.20 sh -c "go test -short -count 1 -v -timeout 300s -race ./..."
+	docker run --rm -v $(CURDIR):/go/app -w /go/app golang:$(GO_VERSION) sh -c "go test -short -count 1 -v -timeout 300s -race ./..."
 
 coverage: test-coverage test-coverage-show
 
