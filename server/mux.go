@@ -14,7 +14,6 @@ import (
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/handler"
 	"github.com/coupergateway/couper/handler/middleware"
-	"github.com/coupergateway/couper/utils"
 )
 
 // Mux is a http request router and dispatches requests
@@ -109,7 +108,7 @@ func (m *Mux) RegisterConfigured() {
 	}
 
 	for _, path := range sortedPathPatterns(m.opts.FileRoutes) {
-		mustAddRoute(m.fileRoot, utils.JoinOpenAPIPath(path, "/**"), m.opts.FileRoutes[path], false)
+		mustAddRoute(m.fileRoot, path, m.opts.FileRoutes[path], false)
 	}
 
 	for _, path := range sortedPathPatterns(m.opts.SPARoutes) {
