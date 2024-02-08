@@ -36,34 +36,43 @@ func isParamSegment(segment string) bool {
 }
 
 func SortPathPatterns(pathPatterns []string) {
-	sort.Slice(pathPatterns, func(i, j int) bool {
-		iSegments := strings.Split(strings.TrimPrefix(pathPatterns[i], "/"), "/")
-		jSegments := strings.Split(strings.TrimPrefix(pathPatterns[j], "/"), "/")
-		iLastSegment := iSegments[len(iSegments)-1]
-		jLastSegment := jSegments[len(jSegments)-1]
-		if iLastSegment != "**" && jLastSegment == "**" {
-			return true
+	sort.SliceStable(pathPatterns, func(i, j int) bool {
+		iScore, iIsWildcard, _ := calculatePathScoreAndDetails(pathPatterns[i])
+		jScore, jIsWildcard, _ := calculatePathScoreAndDetails(pathPatterns[j])
+
+		if iIsWildcard != jIsWildcard {
+			return !iIsWildcard
 		}
-		if iLastSegment == "**" && jLastSegment != "**" {
-			return false
+		if iScore != jScore {
+			return iScore > jScore
 		}
-		if len(iSegments) > len(jSegments) {
-			return true
-		}
-		if len(iSegments) < len(jSegments) {
-			return false
-		}
-		for k, iSegment := range iSegments {
-			jSegment := jSegments[k]
-			if !isParamSegment(iSegment) && isParamSegment(jSegment) {
-				return true
-			}
-			if isParamSegment(iSegment) && !isParamSegment(jSegment) {
-				return false
-			}
-		}
-		return sort.StringSlice{pathPatterns[i], pathPatterns[j]}.Less(0, 1)
+		return pathPatterns[i] < pathPatterns[j]
 	})
+}
+
+func calculatePathScoreAndDetails(path string) (int, bool, int) {
+	score := 0
+	isWildcard := path == "**" || strings.HasSuffix(path, "/**")
+	segments := strings.Split(path, "/")
+
+	// Adjust the scoring mechanism to prioritize leading concrete segments
+	for i, segment := range segments {
+		segmentScore := 0
+		switch {
+		case segment == "**":
+			segmentScore = 1
+		case strings.Contains(segment, "{") && strings.Contains(segment, "}"):
+			segmentScore = 2
+		case segment != "" && segment != "**":
+			segmentScore = 3
+		}
+
+		// Prioritize segments based on their position (earlier segments get a higher multiplier)
+		positionMultiplier := len(segments) - i
+		score += segmentScore * positionMultiplier
+	}
+
+	return score, isWildcard, len(segments) - 1
 }
 
 func sortedPathPatterns(routes map[string]http.Handler) []string {
