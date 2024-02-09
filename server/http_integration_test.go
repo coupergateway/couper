@@ -272,6 +272,16 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusNotFound, []byte("<html>route not found error</html>\n"), http.Header{"Couper-Error": {"route not found error"}}, ""},
 			},
 		}},
+		{"files/03_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusOK, []byte(`<html lang="en">index</html>`), nil, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/assets/foo.js"},
+				expectation{http.StatusOK, []byte(`console.log("foo");`), nil, "file"},
+			},
+		}},
 		{"files_spa_api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
