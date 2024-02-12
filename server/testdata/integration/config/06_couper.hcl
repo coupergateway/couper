@@ -6,6 +6,7 @@ server "cors" {
     cors {
       allowed_origins = "a.com"
       allow_credentials = true
+      max_age = "200s"
     }
   }
 
@@ -15,6 +16,7 @@ server "cors" {
     cors {
       allowed_origins = "b.com"
       allow_credentials = true
+      max_age = "200s"
     }
   }
 
@@ -23,9 +25,18 @@ server "cors" {
     cors {
       allowed_origins = "c.com"
       allow_credentials = true
+      max_age = "200s"
     }
     endpoint "/" {
-      response {}
+      response {
+        headers = {
+          access-control-allow-origin = "foo"
+          access-control-allow-credentials = "bar"
+          access-control-allow-methods = "BREW"
+          access-control-allow-headers = "Auth"
+          access-control-max-age = 300
+        }
+      }
     }
   }
 }
