@@ -4611,6 +4611,7 @@ func TestCORS_Configuration(t *testing.T) {
 			acam, acamExists := res.Header["Access-Control-Allow-Methods"]
 			acah, acahExists := res.Header["Access-Control-Allow-Headers"]
 			acac, acacExists := res.Header["Access-Control-Allow-Credentials"]
+			acax, acaxExists := res.Header["Access-Control-Max-Age"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
@@ -4624,6 +4625,9 @@ func TestCORS_Configuration(t *testing.T) {
 				if !acacExists || acac[0] != "true" {
 					subT.Errorf("Expected allowed credentials, got: %v", acac)
 				}
+				if !acaxExists || acax[0] != "200" {
+					subT.Errorf("Expected max-age 200, got: %v", acax)
+				}
 			} else {
 				if acaoExists {
 					subT.Errorf("Expected not allowed origin, got: %v", acao)
@@ -4633,6 +4637,9 @@ func TestCORS_Configuration(t *testing.T) {
 				}
 				if acahExists {
 					subT.Errorf("Expected not allowed headers, got: %v", acah)
+				}
+				if acaxExists {
+					subT.Errorf("Expected not max-age, got: %v", acax)
 				}
 				if acacExists {
 					subT.Errorf("Expected not allowed credentials, got: %v", acac)
@@ -4660,6 +4667,9 @@ func TestCORS_Configuration(t *testing.T) {
 
 			acao, acaoExists = res.Header["Access-Control-Allow-Origin"]
 			acac, acacExists = res.Header["Access-Control-Allow-Credentials"]
+			acam, acamExists = res.Header["Access-Control-Allow-Methods"]
+			acah, acahExists = res.Header["Access-Control-Allow-Headers"]
+			acax, acaxExists = res.Header["Access-Control-Max-Age"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
@@ -4674,6 +4684,15 @@ func TestCORS_Configuration(t *testing.T) {
 				if acacExists {
 					subT.Errorf("Expected not allowed credentials, got: %v", acac)
 				}
+			}
+			if acamExists {
+				subT.Errorf("Expected not allowed methods, got: %v", acam)
+			}
+			if acahExists {
+				subT.Errorf("Expected not allowed headers, got: %v", acah)
+			}
+			if acaxExists {
+				subT.Errorf("Expected not max-age, got: %v", acax)
 			}
 			vary, varyExists = res.Header["Vary"]
 			if !varyExists || strings.Join(vary, ",") != tc.expVary {
@@ -4698,6 +4717,9 @@ func TestCORS_Configuration(t *testing.T) {
 
 			acao, acaoExists = res.Header["Access-Control-Allow-Origin"]
 			acac, acacExists = res.Header["Access-Control-Allow-Credentials"]
+			acam, acamExists = res.Header["Access-Control-Allow-Methods"]
+			acah, acahExists = res.Header["Access-Control-Allow-Headers"]
+			acax, acaxExists = res.Header["Access-Control-Max-Age"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
@@ -4712,6 +4734,15 @@ func TestCORS_Configuration(t *testing.T) {
 				if acacExists {
 					subT.Errorf("Expected not allowed credentials, got: %v", acac)
 				}
+			}
+			if acamExists {
+				subT.Errorf("Expected not allowed methods, got: %v", acam)
+			}
+			if acahExists {
+				subT.Errorf("Expected not allowed headers, got: %v", acah)
+			}
+			if acaxExists {
+				subT.Errorf("Expected not max-age, got: %v", acax)
 			}
 			vary, varyExists = res.Header["Vary"]
 			if !varyExists || strings.Join(vary, ",") != tc.expVaryCred {
