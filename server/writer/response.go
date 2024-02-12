@@ -34,6 +34,8 @@ var (
 	endOfLine   = []byte("\r\n")
 )
 
+type HeaderModifier func(header http.Header)
+
 // Response wraps the http.ResponseWriter.
 type Response struct {
 	hijackedConn     net.Conn
@@ -46,8 +48,10 @@ type Response struct {
 	rawBytesWritten int
 	bytesWritten    int
 	// modifier
-	evalCtx  *hcl.EvalContext
-	modifier []hcl.Body
+	evalCtx               *hcl.EvalContext
+	modifier              []hcl.Body
+	headerModifiersAfter  []HeaderModifier
+	headerModifiersBefore []HeaderModifier
 	// security
 	addPrivateCC bool
 }
@@ -135,7 +139,9 @@ func (r *Response) WriteHeader(statusCode int) {
 	}
 
 	r.configureHeader()
+	r.applyHeaderModifiers(false)
 	r.applyModifier()
+	r.applyHeaderModifiers(true)
 
 	// !!! Execute after modifier !!!
 	if r.addPrivateCC {
@@ -205,5 +211,25 @@ func (r *Response) applyModifier() {
 
 	for _, body := range r.modifier {
 		_ = eval.ApplyResponseHeaderOps(r.evalCtx, body, r.Header())
+	}
+}
+
+func (r *Response) RegisterHeaderModifier(headerModifier HeaderModifier, afterModifierAttributes bool) {
+	if afterModifierAttributes {
+		r.headerModifiersAfter = append(r.headerModifiersAfter, headerModifier)
+	} else {
+		r.headerModifiersBefore = append(r.headerModifiersBefore, headerModifier)
+	}
+}
+
+func (r *Response) applyHeaderModifiers(afterModifierAttributes bool) {
+	var headerModifiers []HeaderModifier
+	if afterModifierAttributes {
+		headerModifiers = r.headerModifiersAfter
+	} else {
+		headerModifiers = r.headerModifiersBefore
+	}
+	for _, modifier := range headerModifiers {
+		modifier(r.Header())
 	}
 }
