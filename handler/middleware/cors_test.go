@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/coupergateway/couper/server/writer"
 )
 
 func TestCORSOptions_AllowsOrigin(t *testing.T) {
@@ -330,7 +332,8 @@ func TestCORS_ServeHTTP(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-			corsHandler.ServeHTTP(rec, req)
+			r := writer.NewResponseWriter(rec, "")
+			corsHandler.ServeHTTP(r, req)
 
 			if !rec.Flushed {
 				rec.Flush()
@@ -547,8 +550,8 @@ func TestProxy_ServeHTTP_CORS_PFC(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-
-			corsHandler.ServeHTTP(rec, req)
+			r := writer.NewResponseWriter(rec, "")
+			corsHandler.ServeHTTP(r, req)
 
 			if !rec.Flushed {
 				rec.Flush()
