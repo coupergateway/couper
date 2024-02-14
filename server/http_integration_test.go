@@ -282,6 +282,38 @@ func TestHTTPServer_ServeHTTP(t *testing.T) {
 				expectation{http.StatusOK, []byte(`console.log("foo");`), nil, "file"},
 			},
 		}},
+		{"files_api/01_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusOK, []byte(`<html lang="en">index</html>`), nil, "file"},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/assets/foo.js"},
+				expectation{http.StatusOK, []byte(`console.log("foo");`), nil, "file"},
+			},
+		}},
+		{"files_api/02_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/"},
+				expectation{http.StatusOK, []byte(`<html lang="en">index</html>`), nil, "file"},
+			},
+		}},
+		{"spa_api/01_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/foo"},
+				expectation{http.StatusOK, []byte("<html><title>SPA_01</title><body></body></html>\n"), nil, "spa"},
+			},
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/spa/foo"},
+				expectation{http.StatusOK, []byte("<html><title>SPA_01</title><body></body></html>\n"), nil, "spa"},
+			},
+		}},
+		{"spa_api/02_couper.hcl", []requestCase{
+			{
+				testRequest{http.MethodGet, "http://anyserver:8080/foo"},
+				expectation{http.StatusOK, []byte("<html><title>SPA_01</title><body></body></html>\n"), nil, "spa"},
+			},
+		}},
 		{"files_spa_api/01_couper.hcl", []requestCase{
 			{
 				testRequest{http.MethodGet, "http://anyserver:8080/"},
