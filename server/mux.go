@@ -218,12 +218,9 @@ func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API
 			filesPaths = m.opts.ServerOptions.FilesBasePaths
 		}
 
-		for _, spaPath := range spaPaths {
-			for _, filesPath := range filesPaths {
-				if isAPIError(path, filesPath, spaPath, reqPath) {
-					return m.opts.ServerOptions.APIErrTpls[api], api
-				}
-			}
+		basePaths := append(spaPaths, filesPaths...)
+		if isAPIError(path, reqPath, basePaths...) {
+			return m.opts.ServerOptions.APIErrTpls[api], api
 		}
 	}
 
@@ -262,13 +259,12 @@ func mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailing
 
 // isAPIError checks the path w/ and w/o the
 // trailing slash against the request path.
-func isAPIError(apiPath, filesBasePath, spaBasePath, reqPath string) bool {
+func isAPIError(apiPath, reqPath string, filesOrSpaBasePaths ...string) bool {
 	if matchesPath(apiPath, reqPath) {
-		if isConfigured(filesBasePath) && apiPath == filesBasePath {
-			return false
-		}
-		if isConfigured(spaBasePath) && apiPath == spaBasePath {
-			return false
+		for _, filesOrSpaBasePath := range filesOrSpaBasePaths {
+			if isConfigured(filesOrSpaBasePath) && apiPath == filesOrSpaBasePath {
+				return false
+			}
 		}
 
 		return true
