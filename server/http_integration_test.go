@@ -4250,7 +4250,7 @@ func TestFunctions(t *testing.T) {
 			"X-Default-9":  "",
 			"X-Default-10": "",
 			"X-Default-11": "0",
-			"X-Default-12": "",
+			"X-Default-12": "false",
 			"X-Default-13": `{"a":1}`,
 			"X-Default-14": `{"a":1}`,
 			"X-Default-15": `[1,2]`,
