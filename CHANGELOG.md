@@ -23,7 +23,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Storing of digit-starting string object keys in [request context](https://docs.couper.io/configuration/variables#request) and of digit-starting string header field names in [request](https://docs.couper.io/configuration/variables#request) variable ([#799](https://github.com/coupergateway/couper/pull/799))
 
 * **Dependencies**
-  * build with go 1.20 ([#745](https://github.com/coupergateway/couper/pull/745))
+  * build with go 1.21 ([#800](https://github.com/coupergateway/couper/pull/800))
   * upgrade jwt library from v4 to v5 ([#769](https://github.com/coupergateway/couper/issues/769))
 
 ---
