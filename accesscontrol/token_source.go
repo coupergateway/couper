@@ -293,23 +293,14 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	}
 
 	// 3. all required claims per Section 4.2 are contained in the JWT
-	// JOSE header parameters: typ, alg, jwk
-	// Note: alg is already checked by jwt.ParseWithClaims()
-	for _, k := range []string{"typ", "alg", "jwk"} {
-		if _, ok := proof.Header[k]; !ok {
-			return fmt.Errorf("missing DPoP proof JOSE header parameter %s", k)
-		}
+	if err = validateProofHeader(proof.Header); err != nil {
+		return err
 	}
 	// claims: jti, htm, htu, iat (, ath)
 	for _, k := range []string{"jti", "htm", "htu", "iat", "ath"} {
 		if _, ok := proofClaims[k]; !ok {
 			return fmt.Errorf("missing DPoP proof claim %s", k)
 		}
-	}
-
-	// 4. the typ JOSE header parameter has the value dpop+jwt
-	if proof.Header["typ"] != DpopTyp {
-		return fmt.Errorf("DPoP proof typ JOSE header parameter mismatch")
 	}
 
 	// 8. the htm claim matches the HTTP method of the current request
@@ -383,6 +374,23 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	jkt := JwkToJKT(oJwk)
 	if atJkt != jkt {
 		return fmt.Errorf("DPoP JWK thumbprint mismatch")
+	}
+
+	return nil
+}
+
+func validateProofHeader(proofHeader map[string]interface{}) error {
+	// JOSE header parameters: typ, alg, jwk
+	// Note: alg is already checked by jwt.ParseWithClaims()
+	for _, k := range []string{"typ", "alg", "jwk"} {
+		if _, ok := proofHeader[k]; !ok {
+			return fmt.Errorf("missing DPoP proof JOSE header parameter %s", k)
+		}
+	}
+
+	// 4. the typ JOSE header parameter has the value dpop+jwt
+	if proofHeader["typ"] != DpopTyp {
+		return fmt.Errorf("DPoP proof typ JOSE header parameter mismatch")
 	}
 
 	return nil
