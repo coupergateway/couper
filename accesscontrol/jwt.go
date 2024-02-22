@@ -190,8 +190,8 @@ func (j *JWT) DisablePrivateCaching() bool {
 	return j.disablePrivateCaching
 }
 
-// getParser returns a JWT parser for a parser config
-func (j *JWT) getParser(p parserConfig) *jwt.Parser {
+// getParserForConfig returns a JWT parser for a parser config
+func (j *JWT) getParserForConfig(p parserConfig) *jwt.Parser {
 	key := p.key()
 	if parser, ok := j.memStore.Get(key).(*jwt.Parser); ok {
 		return parser
@@ -200,6 +200,20 @@ func (j *JWT) getParser(p parserConfig) *jwt.Parser {
 	parser := p.newParser()
 	j.memStore.Set(key, parser, 3600)
 	return parser
+}
+
+// getParserForExpectedClaims returns a JWT parser for expected claims
+func (j *JWT) getParserForExpectedClaims(expectedClaims map[string]interface{}) *jwt.Parser {
+	parserConfig := parserConfig{
+		algorithms: j.algos,
+	}
+	if aud, ok := expectedClaims["aud"].(string); ok {
+		parserConfig.audience = aud
+	}
+	if iss, ok := expectedClaims["iss"].(string); ok {
+		parserConfig.issuer = iss
+	}
+	return j.getParserForConfig(parserConfig)
 }
 
 // Validate reading the token from configured source and validates against the key.
@@ -214,16 +228,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
-	parserConfig := parserConfig{
-		algorithms: j.algos,
-	}
-	if aud, ok := expectedClaims["aud"].(string); ok {
-		parserConfig.audience = aud
-	}
-	if iss, ok := expectedClaims["iss"].(string); ok {
-		parserConfig.issuer = iss
-	}
-	parser := j.getParser(parserConfig)
+	parser := j.getParserForExpectedClaims(expectedClaims)
 
 	if j.jwks != nil {
 		// load JWKS if needed
