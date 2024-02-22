@@ -361,12 +361,8 @@ func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, 
 		return err
 	}
 
-	// 12.a ensure that the value of the ath claim equals the hash of
-	//      that access token
-	hash := sha256.Sum256([]byte(token))
-	ath := base64.RawURLEncoding.EncodeToString(hash[:])
-	if proofClaims["ath"] != ath {
-		return fmt.Errorf("DPoP proof ath claim mismatch")
+	if err := validateAthClaim(proofClaims, token); err != nil {
+		return err
 	}
 
 	return nil
@@ -417,6 +413,18 @@ func validateIatClaim(proofClaims map[string]interface{}) error {
 	}
 	if iatInt > now+10 {
 		return fmt.Errorf("DPoP proof too new")
+	}
+
+	return nil
+}
+
+func validateAthClaim(proofClaims map[string]interface{}, token string) error {
+	// 12.a ensure that the value of the ath claim equals the hash of
+	//      that access token
+	hash := sha256.Sum256([]byte(token))
+	ath := base64.RawURLEncoding.EncodeToString(hash[:])
+	if proofClaims["ath"] != ath {
+		return fmt.Errorf("DPoP proof ath claim mismatch")
 	}
 
 	return nil
