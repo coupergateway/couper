@@ -365,6 +365,22 @@ func validateHtuClaim(proofClaims map[string]interface{}, req *http.Request) err
 	// Syntax-Based Normalization (Section 6.2.2 of [RFC3986]) and Scheme-
 	// Based Normalization (Section 6.2.3 of [RFC3986]) before comparing the
 	// htu claim.
+	reqHtu, err := getReqHtu(req)
+	if err != nil {
+		return err
+	}
+	pcHtu, err := getPcHtu(proofClaims)
+	if err != nil {
+		return err
+	}
+	if pcHtu != reqHtu {
+		return fmt.Errorf("DPoP proof htu claim mismatch")
+	}
+
+	return nil
+}
+
+func getReqHtu(req *http.Request) (string, error) {
 	htu := &url.URL{
 		Scheme: req.URL.Scheme,
 		Host:   req.URL.Host,
@@ -373,21 +389,23 @@ func validateHtuClaim(proofClaims map[string]interface{}, req *http.Request) err
 	var err error
 	htu, err = normalize(htu)
 	if err != nil {
-		return err
-	}
-	pcHtu, err := url.Parse(proofClaims["htu"].(string))
-	if err != nil {
-		return err
-	}
-	pcHtu, err = normalize(pcHtu)
-	if err != nil {
-		return err
-	}
-	if pcHtu.String() != htu.String() {
-		return fmt.Errorf("DPoP proof htu claim mismatch")
+		return "", err
 	}
 
-	return nil
+	return htu.String(), nil
+}
+
+func getPcHtu(proofClaims map[string]interface{}) (string, error) {
+	htu, err := url.Parse(proofClaims["htu"].(string))
+	if err != nil {
+		return "", err
+	}
+	htu, err = normalize(htu)
+	if err != nil {
+		return "", err
+	}
+
+	return htu.String(), nil
 }
 
 func validateIatClaim(proofClaims map[string]interface{}) error {
