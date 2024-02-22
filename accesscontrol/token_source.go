@@ -296,6 +296,47 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	if err = validateProofHeader(proof.Header); err != nil {
 		return err
 	}
+
+	if err = validateProofClaims(proofClaims, req, token); err != nil {
+		return err
+	}
+
+	// 12.b confirm that the public key to which the access token is
+	//      bound matches the public key from the DPoP proof
+	cnf, ok := tokenClaims["cnf"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("missing DPoP access token cnf claim or wrong type")
+	}
+	atJkt, ok := cnf["jkt"].(string)
+	if !ok {
+		return fmt.Errorf("DPoP access token cnf claim missing jkt property or wrong type")
+	}
+	jkt := JwkToJKT(oJwk)
+	if atJkt != jkt {
+		return fmt.Errorf("DPoP JWK thumbprint mismatch")
+	}
+
+	return nil
+}
+
+func validateProofHeader(proofHeader map[string]interface{}) error {
+	// JOSE header parameters: typ, alg, jwk
+	// Note: alg is already checked by jwt.ParseWithClaims()
+	for _, k := range []string{"typ", "alg", "jwk"} {
+		if _, ok := proofHeader[k]; !ok {
+			return fmt.Errorf("missing DPoP proof JOSE header parameter %s", k)
+		}
+	}
+
+	// 4. the typ JOSE header parameter has the value dpop+jwt
+	if proofHeader["typ"] != DpopTyp {
+		return fmt.Errorf("DPoP proof typ JOSE header parameter mismatch")
+	}
+
+	return nil
+}
+
+func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, token string) error {
 	// claims: jti, htm, htu, iat (, ath)
 	for _, k := range []string{"jti", "htm", "htu", "iat", "ath"} {
 		if _, ok := proofClaims[k]; !ok {
@@ -320,6 +361,7 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 		Host:   req.URL.Host,
 		Path:   req.URL.Path,
 	}
+	var err error
 	htu, err = normalize(htu)
 	if err != nil {
 		return err
@@ -359,38 +401,6 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	ath := base64.RawURLEncoding.EncodeToString(hash[:])
 	if proofClaims["ath"] != ath {
 		return fmt.Errorf("DPoP proof ath claim mismatch")
-	}
-
-	// 12.b confirm that the public key to which the access token is
-	//      bound matches the public key from the DPoP proof
-	cnf, ok := tokenClaims["cnf"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("missing DPoP access token cnf claim or wrong type")
-	}
-	atJkt, ok := cnf["jkt"].(string)
-	if !ok {
-		return fmt.Errorf("DPoP access token cnf claim missing jkt property or wrong type")
-	}
-	jkt := JwkToJKT(oJwk)
-	if atJkt != jkt {
-		return fmt.Errorf("DPoP JWK thumbprint mismatch")
-	}
-
-	return nil
-}
-
-func validateProofHeader(proofHeader map[string]interface{}) error {
-	// JOSE header parameters: typ, alg, jwk
-	// Note: alg is already checked by jwt.ParseWithClaims()
-	for _, k := range []string{"typ", "alg", "jwk"} {
-		if _, ok := proofHeader[k]; !ok {
-			return fmt.Errorf("missing DPoP proof JOSE header parameter %s", k)
-		}
-	}
-
-	// 4. the typ JOSE header parameter has the value dpop+jwt
-	if proofHeader["typ"] != DpopTyp {
-		return fmt.Errorf("DPoP proof typ JOSE header parameter mismatch")
 	}
 
 	return nil
