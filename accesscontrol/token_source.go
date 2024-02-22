@@ -2,6 +2,7 @@ package accesscontrol
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
@@ -255,20 +256,12 @@ func getJwkAndPubKey(proof *jwt.Token) (map[string]interface{}, interface{}, err
 }
 
 func getRSAPubKey(jwk map[string]interface{}) (*rsa.PublicKey, error) {
-	n, ok := jwk["n"].(string)
-	if !ok {
-		return nil, fmt.Errorf("jwk JOSE header parameter missing n property or wrong type")
-	}
-	nbs, err := base64.RawURLEncoding.DecodeString(n)
+	n, err := getN(jwk)
 	if err != nil {
 		return nil, err
 	}
 
-	e, ok := jwk["e"].(string)
-	if !ok {
-		return nil, fmt.Errorf("jwk JOSE header parameter missing e property or wrong type")
-	}
-	ebs, err := base64.RawURLEncoding.DecodeString(e)
+	e, err := getE(jwk)
 	if err != nil {
 		return nil, err
 	}
@@ -283,35 +276,41 @@ func getRSAPubKey(jwk map[string]interface{}) (*rsa.PublicKey, error) {
 	}
 
 	return &rsa.PublicKey{
-		N: toBigInt(nbs),
-		E: toInt(ebs),
+		N: toBigInt(n),
+		E: toInt(e),
 	}, nil
 }
 
+func getN(jwk map[string]interface{}) ([]byte, error) {
+	n, ok := jwk["n"].(string)
+	if !ok {
+		return nil, fmt.Errorf("jwk JOSE header parameter missing n property or wrong type")
+	}
+
+	return base64.RawURLEncoding.DecodeString(n)
+}
+
+func getE(jwk map[string]interface{}) ([]byte, error) {
+	e, ok := jwk["e"].(string)
+	if !ok {
+		return nil, fmt.Errorf("jwk JOSE header parameter missing e property or wrong type")
+	}
+
+	return base64.RawURLEncoding.DecodeString(e)
+}
+
 func getECDSAPubKey(jwk map[string]interface{}) (*ecdsa.PublicKey, error) {
-	crv, ok := jwk["crv"].(string)
-	if !ok {
-		return nil, fmt.Errorf("jwk JOSE header parameter missing crv property or wrong type")
-	}
-	curve, err := acjwk.GetCurve(crv)
+	curve, err := getCurve(jwk)
 	if err != nil {
 		return nil, err
 	}
 
-	x, ok := jwk["x"].(string)
-	if !ok {
-		return nil, fmt.Errorf("jwk JOSE header parameter missing x property or wrong type")
-	}
-	xbs, err := base64.RawURLEncoding.DecodeString(x)
+	x, err := getX(jwk)
 	if err != nil {
 		return nil, err
 	}
 
-	y, ok := jwk["y"].(string)
-	if !ok {
-		return nil, fmt.Errorf("jwk JOSE header parameter missing y property or wrong type")
-	}
-	ybs, err := base64.RawURLEncoding.DecodeString(y)
+	y, err := getY(jwk)
 	if err != nil {
 		return nil, err
 	}
@@ -327,9 +326,36 @@ func getECDSAPubKey(jwk map[string]interface{}) (*ecdsa.PublicKey, error) {
 
 	return &ecdsa.PublicKey{
 		Curve: curve,
-		X:     toBigInt(xbs),
-		Y:     toBigInt(ybs),
+		X:     toBigInt(x),
+		Y:     toBigInt(y),
 	}, nil
+}
+
+func getCurve(jwk map[string]interface{}) (elliptic.Curve, error) {
+	crv, ok := jwk["crv"].(string)
+	if !ok {
+		return nil, fmt.Errorf("jwk JOSE header parameter missing crv property or wrong type")
+	}
+
+	return acjwk.GetCurve(crv)
+}
+
+func getX(jwk map[string]interface{}) ([]byte, error) {
+	x, ok := jwk["x"].(string)
+	if !ok {
+		return nil, fmt.Errorf("jwk JOSE header parameter missing x property or wrong type")
+	}
+
+	return base64.RawURLEncoding.DecodeString(x)
+}
+
+func getY(jwk map[string]interface{}) ([]byte, error) {
+	y, ok := jwk["y"].(string)
+	if !ok {
+		return nil, fmt.Errorf("jwk JOSE header parameter missing y property or wrong type")
+	}
+
+	return base64.RawURLEncoding.DecodeString(y)
 }
 
 func validateProofHeader(proofHeader map[string]interface{}) error {
