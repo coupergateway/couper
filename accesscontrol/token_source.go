@@ -190,97 +190,9 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	// 2. the DPoP HTTP request header field value is a single well-formed
 	//    JWT
 	proof, err := s.parser.ParseWithClaims(dpop, proofClaims, func(proof *jwt.Token) (interface{}, error) {
-		// 6. the JWT signature verifies with the public key contained in the
-		//    jwk JOSE header parameter
-		jwk, ok := proof.Header["jwk"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("missing jwk JOSE header parameter or wrong type")
-		}
-
-		// 7. the jwk JOSE header parameter does not contain a private key
-		var pubKey interface{}
-		kty, ok := jwk["kty"].(string)
-		if !ok {
-			return nil, fmt.Errorf("jwk JOSE header parameter missing kty property or wrong type")
-		}
-		switch kty {
-		case "RSA":
-			n, ok := jwk["n"].(string)
-			if !ok {
-				return nil, fmt.Errorf("jwk JOSE header parameter missing n property or wrong type")
-			}
-			nbs, err := base64.RawURLEncoding.DecodeString(n)
-			if err != nil {
-				return nil, err
-			}
-
-			e, ok := jwk["e"].(string)
-			if !ok {
-				return nil, fmt.Errorf("jwk JOSE header parameter missing e property or wrong type")
-			}
-			ebs, err := base64.RawURLEncoding.DecodeString(e)
-			if err != nil {
-				return nil, err
-			}
-
-			pubKey = &rsa.PublicKey{
-				N: toBigInt(nbs),
-				E: toInt(ebs),
-			}
-
-			// remove non-required members
-			for k, _ := range jwk {
-				switch k {
-				case "kty", "n", "e":
-				default:
-					delete(jwk, k)
-				}
-			}
-		case "ECDSA":
-			crv, ok := jwk["crv"].(string)
-			if !ok {
-				return nil, fmt.Errorf("jwk JOSE header parameter missing crv property or wrong type")
-			}
-			curve, err := acjwk.GetCurve(crv)
-			if err != nil {
-				return nil, err
-			}
-
-			x, ok := jwk["x"].(string)
-			if !ok {
-				return nil, fmt.Errorf("jwk JOSE header parameter missing x property or wrong type")
-			}
-			xbs, err := base64.RawURLEncoding.DecodeString(x)
-			if err != nil {
-				return nil, err
-			}
-
-			y, ok := jwk["y"].(string)
-			if !ok {
-				return nil, fmt.Errorf("jwk JOSE header parameter missing y property or wrong type")
-			}
-			ybs, err := base64.RawURLEncoding.DecodeString(y)
-			if err != nil {
-				return nil, err
-			}
-
-			pubKey = &ecdsa.PublicKey{
-				Curve: curve,
-				X:     toBigInt(xbs),
-				Y:     toBigInt(ybs),
-			}
-
-			// remove non-required members
-			for k, _ := range jwk {
-				switch k {
-				case "kty", "crv", "x", "y":
-				default:
-					delete(jwk, k)
-				}
-			}
-		default:
-			// unsupported algorithms are already handled by JWT parser
-			return nil, fmt.Errorf("jwk JOSE header parameter unsupported kty value")
+		jwk, pubKey, err := getJwkAndPubKey(proof)
+		if err != nil {
+			return nil, err
 		}
 
 		oJwk = jwk
@@ -306,6 +218,103 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	}
 
 	return nil
+}
+
+func getJwkAndPubKey(proof *jwt.Token) (map[string]interface{}, interface{}, error) {
+	// 6. the JWT signature verifies with the public key contained in the
+	//    jwk JOSE header parameter
+	jwk, ok := proof.Header["jwk"].(map[string]interface{})
+	if !ok {
+		return nil, nil, fmt.Errorf("missing jwk JOSE header parameter or wrong type")
+	}
+
+	// 7. the jwk JOSE header parameter does not contain a private key
+	var pubKey interface{}
+	kty, ok := jwk["kty"].(string)
+	if !ok {
+		return nil, nil, fmt.Errorf("jwk JOSE header parameter missing kty property or wrong type")
+	}
+	switch kty {
+	case "RSA":
+		n, ok := jwk["n"].(string)
+		if !ok {
+			return nil, nil, fmt.Errorf("jwk JOSE header parameter missing n property or wrong type")
+		}
+		nbs, err := base64.RawURLEncoding.DecodeString(n)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		e, ok := jwk["e"].(string)
+		if !ok {
+			return nil, nil, fmt.Errorf("jwk JOSE header parameter missing e property or wrong type")
+		}
+		ebs, err := base64.RawURLEncoding.DecodeString(e)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		pubKey = &rsa.PublicKey{
+			N: toBigInt(nbs),
+			E: toInt(ebs),
+		}
+
+		// remove non-required members
+		for k, _ := range jwk {
+			switch k {
+			case "kty", "n", "e":
+			default:
+				delete(jwk, k)
+			}
+		}
+	case "ECDSA":
+		crv, ok := jwk["crv"].(string)
+		if !ok {
+			return nil, nil, fmt.Errorf("jwk JOSE header parameter missing crv property or wrong type")
+		}
+		curve, err := acjwk.GetCurve(crv)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		x, ok := jwk["x"].(string)
+		if !ok {
+			return nil, nil, fmt.Errorf("jwk JOSE header parameter missing x property or wrong type")
+		}
+		xbs, err := base64.RawURLEncoding.DecodeString(x)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		y, ok := jwk["y"].(string)
+		if !ok {
+			return nil, nil, fmt.Errorf("jwk JOSE header parameter missing y property or wrong type")
+		}
+		ybs, err := base64.RawURLEncoding.DecodeString(y)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		pubKey = &ecdsa.PublicKey{
+			Curve: curve,
+			X:     toBigInt(xbs),
+			Y:     toBigInt(ybs),
+		}
+
+		// remove non-required members
+		for k, _ := range jwk {
+			switch k {
+			case "kty", "crv", "x", "y":
+			default:
+				delete(jwk, k)
+			}
+		}
+	default:
+		// unsupported algorithms are already handled by JWT parser
+		return nil, nil, fmt.Errorf("jwk JOSE header parameter unsupported kty value")
+	}
+
+	return jwk, pubKey, nil
 }
 
 func validateProofHeader(proofHeader map[string]interface{}) error {
