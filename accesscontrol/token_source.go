@@ -357,17 +357,8 @@ func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, 
 	//     claim matches the server-provided nonce value
 	// TODO
 
-	// 11. the creation time of the JWT, as determined by either the iat
-	//     claim or a server managed timestamp via the nonce claim, is within
-	//     an acceptable window
-	// acceptable window: 10s
-	iatInt := int64(proofClaims["iat"].(float64))
-	now := time.Now().Unix()
-	if iatInt < now-10 {
-		return fmt.Errorf("DPoP proof too old")
-	}
-	if iatInt > now+10 {
-		return fmt.Errorf("DPoP proof too new")
+	if err := validateIatClaim(proofClaims); err != nil {
+		return err
 	}
 
 	// 12.a ensure that the value of the ath claim equals the hash of
@@ -409,6 +400,23 @@ func validateHtuClaim(proofClaims map[string]interface{}, req *http.Request) err
 	}
 	if pcHtu.String() != htu.String() {
 		return fmt.Errorf("DPoP proof htu claim mismatch")
+	}
+
+	return nil
+}
+
+func validateIatClaim(proofClaims map[string]interface{}) error {
+	// 11. the creation time of the JWT, as determined by either the iat
+	//     claim or a server managed timestamp via the nonce claim, is within
+	//     an acceptable window
+	// acceptable window: 10s
+	iatInt := int64(proofClaims["iat"].(float64))
+	now := time.Now().Unix()
+	if iatInt < now-10 {
+		return fmt.Errorf("DPoP proof too old")
+	}
+	if iatInt > now+10 {
+		return fmt.Errorf("DPoP proof too new")
 	}
 
 	return nil
