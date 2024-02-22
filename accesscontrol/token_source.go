@@ -170,20 +170,9 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 		return nil
 	}
 
-	dpopCount := len(req.Header.Values("DPoP"))
-	if dpopCount == 0 {
-		return fmt.Errorf("missing DPoP request header field")
-	}
-
-	// checks according to 4.3 Checking DPoP Proofs
-
-	// 1. there is not more than one DPoP HTTP request header field
-	if dpopCount > 1 {
-		return fmt.Errorf("too many DPoP request header fields")
-	}
-	dpop := req.Header.Get("DPoP")
-	if dpop == "" {
-		return fmt.Errorf("empty DPoP proof")
+	dpop, err := getProof(req.Header)
+	if err != nil {
+		return err
 	}
 
 	proofClaims := jwt.MapClaims{}
@@ -219,6 +208,26 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	}
 
 	return nil
+}
+
+func getProof(header http.Header) (string, error) {
+	dpopCount := len(header.Values("DPoP"))
+	if dpopCount == 0 {
+		return "", fmt.Errorf("missing DPoP request header field")
+	}
+
+	// checks according to 4.3 Checking DPoP Proofs
+
+	// 1. there is not more than one DPoP HTTP request header field
+	if dpopCount > 1 {
+		return "", fmt.Errorf("too many DPoP request header fields")
+	}
+	dpop := header.Get("DPoP")
+	if dpop == "" {
+		return "", fmt.Errorf("empty DPoP proof")
+	}
+
+	return dpop, nil
 }
 
 func getJwkAndPubKey(proof *jwt.Token) (map[string]interface{}, interface{}, error) {
