@@ -349,6 +349,39 @@ func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, 
 		return fmt.Errorf("DPoP proof htm claim mismatch")
 	}
 
+	if err := validateHtuClaim(proofClaims, req); err != nil {
+		return err
+	}
+
+	// 10. if the server provided a nonce value to the client, the nonce
+	//     claim matches the server-provided nonce value
+	// TODO
+
+	// 11. the creation time of the JWT, as determined by either the iat
+	//     claim or a server managed timestamp via the nonce claim, is within
+	//     an acceptable window
+	// acceptable window: 10s
+	iatInt := int64(proofClaims["iat"].(float64))
+	now := time.Now().Unix()
+	if iatInt < now-10 {
+		return fmt.Errorf("DPoP proof too old")
+	}
+	if iatInt > now+10 {
+		return fmt.Errorf("DPoP proof too new")
+	}
+
+	// 12.a ensure that the value of the ath claim equals the hash of
+	//      that access token
+	hash := sha256.Sum256([]byte(token))
+	ath := base64.RawURLEncoding.EncodeToString(hash[:])
+	if proofClaims["ath"] != ath {
+		return fmt.Errorf("DPoP proof ath claim mismatch")
+	}
+
+	return nil
+}
+
+func validateHtuClaim(proofClaims map[string]interface{}, req *http.Request) error {
 	// 9. the htu claim matches the HTTP URI value for the HTTP request in
 	//    which the JWT was received, ignoring any query and fragment parts
 	//
@@ -376,31 +409,6 @@ func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, 
 	}
 	if pcHtu.String() != htu.String() {
 		return fmt.Errorf("DPoP proof htu claim mismatch")
-	}
-
-	// 10. if the server provided a nonce value to the client, the nonce
-	//     claim matches the server-provided nonce value
-	// TODO
-
-	// 11. the creation time of the JWT, as determined by either the iat
-	//     claim or a server managed timestamp via the nonce claim, is within
-	//     an acceptable window
-	// acceptable window: 10s
-	iatInt := int64(proofClaims["iat"].(float64))
-	now := time.Now().Unix()
-	if iatInt < now-10 {
-		return fmt.Errorf("DPoP proof too old")
-	}
-	if iatInt > now+10 {
-		return fmt.Errorf("DPoP proof too new")
-	}
-
-	// 12.a ensure that the value of the ath claim equals the hash of
-	//      that access token
-	hash := sha256.Sum256([]byte(token))
-	ath := base64.RawURLEncoding.EncodeToString(hash[:])
-	if proofClaims["ath"] != ath {
-		return fmt.Errorf("DPoP proof ath claim mismatch")
 	}
 
 	return nil
