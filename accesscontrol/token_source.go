@@ -301,19 +301,8 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 		return err
 	}
 
-	// 12.b confirm that the public key to which the access token is
-	//      bound matches the public key from the DPoP proof
-	cnf, ok := tokenClaims["cnf"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("missing DPoP access token cnf claim or wrong type")
-	}
-	atJkt, ok := cnf["jkt"].(string)
-	if !ok {
-		return fmt.Errorf("DPoP access token cnf claim missing jkt property or wrong type")
-	}
-	jkt := JwkToJKT(oJwk)
-	if atJkt != jkt {
-		return fmt.Errorf("DPoP JWK thumbprint mismatch")
+	if err = validateCnfClaim(tokenClaims, oJwk); err != nil {
+		return err
 	}
 
 	return nil
@@ -425,6 +414,25 @@ func validateAthClaim(proofClaims map[string]interface{}, token string) error {
 	ath := base64.RawURLEncoding.EncodeToString(hash[:])
 	if proofClaims["ath"] != ath {
 		return fmt.Errorf("DPoP proof ath claim mismatch")
+	}
+
+	return nil
+}
+
+func validateCnfClaim(tokenClaims, oJwk map[string]interface{}) error {
+	// 12.b confirm that the public key to which the access token is
+	//      bound matches the public key from the DPoP proof
+	cnf, ok := tokenClaims["cnf"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("missing DPoP access token cnf claim or wrong type")
+	}
+	atJkt, ok := cnf["jkt"].(string)
+	if !ok {
+		return fmt.Errorf("DPoP access token cnf claim missing jkt property or wrong type")
+	}
+	jkt := JwkToJKT(oJwk)
+	if atJkt != jkt {
+		return fmt.Errorf("DPoP JWK thumbprint mismatch")
 	}
 
 	return nil
