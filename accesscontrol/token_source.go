@@ -170,6 +170,8 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 		return nil
 	}
 
+	// checks according to 4.3 Checking DPoP Proofs
+	// https://www.rfc-editor.org/rfc/rfc9449.html#name-checking-dpop-proofs
 	dpop, err := getProof(req.Header)
 	if err != nil {
 		return err
@@ -189,12 +191,12 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 
 		return pubKey, nil
 	})
-	// 2. the DPoP HTTP request header field value is a single well-formed JWT
+	// 2. The DPoP HTTP request header field value is a single and well-formed JWT.
 	if err != nil {
 		return fmt.Errorf("DPoP proof parse error: " + err.Error())
 	}
 
-	// 3. all required claims per Section 4.2 are contained in the JWT
+	// 3. All required claims per Section 4.2 are contained in the JWT.
 	if err = validateProofHeader(proof.Header); err != nil {
 		return err
 	}
@@ -216,9 +218,7 @@ func getProof(header http.Header) (string, error) {
 		return "", fmt.Errorf("missing DPoP request header field")
 	}
 
-	// checks according to 4.3 Checking DPoP Proofs
-
-	// 1. there is not more than one DPoP HTTP request header field
+	// 1. There is not more than one DPoP HTTP request header field.
 	if dpopCount > 1 {
 		return "", fmt.Errorf("too many DPoP request header fields")
 	}
@@ -231,14 +231,14 @@ func getProof(header http.Header) (string, error) {
 }
 
 func getJwkAndPubKey(proof *jwt.Token) (map[string]interface{}, interface{}, error) {
-	// 6. the JWT signature verifies with the public key contained in the
-	//    jwk JOSE header parameter
+	// 6. The JWT signature verifies with the public key contained in the
+	//    jwk JOSE Header Parameter.
 	jwk, ok := proof.Header["jwk"].(map[string]interface{})
 	if !ok {
 		return nil, nil, fmt.Errorf("missing jwk JOSE header parameter or wrong type")
 	}
 
-	// 7. the jwk JOSE header parameter does not contain a private key
+	// 7. The jwk JOSE Header Parameter does not contain a private key.
 	kty, ok := jwk["kty"].(string)
 	if !ok {
 		return nil, nil, fmt.Errorf("jwk JOSE header parameter missing kty property or wrong type")
@@ -369,17 +369,21 @@ func getY(jwk map[string]interface{}) ([]byte, error) {
 
 func validateProofHeader(proofHeader map[string]interface{}) error {
 	// JOSE header parameters: typ, alg, jwk
-	// Note: alg is already checked by jwt.ParseWithClaims()
 	for _, k := range []string{"typ", "alg", "jwk"} {
 		if _, ok := proofHeader[k]; !ok {
 			return fmt.Errorf("missing DPoP proof JOSE header parameter %s", k)
 		}
 	}
 
-	// 4. the typ JOSE header parameter has the value dpop+jwt
+	// 4. The typ JOSE Header Parameter has the value dpop+jwt.
 	if proofHeader["typ"] != DpopTyp {
 		return fmt.Errorf("DPoP proof typ JOSE header parameter mismatch")
 	}
+
+	// 5. The alg JOSE Header Parameter indicates a registered asymmetric
+	//    digital signature algorithm [IANA.JOSE.ALGS], is not none,
+	//    is supported by the application, and is acceptable per local policy.
+	// Note: alg is already checked by jwt.ParseWithClaims()
 
 	return nil
 }
@@ -392,7 +396,7 @@ func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, 
 		}
 	}
 
-	// 8. the htm claim matches the HTTP method of the current request
+	// 8. The htm claim matches the HTTP method of the current request.
 	if proofClaims["htm"] != req.Method {
 		return fmt.Errorf("DPoP proof htm claim mismatch")
 	}
@@ -401,9 +405,14 @@ func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, 
 		return err
 	}
 
-	// 10. if the server provided a nonce value to the client, the nonce
-	//     claim matches the server-provided nonce value
-	// TODO
+	// 10. If the server provided a nonce value to the client, the nonce
+	//     claim matches the server-provided nonce value.
+	// see also section
+	// 9. Resource Server-Provided Nonce
+	// Resource servers can also choose to provide a nonce value to be
+	// included in DPoP proofs sent to them.
+	//
+	// So this is an optional feature. May be included later...
 
 	if err := validateIatClaim(proofClaims); err != nil {
 		return err
@@ -417,12 +426,12 @@ func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, 
 }
 
 func validateHtuClaim(proofClaims map[string]interface{}, req *http.Request) error {
-	// 9. the htu claim matches the HTTP URI value for the HTTP request in
-	//    which the JWT was received, ignoring any query and fragment parts
+	// 9. The htu claim matches the HTTP URI value for the HTTP request in
+	//    which the JWT was received, ignoring any query and fragment parts.
 	//
 	// To reduce the likelihood of false negatives, servers SHOULD employ
-	// Syntax-Based Normalization (Section 6.2.2 of [RFC3986]) and Scheme-
-	// Based Normalization (Section 6.2.3 of [RFC3986]) before comparing the
+	// syntax-based normalization (Section 6.2.2 of [RFC3986]) and scheme-
+	// based normalization (Section 6.2.3 of [RFC3986]) before comparing the
 	// htu claim.
 	reqHtu, err := getReqHtu(req)
 	if err != nil {
@@ -468,9 +477,9 @@ func getPcHtu(proofClaims map[string]interface{}) (string, error) {
 }
 
 func validateIatClaim(proofClaims map[string]interface{}) error {
-	// 11. the creation time of the JWT, as determined by either the iat
+	// 11. The creation time of the JWT, as determined by either the iat
 	//     claim or a server managed timestamp via the nonce claim, is within
-	//     an acceptable window
+	//     an acceptable window (see Section 11.1).
 	// acceptable window: 10s
 	iatInt := int64(proofClaims["iat"].(float64))
 	now := time.Now().Unix()
@@ -485,8 +494,9 @@ func validateIatClaim(proofClaims map[string]interface{}) error {
 }
 
 func validateAthClaim(proofClaims map[string]interface{}, token string) error {
-	// 12.a ensure that the value of the ath claim equals the hash of
-	//      that access token
+	// 12. If presented to a protected resource in conjunction with an access token,
+	// (12.a) ensure that the value of the ath claim equals the hash of
+	//      that access token, and
 	hash := sha256.Sum256([]byte(token))
 	ath := base64.RawURLEncoding.EncodeToString(hash[:])
 	if proofClaims["ath"] != ath {
@@ -497,8 +507,8 @@ func validateAthClaim(proofClaims map[string]interface{}, token string) error {
 }
 
 func validateCnfClaim(tokenClaims, oJwk map[string]interface{}) error {
-	// 12.b confirm that the public key to which the access token is
-	//      bound matches the public key from the DPoP proof
+	// (12.b) confirm that the public key to which the access token is
+	//      bound matches the public key from the DPoP proof.
 	cnf, ok := tokenClaims["cnf"].(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("missing DPoP access token cnf claim or wrong type")
@@ -553,11 +563,15 @@ func normalize(u *url.URL) (*url.URL, error) {
 
 /*
 6.1 JWK Thumbprint Confirmation Method
-jkt - JWK SHA-256 Thumbprint Confirmation Method. The value of the jkt
-   member MUST be the base64url encoding (as defined in [RFC7515]) of
-   the JWK SHA-256 Thumbprint (according to [RFC7638]) of the DPoP
-   public key (in JWK format) to which the access token is bound.
+ jkt:
+    JWK SHA-256 Thumbprint confirmation method. The value of the jkt
+		member MUST be the base64url encoding (as defined in [RFC7515]) of
+		the JWK SHA-256 Thumbprint (according to [RFC7638]) of the DPoP
+		public key (in JWK format) to which the access token is bound.
 */
+// https://www.rfc-editor.org/rfc/rfc7638.html#section-3
+// 3.  JSON Web Key (JWK) Thumbprint
+
 // JwkToJKT creates a JWK SHA-256 thumbprint.
 func JwkToJKT(jwk map[string]interface{}) string {
 	jwks := JwkToString(jwk)
