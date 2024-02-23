@@ -584,16 +584,16 @@ func JwkToJKT(jwk map[string]interface{}) string {
 }
 
 var requiredMembers = map[string]map[string]struct{}{
-	"RSA": map[string]struct{}{
-		"kty": struct{}{},
-		"n":   struct{}{},
-		"e":   struct{}{},
+	"RSA": {
+		"kty": {},
+		"n":   {},
+		"e":   {},
 	},
-	"ECDSA": map[string]struct{}{
-		"kty": struct{}{},
-		"crv": struct{}{},
-		"x":   struct{}{},
-		"y":   struct{}{},
+	"ECDSA": {
+		"kty": {},
+		"crv": {},
+		"x":   {},
+		"y":   {},
 	},
 }
 
