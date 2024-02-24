@@ -172,47 +172,35 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 
 	// checks according to 4.3 Checking DPoP Proofs
 	// https://www.rfc-editor.org/rfc/rfc9449.html#name-checking-dpop-proofs
-	dpop, err := getProof(req.Header)
+	proof, err := s.getValidatedProof(req, token)
 	if err != nil {
 		return err
 	}
 
-	proofClaims := jwt.MapClaims{}
-	var oJwk map[string]interface{}
-	// 2. the DPoP HTTP request header field value is a single well-formed
-	//    JWT
-	proof, err := s.parser.ParseWithClaims(dpop, proofClaims, func(proof *jwt.Token) (interface{}, error) {
-		jwk, pubKey, err := getJwkAndPubKey(proof)
-		if err != nil {
-			return nil, err
-		}
-
-		oJwk = jwk
-
-		return pubKey, nil
-	})
-	// 2. The DPoP HTTP request header field value is a single and well-formed JWT.
-	if err != nil {
-		return fmt.Errorf("DPoP proof parse error: " + err.Error())
-	}
-
-	// 3. All required claims per Section 4.2 are contained in the JWT.
-	if err = validateProofHeader(proof.Header); err != nil {
-		return err
-	}
-
-	if err = validateProofClaims(proofClaims, req, token); err != nil {
-		return err
-	}
-
-	if err = validateCnfClaim(tokenClaims, oJwk); err != nil {
+	// type already checked in getJwkAndPubKey()
+	jwk, _ := proof.Header["jwk"].(map[string]interface{})
+	if err = validateCnfClaim(tokenClaims, jwk); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func getProof(header http.Header) (string, error) {
+func (s *TokenSource) getValidatedProof(req *http.Request, token string) (*jwt.Token, error) {
+	dpop, err := getDPoPValue(req.Header)
+	if err != nil {
+		return nil, err
+	}
+
+	proof, err := s.validateDPoPValue(dpop, token, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return proof, nil
+}
+
+func getDPoPValue(header http.Header) (string, error) {
 	dpopCount := len(header.Values("DPoP"))
 	if dpopCount == 0 {
 		return "", fmt.Errorf("missing DPoP request header field")
@@ -230,18 +218,40 @@ func getProof(header http.Header) (string, error) {
 	return dpop, nil
 }
 
-func getJwkAndPubKey(proof *jwt.Token) (map[string]interface{}, interface{}, error) {
+func (s *TokenSource) validateDPoPValue(dpop, token string, req *http.Request) (*jwt.Token, error) {
+	proofClaims := jwt.MapClaims{}
+	// 2. the DPoP HTTP request header field value is a single well-formed
+	//    JWT
+	proof, err := s.parser.ParseWithClaims(dpop, proofClaims, getJwkAndPubKey)
+	// 2. The DPoP HTTP request header field value is a single and well-formed JWT.
+	if err != nil {
+		return nil, fmt.Errorf("DPoP proof parse error: " + err.Error())
+	}
+
+	// 3. All required claims per Section 4.2 are contained in the JWT.
+	if err = validateProofHeader(proof.Header); err != nil {
+		return nil, err
+	}
+
+	if err = validateProofClaims(proofClaims, req, token); err != nil {
+		return nil, err
+	}
+
+	return proof, nil
+}
+
+func getJwkAndPubKey(proof *jwt.Token) (interface{}, error) {
 	// 6. The JWT signature verifies with the public key contained in the
 	//    jwk JOSE Header Parameter.
 	jwk, ok := proof.Header["jwk"].(map[string]interface{})
 	if !ok {
-		return nil, nil, fmt.Errorf("missing jwk JOSE header parameter or wrong type")
+		return nil, fmt.Errorf("missing jwk JOSE header parameter or wrong type")
 	}
 
 	// 7. The jwk JOSE Header Parameter does not contain a private key.
 	kty, ok := jwk["kty"].(string)
 	if !ok {
-		return nil, nil, fmt.Errorf("jwk JOSE header parameter missing kty property or wrong type")
+		return nil, fmt.Errorf("jwk JOSE header parameter missing kty property or wrong type")
 	}
 
 	var (
@@ -255,13 +265,12 @@ func getJwkAndPubKey(proof *jwt.Token) (map[string]interface{}, interface{}, err
 		pubKey, err = getECDSAPubKey(jwk)
 	default:
 		// unsupported algorithms are already handled by JWT parser
-		return nil, nil, fmt.Errorf("jwk JOSE header parameter unsupported kty value")
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return jwk, pubKey, nil
+	return pubKey, nil
 }
 
 func getRSAPubKey(jwk map[string]interface{}) (*rsa.PublicKey, error) {
@@ -506,7 +515,7 @@ func validateAthClaim(proofClaims map[string]interface{}, token string) error {
 	return nil
 }
 
-func validateCnfClaim(tokenClaims, oJwk map[string]interface{}) error {
+func validateCnfClaim(tokenClaims, jwk map[string]interface{}) error {
 	// (12.b) confirm that the public key to which the access token is
 	//      bound matches the public key from the DPoP proof.
 	cnf, ok := tokenClaims["cnf"].(map[string]interface{})
@@ -517,7 +526,7 @@ func validateCnfClaim(tokenClaims, oJwk map[string]interface{}) error {
 	if !ok {
 		return fmt.Errorf("DPoP access token cnf claim missing jkt property or wrong type")
 	}
-	jkt := JwkToJKT(oJwk)
+	jkt := JwkToJKT(jwk)
 	if atJkt != jkt {
 		return fmt.Errorf("DPoP JWK thumbprint mismatch")
 	}
