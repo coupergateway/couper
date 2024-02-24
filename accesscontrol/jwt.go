@@ -36,7 +36,7 @@ type JWT struct {
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
-	source                *TokenSource
+	source                TokenSource
 	hmacSecret            []byte
 	name                  string
 	pubKey                interface{}

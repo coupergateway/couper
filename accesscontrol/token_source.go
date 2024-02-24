@@ -17,7 +17,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/zclconf/go-cty/cty"
 
 	acjwk "github.com/coupergateway/couper/accesscontrol/jwk"
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
@@ -36,17 +35,18 @@ const (
 
 type (
 	tokenSourceType uint8
-	// TokenSource represents the source from which a token is retrieved.
-	TokenSource struct {
-		expr   hcl.Expression
-		parser *jwt.Parser
-		name   string
-		tsType tokenSourceType
-	}
 )
 
+// TokenSource represents the source from which a token is retrieved.
+type TokenSource interface {
+	// TokenValue retrieves the token value from the request.
+	TokenValue(req *http.Request) (string, error)
+	// ValidateTokenClaims validates the token (claims) according to e.g. a specific request header field.
+	ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error
+}
+
 // NewTokenSource creates a new token source according to various configuration attributes.
-func NewTokenSource(bearer, dpop bool, cookie, header string, value hcl.Expression) (*TokenSource, error) {
+func NewTokenSource(bearer, dpop bool, cookie, header string, value hcl.Expression) (TokenSource, error) {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
 	var b uint8
@@ -78,44 +78,38 @@ func NewTokenSource(bearer, dpop bool, cookie, header string, value hcl.Expressi
 		return nil, fmt.Errorf("only one of bearer, cookie, header or token_value attributes is allowed")
 	}
 
-	ts := &TokenSource{
+	if t == dpopType {
+		return newDPoPTokenSource(), nil
+	}
+	if t == valueType {
+		return &ValueTokenSource{
+			expr: value,
+		}, nil
+	}
+	ts := &NameTokenSource{
 		tsType: t,
 	}
 	switch t {
 	case cookieType:
 		ts.name = c
-	case dpopType:
-		// 5. the alg JOSE header parameter indicates a registered asymmetric
-		//    digital signature algorithm [IANA.JOSE.ALGS], is not none, is
-		//    supported by the application, and is acceptable per local policy
-		algorithms := append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
-		var algos []string
-		for _, a := range algorithms {
-			algos = append(algos, a.String())
-		}
-		parserConfig := parserConfig{
-			algorithms: algos,
-		}
-		ts.parser = parserConfig.newParser()
 	case headerType:
 		ts.name = h
-	case valueType:
-		ts.expr = value
 	}
-
 	return ts, nil
 }
 
-// TokenValue retrieves the token value from the request.
-func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
+type NameTokenSource struct {
+	name   string
+	tsType tokenSourceType
+}
+
+func (s *NameTokenSource) TokenValue(req *http.Request) (string, error) {
 	var tokenValue string
 	var err error
 
 	switch s.tsType {
 	case bearerType:
 		tokenValue, err = getTokenFromAuthorization(req.Header, "Bearer")
-	case dpopType:
-		tokenValue, err = getTokenFromAuthorization(req.Header, "DPoP")
 	case cookieType:
 		cookie, cerr := req.Cookie(s.name)
 		if cerr != http.ErrNoCookie && cookie != nil {
@@ -127,15 +121,6 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 		} else {
 			tokenValue = req.Header.Get(s.name)
 		}
-	case valueType:
-		requestContext := eval.ContextFromRequest(req).HCLContext()
-		var value cty.Value
-		value, err = eval.Value(requestContext, s.expr)
-		if err != nil {
-			return "", err
-		}
-
-		tokenValue = seetie.ValueToString(value)
 	}
 
 	if err != nil {
@@ -147,6 +132,10 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 	}
 
 	return tokenValue, nil
+}
+
+func (s *NameTokenSource) ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error {
+	return nil
 }
 
 // getTokenFromAuthorization retrieves a token for the given auth scheme from the Authorization request header field.
@@ -164,12 +153,64 @@ func getTokenFromAuthorization(reqHeaders http.Header, authScheme string) (strin
 	return "", fmt.Errorf("auth scheme %q required in authorization header", authScheme)
 }
 
-// ValidateTokenClaims validates the token (claims) according to e.g. a specific request header field.
-func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error {
-	if s.tsType != dpopType {
-		return nil
+type ValueTokenSource struct {
+	expr hcl.Expression
+}
+
+func (s *ValueTokenSource) TokenValue(req *http.Request) (string, error) {
+	requestContext := eval.ContextFromRequest(req).HCLContext()
+	value, err := eval.Value(requestContext, s.expr)
+	if err != nil {
+		return "", err
 	}
 
+	tokenValue := seetie.ValueToString(value)
+	if tokenValue == "" {
+		return "", fmt.Errorf("token required")
+	}
+
+	return tokenValue, nil
+}
+
+func (s *ValueTokenSource) ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error {
+	return nil
+}
+
+type DPoPTokenSource struct {
+	parser *jwt.Parser
+}
+
+func newDPoPTokenSource() TokenSource {
+	// 5. the alg JOSE header parameter indicates a registered asymmetric
+	//    digital signature algorithm [IANA.JOSE.ALGS], is not none, is
+	//    supported by the application, and is acceptable per local policy
+	algorithms := append(acjwt.RSAAlgorithms, acjwt.ECDSAlgorithms...)
+	var algos []string
+	for _, a := range algorithms {
+		algos = append(algos, a.String())
+	}
+	parserConfig := parserConfig{
+		algorithms: algos,
+	}
+	return &DPoPTokenSource{
+		parser: parserConfig.newParser(),
+	}
+}
+
+func (s *DPoPTokenSource) TokenValue(req *http.Request) (string, error) {
+	tokenValue, err := getTokenFromAuthorization(req.Header, "DPoP")
+	if err != nil {
+		return "", err
+	}
+
+	if tokenValue == "" {
+		return "", fmt.Errorf("token required")
+	}
+
+	return tokenValue, nil
+}
+
+func (s *DPoPTokenSource) ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error {
 	// checks according to 4.3 Checking DPoP Proofs
 	// https://www.rfc-editor.org/rfc/rfc9449.html#name-checking-dpop-proofs
 	proof, err := s.getValidatedProof(req, token)
@@ -186,7 +227,7 @@ func (s *TokenSource) ValidateTokenClaims(token string, tokenClaims map[string]i
 	return nil
 }
 
-func (s *TokenSource) getValidatedProof(req *http.Request, token string) (*jwt.Token, error) {
+func (s *DPoPTokenSource) getValidatedProof(req *http.Request, token string) (*jwt.Token, error) {
 	dpop, err := getDPoPValue(req.Header)
 	if err != nil {
 		return nil, err
@@ -218,7 +259,7 @@ func getDPoPValue(header http.Header) (string, error) {
 	return dpop, nil
 }
 
-func (s *TokenSource) validateDPoPValue(dpop, token string, req *http.Request) (*jwt.Token, error) {
+func (s *DPoPTokenSource) validateDPoPValue(dpop, token string, req *http.Request) (*jwt.Token, error) {
 	proofClaims := jwt.MapClaims{}
 	// 2. the DPoP HTTP request header field value is a single well-formed
 	//    JWT
