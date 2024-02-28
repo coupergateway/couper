@@ -326,7 +326,7 @@ func getRSAPubKey(jwk map[string]interface{}) (*rsa.PublicKey, error) {
 	}
 
 	// remove non-required members
-	for k, _ := range jwk {
+	for k := range jwk {
 		switch k {
 		case "kty", "n", "e":
 		default:
@@ -375,7 +375,7 @@ func getECDSAPubKey(jwk map[string]interface{}) (*ecdsa.PublicKey, error) {
 	}
 
 	// remove non-required members
-	for k, _ := range jwk {
+	for k := range jwk {
 		switch k {
 		case "kty", "crv", "x", "y":
 		default:
