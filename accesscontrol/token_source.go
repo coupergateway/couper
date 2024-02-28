@@ -259,22 +259,157 @@ func getDPoPValue(header http.Header) (string, error) {
 	return dpop, nil
 }
 
+var _ jwt.ClaimsValidator = &ProofClaims{}
+
+type ProofClaims struct {
+	jwt.RegisteredClaims
+	Ath     string `json:"ath,omitempty"`
+	Htm     string `json:"htm,omitempty"`
+	Htu     string `json:"htu,omitempty"`
+	request *http.Request
+	token   string
+}
+
+func (p *ProofClaims) Validate() error {
+	if p.ID == "" {
+		return fmt.Errorf("missing DPoP proof claim %s", "jti")
+	}
+
+	if err := p.validateHtm(); err != nil {
+		return err
+	}
+
+	if err := p.validateHtu(); err != nil {
+		return err
+	}
+
+	if err := p.validateIat(); err != nil {
+		return err
+	}
+
+	if err := p.validateAth(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *ProofClaims) validateHtm() error {
+	// 8. The htm claim matches the HTTP method of the current request.
+	if p.Htm == "" {
+		return fmt.Errorf("missing DPoP proof claim %s", "htm")
+	}
+	if p.Htm != p.request.Method {
+		return fmt.Errorf("DPoP proof htm claim mismatch")
+	}
+
+	return nil
+}
+
+func (p *ProofClaims) validateHtu() error {
+	// 9. The htu claim matches the HTTP URI value for the HTTP request in
+	//    which the JWT was received, ignoring any query and fragment parts.
+	//
+	// To reduce the likelihood of false negatives, servers SHOULD employ
+	// syntax-based normalization (Section 6.2.2 of [RFC3986]) and scheme-
+	// based normalization (Section 6.2.3 of [RFC3986]) before comparing the
+	// htu claim.
+	if p.Htu == "" {
+		return fmt.Errorf("missing DPoP proof claim %s", "htu")
+	}
+	reqHtu, err := p.getReqHtu()
+	if err != nil {
+		return err
+	}
+	pcHtu, err := p.getPcHtu()
+	if err != nil {
+		return err
+	}
+	if pcHtu != reqHtu {
+		return fmt.Errorf("DPoP proof htu claim mismatch")
+	}
+
+	return nil
+}
+
+func (p *ProofClaims) getReqHtu() (string, error) {
+	htu := &url.URL{
+		Scheme: p.request.URL.Scheme,
+		Host:   p.request.URL.Host,
+		Path:   p.request.URL.Path,
+	}
+	var err error
+	htu, err = normalize(htu)
+	if err != nil {
+		return "", err
+	}
+
+	return htu.String(), nil
+}
+
+func (p *ProofClaims) getPcHtu() (string, error) {
+	htu, err := url.Parse(p.Htu)
+	if err != nil {
+		return "", err
+	}
+	htu, err = normalize(htu)
+	if err != nil {
+		return "", err
+	}
+
+	return htu.String(), nil
+}
+
+func (p *ProofClaims) validateIat() error {
+	// 11. The creation time of the JWT, as determined by either the iat
+	//     claim or a server managed timestamp via the nonce claim, is within
+	//     an acceptable window (see Section 11.1).
+	// acceptable window: 10s
+	if p.IssuedAt == nil {
+		return fmt.Errorf("missing DPoP proof claim %s", "iat")
+	}
+	now := time.Now().Unix()
+	iat := p.IssuedAt.Unix()
+	if iat < now-10 {
+		return fmt.Errorf("DPoP proof too old")
+	}
+	if iat > now+10 {
+		return fmt.Errorf("DPoP proof too new")
+	}
+
+	return nil
+}
+
+func (p *ProofClaims) validateAth() error {
+	// 12. If presented to a protected resource in conjunction with an access token,
+	// (12.a) ensure that the value of the ath claim equals the hash of
+	//      that access token, and
+	if p.Ath == "" {
+		return fmt.Errorf("missing DPoP proof claim %s", "ath")
+	}
+	hash := sha256.Sum256([]byte(p.token))
+	ath := base64.RawURLEncoding.EncodeToString(hash[:])
+	if p.Ath != ath {
+		return fmt.Errorf("DPoP proof ath claim mismatch")
+	}
+
+	return nil
+}
+
 func (s *DPoPTokenSource) validateDPoPValue(dpop, token string, req *http.Request) (*jwt.Token, error) {
-	proofClaims := jwt.MapClaims{}
+	proofClaims := &ProofClaims{
+		token:   token,
+		request: req,
+	}
 	// 2. the DPoP HTTP request header field value is a single well-formed
 	//    JWT
 	proof, err := s.parser.ParseWithClaims(dpop, proofClaims, getJwkAndPubKey)
-	// 2. The DPoP HTTP request header field value is a single and well-formed JWT.
 	if err != nil {
 		return nil, fmt.Errorf("DPoP proof parse error: " + err.Error())
 	}
 
 	// 3. All required claims per Section 4.2 are contained in the JWT.
 	if err = validateProofHeader(proof.Header); err != nil {
-		return nil, err
-	}
-
-	if err = validateProofClaims(proofClaims, req, token); err != nil {
 		return nil, err
 	}
 
@@ -434,124 +569,6 @@ func validateProofHeader(proofHeader map[string]interface{}) error {
 	//    digital signature algorithm [IANA.JOSE.ALGS], is not none,
 	//    is supported by the application, and is acceptable per local policy.
 	// Note: alg is already checked by jwt.ParseWithClaims()
-
-	return nil
-}
-
-func validateProofClaims(proofClaims map[string]interface{}, req *http.Request, token string) error {
-	// claims: jti, htm, htu, iat (, ath)
-	for _, k := range []string{"jti", "htm", "htu", "iat", "ath"} {
-		if _, ok := proofClaims[k]; !ok {
-			return fmt.Errorf("missing DPoP proof claim %s", k)
-		}
-	}
-
-	// 8. The htm claim matches the HTTP method of the current request.
-	if proofClaims["htm"] != req.Method {
-		return fmt.Errorf("DPoP proof htm claim mismatch")
-	}
-
-	if err := validateHtuClaim(proofClaims, req); err != nil {
-		return err
-	}
-
-	// 10. If the server provided a nonce value to the client, the nonce
-	//     claim matches the server-provided nonce value.
-	// see also section
-	// 9. Resource Server-Provided Nonce
-	// Resource servers can also choose to provide a nonce value to be
-	// included in DPoP proofs sent to them.
-	//
-	// So this is an optional feature. May be included later...
-
-	if err := validateIatClaim(proofClaims); err != nil {
-		return err
-	}
-
-	if err := validateAthClaim(proofClaims, token); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func validateHtuClaim(proofClaims map[string]interface{}, req *http.Request) error {
-	// 9. The htu claim matches the HTTP URI value for the HTTP request in
-	//    which the JWT was received, ignoring any query and fragment parts.
-	//
-	// To reduce the likelihood of false negatives, servers SHOULD employ
-	// syntax-based normalization (Section 6.2.2 of [RFC3986]) and scheme-
-	// based normalization (Section 6.2.3 of [RFC3986]) before comparing the
-	// htu claim.
-	reqHtu, err := getReqHtu(req)
-	if err != nil {
-		return err
-	}
-	pcHtu, err := getPcHtu(proofClaims)
-	if err != nil {
-		return err
-	}
-	if pcHtu != reqHtu {
-		return fmt.Errorf("DPoP proof htu claim mismatch")
-	}
-
-	return nil
-}
-
-func getReqHtu(req *http.Request) (string, error) {
-	htu := &url.URL{
-		Scheme: req.URL.Scheme,
-		Host:   req.URL.Host,
-		Path:   req.URL.Path,
-	}
-	var err error
-	htu, err = normalize(htu)
-	if err != nil {
-		return "", err
-	}
-
-	return htu.String(), nil
-}
-
-func getPcHtu(proofClaims map[string]interface{}) (string, error) {
-	htu, err := url.Parse(proofClaims["htu"].(string))
-	if err != nil {
-		return "", err
-	}
-	htu, err = normalize(htu)
-	if err != nil {
-		return "", err
-	}
-
-	return htu.String(), nil
-}
-
-func validateIatClaim(proofClaims map[string]interface{}) error {
-	// 11. The creation time of the JWT, as determined by either the iat
-	//     claim or a server managed timestamp via the nonce claim, is within
-	//     an acceptable window (see Section 11.1).
-	// acceptable window: 10s
-	iatInt := int64(proofClaims["iat"].(float64))
-	now := time.Now().Unix()
-	if iatInt < now-10 {
-		return fmt.Errorf("DPoP proof too old")
-	}
-	if iatInt > now+10 {
-		return fmt.Errorf("DPoP proof too new")
-	}
-
-	return nil
-}
-
-func validateAthClaim(proofClaims map[string]interface{}, token string) error {
-	// 12. If presented to a protected resource in conjunction with an access token,
-	// (12.a) ensure that the value of the ath claim equals the hash of
-	//      that access token, and
-	hash := sha256.Sum256([]byte(token))
-	ath := base64.RawURLEncoding.EncodeToString(hash[:])
-	if proofClaims["ath"] != ath {
-		return fmt.Errorf("DPoP proof ath claim mismatch")
-	}
 
 	return nil
 }

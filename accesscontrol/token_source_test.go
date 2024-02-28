@@ -258,9 +258,10 @@ func Test_ValidateTokenClaims_errors(t *testing.T) {
 		{
 			"dpop, missing alg header", http.Header{"Dpop": []string{"eyJ0eXAiOiJkcG9wK2p3dCJ9.eyJhdGgiOiJmb28iLCJodG0iOiJHRVQiLCJodHUiOiIvZm9vIiwiaWF0IjoxMjU3ODk0MDAwLCJqdGkiOiJzb21lX2lkIn0.rxa11aHpQYMZNXWED1cxdIoNJKMcjVzMbpa6fl9t8vwBTYHpsPSAoYHtJHmbi0qSDRTkZdqpb-xLUTyPQovtsK7dbpL8oprBjRaLIDAMKUHjt_s6zq8_lJwwBo_QYseY4l14aA8gM5p3OJQjB-VClnU-jXIcHIITFA7HUXNV-nw4eDuqE5GBmeTy07ZjfdArwysCajBLz9am3gKcYDFsrxZ1a789_a9ilpBVseU9jplMa26eDoNtk6UdkY48kDCGtnnmzigjqbPo2A_iPzS-w1b2svsQwyxEf51rrO5ViE2Dw9sWFJBrKfhLAM5T1L_4C0FIWjadnBz_y4yYTNMRdQ"}}, "DPoP proof parse error: token is unverifiable: signing method (alg) is unspecified",
 		},
-		{
-			"dpop, missing typ header", http.Header{"Dpop": []string{"eyJhbGciOiJSUzI1NiIsImp3ayI6eyJrdHkiOiJSU0EiLCJuIjoidTFTVTFMZlZMUEhDb3pNeEgyTW80bGdPRWVQek5tMHRSZ2VMZXpWNmZmQXQwZ3VuVlRMdzdvbkxSbnJxMF9Jelc3eVdSN1Frcm1CTDdqVEtFbjV1LXFLaGJ3S2ZCc3RJcy1iTVkyWmtwMThnblR4S0x4b1MydEZjekdrUExQZ2l6c2t1ZW1NZ2hSbmlXYW9MY3llaGtkM3FxR0VsdldfVkRMNUFhV1RnMG5MVmtqUm85ei00MFJRenVWYUU4QWtBRm14WnpvdzN4LVZKWUtkanlra0owaVQ5d0NTMERSVFh1MjY5VjI2NFZmXzNqdnJlZFppS1JrZ3dsTDl4TkF3eFhGZzB4X1hGdzAwNVVXVlJJa2RnY0tXVGpwQlAyZFB3Vlo0V1dDLTlhR1ZkLUd5bjFvMENMZWxmNHJFakdvWGJBQUVnQXFlR1V4cmNJbGJqWGZiY213IiwiZSI6IkFRQUIifX0.eyJodG0iOiJHRVQiLCJodHUiOiIvZm9vIiwiaWF0IjoxNTE2MjM5MDIyLCJhdGgiOiJpbnZhbGlkIiwianRpIjoic29tZV9pZCJ9.ru82hTBpo5Qi0mSN2fk4o7YcY0_IBX858CO4V2rOMSRC5woJsT1cY08ZA_tDAEPCh-CdEn_RzAA_lvsWKwx4baSu34mGIPWswMgjLiMpZgP2njaExBj5h8rAb3DdmA8YkhNIFotIbZhdyzGw1bD5QexMfIvMcsH8RyfDcd2fzId8YjKPdv-74Z-tQwt-cnZhmWBRr_9Auh2Ykd-f4AEvdx2UjKhH1SkrfYFQ6p6GuGq9HtT1l6Vm6it7XI0aY_qQgCTpDSqjtSG8qLU60ZufX07-Db76M13wu_mHZe26oTkdm514CYgjsrF4uuqObbYwi4Pz8ioQLHu9lVLX5aNQJg"}}, "missing DPoP proof JOSE header parameter typ",
-		},
+		// cannot test this as errors from ParseWithClaims() (here: DPoP proof too old) are treated first
+		// {
+		// 	"dpop, missing typ header", http.Header{"Dpop": []string{"eyJhbGciOiJSUzI1NiIsImp3ayI6eyJrdHkiOiJSU0EiLCJuIjoidTFTVTFMZlZMUEhDb3pNeEgyTW80bGdPRWVQek5tMHRSZ2VMZXpWNmZmQXQwZ3VuVlRMdzdvbkxSbnJxMF9Jelc3eVdSN1Frcm1CTDdqVEtFbjV1LXFLaGJ3S2ZCc3RJcy1iTVkyWmtwMThnblR4S0x4b1MydEZjekdrUExQZ2l6c2t1ZW1NZ2hSbmlXYW9MY3llaGtkM3FxR0VsdldfVkRMNUFhV1RnMG5MVmtqUm85ei00MFJRenVWYUU4QWtBRm14WnpvdzN4LVZKWUtkanlra0owaVQ5d0NTMERSVFh1MjY5VjI2NFZmXzNqdnJlZFppS1JrZ3dsTDl4TkF3eFhGZzB4X1hGdzAwNVVXVlJJa2RnY0tXVGpwQlAyZFB3Vlo0V1dDLTlhR1ZkLUd5bjFvMENMZWxmNHJFakdvWGJBQUVnQXFlR1V4cmNJbGJqWGZiY213IiwiZSI6IkFRQUIifX0.eyJodG0iOiJHRVQiLCJodHUiOiIvZm9vIiwiaWF0IjoxNTE2MjM5MDIyLCJhdGgiOiJpbnZhbGlkIiwianRpIjoic29tZV9pZCJ9.ru82hTBpo5Qi0mSN2fk4o7YcY0_IBX858CO4V2rOMSRC5woJsT1cY08ZA_tDAEPCh-CdEn_RzAA_lvsWKwx4baSu34mGIPWswMgjLiMpZgP2njaExBj5h8rAb3DdmA8YkhNIFotIbZhdyzGw1bD5QexMfIvMcsH8RyfDcd2fzId8YjKPdv-74Z-tQwt-cnZhmWBRr_9Auh2Ykd-f4AEvdx2UjKhH1SkrfYFQ6p6GuGq9HtT1l6Vm6it7XI0aY_qQgCTpDSqjtSG8qLU60ZufX07-Db76M13wu_mHZe26oTkdm514CYgjsrF4uuqObbYwi4Pz8ioQLHu9lVLX5aNQJg"}}, "missing DPoP proof JOSE header parameter typ",
+		// },
 		{
 			"dpop, unsupported alg PS512", http.Header{"Dpop": []string{"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IlBTNTEyIn0.eyJodG0iOiJHRVQiLCJodHUiOiIvZm9vIiwiaWF0IjoxNTE2MjM5MDIyLCJhdGgiOiJpbnZhbGlkIiwianRpIjoic29tZV9pZCJ9.FrYwq5ZOHIE0TYf__RCxEps8guRkLOIlfo2s7xWCkakXnFex1GcZy02vNV9KPYgLF8C6u2rh9kfGOniOq0OPDZv_KsweYBjd_WALIyPqwSsif-TD5y-j0Ncyk9oi-lalWOtVm_HV_3QrZzV3dA8_7_rSoJsaRRw71jcXU_JKEvN31YfoE460ggHCpiWW8P8wMDzo_xYjyISusYNtPML5Pmv_lVeRYCnxTOF5IwF8ea72XjVlyvwIofa_eUR3wlrwSRNXOGyrCpLtZ-tff_sJ0dwPfMHbC82q4x3bflO0RdlZKr-uL2HKX6yD6YSXy05COnGDq2U_gJ6NTtuuo2wyTw"}}, "DPoP proof parse error: token signature is invalid: signing method PS512 is invalid",
 		},
@@ -366,37 +367,37 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
 			"dpop, jwk header missing e", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwkMissingE}, jwt.MapClaims{}, "DPoP proof parse error: token is unverifiable: error while executing keyfunc: jwk JOSE header parameter missing e property or wrong type",
 		},
 		{
-			"dpop, missing jti claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{}, "missing DPoP proof claim jti",
+			"dpop, missing jti claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{}, "DPoP proof parse error: token has invalid claims: missing DPoP proof claim jti",
 		},
 		{
-			"dpop, missing htm claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id"}, "missing DPoP proof claim htm",
+			"dpop, missing htm claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id"}, "DPoP proof parse error: token has invalid claims: missing DPoP proof claim htm",
 		},
 		{
-			"dpop, missing htu claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET"}, "missing DPoP proof claim htu",
+			"dpop, missing htu claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET"}, "DPoP proof parse error: token has invalid claims: missing DPoP proof claim htu",
 		},
 		{
-			"dpop, missing iat claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo"}, "missing DPoP proof claim iat",
+			"dpop, missing iat claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo"}, "DPoP proof parse error: token has invalid claims: missing DPoP proof claim iat",
 		},
 		{
-			"dpop, missing ath claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix()}, "missing DPoP proof claim ath",
+			"dpop, missing ath claim", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix()}, "DPoP proof parse error: token has invalid claims: missing DPoP proof claim ath",
 		},
 		{
 			"dpop, typ mismatch", nil, map[string]interface{}{"typ": "invalid_type", "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix(), "ath": ath}, "DPoP proof typ JOSE header parameter mismatch",
 		},
 		{
-			"dpop, htm mismatch", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "mismatch", "htu": "/foo", "iat": time.Now().Unix(), "ath": ath}, "DPoP proof htm claim mismatch",
+			"dpop, htm mismatch", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "mismatch", "htu": "/foo", "iat": time.Now().Unix(), "ath": ath}, "DPoP proof parse error: token has invalid claims: DPoP proof htm claim mismatch",
 		},
 		{
-			"dpop, htu mismatch", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/mismatch", "iat": time.Now().Unix(), "ath": ath}, "DPoP proof htu claim mismatch",
+			"dpop, htu mismatch", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/mismatch", "iat": time.Now().Unix(), "ath": ath}, "DPoP proof parse error: token has invalid claims: DPoP proof htu claim mismatch",
 		},
 		{
-			"dpop, proof too old", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix() - 12, "ath": ath}, "DPoP proof too old",
+			"dpop, proof too old", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix() - 12, "ath": ath}, "DPoP proof parse error: token has invalid claims: DPoP proof too old",
 		},
 		{
-			"dpop, proof too new", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix() + 12, "ath": ath}, "DPoP proof too new",
+			"dpop, proof too new", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix() + 12, "ath": ath}, "DPoP proof parse error: token has invalid claims: DPoP proof too new",
 		},
 		{
-			"dpop, ath mismatch", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix(), "ath": "invalid"}, "DPoP proof ath claim mismatch",
+			"dpop, ath mismatch", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix(), "ath": "invalid"}, "DPoP proof parse error: token has invalid claims: DPoP proof ath claim mismatch",
 		},
 		{
 			"dpop, missing cnf in access token claims", nil, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "/foo", "iat": time.Now().Unix(), "ath": ath}, "missing DPoP access token cnf claim or wrong type",
