@@ -43,6 +43,15 @@ func (p *ProofClaims) Validate() error {
 		return err
 	}
 
+	// 10. If the server provided a nonce value to the client, the nonce
+	//     claim matches the server-provided nonce value.
+	// see also section
+	// 9. Resource Server-Provided Nonce
+	// Resource servers can also choose to provide a nonce value to be
+	// included in DPoP proofs sent to them.
+	//
+	// So this is an optional feature. May be included later...
+
 	if err := p.validateIat(); err != nil {
 		return err
 	}
@@ -77,11 +86,7 @@ func (p *ProofClaims) validateHtu() error {
 	if p.Htu == "" {
 		return fmt.Errorf("missing DPoP proof claim %s", "htu")
 	}
-	reqHtu, err := p.getReqHtu()
-	if err != nil {
-		return err
-	}
-	pcHtu, err := p.getPcHtu()
+	reqHtu, pcHtu, err := p.getReqAndPcHtu()
 	if err != nil {
 		return err
 	}
@@ -92,32 +97,28 @@ func (p *ProofClaims) validateHtu() error {
 	return nil
 }
 
-func (p *ProofClaims) getReqHtu() (string, error) {
-	htu := &url.URL{
+func (p *ProofClaims) getReqAndPcHtu() (string, string, error) {
+	reqHtu := &url.URL{
 		Scheme: p.request.URL.Scheme,
 		Host:   p.request.URL.Host,
 		Path:   p.request.URL.Path,
 	}
 	var err error
-	htu, err = normalize(htu)
+	reqHtu, err = normalize(reqHtu)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return htu.String(), nil
-}
-
-func (p *ProofClaims) getPcHtu() (string, error) {
-	htu, err := url.Parse(p.Htu)
+	pcHtu, err := url.Parse(p.Htu)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	htu, err = normalize(htu)
+	pcHtu, err = normalize(pcHtu)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return htu.String(), nil
+	return reqHtu.String(), pcHtu.String(), nil
 }
 
 func (p *ProofClaims) validateIat() error {
