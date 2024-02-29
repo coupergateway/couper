@@ -10,6 +10,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `bearer = true` attribute for [`jwt` block](https://docs.couper.io/configuration/block/jwt#attributes) to indicate retrieving token from `Authorization: Bearer ...`. This is the new default token source indicator. `header = "Authorization"` is now _deprecated_ in favour of this new attribute. ([#724](https://github.com/coupergateway/couper/pull/724))
   * IPv6 support via [`-bind-address`](https://docs.couper.io/configuration/command-line#network-options) option. ([#752](https://github.com/coupergateway/couper/pull/752))
   * If Couper starts with `-watch` CLI flag, watch referenced files, too ([#747](https://github.com/coupergateway/couper/pull/747))
+  * [`beta_introspection` block](https://docs.couper.io/configuration/block/introspection) in [`jwt` block](https://docs.couper.io/configuration/block/jwt) to facilitate token introspection in order to detect revocated tokens ([#649](https://github.com/avenga/couper/pull/649))
 
 * **Changed**
   * More specific error log messages for [`oauth2`](https://docs.couper.io/configuration/block/oauth2) and [`beta_token_request`](https://docs.couper.io/configuration/block/token_request) token request errors ([#755](https://github.com/coupergateway/couper/pull/755))
