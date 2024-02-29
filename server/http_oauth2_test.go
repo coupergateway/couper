@@ -2444,7 +2444,7 @@ func Test_OAuth2_Introspection_NonCaching(t *testing.T) {
 		t.Errorf("Expected error message\nWant:\t%s\nGot:\t%s", expMsg, last.Message)
 	}
 	et := last.Data["error_type"]
-	expErrorType := "jwt_token_expired"
+	expErrorType := "jwt_token_inactive"
 	if expErrorType != et {
 		t.Errorf("Expected error type\nWant:\t%s\nGot:\t%s", expErrorType, et)
 	}

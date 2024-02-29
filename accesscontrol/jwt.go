@@ -275,7 +275,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		}
 
 		if !introspectionResponse.Active() {
-			return errors.JwtTokenExpired.Message("token inactive")
+			return errors.JwtTokenInactive.Message("token inactive")
 		}
 	}
 

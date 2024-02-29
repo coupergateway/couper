@@ -195,5 +195,11 @@ func (j *JWT) DefaultErrorHandlers() []*ErrorHandler {
 				"Www-Authenticate": wwwAuthenticateValue + ` error="invalid_token", error_description="The access token expired"`,
 			}), hcl.Range{Filename: "default_jwt_error_handler"}),
 		},
+		{
+			Kinds: []string{"jwt_token_inactive"},
+			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+				"Www-Authenticate": wwwAuthenticateValue + ` error="invalid_token", error_description="The access token is inactive"`,
+			}), hcl.Range{Filename: "default_jwt_error_handler"}),
+		},
 	}
 }
