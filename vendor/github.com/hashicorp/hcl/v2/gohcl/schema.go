@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package gohcl
 
 import (
@@ -88,12 +91,10 @@ func ImpliedBodySchema(val interface{}) (schema *hcl.BodySchema, partial bool) {
 		ftags := getFieldTags(fty)
 		var labelNames []string
 		var labelOptional bool
-
 		if len(ftags.Labels) > 0 {
 			labelNames = make([]string, len(ftags.Labels))
 			for i, l := range ftags.Labels {
 				labelNames[i] = l.Name
-
 				if l.Optional {
 					labelOptional = true
 				}
@@ -165,7 +166,7 @@ func getFieldTags(ty reflect.Type) *fieldTags {
 				FieldIndex: i,
 				Name:       name,
 			})
-		case "label,optional":
+		case "label_optional":
 			ret.Labels = append(ret.Labels, labelField{
 				FieldIndex: i,
 				Name:       name,

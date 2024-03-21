@@ -17,7 +17,7 @@ var (
 // Proxy represents the <Proxy> object.
 type Proxy struct {
 	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the proxy request. Mutually exclusive with {backend} block."`
-	Name        string   `hcl:"name,label,optional"`
+	Name        string   `hcl:"name,label_optional"`
 	Remain      hcl.Body `hcl:",remain"`
 	ReqName     string   `hcl:"name,optional" docs:"Defines the proxy request name. Allowed only in the [{definitions} block](definitions)." default:"default"`
 	Websockets  *bool    `hcl:"websockets,optional" docs:"Allows support for WebSockets. This attribute is only allowed in the \"default\" proxy block. Other {proxy} blocks, {request} blocks or {response} blocks are not allowed within the current {endpoint} block. Mutually exclusive with {websockets} block."`
