@@ -6,7 +6,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0
 	github.com/getkin/kin-openapi v0.110.0
-	github.com/hashicorp/hcl/v2 v2.12.0
+	github.com/hashicorp/hcl/v2 v2.20.0
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/client_model v0.5.0
@@ -14,7 +14,7 @@ require (
 	github.com/russellhaering/gosaml2 v0.9.0
 	github.com/russellhaering/goxmldsig v1.2.0
 	github.com/sirupsen/logrus v1.9.0
-	github.com/zclconf/go-cty v1.12.1
+	github.com/zclconf/go-cty v1.14.4
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.21.0
@@ -39,7 +39,7 @@ require (
 
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/beevik/etree v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
@@ -64,14 +64,16 @@ require (
 	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
+	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/hashicorp/hcl/v2 v2.12.0 => github.com/coupergateway/hcl v1.0.1-0.20230906142022-13cdbca9a19f
+replace github.com/hashicorp/hcl/v2 v2.20.0 => github.com/johakoch/hcl/v2 v2.0.0-20240321104555-6066cf57fe8f
 
-replace github.com/zclconf/go-cty => github.com/coupergateway/go-cty v0.0.0-20220627115852-3ddf0a688aea
+replace github.com/zclconf/go-cty v1.14.4 => github.com/johakoch/go-cty v0.0.0-20240321100345-e5b2277ac4dc

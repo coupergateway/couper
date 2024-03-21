@@ -20,7 +20,7 @@ type Server struct {
 	ErrorFile            string      `hcl:"error_file,optional" docs:"Location of the error file template."`
 	Files                FilesBlocks `hcl:"files,block" docs:"Configures file serving (zero or more)."`
 	Hosts                []string    `hcl:"hosts,optional" docs:"Mandatory, if there is more than one {server} block."`
-	Name                 string      `hcl:"name,label,optional"`
+	Name                 string      `hcl:"name,label_optional"`
 	Remain               hcl.Body    `hcl:",remain"`
 	SPAs                 SPAs        `hcl:"spa,block" docs:"Configures an SPA (zero or more)."`
 	TLS                  *ServerTLS  `hcl:"tls,block" docs:"Configures [server TLS](/configuration/block/server_tls) (zero or one)."`

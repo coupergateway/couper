@@ -26,7 +26,7 @@ var TokenRequestBlockSchema = &hcl.BodySchema{
 
 type TokenRequest struct {
 	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the token request. Mutually exclusive with {backend} block."`
-	Name        string   `hcl:"name,label,optional"`
+	Name        string   `hcl:"name,label_optional"`
 	URL         string   `hcl:"url,optional" docs:"URL of the resource to request the token from. May be relative to an origin specified in a referenced or nested {backend} block."`
 	Remain      hcl.Body `hcl:",remain"`
 
