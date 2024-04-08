@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - '**/README.md'
       - '.github/workflows/weekly-fuzz.yml'
+      - 'docs/**'
   release:
     types: [ published ]
   workflow_dispatch:
