@@ -564,6 +564,9 @@ func toSlice(val interface{}) []string {
 
 func toString(val interface{}) *string {
 	switch v := val.(type) {
+	case bool:
+		s := strconv.FormatBool(v)
+		return &s
 	case string:
 		return &v
 	case float64:
