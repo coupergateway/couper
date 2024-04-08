@@ -1253,8 +1253,8 @@ func Test_toSlice1(t *testing.T) {
 	expected := map[string][]string{
 		"B":   {"true"},
 		"B2":  {"false"},
-		"Ba":  {"", ""}, // TODO fix: "true", "false"
-		"Ba2": {"", ""}, // TODO fix: "false", "true"
+		"Ba":  {"true", "false"},
+		"Ba2": {"false", "true"},
 		"N":   {"1"},
 		"N2":  {"2"},
 		"Na":  {"1", "2"},
@@ -1305,7 +1305,7 @@ func Test_toSlice2(t *testing.T) {
 
 	expected := map[string][]string{
 		"B":  {"true"},
-		"Ba": {"", ""}, // TODO fix: "true", "false"
+		"Ba": {"true", "false"},
 		"N":  {"1"},
 		"Na": {"1", "2"},
 		"S":  {"str"},
