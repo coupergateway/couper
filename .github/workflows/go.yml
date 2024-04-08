@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - '**/README.md'
       - '.github/workflows/weekly-fuzz.yml'
+      - 'docs/**'
   pull_request:
 
 jobs:
