@@ -235,7 +235,7 @@ func (r *Response) applyHeaderModifiers(afterModifierAttributes bool) {
 	} else {
 		headerModifiers = r.headerModifiersBefore
 	}
-	for _, modifier := range headerModifiers {
-		modifier(r.Header())
+	for _, modifierFn := range headerModifiers {
+		modifierFn(r.Header())
 	}
 }
