@@ -81,9 +81,9 @@ func NewCORSHandler(opts *CORSOptions, nextHandler http.Handler) http.Handler {
 
 func (c *CORS) ServeNextHTTP(rw http.ResponseWriter, nextHandler http.Handler, req *http.Request) {
 	if response, ok := rw.(*writer.Response); ok {
-		response.RegisterHeaderModifier(func(header http.Header) {
+		response.AddHeaderModifier(func(header http.Header) {
 			c.setCorsRespHeaders(header, req)
-		}, false)
+		})
 	}
 
 	if c.isCorsPreflightRequest(req) {

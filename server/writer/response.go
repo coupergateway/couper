@@ -23,6 +23,7 @@ type writer interface {
 
 type modifier interface {
 	AddModifier(...hcl.Body)
+	AddHeaderModifier(HeaderModifier)
 }
 
 var (
@@ -47,11 +48,10 @@ type Response struct {
 	statusCode      int
 	rawBytesWritten int
 	bytesWritten    int
-	// modifier
-	evalCtx               *eval.Context
-	modifier              []hcl.Body
-	headerModifiersAfter  []HeaderModifier
-	headerModifiersBefore []HeaderModifier
+	// modifiers
+	evalCtx         *eval.Context
+	modifiers       []hcl.Body
+	headerModifiers []HeaderModifier
 	// security
 	addPrivateCC bool
 }
@@ -64,7 +64,7 @@ func NewResponseWriter(rw http.ResponseWriter, secureCookies string) *Response {
 	}
 }
 
-// WithEvalContext sets the eval context for the response modifier.
+// WithEvalContext sets the eval context for the response modifiers.
 func (r *Response) WithEvalContext(ctx *eval.Context) *Response {
 	r.evalCtx = ctx
 	return r
@@ -145,11 +145,10 @@ func (r *Response) WriteHeader(statusCode int) {
 	}
 
 	r.configureHeader()
-	r.applyHeaderModifiers(false)
-	r.applyModifier()
-	r.applyHeaderModifiers(true)
+	r.applyHeaderModifiers()
+	r.applyModifiers() // hcl body modifiers
 
-	// !!! Execute after modifier !!!
+	// execute after modifiers
 	if r.addPrivateCC {
 		r.Header().Add("Cache-Control", "private")
 	}
@@ -206,36 +205,28 @@ func (r *Response) AddPrivateCC() {
 }
 
 func (r *Response) AddModifier(modifier ...hcl.Body) {
-	r.modifier = append(r.modifier, modifier...)
+	r.modifiers = append(r.modifiers, modifier...)
 }
 
-func (r *Response) applyModifier() {
-	if r.evalCtx == nil || r.modifier == nil {
+// applyModifiers applies the hcl body modifiers to the response.
+func (r *Response) applyModifiers() {
+	if r.evalCtx == nil || r.modifiers == nil {
 		return
 	}
 
 	hctx := r.evalCtx.HCLContextSync()
-	for _, body := range r.modifier {
+	for _, body := range r.modifiers {
 		_ = eval.ApplyResponseHeaderOps(hctx, body, r.Header())
 	}
 }
 
-func (r *Response) RegisterHeaderModifier(headerModifier HeaderModifier, afterModifierAttributes bool) {
-	if afterModifierAttributes {
-		r.headerModifiersAfter = append(r.headerModifiersAfter, headerModifier)
-	} else {
-		r.headerModifiersBefore = append(r.headerModifiersBefore, headerModifier)
-	}
+func (r *Response) AddHeaderModifier(headerModifier HeaderModifier) {
+	r.headerModifiers = append(r.headerModifiers, headerModifier)
 }
 
-func (r *Response) applyHeaderModifiers(afterModifierAttributes bool) {
-	var headerModifiers []HeaderModifier
-	if afterModifierAttributes {
-		headerModifiers = r.headerModifiersAfter
-	} else {
-		headerModifiers = r.headerModifiersBefore
-	}
-	for _, modifierFn := range headerModifiers {
+// applyHeaderModifiers applies the http.Header modifiers to the response.
+func (r *Response) applyHeaderModifiers() {
+	for _, modifierFn := range r.headerModifiers {
 		modifierFn(r.Header())
 	}
 }
