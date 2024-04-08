@@ -22,7 +22,7 @@ type writer interface {
 }
 
 type modifier interface {
-	AddModifier(*hcl.EvalContext, ...hcl.Body)
+	AddModifier(...hcl.Body)
 }
 
 var (
@@ -48,7 +48,7 @@ type Response struct {
 	rawBytesWritten int
 	bytesWritten    int
 	// modifier
-	evalCtx               *hcl.EvalContext
+	evalCtx               *eval.Context
 	modifier              []hcl.Body
 	headerModifiersAfter  []HeaderModifier
 	headerModifiersBefore []HeaderModifier
@@ -56,12 +56,18 @@ type Response struct {
 	addPrivateCC bool
 }
 
-// NewResponseWriter creates a new Response object.
+// NewResponseWriter creates a new ResponseWriter. It wraps the http.ResponseWriter.
 func NewResponseWriter(rw http.ResponseWriter, secureCookies string) *Response {
 	return &Response{
 		rw:            rw,
 		secureCookies: secureCookies,
 	}
+}
+
+// WithEvalContext sets the eval context for the response modifier.
+func (r *Response) WithEvalContext(ctx *eval.Context) *Response {
+	r.evalCtx = ctx
+	return r
 }
 
 // Header wraps the Header method of the <http.ResponseWriter>.
@@ -199,8 +205,7 @@ func (r *Response) AddPrivateCC() {
 	r.addPrivateCC = true
 }
 
-func (r *Response) AddModifier(evalCtx *hcl.EvalContext, modifier ...hcl.Body) {
-	r.evalCtx = evalCtx
+func (r *Response) AddModifier(modifier ...hcl.Body) {
 	r.modifier = append(r.modifier, modifier...)
 }
 
@@ -209,8 +214,9 @@ func (r *Response) applyModifier() {
 		return
 	}
 
+	hctx := r.evalCtx.HCLContextSync()
 	for _, body := range r.modifier {
-		_ = eval.ApplyResponseHeaderOps(r.evalCtx, body, r.Header())
+		_ = eval.ApplyResponseHeaderOps(hctx, body, r.Header())
 	}
 }
 

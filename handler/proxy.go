@@ -195,10 +195,9 @@ func (p *Proxy) registerWebsocketsResponse(req *http.Request) error {
 	}
 
 	wsBody := p.getWebsocketsBody()
-	evalCtx := eval.ContextFromRequest(req)
 
 	if rw, ok := req.Context().Value(request.ResponseWriter).(*writer.Response); ok {
-		rw.AddModifier(evalCtx.HCLContextSync(), wsBody, p.context)
+		rw.AddModifier(wsBody, p.context)
 	}
 
 	return nil
