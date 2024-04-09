@@ -1106,7 +1106,7 @@ func TestJwtConfig(t *testing.T) {
 			  jwt "myac" {
 			    signature_algorithm = "HS256"
 			    key = "..."
-			    dpop = true
+			    beta_dpop = true
 			  }
 			}
 			`,

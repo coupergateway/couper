@@ -336,7 +336,7 @@ definitions {
   jwt "JWTTokenDPoP" {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-	dpop = true
+    beta_dpop = true
   }
   jwt "JWTTokenCookie" {
     signature_algorithm = "HS256"
