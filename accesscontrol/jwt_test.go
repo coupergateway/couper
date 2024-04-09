@@ -370,6 +370,134 @@ func Test_JWT_Validate(t *testing.T) {
 	}
 }
 
+func Test_JWT_Validate_claims(t *testing.T) {
+	log, _ := test.NewLogger()
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+	logger := log.WithContext(context.Background())
+	memStore := cache.New(logger, tmpStoreCh)
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"s": "abc",
+		"i": 42,
+		"f": 1.23,
+		"b": true,
+		"t": []float64{1.23, 3.21},
+		"o": map[string]float64{"a": 0.0, "b": 1.1},
+	})
+
+	key := []byte("mySecretK3y")
+	token, _ := tok.SignedString(key)
+
+	type testCase struct {
+		name        string
+		req         *http.Request
+		claims      map[string]interface{}
+		wantErrKind string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"all ok",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"s": "abc", "i": 42, "f": 1.23, "b": true, "t": []float64{1.23, 3.21}, "o": map[string]float64{"a": 0.0, "b": 1.1}},
+			"",
+		},
+		{
+			"wrong bool",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"b": false},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong int",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"i": 0},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong float",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"f": 3.21},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong string",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"s": "asdf"},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong tuple",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"t": []float64{2.34}},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong object",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"o": map[string]float64{"c": 2.2}},
+			"jwt_token_invalid",
+		},
+		{
+			"missing expected claim",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"expected": "str"},
+			"jwt_token_invalid",
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			claimValMap := make(map[string]cty.Value)
+			for k, v := range tc.claims {
+				switch val := v.(type) {
+				case string:
+					claimValMap[k] = cty.StringVal(val)
+				case int:
+					claimValMap[k] = cty.NumberIntVal(int64(val))
+				case float64:
+					claimValMap[k] = cty.NumberFloatVal(val)
+				case bool:
+					claimValMap[k] = cty.BoolVal(val)
+				case []float64:
+					var l []cty.Value
+					for _, e := range val {
+						l = append(l, cty.NumberFloatVal(e))
+					}
+					claimValMap[k] = cty.TupleVal(l)
+				case map[string]float64:
+					m := make(map[string]cty.Value)
+					for mk, mv := range val {
+						m[mk] = cty.NumberFloatVal(mv)
+					}
+					claimValMap[k] = cty.ObjectVal(m)
+				default:
+					subT.Fatal("must be one of the mapped types")
+				}
+			}
+			j, err := ac.NewJWT(&config.JWT{
+				SignatureAlgorithm: "HS256",
+				Claims:             hcl.StaticExpr(cty.ObjectVal(claimValMap), hcl.Range{}),
+				Bearer:             true,
+			}, key, memStore)
+			if err != nil {
+				subT.Error(err)
+				return
+			}
+
+			tc.req = tc.req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
+
+			errKind := ""
+			err = j.Validate(tc.req)
+			if err != nil {
+				cErr := err.(*errors.Error)
+				errKind = cErr.Kinds()[0]
+			}
+			if errKind != tc.wantErrKind {
+				subT.Errorf("Error want: %s, got: %s", tc.wantErrKind, errKind)
+			}
+		})
+	}
+}
+
 func Test_JWT_DPoP(t *testing.T) {
 	log, _ := test.NewLogger()
 	tmpStoreCh := make(chan struct{})

@@ -1245,3 +1245,97 @@ func TestEndpointWildcardProxyPathWildcard(t *testing.T) {
 		})
 	}
 }
+
+func Test_toSlice1(t *testing.T) {
+	shutdown, _ := newCouper("testdata/endpoints/22_couper.hcl", test.New(t))
+	defer shutdown()
+
+	expected := map[string][]string{
+		"B":   {"true"},
+		"B2":  {"false"},
+		"Ba":  {"true", "false"},
+		"Ba2": {"false", "true"},
+		"N":   {"1"},
+		"N2":  {"2"},
+		"Na":  {"1", "2"},
+		"Na2": {"3", "4"},
+		"S":   {"str"},
+		"S2":  {"asdf"},
+		"Sa":  {"s1", "s2"},
+		"Sa2": {"s3", "s4"},
+	}
+	helper := test.New(t)
+	res, err := http.PostForm("http://localhost:8080/1", url.Values{})
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: want: 200, got %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(res.Body.Close())
+	helper.Must(err)
+
+	type result struct {
+		PostForm, Query, Headers map[string][]string
+	}
+	r := result{}
+	helper.Must(json.Unmarshal(b, &r))
+	if diff := cmp.Diff(r.Query, expected); diff != "" {
+		t.Error(diff)
+	}
+	if diff := cmp.Diff(r.PostForm, expected); diff != "" {
+		t.Error(diff)
+	}
+	for k, v := range expected {
+		if diff := cmp.Diff(r.Headers[k], v); diff != "" {
+			t.Error(diff)
+		}
+	}
+	for k, v := range expected {
+		if diff := cmp.Diff(res.Header[k], v); diff != "" {
+			t.Error(diff)
+		}
+	}
+}
+
+func Test_toSlice2(t *testing.T) {
+	shutdown, _ := newCouper("testdata/endpoints/22_couper.hcl", test.New(t))
+	defer shutdown()
+
+	expected := map[string][]string{
+		"B":  {"true"},
+		"Ba": {"true", "false"},
+		"N":  {"1"},
+		"Na": {"1", "2"},
+		"S":  {"str"},
+		"Sa": {"s1", "s2"},
+	}
+	helper := test.New(t)
+	res, err := http.Get("http://localhost:8080/2")
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: want: 200, got %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(res.Body.Close())
+	helper.Must(err)
+
+	type result struct {
+		Headers map[string][]string
+	}
+	r := result{}
+	helper.Must(json.Unmarshal(b, &r))
+	for k, v := range expected {
+		if diff := cmp.Diff(r.Headers[k], v); diff != "" {
+			t.Error(diff)
+		}
+	}
+	for k, v := range expected {
+		if diff := cmp.Diff(res.Header[k], v); diff != "" {
+			t.Error(diff)
+		}
+	}
+}

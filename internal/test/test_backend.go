@@ -91,7 +91,7 @@ func registerHTTPHandler(b *Backend) {
 func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
 		type anything struct {
-			Args, Query                        url.Values
+			Args, Query, PostForm              url.Values
 			Body                               string
 			Headers                            http.Header
 			Host                               string
@@ -113,6 +113,7 @@ func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Re
 			Host:           req.Host,
 			Method:         req.Method,
 			Path:           req.URL.Path,
+			PostForm:       req.PostForm,
 			Query:          req.URL.Query(),
 			RawQuery:       req.URL.RawQuery,
 			RemoteAddr:     req.RemoteAddr,
