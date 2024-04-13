@@ -21,6 +21,8 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * [`Server-Timing` header](https://docs.couper.io/configuration/block/settings) only reporting last requests/proxies of [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#751](https://github.com/coupergateway/couper/pull/751))
   * Selecting of appropriate [error handler](https://docs.couper.io/configuration/block/error_handler) in two cases ([#753](https://github.com/coupergateway/couper/pull/753))
   * Storing of digit-starting string object keys in [request context](https://docs.couper.io/configuration/variables#request) and of digit-starting string header field names in [request](https://docs.couper.io/configuration/variables#request) variable ([#799](https://github.com/coupergateway/couper/pull/799))
+  * Use of boolean values for the `headers` attribute or [modifiers](https://docs.couper.io/configuration/modifiers) ([#805](https://github.com/coupergateway/couper/pull/805))
+  * Duplicate [CORS](https://docs.couper.io/configuration/block/cors) response headers (with backend sending CORS response headers, too) ([#804](https://github.com/coupergateway/couper/pull/804))
 
 * **Dependencies**
   * build with go 1.21 ([#800](https://github.com/coupergateway/couper/pull/800))

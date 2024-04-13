@@ -48,7 +48,7 @@ $ docker run coupergateway/couper run -watch -p 8081
 | COUPER_WATCH_RETRIES     | `5`          | Maximal retry count for configuration reloads which could not bind the configured port.                         |
 | COUPER_WATCH_RETRY_DELAY | `500ms`      | Delay duration before next attempt if an error occurs.                                                          |
 
-### Oberservation Environment Variables
+### Observation Environment Variables
 
 | Variable                             | Default                                                   | Description                                                                                                                                                                                                                                 |
 |:-------------------------------------|:----------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
