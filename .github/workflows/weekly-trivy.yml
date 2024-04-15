@@ -8,9 +8,12 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-22.04
+    permissions:
+      # required for all workflows
+      security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner in repo mode
         uses: aquasecurity/trivy-action@master
