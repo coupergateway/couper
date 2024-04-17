@@ -7,9 +7,9 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/telemetry"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/telemetry"
 )
 
 type Proxy struct {

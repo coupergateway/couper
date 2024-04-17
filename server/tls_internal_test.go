@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"testing"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 func Test_requireClientAuth(t *testing.T) {

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/definitions"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/definitions"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestJob_Run(t *testing.T) {

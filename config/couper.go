@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 
-	"github.com/avenga/couper/config/configload/file"
+	"github.com/coupergateway/couper/config/configload/file"
 )
 
 // DefaultFilename defines the default filename for a couper config file.

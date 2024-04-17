@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Which Couper version? Run `couper version` or `docker run avenga/couper version`
+1. Which Couper version? Run `couper version` or `docker run coupergateway/couper version`
 
 2. Provide your configuration file `*.hcl`. Remove sensitive data.
 

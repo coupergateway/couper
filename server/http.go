@@ -10,20 +10,20 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 type muxers map[string]*Mux
@@ -32,7 +32,7 @@ type muxers map[string]*Mux
 type HTTPServer struct {
 	commandCtx context.Context
 	evalCtx    *eval.Context
-	listener   net.Listener
+	listeners  []net.Listener
 	log        logrus.FieldLogger
 	muxers     muxers
 	port       string
@@ -108,7 +108,10 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 		telemetryHandler = middleware.NewMetricsHandler()(httpSrv)
 	}
 	if settings.TelemetryTraces {
-		telemetryHandler = middleware.NewTraceHandler()(telemetryHandler)
+		telemetryHandler = middleware.NewTraceHandler(
+			settings.TelemetryTracesWithParentOnly,
+			settings.TelemetryTracesTrustParent,
+		)(telemetryHandler)
 	}
 
 	uidHandler := middleware.NewUIDHandler(settings, httpsDevProxyIDField)(telemetryHandler)
@@ -149,53 +152,72 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 
 // Addr returns the listener address.
 func (s *HTTPServer) Addr() string {
-	if s.listener != nil {
-		return s.listener.Addr().String()
+	if s.listeners != nil {
+		return s.listeners[0].Addr().String()
 	}
 	return ""
 }
 
 // Listen initiates the configured http handler and start listing on given port.
 func (s *HTTPServer) Listen() error {
-	if s.srv.Addr == "" {
-		s.srv.Addr = ":http"
-		if s.srv.TLSConfig != nil {
-			s.srv.Addr += "s"
-		}
-	}
-
-	ln, err := net.Listen("tcp4", s.srv.Addr)
-	if err != nil {
-		return err
-	}
-
-	s.listener = ln
-	s.log.Infof("couper is serving: %s", ln.Addr().String())
-
-	go s.listenForCtx()
-
-	go func() {
-		var serveErr error
-		if s.srv.TLSConfig != nil {
-			serveErr = s.srv.ServeTLS(s.listener, "", "")
-		} else {
-			serveErr = s.srv.Serve(ln)
-		}
-
-		if serveErr != nil {
-			if serveErr == http.ErrServerClosed {
-				s.log.Infof("%v: %s", serveErr, ln.Addr().String())
-			} else {
-				s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
+	for addr, tcpType := range s.settings.BindAddresses {
+		if s.srv.Addr == "" {
+			s.srv.Addr = ":http"
+			if s.srv.TLSConfig != nil {
+				s.srv.Addr += "s"
 			}
 		}
-	}()
+
+		if addr == "" {
+			addr = s.srv.Addr
+		}
+
+		ln, err := net.Listen(tcpType, addr)
+		if err != nil {
+			return err
+		}
+
+		s.listeners = append(s.listeners, ln)
+		s.log.Infof("couper is serving: %s", ln.Addr().String())
+
+		go s.listenForCtx()
+
+		go s.serve(ln)
+	}
+
 	return nil
+}
+
+func (s *HTTPServer) serve(ln net.Listener) {
+	var serveErr error
+	if s.srv.TLSConfig != nil {
+		serveErr = s.srv.ServeTLS(ln, "", "")
+	} else {
+		serveErr = s.srv.Serve(ln)
+	}
+
+	if serveErr != nil {
+		if serveErr == http.ErrServerClosed {
+			s.log.Infof("%v: %s", serveErr, ln.Addr().String())
+		} else {
+			s.log.Errorf("%s: %v", ln.Addr().String(), serveErr)
+		}
+	}
 }
 
 // Close closes the listener
 func (s *HTTPServer) Close() error {
-	return s.listener.Close()
+	var err error
+
+	for _, ln := range s.listeners {
+		e := ln.Close()
+
+		if err == nil {
+			err = e
+		}
+	}
+
+	return err
 }
 
 func (s *HTTPServer) listenForCtx() {
@@ -252,7 +274,8 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		ctx = context.WithValue(ctx, request.Handler, hs.String())
 	}
 
-	if err = s.setGetBody(h, req); err != nil {
+	bufferOption, err := s.setGetBody(h, req)
+	if err != nil {
 		h = mux.opts.ServerOptions.ServerErrTpl.WithError(err)
 	}
 
@@ -283,20 +306,25 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	ctx = context.WithValue(ctx, request.BufferOptions, bufferOption)
 	// due to the middleware callee stack we have to update the 'req' value.
 	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
 
-	h.ServeHTTP(rw, req)
+	w := rw
+	if respW, is := rw.(*writer.Response); is {
+		w = respW.WithEvalContext(eval.ContextFromRequest(req))
+	}
+	h.ServeHTTP(w, req)
 }
 
-func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) error {
+func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) (opt buffer.Option, err error) {
 	inner := getChildHandler(h)
 
-	var err error
 	if limitHandler, ok := inner.(handler.BodyLimit); ok {
-		err = eval.SetGetBody(req, limitHandler.BufferOptions(), limitHandler.RequestLimit())
+		opt = limitHandler.BufferOptions()
+		err = eval.SetGetBody(req, opt, limitHandler.RequestLimit())
 	}
-	return err
+	return opt, err
 }
 
 // getHost configures the host from the incoming request host based on
@@ -329,12 +357,8 @@ func (s *HTTPServer) cleanHostAppendPort(host string) string {
 
 func (s *HTTPServer) onConnState(_ net.Conn, state http.ConnState) {
 	meter := provider.Meter("couper/server")
-	counter, _ := meter.Int64Counter(
-		instrumentation.ClientConnectionsTotal, instrument.WithDescription(string(unit.Dimensionless)))
-	gauge, _ := meter.Float64UpDownCounter(
-		instrumentation.ClientConnections,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
+	counter, _ := meter.Int64Counter(instrumentation.ClientConnectionsTotal)
+	gauge, _ := meter.Float64UpDownCounter(instrumentation.ClientConnections)
 
 	if state == http.StateNew {
 		counter.Add(context.Background(), 1)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 func TestConfig_Errors(t *testing.T) {

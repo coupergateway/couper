@@ -8,9 +8,9 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/seetie"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 func TestValue(t *testing.T) {

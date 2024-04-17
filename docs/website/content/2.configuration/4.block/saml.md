@@ -12,7 +12,7 @@ required _label_.
 
 ## Example
 
-A complete example can be found [here](https://github.com/avenga/couper-examples/tree/master/saml).
+A complete example can be found [here](https://github.com/coupergateway/couper-examples/tree/master/saml).
 
 ```hcl
 saml "SSO" {

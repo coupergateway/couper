@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 func ReadFromAttrFileJSONObjectOptional(context string, attributeValue map[string][]string, path string) (map[string][]string, error) {

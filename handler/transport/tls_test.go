@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server"
 )
 
 func TestReadCertificates(t *testing.T) {

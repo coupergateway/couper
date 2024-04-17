@@ -12,8 +12,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/assets"
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/assets"
+	"github.com/coupergateway/couper/config/request"
 )
 
 var (

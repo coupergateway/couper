@@ -10,11 +10,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/utils"
 )
 
 const dirIndexFile = "index.html"
@@ -82,8 +81,7 @@ func (f *File) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if r, ok := rw.(*writer.Response); ok {
-		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext.HCLContext(), f.modifier...)
+		r.AddModifier(f.modifier...)
 	}
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)
@@ -97,8 +95,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 
 	if !strings.HasSuffix(reqPath, "/") {
 		if r, ok := rw.(*writer.Response); ok {
-			evalContext := eval.ContextFromRequest(req)
-			r.AddModifier(evalContext.HCLContext(), f.modifier...)
+			r.AddModifier(f.modifier...)
 		}
 
 		rw.Header().Set("Location", utils.JoinPath(req.URL.Path, "/"))
@@ -116,8 +113,7 @@ func (f *File) serveDirectory(reqPath string, rw http.ResponseWriter, req *http.
 	defer file.Close()
 
 	if r, ok := rw.(*writer.Response); ok {
-		evalContext := eval.ContextFromRequest(req)
-		r.AddModifier(evalContext.HCLContext(), f.modifier...)
+		r.AddModifier(f.modifier...)
 	}
 
 	http.ServeContent(rw, req, reqPath, info.ModTime(), file)

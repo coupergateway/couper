@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
-	ac "github.com/avenga/couper/accesscontrol"
-	"github.com/avenga/couper/internal/test"
+	ac "github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func Test_NewTokenSource_error(t *testing.T) {

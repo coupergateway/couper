@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	configfile "github.com/avenga/couper/config/configload/file"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config"
+	configfile "github.com/coupergateway/couper/config/configload/file"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
 )
 
 const (
@@ -153,6 +153,11 @@ func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		WithJWTSigningConfigs(jwtSigningConfigs).
 		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
 		WithSAML(helper.config.Definitions.SAML)
+
+	err = helper.configureBindAddresses()
+	if err != nil {
+		return nil, e
+	}
 
 	err = helper.configureServers(body)
 	if err != nil {

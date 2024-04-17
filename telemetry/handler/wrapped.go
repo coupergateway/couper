@@ -7,10 +7,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/logging"
 )
 
 func NewWrappedHandler(log *logrus.Entry, handler http.Handler) http.Handler {

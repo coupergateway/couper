@@ -5,12 +5,11 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
+	"go.opentelemetry.io/otel/metric"
 
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 type MetricsHandler struct {
@@ -41,13 +40,10 @@ func (mh *MetricsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	meter := provider.Meter("couper/server")
 
-	counter, _ := meter.Int64Counter(
-		instrumentation.ClientRequest,
-		instrument.WithDescription(string(unit.Dimensionless)))
-	duration, _ := meter.Float64Histogram(
-		instrumentation.ClientRequestDuration,
-		instrument.WithDescription(string(unit.Dimensionless)))
+	counter, _ := meter.Int64Counter(instrumentation.ClientRequest)
+	duration, _ := meter.Float64Histogram(instrumentation.ClientRequestDuration)
 
-	counter.Add(req.Context(), 1, metricsAttrs...)
-	duration.Record(req.Context(), end.Seconds(), metricsAttrs...)
+	option := metric.WithAttributes(metricsAttrs...)
+	counter.Add(req.Context(), 1, option)
+	duration.Record(req.Context(), end.Seconds(), option)
 }

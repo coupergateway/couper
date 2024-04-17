@@ -11,17 +11,14 @@ jobs:
   npm:
     name: 'update npm package'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package-name: ['couper', '@avenga/couper']
     env:
-      PACKAGE_NAME: ${{ matrix.package-name }}
+      PACKAGE_NAME: 'couper'
       PACKAGE_VERSION: ${{ github.event.inputs.package-version || github.ref_name }}
       # https://github.com/JS-DevTools/npm-publish/issues/15
       INPUT_TOKEN: ''
     steps:
       - name: 'checkout'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: 'prepare package'
         run: |
           cp LICENSE .npm

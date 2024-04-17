@@ -8,14 +8,15 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler/middleware"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/variables"
+	"github.com/coupergateway/couper/handler/middleware"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
+	"github.com/coupergateway/couper/utils"
 )
 
 type Job struct {
@@ -75,7 +76,7 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 			outReq := req.Clone(context.WithValue(ctx, request.UID, uid))
 
 			evalCtx := eval.ContextFromRequest(outReq).WithClientRequest(outReq) // setup syncMap, upstream custom logs
-			delete(evalCtx.HCLContext().Variables, eval.ClientRequest)           // this is the noop req from above, not helpful
+			delete(evalCtx.HCLContext().Variables, variables.ClientRequest)      // this is the noop req from above, not helpful
 
 			outCtx := context.WithValue(evalCtx, request.LogEntry, logEntry)
 			outCtx = context.WithValue(outCtx, request.LogCustomAccess, []hcl.Body{j.conf.Remain}) // local custom logs

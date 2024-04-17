@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/seetie"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 const (

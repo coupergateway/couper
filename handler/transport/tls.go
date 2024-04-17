@@ -3,10 +3,10 @@ package transport
 import (
 	"crypto/tls"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/errors"
-	coupertls "github.com/avenga/couper/internal/tls"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/errors"
+	coupertls "github.com/coupergateway/couper/internal/tls"
 )
 
 // ReadCertificates parses an optional CA certificate or a client certificate / key pair.

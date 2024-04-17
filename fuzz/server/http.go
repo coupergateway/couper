@@ -13,12 +13,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/command"
-	"github.com/avenga/couper/config/configload"
-	couperruntime "github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/command"
+	"github.com/coupergateway/couper/config/configload"
+	couperruntime "github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server"
 )
 
 var client *http.Client

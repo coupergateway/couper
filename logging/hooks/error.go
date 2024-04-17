@@ -6,12 +6,11 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
+	"go.opentelemetry.io/otel/metric"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 var _ logrus.Hook = &Error{}
@@ -49,12 +48,8 @@ func (l *Error) Fire(entry *logrus.Entry) error {
 
 	meter := provider.Meter("couper/errors")
 
-	counter, _ := meter.Int64Counter(
-		instrumentation.Prefix+"client_request_error_types",
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
-
-	counter.Add(entry.Context, 1, attribute.String("error", kind))
+	counter, _ := meter.Int64Counter(instrumentation.Prefix + "client_request_error_types")
+	counter.Add(entry.Context, 1, metric.WithAttributes(attribute.String("error", kind)))
 
 	return nil
 }

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 var couperErrors []string

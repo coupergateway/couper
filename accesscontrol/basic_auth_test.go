@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	ac "github.com/avenga/couper/accesscontrol"
-	couperErr "github.com/avenga/couper/errors"
+	ac "github.com/coupergateway/couper/accesscontrol"
+	couperErr "github.com/coupergateway/couper/errors"
 )
 
 func Test_NewBasicAuth(t *testing.T) {

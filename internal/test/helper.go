@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 type Helper struct {

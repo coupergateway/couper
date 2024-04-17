@@ -8,10 +8,10 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/meta"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/seetie"
+	"github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/meta"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 var (

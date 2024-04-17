@@ -25,19 +25,19 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/command"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/oauth2"
+	"github.com/coupergateway/couper/command"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 var (
@@ -1199,8 +1199,7 @@ func TestHTTPServer_Backends_Reference_BasicAuth(t *testing.T) {
 
 	configPath := "testdata/integration/config/13_couper.hcl"
 
-	helper := test.New(t)
-	shutdown, _ := newCouper(configPath, helper)
+	shutdown, _ := newCouper(configPath, test.New(t))
 	defer shutdown()
 
 	type testcase struct {
@@ -1212,26 +1211,29 @@ func TestHTTPServer_Backends_Reference_BasicAuth(t *testing.T) {
 		{"/", false},
 		{"/granted", true},
 	} {
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
-		helper.Must(err)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
 
-		res, err := client.Do(req)
-		helper.Must(err)
+			res, err := client.Do(req)
+			helper.Must(err)
 
-		b, err := io.ReadAll(res.Body)
-		helper.Must(err)
+			b, err := io.ReadAll(res.Body)
+			helper.Must(err)
 
-		helper.Must(res.Body.Close())
+			helper.Must(res.Body.Close())
 
-		type result struct {
-			Headers http.Header
-		}
-		r := result{}
-		helper.Must(json.Unmarshal(b, &r))
+			type result struct {
+				Headers http.Header
+			}
+			r := result{}
+			helper.Must(json.Unmarshal(b, &r))
 
-		if tc.wantAuth && !strings.HasPrefix(r.Headers.Get("Authorization"), "Basic ") {
-			t.Error("expected Authorization header value")
-		}
+			if tc.wantAuth && !strings.HasPrefix(r.Headers.Get("Authorization"), "Basic ") {
+				subT.Error("expected Authorization header value")
+			}
+		})
 	}
 }
 
@@ -1240,8 +1242,7 @@ func TestHTTPServer_Backends_Reference_PathPrefix(t *testing.T) {
 
 	configPath := "testdata/integration/config/12_couper.hcl"
 
-	helper := test.New(t)
-	shutdown, _ := newCouper(configPath, helper)
+	shutdown, _ := newCouper(configPath, test.New(t))
 	defer shutdown()
 
 	type testcase struct {
@@ -1254,31 +1255,34 @@ func TestHTTPServer_Backends_Reference_PathPrefix(t *testing.T) {
 		{"/", "/anything", http.StatusOK},
 		{"/prefixed", "/my-prefix/anything", http.StatusNotFound},
 	} {
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
-		helper.Must(err)
+		t.Run(tc.path, func(subT *testing.T) {
+			helper := test.New(subT)
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:8080"+tc.path, nil)
+			helper.Must(err)
 
-		res, err := client.Do(req)
-		helper.Must(err)
+			res, err := client.Do(req)
+			helper.Must(err)
 
-		type result struct {
-			Path string
-		}
+			type result struct {
+				Path string
+			}
 
-		b, err := io.ReadAll(res.Body)
-		helper.Must(err)
+			b, err := io.ReadAll(res.Body)
+			helper.Must(err)
 
-		helper.Must(res.Body.Close())
+			helper.Must(res.Body.Close())
 
-		r := result{}
-		helper.Must(json.Unmarshal(b, &r))
+			r := result{}
+			helper.Must(json.Unmarshal(b, &r))
 
-		if res.StatusCode != tc.wantStatus {
-			t.Errorf("expected status: %d, got %d", tc.wantStatus, res.StatusCode)
-		}
+			if res.StatusCode != tc.wantStatus {
+				subT.Errorf("expected status: %d, got %d", tc.wantStatus, res.StatusCode)
+			}
 
-		if r.Path != tc.wantPath {
-			t.Errorf("expected path: %q, got: %q", tc.wantPath, r.Path)
-		}
+			if r.Path != tc.wantPath {
+				subT.Errorf("expected path: %q, got: %q", tc.wantPath, r.Path)
+			}
+		})
 	}
 }
 
@@ -1339,7 +1343,7 @@ func TestHTTPServer_OriginVsURL(t *testing.T) {
 			},
 		}},
 	} {
-		t.Run("File "+tc.file, func(subT *testing.T) {
+		t.Run(tc.file, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			shutdown, _ := newCouper(path.Join(configPath, tc.file), helper)
@@ -1390,7 +1394,7 @@ func TestHTTPServer_TrailingSlash(t *testing.T) {
 			Path: "/path/",
 		}},
 	} {
-		t.Run("TrailingSlash "+tc.path, func(subT *testing.T) {
+		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
 			shutdown, _ := newCouper(conf, helper)
 			defer shutdown()
@@ -2029,53 +2033,68 @@ func TestHTTPServer_Endpoint_Response_JSONBody_Evaluation(t *testing.T) {
 	shutdown, _ := newCouper(confPath, test.New(t))
 	defer shutdown()
 
-	helper := test.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/req?foo=bar", strings.NewReader(`{"data": true}`))
-	helper.Must(err)
-	req.Header.Set("User-Agent", "")
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := client.Do(req)
-	helper.Must(err)
-
-	resBytes, err := io.ReadAll(res.Body)
-	helper.Must(err)
-
-	_ = res.Body.Close()
-
-	type Expectation struct {
-		JSONBody map[string]interface{} `json:"json_body"`
-		Headers  test.Header            `json:"headers"`
-		Method   string                 `json:"method"`
-		Query    url.Values             `json:"query"`
-		URL      string                 `json:"url"`
+	type testCase struct {
+		name        string
+		path        string
+		expJSONBody map[string]interface{}
 	}
 
-	var jsonResult Expectation
-	err = json.Unmarshal(resBytes, &jsonResult)
-	if err != nil {
-		t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
-	}
+	for _, tc := range []testCase{
+		{
+			"json-parsed", "/req", map[string]interface{}{"data": true},
+		},
+		{
+			"not json-parsed", "/req2", map[string]interface{}{},
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
 
-	delete(jsonResult.Headers, "couper-request-id")
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path+"?foo=bar", strings.NewReader(`{"data": true}`))
+			helper.Must(err)
+			req.Header.Set("User-Agent", "")
+			req.Header.Set("Content-Type", "application/json")
 
-	exp := Expectation{
-		Method: http.MethodGet,
-		JSONBody: map[string]interface{}{
-			"data": true,
-		},
-		Headers: map[string]string{
-			"content-length": "14",
-			"content-type":   "application/json",
-		},
-		Query: map[string][]string{
-			"foo": {"bar"},
-		},
-		URL: "http://example.com:8080/req?foo=bar",
-	}
-	if !reflect.DeepEqual(jsonResult, exp) {
-		t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			resBytes, err := io.ReadAll(res.Body)
+			helper.Must(err)
+
+			_ = res.Body.Close()
+
+			type Expectation struct {
+				JSONBody map[string]interface{} `json:"json_body"`
+				Headers  test.Header            `json:"headers"`
+				Method   string                 `json:"method"`
+				Query    url.Values             `json:"query"`
+				URL      string                 `json:"url"`
+			}
+
+			var jsonResult Expectation
+			err = json.Unmarshal(resBytes, &jsonResult)
+			if err != nil {
+				t.Errorf("unmarshal json: %v: got:\n%s", err, string(resBytes))
+			}
+
+			delete(jsonResult.Headers, "couper-request-id")
+
+			exp := Expectation{
+				Method:   http.MethodGet,
+				JSONBody: tc.expJSONBody,
+				Headers: map[string]string{
+					"content-length": "14",
+					"content-type":   "application/json",
+				},
+				Query: map[string][]string{
+					"foo": {"bar"},
+				},
+				URL: "http://example.com:8080" + tc.path + "?foo=bar",
+			}
+			if !reflect.DeepEqual(jsonResult, exp) {
+				t.Errorf("\nwant:\t%#v\ngot:\t%#v\npayload: %s", exp, jsonResult, string(resBytes))
+			}
+		})
 	}
 }
 
@@ -3428,16 +3447,16 @@ func TestJWTAccessControl(t *testing.T) {
 
 	for _, tc := range []testCase{
 		{"no token", "/jwt", http.Header{}, "", http.StatusUnauthorized, "", "access control error: JWTToken: missing authorization header"},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusUnauthorized, "", "access control error: JWTToken: Token is expired"},
+		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"}}, "", http.StatusUnauthorized, "", "access control error: JWTToken: token has invalid claims: token is expired"},
 		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + hmacToken}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"RSA JWT", "/jwt/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS1", "/jwt/rsa/pkcs1", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"RSA JWT PKCS8", "/jwt/rsa/pkcs8", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
-		{"RSA JWT bad algorithm", "/jwt/rsa/bad", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", "access control error: RSATokenWrongAlgorithm: signing method RS256 is invalid"},
-		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid ""`},
-		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-unsupported"`},
-		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: no matching RS256 JWK for kid "rs256-wrong-cert"`},
-		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", `access control error: JWKS_not_found: received no valid JWKs data: <nil>, status code 404`},
+		{"RSA JWT bad algorithm", "/jwt/rsa/bad", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", "access control error: RSATokenWrongAlgorithm: token signature is invalid: signing method RS256 is invalid"},
+		{"local RSA JWKS without kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEyMzQ1Njc4OTB9.V9skZUql-mHqwOzVdzamqAOWSx8fjEA-6py0nfxLRSl7h1bQvqUCWMZUAkMJK6RuJ3y5YAr8ZBXZsh4rwABp_3hitQitMXnV6nr5qfzVDE9-mdS4--Bj46-JlkHacNcK24qlnn_EXGJlzCj6VFgjObSy6geaTY9iDVF6EzjZkxc1H75XRlNYAMu-0KCGfKdte0qASeBKrWnoFNEpnXZ_jhqRRNVkaSBj7_HPXD6oPqKBQf6Jh6fGgdz6q4KNL-t-Qa2_eKc8tkrYNdTdxco-ufmmLiUQ_MzRAqowHb2LdsFJP9rN2QT8MGjRXqGvkCd0EsLfqAeCPkTXs1kN8LGlvw"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: token is unverifiable: error while executing keyfunc: no matching RS256 JWK for kid ""`},
+		{"local RSA JWKS with unsupported kid", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni11bnN1cHBvcnRlZCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.wx1MkMgJhh6gnOvvrnnkRpEUDe-0KpKWw9ZIfDVHtGkuL46AktBgfbaW1ttB78wWrIW9OPfpLqKwkPizwfShoXKF9qN-6TlhPSWIUh0_kBHEj7H4u45YZXH1Ha-r9kGzly1PmLx7gzxUqRpqYnwo0TzZSEr_a8rpfWaC0ZJl3CKARormeF3tzW_ARHnGUqck4VjPfX50Ot6B5nool6qmsCQLLmDECIKBDzZicqdeWH7JPvRZx45R5ZHJRQpD3Z2iqVIF177Wj1C8q75Gxj2PXziIVKplmIUrKN-elYj3kBtJkDFneb384FPLuzsQZOR6HQmKXG2nA1WOfsblJSz3FA"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: token is unverifiable: error while executing keyfunc: no matching RS256 JWK for kid "rs256-unsupported"`},
+		{"local RSA JWKS with non-parsable cert", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer eyJraWQiOiJyczI1Ni13cm9uZy1jZXJ0IiwiYWxnIjoiUlMyNTYiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.n--6mjzfnPKbaYAquBK3v6gsbmvEofSprk3jwWGSKPdDt2VpVOe8ZNtGhJj_3f1h86-wg-gEQT5GhJmsI47X9MJ70j74dqhXUF6w4782OljstP955whuSM9hJAIvUw_WV1sqtkiESA-CZiNJIBydL5YzV2nO3gfEYdy9EdMJ2ykGLRBajRxhShxsfaZykFKvvWpy1LbUc-gfRZ4q8Hs9B7b_9RGdbpRwBtwiqPPzhjC5O86vk7ZoiG9Gq7pg52yEkLqdN4a5QkfP8nNeTTMAsqPQL1-1TAC7rIGekoUtoINRR-cewPpZ_E7JVxXvBVvPe3gX_2NzGtXkLg5QDt6RzQ"}}, "", http.StatusUnauthorized, "", `access control error: JWKS: token is unverifiable: error while executing keyfunc: no matching RS256 JWK for kid "rs256-wrong-cert"`},
+		{"local RSA JWKS not found", "/jwks/rsa/not_found", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusUnauthorized, "", `access control error: JWKS_not_found: token is unverifiable: error while executing keyfunc: received no valid JWKs data: <nil>, status code 404`},
 		{"local RSA JWKS", "/jwks/rsa", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
 		{"local RSA JWKS with scope", "/jwks/rsa/scope", http.Header{"Authorization": []string{"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTAsInNjb3BlIjpbImZvbyIsImJhciJdfQ.IFqIF_9ELXl3A-oy52G0Sg5f34ah3araOxFboskEw110nXdb_-UuxCnG0naFVFje7xvNrGbJgVAbBRX1v1I_to4BR8RzvIh2hi5IgBmqclIYsYbVWlEhsvjBhFR2b90Rz0APUdfgHp-nvgLB13jxm8f4TRr4ZDnvUQdZp3vI5PMj9optEmlZvexkNLDQLrBvoGCfVHodZyPQMLNVKp0TXWksPT-bw0E7Lq1GeYe2eU0GwHx8fugo2-v44dfCp0RXYYG6bI_Z-U3KZpvdj05n2_UDgTJFFm4c5i9UjILvlO73QJpMNi5eBjerm2alTisSCoiCtfgIgVsM8yHoomgarg"}}, "", http.StatusOK, `["foo","bar"]`, ""},
 		{"remote RSA JWKS x5c", "/jwks/rsa/remote", http.Header{"Authorization": []string{"Bearer " + rsaToken}}, "", http.StatusOK, "", ""},
@@ -3450,7 +3469,7 @@ func TestJWTAccessControl(t *testing.T) {
 		{"ECDSA JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA local JWT", "/jwt/ecdsa", http.Header{"Authorization": []string{"Bearer " + localToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWT PKCS8", "/jwt/ecdsa8", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
-		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusUnauthorized, "", "access control error: ECDSATokenWrongAlgorithm: signing method ES256 is invalid"},
+		{"ECDSA JWT bad algorithm", "/jwt/ecdsa/bad", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusUnauthorized, "", "access control error: ECDSATokenWrongAlgorithm: token signature is invalid: signing method ES256 is invalid"},
 		{"ECDSA JWKS with certificate: kid=es256", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken}}, "", http.StatusOK, "", ""},
 		{"ECDSA JWKS with crv/x/y: kid=es256-crv-x-y", "/jwks/ecdsa", http.Header{"Authorization": []string{"Bearer " + ecdsaToken2}}, "", http.StatusOK, "", ""},
 	} {
@@ -3579,7 +3598,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
-	config := `
+	cfg := `
 	  server {
 	    endpoint "/" {
 	    access_control = ["stale"]
@@ -3603,7 +3622,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	  }
 	`
 
-	shutdown, hook, err := newCouperWithBytes([]byte(config), helper)
+	shutdown, hook, err := newCouperWithBytes([]byte(cfg), helper)
 	defer shutdown()
 	helper.Must(err)
 
@@ -3618,7 +3637,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
+		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3628,7 +3647,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
 		message := getFirstAccessLogMessage(hook)
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
+		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
 	time.Sleep(3 * time.Second)
@@ -3639,10 +3658,10 @@ func TestJWKsMaxStale(t *testing.T) {
 	time.Sleep(time.Second)
 	message := getFirstAccessLogMessage(hook)
 	if res.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
+		t.Fatalf("C) expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, message)
 	}
 
-	expectedMessage := "access control error: stale: received no valid JWKs data: <nil>, status code 500"
+	expectedMessage := "access control error: stale: token is unverifiable: error while executing keyfunc: received no valid JWKs data: <nil>, status code 500"
 	if message != expectedMessage {
 		t.Fatalf("expected message %q, got: %q", expectedMessage, message)
 	}
@@ -3684,7 +3703,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 		{"separate jwt_signing_profile/jwt", "/separate", []interface{}{"g1", "g2"}},
 		{"self-signed jwt", "/self-signed", []interface{}{}},
 	} {
-		t.Run(tc.path, func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
@@ -3866,7 +3885,7 @@ func Test_Permissions(t *testing.T) {
 		{"by scope/role, mapped from scope, map files", http.MethodGet, "/scope_and_role_files/foo", true, http.StatusNoContent, `["a","b","c","d","e"]`, ``, "", ""},
 		{"by scope/role, mapped scope mapped from role, map files", http.MethodGet, "/scope_and_role_files/bar", true, http.StatusNoContent, `["a","b","c","d","e"]`, ``, "", ""},
 	} {
-		t.Run(fmt.Sprintf("%s_%s_%s", tc.name, tc.method, tc.path), func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 			hook.Reset()
 
@@ -4231,7 +4250,7 @@ func TestFunctions(t *testing.T) {
 			"X-Default-9":  "",
 			"X-Default-10": "",
 			"X-Default-11": "0",
-			"X-Default-12": "",
+			"X-Default-12": "false",
 			"X-Default-13": `{"a":1}`,
 			"X-Default-14": `{"a":1}`,
 			"X-Default-15": `[1,2]`,
@@ -4295,7 +4314,7 @@ func TestFunctions(t *testing.T) {
 			"X-Can": `{"method":"GET","path":"/v1/can"}`,
 		}, http.StatusOK},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -4369,7 +4388,7 @@ func TestFunction_to_number_errors(t *testing.T) {
 		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:81,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
 		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:89,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -4412,7 +4431,7 @@ func TestFunction_length_errors(t *testing.T) {
 		{"string", "/v1/length/string", wd + `/01_couper.hcl:134,19-26: Error in function call; Call to function "length" failed: collection must be a list, a map or a tuple.`},
 		{"null", "/v1/length/null", wd + `/01_couper.hcl:142,26-30: Invalid function argument; Invalid value for "collection" parameter: argument must not be null.`},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -4453,7 +4472,7 @@ func TestFunction_lookup_errors(t *testing.T) {
 	for _, tc := range []testCase{
 		{"null inputMap", "/v1/lookup/inputMap-null", wd + `/01_couper.hcl:203,26-30: Invalid function argument; Invalid value for "inputMap" parameter: argument must not be null.`},
 	} {
-		t.Run(tc.path[1:], func(subT *testing.T) {
+		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -4592,6 +4611,7 @@ func TestCORS_Configuration(t *testing.T) {
 			acam, acamExists := res.Header["Access-Control-Allow-Methods"]
 			acah, acahExists := res.Header["Access-Control-Allow-Headers"]
 			acac, acacExists := res.Header["Access-Control-Allow-Credentials"]
+			acax, acaxExists := res.Header["Access-Control-Max-Age"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
@@ -4605,6 +4625,9 @@ func TestCORS_Configuration(t *testing.T) {
 				if !acacExists || acac[0] != "true" {
 					subT.Errorf("Expected allowed credentials, got: %v", acac)
 				}
+				if !acaxExists || acax[0] != "200" {
+					subT.Errorf("Expected max-age 200, got: %v", acax)
+				}
 			} else {
 				if acaoExists {
 					subT.Errorf("Expected not allowed origin, got: %v", acao)
@@ -4614,6 +4637,9 @@ func TestCORS_Configuration(t *testing.T) {
 				}
 				if acahExists {
 					subT.Errorf("Expected not allowed headers, got: %v", acah)
+				}
+				if acaxExists {
+					subT.Errorf("Expected not max-age, got: %v", acax)
 				}
 				if acacExists {
 					subT.Errorf("Expected not allowed credentials, got: %v", acac)
@@ -4641,6 +4667,9 @@ func TestCORS_Configuration(t *testing.T) {
 
 			acao, acaoExists = res.Header["Access-Control-Allow-Origin"]
 			acac, acacExists = res.Header["Access-Control-Allow-Credentials"]
+			acam, acamExists = res.Header["Access-Control-Allow-Methods"]
+			acah, acahExists = res.Header["Access-Control-Allow-Headers"]
+			acax, acaxExists = res.Header["Access-Control-Max-Age"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
@@ -4655,6 +4684,15 @@ func TestCORS_Configuration(t *testing.T) {
 				if acacExists {
 					subT.Errorf("Expected not allowed credentials, got: %v", acac)
 				}
+			}
+			if acamExists {
+				subT.Errorf("Expected not allowed methods, got: %v", acam)
+			}
+			if acahExists {
+				subT.Errorf("Expected not allowed headers, got: %v", acah)
+			}
+			if acaxExists {
+				subT.Errorf("Expected not max-age, got: %v", acax)
 			}
 			vary, varyExists = res.Header["Vary"]
 			if !varyExists || strings.Join(vary, ",") != tc.expVary {
@@ -4679,6 +4717,9 @@ func TestCORS_Configuration(t *testing.T) {
 
 			acao, acaoExists = res.Header["Access-Control-Allow-Origin"]
 			acac, acacExists = res.Header["Access-Control-Allow-Credentials"]
+			acam, acamExists = res.Header["Access-Control-Allow-Methods"]
+			acah, acahExists = res.Header["Access-Control-Allow-Headers"]
+			acax, acaxExists = res.Header["Access-Control-Max-Age"]
 			if tc.expAllowed {
 				if !acaoExists || acao[0] != tc.origin {
 					subT.Errorf("Expected allowed origin, got: %v", acao)
@@ -4693,6 +4734,15 @@ func TestCORS_Configuration(t *testing.T) {
 				if acacExists {
 					subT.Errorf("Expected not allowed credentials, got: %v", acac)
 				}
+			}
+			if acamExists {
+				subT.Errorf("Expected not allowed methods, got: %v", acam)
+			}
+			if acahExists {
+				subT.Errorf("Expected not allowed headers, got: %v", acah)
+			}
+			if acaxExists {
+				subT.Errorf("Expected not max-age, got: %v", acax)
 			}
 			vary, varyExists = res.Header["Vary"]
 			if !varyExists || strings.Join(vary, ",") != tc.expVaryCred {

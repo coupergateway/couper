@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestIntegration_ResponseHeaders(t *testing.T) {

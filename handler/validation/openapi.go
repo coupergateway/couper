@@ -14,8 +14,8 @@ import (
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/gorillamux"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
 )
 
 type OpenAPI struct {

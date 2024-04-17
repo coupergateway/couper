@@ -3,10 +3,10 @@ package command
 import (
 	"context"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/runtime"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/runtime"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 )

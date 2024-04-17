@@ -11,10 +11,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/errors"
-	coupertls "github.com/avenga/couper/internal/tls"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/errors"
+	coupertls "github.com/coupergateway/couper/internal/tls"
 )
 
 func requireClientAuth(config *config.ServerTLS) tls.ClientAuthType {

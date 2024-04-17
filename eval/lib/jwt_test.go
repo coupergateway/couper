@@ -14,12 +14,12 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/test"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func TestJwtSignStatic(t *testing.T) {
@@ -632,9 +632,9 @@ func TestJwtSignDynamic(t *testing.T) {
 				StatusCode: http.StatusOK,
 			}
 
-			evalCtx := cf.Context.Value(request.ContextType).(*eval.Context).
+			evalCtx, _, _, _ := cf.Context.Value(request.ContextType).(*eval.Context).
 				WithClientRequest(req).
-				WithBeresp(beresp, cty.NilVal, false)
+				WithBeresp(beresp, cty.NilVal)
 
 			now := time.Now().Unix()
 			token, err := evalCtx.HCLContext().Functions[lib.FnJWTSign].Call([]cty.Value{cty.StringVal(tt.jspLabel), claims})

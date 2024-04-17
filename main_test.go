@@ -12,7 +12,7 @@ import (
 
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/config/env"
+	"github.com/coupergateway/couper/config/env"
 )
 
 func Test_realmain(t *testing.T) {

@@ -193,7 +193,7 @@ func defaultTemplate() x509.Certificate {
 			OrganizationalUnit: []string{"Development"},
 		},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		Issuer:       pkix.Name{CommonName: "github/avenga/couper/server"},
+		Issuer:       pkix.Name{CommonName: "github/coupergateway/couper/server"},
 		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		NotBefore:    time.Now(),
 		SerialNumber: newSerialNumber(),

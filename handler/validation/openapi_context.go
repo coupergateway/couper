@@ -3,7 +3,7 @@ package validation
 import (
 	"context"
 
-	"github.com/avenga/couper/config/request"
+	"github.com/coupergateway/couper/config/request"
 )
 
 type OpenAPIContext struct {

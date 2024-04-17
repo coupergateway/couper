@@ -18,11 +18,11 @@ import (
 	"github.com/rs/xid"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server"
 )
 
 func TestNewRun(t *testing.T) {
@@ -33,6 +33,9 @@ func TestNewRun(t *testing.T) {
 	//log.Out = os.Stdout
 
 	defaultSettings := config.NewDefaultSettings()
+	defaultSettings.BindAddresses = make(map[string]string)
+	defaultSettings.BindAddresses[""] = "tcp"
+	defaultSettings.BindAddress = "*"
 
 	tests := []struct {
 		name     string
@@ -44,6 +47,8 @@ func TestNewRun(t *testing.T) {
 		{"defaults from file", "01_defaults.hcl", nil, nil, defaultSettings},
 		{"overrides from file", "02_changed_defaults.hcl", nil, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
+			BindAddress:              "*",
+			BindAddresses:            map[string]string{"": "tcp"},
 			DefaultPort:              9090,
 			HealthPath:               "/status/health",
 			LogFormat:                defaultSettings.LogFormat,
@@ -62,6 +67,8 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag port", "01_defaults.hcl", Args{"-p", "9876"}, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
+			BindAddress:              "*",
+			BindAddresses:            map[string]string{"": "tcp"},
 			DefaultPort:              9876,
 			HealthPath:               defaultSettings.HealthPath,
 			LogFormat:                defaultSettings.LogFormat,
@@ -78,6 +85,8 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag and env port", "01_defaults.hcl", Args{"-p", "9876"}, []string{"COUPER_DEFAULT_PORT=4561"}, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
+			BindAddress:              "*",
+			BindAddresses:            map[string]string{"": "tcp"},
 			DefaultPort:              4561,
 			HealthPath:               defaultSettings.HealthPath,
 			LogFormat:                defaultSettings.LogFormat,

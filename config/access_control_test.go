@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 func TestAccessControl_List(t *testing.T) {

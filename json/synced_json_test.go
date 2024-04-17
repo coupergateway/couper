@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
-	jsn "github.com/avenga/couper/json"
+	"github.com/coupergateway/couper/internal/test"
+	jsn "github.com/coupergateway/couper/json"
 )
 
 type unmarshaller struct {

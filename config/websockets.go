@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 
-	"github.com/avenga/couper/config/meta"
+	"github.com/coupergateway/couper/config/meta"
 )
 
 var (

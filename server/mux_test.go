@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	rs "github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	rs "github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/server"
 )
 
 func TestSortPathPatterns(t *testing.T) {

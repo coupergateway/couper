@@ -5,8 +5,8 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config/meta"
-	"github.com/avenga/couper/config/sequence"
+	"github.com/coupergateway/couper/config/meta"
+	"github.com/coupergateway/couper/config/sequence"
 )
 
 var (

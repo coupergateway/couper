@@ -9,12 +9,11 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
+	"go.opentelemetry.io/otel/metric"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/telemetry/instrumentation"
-	"github.com/avenga/couper/telemetry/provider"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/telemetry/instrumentation"
+	"github.com/coupergateway/couper/telemetry/provider"
 )
 
 const (
@@ -67,8 +66,9 @@ func NewOriginConn(ctx context.Context, conn net.Conn, conf *Config, entry *logr
 
 	counter, gauge := newMeterCounter()
 
-	counter.Add(ctx, 1, o.labels...)
-	gauge.Add(ctx, 1, o.labels...)
+	option := metric.WithAttributes(o.labels...)
+	counter.Add(ctx, 1, option)
+	gauge.Add(ctx, 1, option)
 
 	return o
 }
@@ -86,11 +86,8 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 		since := time.Since(o.createdAt)
 
 		meter := provider.Meter("couper/connection")
-		duration, _ := meter.Float64Histogram(
-			instrumentation.BackendConnectionsLifetime,
-			instrument.WithDescription(string(unit.Dimensionless)),
-		)
-		duration.Record(context.Background(), since.Seconds(), o.labels...)
+		duration, _ := meter.Float64Histogram(instrumentation.BackendConnectionsLifetime)
+		duration.Record(context.Background(), since.Seconds(), metric.WithAttributes(o.labels...))
 
 		fields["lifetime"] = since.Milliseconds()
 	}
@@ -112,20 +109,14 @@ func (o *OriginConn) Close() error {
 	o.log.WithFields(o.logFields(eventClose)).Debug()
 
 	_, gauge := newMeterCounter()
-	gauge.Add(context.Background(), -1, o.labels...)
+	gauge.Add(context.Background(), -1, metric.WithAttributes(o.labels...))
 
 	return o.Conn.Close()
 }
 
-func newMeterCounter() (instrument.Int64Counter, instrument.Float64UpDownCounter) {
+func newMeterCounter() (metric.Int64Counter, metric.Float64UpDownCounter) {
 	meter := provider.Meter("couper/connection")
-
-	counter, _ := meter.Int64Counter(
-		instrumentation.BackendConnectionsTotal,
-		instrument.WithDescription(string(unit.Dimensionless)))
-	gauge, _ := meter.Float64UpDownCounter(
-		instrumentation.BackendConnections,
-		instrument.WithDescription(string(unit.Dimensionless)),
-	)
+	counter, _ := meter.Int64Counter(instrumentation.BackendConnectionsTotal)
+	gauge, _ := meter.Float64UpDownCounter(instrumentation.BackendConnections)
 	return counter, gauge
 }

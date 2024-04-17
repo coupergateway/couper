@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/telemetry/handler"
+	"github.com/coupergateway/couper/telemetry/handler"
 )
 
 type MetricsServer struct {

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server"
 )
 
 func TestHTTPSServer_TLS_SelfSigned(t *testing.T) {
@@ -110,7 +110,7 @@ func TestHTTPSServer_TLS_ServerClientCertificate(t *testing.T) {
 
 	var RemoteFailedCertCheck = func(err error) bool {
 		prefix := `Get "https://localhost:4443/": `
-		suffix := "remote error: tls: bad certificate"
+		suffix := "remote error: tls: certificate required"
 		return err != nil && (err.Error() == prefix+"readLoopPeekFailLocked: "+suffix ||
 			err.Error() == prefix+suffix)
 	}

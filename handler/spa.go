@@ -15,11 +15,10 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/server/writer"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 var (
@@ -78,9 +77,8 @@ func (s *Spa) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	var content io.ReadSeeker
 	var modTime time.Time
 
-	evalContext := eval.ContextFromRequest(req)
 	if r, ok := rw.(*writer.Response); ok {
-		r.AddModifier(evalContext.HCLContext(), s.modifier...)
+		r.AddModifier(s.modifier...)
 	}
 
 	if l := len(s.bootstrapContent); l > 0 {

@@ -18,9 +18,6 @@ definitions {
   backend "anything" {
     path = "/anything"
     origin = env.COUPER_TEST_BACKEND_ADDR
-    beta_health {
-      path = "/small"
-    }
   }
 
   backend "not_healthy" {

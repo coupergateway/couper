@@ -50,4 +50,4 @@ openapi {
 }
 ```
 
-You can find a detailed example [here](https://github.com/avenga/couper-examples/blob/master/backend-validation/README.md).
+You can find a detailed example [here](https://github.com/coupergateway/couper-examples/blob/master/backend-validation/README.md).

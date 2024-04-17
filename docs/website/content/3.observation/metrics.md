@@ -14,12 +14,12 @@ Couper provides a built-in [Prometheus](https://prometheus.io/) exporter. It is 
 
 ## Grafana Dashboard
 
-Couper provides a maintained Grafana dashboard which you can find here: [grafana.json](https://github.com/avenga/couper/blob/master/grafana.json)
+Couper provides a maintained Grafana dashboard which you can find here: [grafana.json](https://github.com/coupergateway/couper/blob/master/grafana.json)
 and import this JSON model to your grafana instance.
 You may have to set your Datasource to your Prometheus one.
 
-If you're missing some configuration options or have feedback: Feel free to open a [discussion](https://github.com/avenga/couper/discussions) or
-an [issue](https://github.com/avenga/couper/issues) if something does not work as expected or shown values does not make any sense.
+If you're missing some configuration options or have feedback: Feel free to open a [discussion](https://github.com/coupergateway/couper/discussions) or
+an [issue](https://github.com/coupergateway/couper/issues) if something does not work as expected or shown values does not make any sense.
 
 ### Preview
 

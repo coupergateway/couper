@@ -5,8 +5,8 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
 )
 
 // Result represents the producer <Result> object.

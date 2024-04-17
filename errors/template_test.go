@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server/writer"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 func TestTemplate_ServeError(t1 *testing.T) {

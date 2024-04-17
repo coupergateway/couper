@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/runtime/server"
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/runtime/server"
+	"github.com/coupergateway/couper/errors"
 )
 
 func TestServer_NewServerOptions_NoConfig(t *testing.T) {

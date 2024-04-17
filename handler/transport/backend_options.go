@@ -3,8 +3,8 @@ package transport
 import (
 	"net/http"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/handler/validation"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/handler/validation"
 )
 
 // BackendOptions represents the transport <BackendOptions> object.

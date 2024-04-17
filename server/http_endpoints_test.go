@@ -21,9 +21,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
 )
 
 const testdataPath = "testdata/endpoints"
@@ -61,7 +61,12 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 		responseLogs, _ := entry.Data["response"].(logging.Fields)
 		data, _ := entry.Data["custom"].(logrus.Fields)
 
-		if data != nil && entry.Data["backend"] == "anonymous_76_16" {
+		if data == nil {
+			t.Error("missing custom logs")
+			continue
+		}
+
+		if entry.Data["backend"] == "anonymous_76_16" {
 			expected := logrus.Fields{
 				"x-from-request-body":       "grant_type=client_credentials",
 				"x-from-request-form-body":  "client_credentials",
@@ -82,7 +87,7 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 			if diff := cmp.Diff(responseLogs["headers"], expectedHeaders); diff != "" {
 				t.Error(diff)
 			}
-		} else {
+		} else if entry.Data["backend"] == "anonymous_44_23" {
 			expected := logrus.Fields{
 				"x-from-request-json-body":   float64(1),
 				"x-from-request-header":      "bar",
@@ -96,6 +101,54 @@ func TestBackend_BackendVariable_RequestResponse(t *testing.T) {
 			if diff := cmp.Diff(data, expected); diff != "" {
 				t.Error(diff)
 			}
+		} else {
+			t.Error("wrong backend log")
+		}
+	}
+}
+
+func TestBackend_BackendVariable_RequestResponse2(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/integration/backends/02_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/request2", nil)
+	helper.Must(err)
+
+	hook.Reset()
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.Header.Get("X-From-Requests-Json-Body") != "2" ||
+		res.Header.Get("X-From-Requests-Body") != `{"b":2}` {
+		t.Errorf("Unexpected header given: %#v", res.Header)
+	}
+
+	for _, entry := range hook.AllEntries() {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+
+		data, _ := entry.Data["custom"].(logrus.Fields)
+
+		if data == nil {
+			t.Error("missing custom logs")
+			continue
+		}
+
+		if entry.Data["backend"] == "anonymous_101_17" {
+			expected := logrus.Fields{
+				"x-from-requests-json-body": float64(2),
+				"x-from-requests-body":      `{"b":2}`,
+			}
+
+			if diff := cmp.Diff(data, expected); diff != "" {
+				t.Error(diff)
+			}
+		} else {
+			t.Error("wrong backend log")
 		}
 	}
 }
@@ -190,7 +243,7 @@ func TestEndpoints_Protected404(t *testing.T) {
 		{"", "/v1/xxx", expectation{}},
 		{"secret", "/v1/xxx", expectation{http.StatusNotFound}},
 	} {
-		t.Run(tc.path, func(subT *testing.T) {
+		t.Run(tc.auth+"-"+tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
 
 			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080"+tc.path, nil)
@@ -270,26 +323,32 @@ func TestEndpoints_BerespBody(t *testing.T) {
 		}
 	}()
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pdf", nil)
-	helper.Must(err)
+	for _, path := range []string{"/pdf", "/pdf-proxy"} {
+		t.Run(path[1:], func(st *testing.T) {
+			sh := test.New(st)
 
-	res, err := client.Do(req)
-	helper.Must(err)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com:8080/pdf", nil)
+			sh.Must(err)
 
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("Expected status 200, given %d", res.StatusCode)
-	}
+			res, err := client.Do(req)
+			sh.Must(err)
 
-	resBytes, err := io.ReadAll(res.Body)
-	helper.Must(err)
-	res.Body.Close()
+			if res.StatusCode != http.StatusOK {
+				st.Fatalf("Expected status 200, given %d", res.StatusCode)
+			}
 
-	if !bytes.HasPrefix(resBytes, []byte("%PDF-1.6")) {
-		t.Errorf("Expected PDF file, given %s", resBytes)
-	}
+			resBytes, err := io.ReadAll(res.Body)
+			sh.Must(err)
+			res.Body.Close()
 
-	if val := res.Header.Get("x-body"); val != "%PDF-1.6" {
-		t.Errorf("x-body header: expected: %q, got: %q", "%PDF-1.6", val)
+			if !bytes.HasPrefix(resBytes, []byte("%PDF-1.6")) {
+				st.Errorf("Expected PDF file, given %s", resBytes)
+			}
+
+			if val := res.Header.Get("x-body"); val != "%PDF-1.6" {
+				st.Errorf("x-body header: expected: %q, got: %q", "%PDF-1.6", val)
+			}
+		})
 	}
 }
 
@@ -1184,5 +1243,99 @@ func TestEndpointWildcardProxyPathWildcard(t *testing.T) {
 				st.Errorf("Expected path: %q, got: %q", testcase.expectedPath, r.Path)
 			}
 		})
+	}
+}
+
+func Test_toSlice1(t *testing.T) {
+	shutdown, _ := newCouper("testdata/endpoints/22_couper.hcl", test.New(t))
+	defer shutdown()
+
+	expected := map[string][]string{
+		"B":   {"true"},
+		"B2":  {"false"},
+		"Ba":  {"true", "false"},
+		"Ba2": {"false", "true"},
+		"N":   {"1"},
+		"N2":  {"2"},
+		"Na":  {"1", "2"},
+		"Na2": {"3", "4"},
+		"S":   {"str"},
+		"S2":  {"asdf"},
+		"Sa":  {"s1", "s2"},
+		"Sa2": {"s3", "s4"},
+	}
+	helper := test.New(t)
+	res, err := http.PostForm("http://localhost:8080/1", url.Values{})
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: want: 200, got %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(res.Body.Close())
+	helper.Must(err)
+
+	type result struct {
+		PostForm, Query, Headers map[string][]string
+	}
+	r := result{}
+	helper.Must(json.Unmarshal(b, &r))
+	if diff := cmp.Diff(r.Query, expected); diff != "" {
+		t.Error(diff)
+	}
+	if diff := cmp.Diff(r.PostForm, expected); diff != "" {
+		t.Error(diff)
+	}
+	for k, v := range expected {
+		if diff := cmp.Diff(r.Headers[k], v); diff != "" {
+			t.Error(diff)
+		}
+	}
+	for k, v := range expected {
+		if diff := cmp.Diff(res.Header[k], v); diff != "" {
+			t.Error(diff)
+		}
+	}
+}
+
+func Test_toSlice2(t *testing.T) {
+	shutdown, _ := newCouper("testdata/endpoints/22_couper.hcl", test.New(t))
+	defer shutdown()
+
+	expected := map[string][]string{
+		"B":  {"true"},
+		"Ba": {"true", "false"},
+		"N":  {"1"},
+		"Na": {"1", "2"},
+		"S":  {"str"},
+		"Sa": {"s1", "s2"},
+	}
+	helper := test.New(t)
+	res, err := http.Get("http://localhost:8080/2")
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status: want: 200, got %d", res.StatusCode)
+	}
+
+	b, err := io.ReadAll(res.Body)
+	helper.Must(res.Body.Close())
+	helper.Must(err)
+
+	type result struct {
+		Headers map[string][]string
+	}
+	r := result{}
+	helper.Must(json.Unmarshal(b, &r))
+	for k, v := range expected {
+		if diff := cmp.Diff(r.Headers[k], v); diff != "" {
+			t.Error(diff)
+		}
+	}
+	for k, v := range expected {
+		if diff := cmp.Diff(res.Header[k], v); diff != "" {
+			t.Error(diff)
+		}
 	}
 }

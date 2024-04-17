@@ -3,7 +3,7 @@ package collect
 import (
 	"reflect"
 
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/config"
 )
 
 type ErrorHandlerSetter interface {

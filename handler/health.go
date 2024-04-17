@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 const DefaultHealthPath = "/healthz"

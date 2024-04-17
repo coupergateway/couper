@@ -10,7 +10,7 @@ import (
 	"encoding/pem"
 	"strings"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 // ParseCertificate reads a certificate from the given bytes.

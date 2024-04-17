@@ -41,6 +41,8 @@ definitions {
       iss = "the_issuer"
       pid = request.path_params.p
       groups = ["g1", "g2"]
+      tuple = [0, "s", true]
+      object = { i = 42, f = 1.23, s = "s", b = true }
     }
   }
   jwt "my_jwt" {
@@ -49,6 +51,8 @@ definitions {
     claims = {
       iss = "the_issuer"
       pid = request.path_params.p
+      tuple = [0, "s", true]
+      object = { b = true, f = 1.23, i = 42, s = "s"}
     }
   }
   jwt "self_signed_jwt" {

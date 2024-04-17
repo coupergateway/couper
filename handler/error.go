@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/logging"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/logging"
 )
 
 var _ http.Handler = &Error{}

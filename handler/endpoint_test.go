@@ -16,17 +16,18 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/sequence"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
-	"github.com/avenga/couper/handler/producer"
-	"github.com/avenga/couper/handler/transport"
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/server/writer"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/sequence"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/producer"
+	"github.com/coupergateway/couper/handler/transport"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
 	"github.com/sirupsen/logrus"
 )
 
@@ -102,7 +103,7 @@ func TestEndpoint_RoundTrip_Eval(t *testing.T) {
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			}
 
-			helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
+			helper.Must(eval.SetGetBody(req, buffer.Request, 1024))
 			*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
 			rec := httptest.NewRecorder()
@@ -206,9 +207,9 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 		for _, method := range tt.methods {
 			t.Run(method+" "+tt.name, func(subT *testing.T) {
 				helper := test.New(subT)
-
+				iBody := helper.NewInlineContext(tt.inlineCtx)
 				backend := transport.NewBackend(
-					helper.NewInlineContext(tt.inlineCtx),
+					iBody,
 					&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
 				ep := handler.NewEndpoint(&handler.EndpointOptions{
@@ -226,9 +227,12 @@ func TestEndpoint_RoundTripContext_Variables_json_body(t *testing.T) {
 				req := httptest.NewRequest(method, "/", body)
 				tt.header.Set(req)
 
+				bufferOption := buffer.Must(iBody)
+
 				// normally injected by server/http
-				helper.Must(eval.SetGetBody(req, eval.BufferRequest, 1024))
-				*req = *req.WithContext(eval.NewDefaultContext().WithClientRequest(req))
+				helper.Must(eval.SetGetBody(req, bufferOption, 1024))
+				ctx := context.WithValue(req.Context(), request.BufferOptions, bufferOption)
+				*req = *req.WithContext(eval.NewDefaultContext().WithClientRequest(req.WithContext(ctx)))
 
 				rec := httptest.NewRecorder()
 				rw := writer.NewResponseWriter(rec, "") // crucial for working ep due to res.Write()
@@ -329,7 +333,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 				hclbody.NewHCLSyntaxBodyWithStringAttr("origin", "http://"+origin.Listener.Addr().String()),
 				&transport.Config{NoProxyFromEnv: true}, nil, logger)
 
-			bufOpts := eval.MustBuffer(helper.NewInlineContext(tc.remain))
+			bufOpts := buffer.Must(helper.NewInlineContext(tc.remain))
 
 			ep := handler.NewEndpoint(&handler.EndpointOptions{
 				BufferOpts:    bufOpts,
@@ -347,6 +351,7 @@ func TestEndpoint_RoundTripContext_Null_Eval(t *testing.T) {
 			} else {
 				req.Header.Set("Content-Type", "application/json")
 			}
+			req = req.WithContext(context.WithValue(context.Background(), request.BufferOptions, bufOpts))
 			req = req.WithContext(eval.NewDefaultContext().WithClientRequest(req))
 
 			rec := httptest.NewRecorder()

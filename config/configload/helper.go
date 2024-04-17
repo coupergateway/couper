@@ -2,20 +2,21 @@ package configload
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/config"
-	hclbody "github.com/avenga/couper/config/body"
-	"github.com/avenga/couper/config/configload/collect"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/config/sequence"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval/lib"
-	"github.com/avenga/couper/internal/seetie"
+	"github.com/coupergateway/couper/config"
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/configload/collect"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/config/sequence"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval/lib"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 type helper struct {
@@ -323,6 +324,38 @@ func (h *helper) configureJobs() error {
 		}
 
 		job.Endpoint = endpointConf
+	}
+
+	return nil
+}
+
+func (h *helper) configureBindAddresses() error {
+	h.config.Settings.BindAddresses = make(map[string]string)
+
+	if h.config.Settings.BindAddress == "" {
+		h.config.Settings.BindAddress = "*"
+	}
+
+	for _, addr := range strings.Split(h.config.Settings.BindAddress, ",") {
+		addr = strings.TrimSpace(addr)
+
+		if addr == "*" {
+			h.config.Settings.BindAddresses[""] = "tcp"
+
+			return nil
+		} else if addr == "::" {
+			h.config.Settings.BindAddresses["[::]"] = "tcp6"
+		} else {
+			if net.ParseIP(addr) == nil {
+				return fmt.Errorf("invalid bind address given: %q", addr)
+			}
+
+			if strings.Contains(addr, ":") {
+				h.config.Settings.BindAddresses["["+addr+"]"] = "tcp6"
+			} else {
+				h.config.Settings.BindAddresses[addr] = "tcp4"
+			}
+		}
 	}
 
 	return nil

@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsimple"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/eval"
 )
 
 func (h *Helper) NewInlineContext(inlineHCL string) *hclsyntax.Body {

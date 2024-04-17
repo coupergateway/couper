@@ -20,18 +20,18 @@ import (
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/command"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/configload/file"
-	"github.com/avenga/couper/config/env"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/logging"
-	"github.com/avenga/couper/logging/hooks"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/command"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/configload/file"
+	"github.com/coupergateway/couper/config/env"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/logging/hooks"
+	"github.com/coupergateway/couper/utils"
 )
 
 var (
@@ -55,6 +55,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	filesList := filesList{}
 
 	type globalFlags struct {
+		BindAddress         string        `env:"bind_address"`
 		DebugEndpoint       bool          `env:"pprof"`
 		DebugPort           int           `env:"pprof_port"`
 		FilePath            string        `env:"file"`
@@ -72,6 +73,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	defaultSettings := config.NewDefaultSettings()
 
 	set := flag.NewFlagSet("global options", flag.ContinueOnError)
+	set.StringVar(&flags.BindAddress, "bind-address", "", "-bind-address=0.0.0.0,1.2.3.4")
 	set.BoolVar(&flags.DebugEndpoint, "pprof", false, "-pprof")
 	set.IntVar(&flags.DebugPort, "pprof-port", defaultSettings.PProfPort, "-pprof-port 1234")
 	set.Var(&filesList, "f", "-f /path/to/couper.hcl ...")

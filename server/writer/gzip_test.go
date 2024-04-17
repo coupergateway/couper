@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avenga/couper/internal/test"
-	"github.com/avenga/couper/server/writer"
+	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 func TestGzip_Flush(t *testing.T) {

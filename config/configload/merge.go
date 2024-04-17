@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/eval"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/eval"
 )
 
 const (

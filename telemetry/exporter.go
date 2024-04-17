@@ -23,9 +23,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"google.golang.org/grpc"
 
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/telemetry/provider"
-	"github.com/avenga/couper/utils"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/telemetry/provider"
+	"github.com/coupergateway/couper/utils"
 )
 
 const (

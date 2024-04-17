@@ -4,7 +4,7 @@
   		// for the documentation about the extensions.json format
 		"recommendations": [
 			// Couper specific hcl auto-completion.
-			"AvengaGermanyGmbH.couper",
+			"couper.couperconf",
 		  ]
 	},
 	"folders": [

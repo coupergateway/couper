@@ -14,11 +14,11 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/handler/ratelimit"
-	coupertls "github.com/avenga/couper/internal/tls"
-	"github.com/avenga/couper/telemetry"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/handler/ratelimit"
+	coupertls "github.com/coupergateway/couper/internal/tls"
+	"github.com/coupergateway/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
 )
 

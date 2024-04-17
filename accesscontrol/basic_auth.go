@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
 )
 
 var _ AccessControl = &BasicAuth{}

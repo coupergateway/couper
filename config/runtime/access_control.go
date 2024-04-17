@@ -3,8 +3,8 @@ package runtime
 import (
 	"strings"
 
-	"github.com/avenga/couper/accesscontrol"
-	"github.com/avenga/couper/config"
+	"github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/config"
 )
 
 type ACDefinitions map[string]*AccessControl

@@ -3,11 +3,11 @@ class Couper < Formula
     homepage "https://couper.io/"
     license "MIT"
     version "{{ GITHUB_REF_NAME }}"
-    head "https://github.com/avenga/couper.git", branch: "master"
+    head "https://github.com/coupergateway/couper.git", branch: "master"
 
     on_macos do
       if Hardware::CPU.arm?
-        url "https://github.com/avenga/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-macos-arm64.zip"
+        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-macos-arm64.zip"
         sha256 "{{ MACOS_ARM64_SHA256 }}"
 
         def install
@@ -15,7 +15,7 @@ class Couper < Formula
         end
       end
       if Hardware::CPU.intel?
-        url "https://github.com/avenga/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-macos-amd64.zip"
+        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-macos-amd64.zip"
         sha256 "{{ MACOS_AMD64_SHA256 }}"
 
         def install
@@ -26,7 +26,7 @@ class Couper < Formula
 
     on_linux do
       if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-        url "https://github.com/avenga/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-linux-arm64.tar.gz"
+        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-linux-arm64.tar.gz"
         sha256 "{{ LINUX_ARM64_SHA256 }}"
 
         def install
@@ -34,7 +34,7 @@ class Couper < Formula
         end
       end
       if Hardware::CPU.intel?
-        url "https://github.com/avenga/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-linux-amd64.tar.gz"
+        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-linux-amd64.tar.gz"
         sha256 "{{ LINUX_AMD64_SHA256 }}"
 
         def install

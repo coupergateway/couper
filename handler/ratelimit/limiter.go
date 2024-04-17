@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avenga/couper/errors"
+	"github.com/coupergateway/couper/errors"
 )
 
 type Limiter struct {

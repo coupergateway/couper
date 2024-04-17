@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/avenga/couper/config/reader"
+	"github.com/coupergateway/couper/config/reader"
 )
 
 func TestReadFromAttrFile(t *testing.T) {

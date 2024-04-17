@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/oauth2"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 var _ AccessControl = &OAuth2Callback{}

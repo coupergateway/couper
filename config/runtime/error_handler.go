@@ -9,16 +9,17 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/handler"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/handler"
 )
 
 func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedOptions, log *logrus.Entry,
-	defs ACDefinitions, references ...string) (http.Handler, eval.BufferOption, error) {
+	defs ACDefinitions, references ...string) (http.Handler, buffer.Option, error) {
 	kindsHandler := map[string]http.Handler{}
-	var ehBufferOption eval.BufferOption
+	var ehBufferOption buffer.Option
 	for _, ref := range references {
 		definition, ok := defs[ref]
 		if !ok {
@@ -78,7 +79,7 @@ func newErrorHandler(ctx *hcl.EvalContext, conf *config.Couper, opts *protectedO
 
 			epOpts, err := NewEndpointOptions(ctx, epConf, nil, opts.srvOpts, log, conf, opts.memStore)
 			if err != nil {
-				return nil, eval.BufferNone, err
+				return nil, buffer.None, err
 			}
 			if epOpts.ErrorTemplate == nil || h.ErrorFile == "" {
 				epOpts.ErrorTemplate = opts.epOpts.ErrorTemplate

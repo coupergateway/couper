@@ -12,30 +12,36 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcltest"
 	"github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 
-	ac "github.com/avenga/couper/accesscontrol"
-	acjwt "github.com/avenga/couper/accesscontrol/jwt"
-	"github.com/avenga/couper/cache"
-	"github.com/avenga/couper/config"
-	"github.com/avenga/couper/config/configload"
-	"github.com/avenga/couper/config/reader"
-	"github.com/avenga/couper/config/request"
-	"github.com/avenga/couper/config/runtime"
-	"github.com/avenga/couper/errors"
-	"github.com/avenga/couper/eval"
-	"github.com/avenga/couper/internal/test"
+	ac "github.com/coupergateway/couper/accesscontrol"
+	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/cache"
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/reader"
+	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func Test_JWT_NewJWT_RSA(t *testing.T) {
 	helper := test.New(t)
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+	log, _ := test.NewLogger()
+	logger := log.WithContext(context.Background())
+	memStore := cache.New(logger, tmpStoreCh)
 
 	type fields struct {
 		algorithm      string
@@ -128,7 +134,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 					ClaimsRequired:     tt.fields.claimsRequired,
 					Name:               "test_ac",
 					SignatureAlgorithm: tt.fields.algorithm,
-				}, key)
+				}, key, memStore)
 				if jerr != nil {
 					if tt.wantErr != jerr.Error() {
 						subT.Errorf("error: %v, want: %v", jerr.Error(), tt.wantErr)
@@ -146,6 +152,10 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 
 func Test_JWT_Validate(t *testing.T) {
 	log, _ := test.NewLogger()
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+	logger := log.WithContext(context.Background())
+	memStore := cache.New(logger, tmpStoreCh)
 	type fields struct {
 		algorithm      acjwt.Algorithm
 		bearer         bool
@@ -321,7 +331,7 @@ func Test_JWT_Validate(t *testing.T) {
 					Cookie:             tt.fields.cookie,
 					Header:             tt.fields.header,
 					TokenValue:         tt.fields.tokenValue,
-				}, tt.fields.pubKey)
+				}, tt.fields.pubKey, memStore)
 				if err != nil {
 					subT.Error(err)
 					return
@@ -358,8 +368,140 @@ func Test_JWT_Validate(t *testing.T) {
 	}
 }
 
+func Test_JWT_Validate_claims(t *testing.T) {
+	log, _ := test.NewLogger()
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+	logger := log.WithContext(context.Background())
+	memStore := cache.New(logger, tmpStoreCh)
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"s": "abc",
+		"i": 42,
+		"f": 1.23,
+		"b": true,
+		"t": []float64{1.23, 3.21},
+		"o": map[string]float64{"a": 0.0, "b": 1.1},
+	})
+
+	key := []byte("mySecretK3y")
+	token, _ := tok.SignedString(key)
+
+	type testCase struct {
+		name        string
+		req         *http.Request
+		claims      map[string]interface{}
+		wantErrKind string
+	}
+
+	for _, tc := range []testCase{
+		{
+			"all ok",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"s": "abc", "i": 42, "f": 1.23, "b": true, "t": []float64{1.23, 3.21}, "o": map[string]float64{"a": 0.0, "b": 1.1}},
+			"",
+		},
+		{
+			"wrong bool",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"b": false},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong int",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"i": 0},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong float",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"f": 3.21},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong string",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"s": "asdf"},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong tuple",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"t": []float64{2.34}},
+			"jwt_token_invalid",
+		},
+		{
+			"wrong object",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"o": map[string]float64{"c": 2.2}},
+			"jwt_token_invalid",
+		},
+		{
+			"missing expected claim",
+			setCookieAndHeader(httptest.NewRequest(http.MethodGet, "/", nil), "Authorization", "Bearer "+token),
+			map[string]interface{}{"expected": "str"},
+			"jwt_token_invalid",
+		},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			claimValMap := make(map[string]cty.Value)
+			for k, v := range tc.claims {
+				switch val := v.(type) {
+				case string:
+					claimValMap[k] = cty.StringVal(val)
+				case int:
+					claimValMap[k] = cty.NumberIntVal(int64(val))
+				case float64:
+					claimValMap[k] = cty.NumberFloatVal(val)
+				case bool:
+					claimValMap[k] = cty.BoolVal(val)
+				case []float64:
+					var l []cty.Value
+					for _, e := range val {
+						l = append(l, cty.NumberFloatVal(e))
+					}
+					claimValMap[k] = cty.TupleVal(l)
+				case map[string]float64:
+					m := make(map[string]cty.Value)
+					for mk, mv := range val {
+						m[mk] = cty.NumberFloatVal(mv)
+					}
+					claimValMap[k] = cty.ObjectVal(m)
+				default:
+					subT.Fatal("must be one of the mapped types")
+				}
+			}
+			j, err := ac.NewJWT(&config.JWT{
+				SignatureAlgorithm: "HS256",
+				Claims:             hcl.StaticExpr(cty.ObjectVal(claimValMap), hcl.Range{}),
+				Bearer:             true,
+			}, key, memStore)
+			if err != nil {
+				subT.Error(err)
+				return
+			}
+
+			tc.req = tc.req.WithContext(context.WithValue(context.Background(), request.LogEntry, log.WithContext(context.Background())))
+
+			errKind := ""
+			err = j.Validate(tc.req)
+			if err != nil {
+				cErr := err.(*errors.Error)
+				errKind = cErr.Kinds()[0]
+			}
+			if errKind != tc.wantErrKind {
+				subT.Errorf("Error want: %s, got: %s", tc.wantErrKind, errKind)
+			}
+		})
+	}
+}
+
 func Test_JWT_yields_permissions(t *testing.T) {
 	log, hook := test.NewLogger()
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+	logger := log.WithContext(context.Background())
+	memStore := cache.New(logger, tmpStoreCh)
 	signingMethod := jwt.SigningMethodHS256
 	algo := acjwt.NewAlgorithm(signingMethod.Alg())
 
@@ -642,7 +784,7 @@ func Test_JWT_yields_permissions(t *testing.T) {
 				RolesClaim:         tt.rolesClaim,
 				RolesMap:           rolesMap,
 				SignatureAlgorithm: algo.String(),
-			}, pubKeyBytes)
+			}, pubKeyBytes, memStore)
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -1089,4 +1231,55 @@ func setContext(req *http.Request) *http.Request {
 	evalCtx := eval.ContextFromRequest(req)
 	*req = *req.WithContext(evalCtx.WithClientRequest(req))
 	return req
+}
+
+func Test_JWT_Validate_Concurrency(t *testing.T) {
+	tmpStoreCh := make(chan struct{})
+	defer close(tmpStoreCh)
+	log, _ := test.NewLogger()
+	ctx := context.Background()
+	logger := log.WithContext(ctx)
+	memStore := cache.New(logger, tmpStoreCh)
+
+	claimValMap := map[string]cty.Value{
+		"aud": cty.StringVal("my_audience"),
+		"iss": cty.StringVal("my_issuer"),
+	}
+	key := []byte("asdf")
+	j, err := ac.NewJWT(&config.JWT{
+		SignatureAlgorithm: "HS256",
+		Claims:             hcl.StaticExpr(cty.ObjectVal(claimValMap), hcl.Range{}),
+		Name:               "test_ac",
+		Bearer:             true,
+	}, key, memStore)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"aud": "my_audience",
+		"iss": "my_issuer",
+	})
+	token, err := tok.SignedString(key)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	validate := func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/", nil)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		req = req.WithContext(context.WithValue(ctx, request.LogEntry, log.WithContext(ctx)))
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+		_ = j.Validate(req)
+	}
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go validate(&wg)
+	go validate(&wg)
+	go validate(&wg)
+	wg.Wait()
 }
