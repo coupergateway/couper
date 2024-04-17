@@ -330,22 +330,22 @@ definitions {
   jwt "JWTTokenCookie" {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-	cookie = "tok"
+    cookie = "tok"
   }
   jwt "JWTTokenHeader" {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-	header = "x-token"
+    header = "x-token"
   }
   jwt "JWTTokenHeaderAuth" {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-	header = "aUtHoRiZaTiOn"
+    header = "aUtHoRiZaTiOn"
   }
   jwt "JWTTokenTokenValue" {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
-	token_value = request.query.tok[0]
+    token_value = request.query.tok[0]
   }
   jwt "RSAToken" {
     signature_algorithm = "RS256"
