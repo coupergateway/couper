@@ -39,7 +39,7 @@ server "api" {
 
       response {
         status = "${backend_responses.default.status}" # string type test
-		# 404 + 404 + 404 + 404
+        # 404 + 404 + 404 + 404
         body = backend_responses.r1.status + backend_responses.default.status + backend_responses.r2.status + backend_responses.p2.status
       }
     }

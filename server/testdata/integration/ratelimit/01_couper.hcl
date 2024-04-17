@@ -45,7 +45,7 @@ definitions {
       period        = "1s"
       per_period    = 2
       period_window = "fixed"
-	  mode          = "block"
+      mode          = "block"
     }
   }
 }

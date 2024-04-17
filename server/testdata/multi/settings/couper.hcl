@@ -3,10 +3,10 @@ server {
     proxy {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
 
-	  set_response_headers = {
-		  X: env.X
-		  Y: env.Y
-	  }
+      set_response_headers = {
+        X: env.X
+        Y: env.Y
+      }
     }
   }
 }
