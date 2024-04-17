@@ -4425,10 +4425,10 @@ func TestFunction_to_number_errors(t *testing.T) {
 	}
 
 	for _, tc := range []testCase{
-		{"string", "/v1/to_number/string", wd + `/01_couper.hcl:65,23-28: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
-		{"bool", "/v1/to_number/bool", wd + `/01_couper.hcl:73,23-27: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
-		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:81,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
-		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:89,23-24: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
+		{"string", "/v1/to_number/string", wd + `/01_couper.hcl:65,29-34: Invalid function argument; Invalid value for "v" parameter: cannot convert "two" to number; given string must be a decimal representation of a number.`},
+		{"bool", "/v1/to_number/bool", wd + `/01_couper.hcl:73,29-33: Invalid function argument; Invalid value for "v" parameter: cannot convert bool to number.`},
+		{"tuple", "/v1/to_number/tuple", wd + `/01_couper.hcl:81,29-30: Invalid function argument; Invalid value for "v" parameter: cannot convert tuple to number.`},
+		{"object", "/v1/to_number/object", wd + `/01_couper.hcl:89,29-30: Invalid function argument; Invalid value for "v" parameter: cannot convert object to number.`},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)

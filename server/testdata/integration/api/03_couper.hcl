@@ -4,7 +4,7 @@ server "multi-api-host1" {
 
   api {
     base_path = "/v2"
-	error_file = "./../api_error.json"
+    error_file = "./../api_error.json"
 
     endpoint "/abc" {
       proxy {
@@ -20,7 +20,7 @@ server "multi-api-host2" {
 
   api {
     base_path = "/v3"
-	error_file = "./../api_error.json"
+    error_file = "./../api_error.json"
 
     endpoint "/def" {
       proxy {

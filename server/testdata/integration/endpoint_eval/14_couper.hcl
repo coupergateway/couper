@@ -131,7 +131,7 @@ server "bodies" {
       url = "${env.COUPER_TEST_BACKEND_ADDR}/anything"
       form_body = {
         foo = "ab c"
-		bar = ",:/"
+        bar = ",:/"
       }
 
       backend {
@@ -148,7 +148,7 @@ server "bodies" {
       }
       form_body = {
         foo = "ab c"
-		bar = ",:/"
+        bar = ",:/"
       }
 
       backend {
