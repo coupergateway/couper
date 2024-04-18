@@ -20,7 +20,7 @@ type Files struct {
 	DisableAccessControl []string `hcl:"disable_access_control,optional"`
 	DocumentRoot         string   `hcl:"document_root" docs:"Location of the document root (directory)."`
 	ErrorFile            string   `hcl:"error_file,optional" docs:"Location of the error file template."`
-	Name                 string   `hcl:"name,label,optional"`
+	Name                 string   `hcl:"name,label_optional"`
 	Remain               hcl.Body `hcl:",remain"`
 }
 
