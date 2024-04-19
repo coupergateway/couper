@@ -537,6 +537,16 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			accessControls.Add(jwtConf.Name, jwt, jwtConf.ErrorHandler)
 		}
 
+		for _, rlConf := range conf.Definitions.RateLimiter {
+			confErr := errors.Configuration.Label(rlConf.Name)
+			rateLimiter, err := ac.NewRateLimiter(rlConf.Name)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			accessControls.Add(rlConf.Name, rateLimiter, rlConf.ErrorHandler)
+		}
+
 		for _, saml := range conf.Definitions.SAML {
 			confErr := errors.Configuration.Label(saml.Name)
 			s, err := ac.NewSAML2ACS(saml.MetadataBytes, saml.Name, saml.SpAcsURL, saml.SpEntityID, saml.ArrayAttributes)

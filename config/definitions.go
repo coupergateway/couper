@@ -7,6 +7,7 @@ type Definitions struct {
 	Job               []*Job               `hcl:"beta_job,block" docs:"Configure a [job](/configuration/block/job) (zero or more)."`
 	JWT               []*JWT               `hcl:"jwt,block" docs:"Configure a [JWT access control](/configuration/block/jwt) (zero or more)."`
 	JWTSigningProfile []*JWTSigningProfile `hcl:"jwt_signing_profile,block" docs:"Configure a [JWT signing profile](/configuration/block/jwt_signing_profile) (zero or more)."`
+	RateLimiter       []*RateLimiter       `hcl:"beta_rate_limiter,block" docs:"Configure a [Rate limiter access control](/configuration/block/rate_limiter) (zero or more)."`
 	SAML              []*SAML              `hcl:"saml,block" docs:"Configure a [SAML access control](/configuration/block/saml) (zero or more)."`
 	OAuth2AC          []*OAuth2AC          `hcl:"beta_oauth2,block" docs:"Configure an [OAuth2 access control](/configuration/block/beta_oauth2) (zero or more)."`
 	OIDC              []*OIDC              `hcl:"oidc,block" docs:"Configure an [OIDC access control](/configuration/block/oidc) (zero or more)."`
