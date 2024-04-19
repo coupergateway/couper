@@ -2,6 +2,8 @@ package accesscontrol
 
 import (
 	"net/http"
+
+	"github.com/coupergateway/couper/errors"
 )
 
 var _ AccessControl = &RateLimiter{}
@@ -23,5 +25,5 @@ func NewRateLimiter(name string) (*RateLimiter, error) {
 // Validate implements the AccessControl interface
 func (rl *RateLimiter) Validate(req *http.Request) error {
 	// TODO implement
-	return nil
+	return errors.BetaRateLimiter.Message("from Validate()")
 }
