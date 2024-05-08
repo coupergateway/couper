@@ -43,7 +43,7 @@ func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClie
 	}
 	issuer, err := oidcConfig.GetIssuer()
 	if err != nil {
-		return nil, errors.Oauth2.With(err)
+		return nil, err
 	}
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods(algorithms),

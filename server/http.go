@@ -21,6 +21,7 @@ import (
 	"github.com/coupergateway/couper/handler"
 	"github.com/coupergateway/couper/handler/middleware"
 	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/server/writer"
 	"github.com/coupergateway/couper/telemetry/instrumentation"
 	"github.com/coupergateway/couper/telemetry/provider"
 )
@@ -309,7 +310,11 @@ func (s *HTTPServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// due to the middleware callee stack we have to update the 'req' value.
 	*req = *req.WithContext(s.evalCtx.WithClientRequest(req.WithContext(ctx)))
 
-	h.ServeHTTP(rw, req)
+	w := rw
+	if respW, is := rw.(*writer.Response); is {
+		w = respW.WithEvalContext(eval.ContextFromRequest(req))
+	}
+	h.ServeHTTP(w, req)
 }
 
 func (s *HTTPServer) setGetBody(h http.Handler, req *http.Request) (opt buffer.Option, err error) {

@@ -13,6 +13,41 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+func ValueToGo(val cty.Value) interface{} {
+	if val.IsNull() || !val.IsKnown() {
+		return nil
+	}
+
+	t := val.Type()
+	switch t {
+	case cty.Bool:
+		return val.True()
+	case cty.String:
+		return val.AsString()
+	case cty.Number:
+		f, _ := val.AsBigFloat().Float64()
+		return f
+	case cty.Map(cty.NilType):
+		return nil
+	default:
+		return valueToGoDefault(val)
+	}
+}
+
+func valueToGoDefault(val cty.Value) interface{} {
+	if isMapOrObject(val) {
+		return ValueToMap(val)
+	}
+	if isListOrTuple(val) {
+		var l []interface{}
+		for _, v := range val.AsValueSlice() {
+			l = append(l, ValueToGo(v))
+		}
+		return l
+	}
+	return nil
+}
+
 func ValueToMap(val cty.Value) map[string]interface{} {
 	result := make(map[string]interface{})
 	if val.IsNull() || !val.IsKnown() {
@@ -30,31 +65,9 @@ func ValueToMap(val cty.Value) map[string]interface{} {
 			result[k] = nil
 			continue
 		}
-		t := v.Type()
-		switch t {
-		case cty.Bool:
-			result[k] = v.True()
-		case cty.String:
-			result[k] = v.AsString()
-		case cty.List(cty.String):
-			result[k] = ValueToStringSlice(v)
-		case cty.Number:
-			f, _ := v.AsBigFloat().Float64()
-			result[k] = f
-		case cty.Map(cty.NilType):
-			result[k] = nil
-		default:
-			if t.IsObjectType() {
-				result[k] = ValueToMap(v)
-				continue
-			}
-			if isListOrTuple(v) {
-				result[k] = ValueToStringSlice(v)
-				continue
-			}
-			result[k] = nil
-		}
+		result[k] = ValueToGo(v)
 	}
+
 	return result
 }
 

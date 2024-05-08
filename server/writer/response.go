@@ -22,7 +22,8 @@ type writer interface {
 }
 
 type modifier interface {
-	AddModifier(*hcl.EvalContext, ...hcl.Body)
+	AddModifier(...hcl.Body)
+	AddHeaderModifier(HeaderModifier)
 }
 
 var (
@@ -33,6 +34,8 @@ var (
 	endOfHeader = []byte("\r\n\r\n")
 	endOfLine   = []byte("\r\n")
 )
+
+type HeaderModifier func(header http.Header)
 
 // Response wraps the http.ResponseWriter.
 type Response struct {
@@ -45,19 +48,26 @@ type Response struct {
 	statusCode      int
 	rawBytesWritten int
 	bytesWritten    int
-	// modifier
-	evalCtx  *hcl.EvalContext
-	modifier []hcl.Body
+	// modifiers
+	evalCtx         *eval.Context
+	modifiers       []hcl.Body
+	headerModifiers []HeaderModifier
 	// security
 	addPrivateCC bool
 }
 
-// NewResponseWriter creates a new Response object.
+// NewResponseWriter creates a new ResponseWriter. It wraps the http.ResponseWriter.
 func NewResponseWriter(rw http.ResponseWriter, secureCookies string) *Response {
 	return &Response{
 		rw:            rw,
 		secureCookies: secureCookies,
 	}
+}
+
+// WithEvalContext sets the eval context for the response modifiers.
+func (r *Response) WithEvalContext(ctx *eval.Context) *Response {
+	r.evalCtx = ctx
+	return r
 }
 
 // Header wraps the Header method of the <http.ResponseWriter>.
@@ -135,9 +145,10 @@ func (r *Response) WriteHeader(statusCode int) {
 	}
 
 	r.configureHeader()
-	r.applyModifier()
+	r.applyHeaderModifiers()
+	r.applyModifiers() // hcl body modifiers
 
-	// !!! Execute after modifier !!!
+	// execute after modifiers
 	if r.addPrivateCC {
 		r.Header().Add("Cache-Control", "private")
 	}
@@ -193,17 +204,29 @@ func (r *Response) AddPrivateCC() {
 	r.addPrivateCC = true
 }
 
-func (r *Response) AddModifier(evalCtx *hcl.EvalContext, modifier ...hcl.Body) {
-	r.evalCtx = evalCtx
-	r.modifier = append(r.modifier, modifier...)
+func (r *Response) AddModifier(modifier ...hcl.Body) {
+	r.modifiers = append(r.modifiers, modifier...)
 }
 
-func (r *Response) applyModifier() {
-	if r.evalCtx == nil || r.modifier == nil {
+// applyModifiers applies the hcl body modifiers to the response.
+func (r *Response) applyModifiers() {
+	if r.evalCtx == nil || r.modifiers == nil {
 		return
 	}
 
-	for _, body := range r.modifier {
-		_ = eval.ApplyResponseHeaderOps(r.evalCtx, body, r.Header())
+	hctx := r.evalCtx.HCLContextSync()
+	for _, body := range r.modifiers {
+		_ = eval.ApplyResponseHeaderOps(hctx, body, r.Header())
+	}
+}
+
+func (r *Response) AddHeaderModifier(headerModifier HeaderModifier) {
+	r.headerModifiers = append(r.headerModifiers, headerModifier)
+}
+
+// applyHeaderModifiers applies the http.Header modifiers to the response.
+func (r *Response) applyHeaderModifiers() {
+	for _, modifierFn := range r.headerModifiers {
+		modifierFn(r.Header())
 	}
 }

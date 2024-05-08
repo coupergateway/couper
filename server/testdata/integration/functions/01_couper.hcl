@@ -48,13 +48,13 @@ server "api" {
     endpoint "/to_number" {
       response {
         json_body = {
-		  float-2_34 = to_number("2.34")
-		  float-_3 = to_number(".3")
-		  int = to_number("34")
-		  int-3_ = to_number("3.")
-		  int-3_0 = to_number("3.0")
-		  null = to_number(null)
-		  from-env = to_number(env.PI)
+          float-2_34 = to_number("2.34")
+          float-_3 = to_number(".3")
+          int = to_number("34")
+          int-3_ = to_number("3.")
+          int-3_0 = to_number("3.0")
+          null = to_number(null)
+          from-env = to_number(env.PI)
         }
       }
     }
@@ -62,7 +62,7 @@ server "api" {
     endpoint "/to_number/string" {
       response {
         json_body = {
-		  error = to_number("two")
+          error = to_number("two")
         }
       }
     }
@@ -70,7 +70,7 @@ server "api" {
     endpoint "/to_number/bool" {
       response {
         json_body = {
-		  error = to_number(true)
+          error = to_number(true)
         }
       }
     }
@@ -78,7 +78,7 @@ server "api" {
     endpoint "/to_number/tuple" {
       response {
         json_body = {
-		  error = to_number([1])
+          error = to_number([1])
         }
       }
     }
@@ -86,7 +86,7 @@ server "api" {
     endpoint "/to_number/object" {
       response {
         json_body = {
-		  error = to_number({a = 1})
+          error = to_number({a = 1})
         }
       }
     }

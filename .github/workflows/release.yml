@@ -89,6 +89,9 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Set GOARCH environment variable
+        run: echo "GOARCH=${{ matrix.goarch }}" >> $GITHUB_ENV
+
       - name: 'import certificate'
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}

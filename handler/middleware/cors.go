@@ -10,6 +10,7 @@ import (
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/internal/seetie"
+	"github.com/coupergateway/couper/server/writer"
 )
 
 var _ http.Handler = &CORS{}
@@ -79,7 +80,11 @@ func NewCORSHandler(opts *CORSOptions, nextHandler http.Handler) http.Handler {
 }
 
 func (c *CORS) ServeNextHTTP(rw http.ResponseWriter, nextHandler http.Handler, req *http.Request) {
-	c.setCorsRespHeaders(rw.Header(), req)
+	if response, ok := rw.(*writer.Response); ok {
+		response.AddHeaderModifier(func(header http.Header) {
+			c.setCorsRespHeaders(header, req)
+		})
+	}
 
 	if c.isCorsPreflightRequest(req) {
 		rw.WriteHeader(http.StatusNoContent)
@@ -100,6 +105,11 @@ func (c *CORS) isCorsPreflightRequest(req *http.Request) bool {
 }
 
 func (c *CORS) setCorsRespHeaders(headers http.Header, req *http.Request) {
+	headers.Del("Access-Control-Allow-Origin")
+	headers.Del("Access-Control-Allow-Credentials")
+	headers.Del("Access-Control-Allow-Headers")
+	headers.Del("Access-Control-Allow-Methods")
+	headers.Del("Access-Control-Max-Age")
 	// see https://fetch.spec.whatwg.org/#http-responses
 	allowSpecificOrigin := false
 	if c.options.AllowsOrigin("*") && !c.options.AllowCredentials {
