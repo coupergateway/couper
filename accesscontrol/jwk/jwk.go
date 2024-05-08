@@ -80,7 +80,7 @@ func (j *JWK) UnmarshalJSON(data []byte) error {
 		if key != nil {
 			jwk.Key = key
 		} else {
-			curve, err := getCurve(raw.Crv)
+			curve, err := GetCurve(raw.Crv)
 			if err == nil && raw.X != nil && raw.Y != nil {
 				jwk.Key = &ecdsa.PublicKey{
 					Curve: curve,
@@ -177,7 +177,7 @@ func (f *base64EncodedField) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func getCurve(name string) (elliptic.Curve, error) {
+func GetCurve(name string) (elliptic.Curve, error) {
 	switch name {
 	case "P-256":
 		return elliptic.P256(), nil

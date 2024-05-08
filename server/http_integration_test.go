@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,6 +33,7 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 
+	ac "github.com/coupergateway/couper/accesscontrol"
 	"github.com/coupergateway/couper/command"
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/configload"
@@ -3520,6 +3524,7 @@ func TestJWTAccessControl(t *testing.T) {
 }
 
 func TestJWT_DefaultErrorHandler(t *testing.T) {
+	h := test.New(t)
 	client := newClient()
 
 	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
@@ -3538,11 +3543,48 @@ func TestJWT_DefaultErrorHandler(t *testing.T) {
 	expiredToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjEyMzQ1Njc4OSwic2NvcGUiOlsiZm9vIiwiYmFyIl19.W2ziH_V33JkOA5ttQhzWN96RqxFydmx7GHY6G__U9HM"
 	invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0"
 
+	privKeyPEMBytes := []byte(`-----BEGIN PRIVATE KEY-----
+MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC7VJTUt9Us8cKj
+MzEfYyjiWA4R4/M2bS1GB4t7NXp98C3SC6dVMvDuictGeurT8jNbvJZHtCSuYEvu
+NMoSfm76oqFvAp8Gy0iz5sxjZmSnXyCdPEovGhLa0VzMaQ8s+CLOyS56YyCFGeJZ
+qgtzJ6GR3eqoYSW9b9UMvkBpZODSctWSNGj3P7jRFDO5VoTwCQAWbFnOjDfH5Ulg
+p2PKSQnSJP3AJLQNFNe7br1XbrhV//eO+t51mIpGSDCUv3E0DDFcWDTH9cXDTTlR
+ZVEiR2BwpZOOkE/Z0/BVnhZYL71oZV34bKfWjQIt6V/isSMahdsAASACp4ZTGtwi
+VuNd9tybAgMBAAECggEBAKTmjaS6tkK8BlPXClTQ2vpz/N6uxDeS35mXpqasqskV
+laAidgg/sWqpjXDbXr93otIMLlWsM+X0CqMDgSXKejLS2jx4GDjI1ZTXg++0AMJ8
+sJ74pWzVDOfmCEQ/7wXs3+cbnXhKriO8Z036q92Qc1+N87SI38nkGa0ABH9CN83H
+mQqt4fB7UdHzuIRe/me2PGhIq5ZBzj6h3BpoPGzEP+x3l9YmK8t/1cN0pqI+dQwY
+dgfGjackLu/2qH80MCF7IyQaseZUOJyKrCLtSD/Iixv/hzDEUPfOCjFDgTpzf3cw
+ta8+oE4wHCo1iI1/4TlPkwmXx4qSXtmw4aQPz7IDQvECgYEA8KNThCO2gsC2I9PQ
+DM/8Cw0O983WCDY+oi+7JPiNAJwv5DYBqEZB1QYdj06YD16XlC/HAZMsMku1na2T
+N0driwenQQWzoev3g2S7gRDoS/FCJSI3jJ+kjgtaA7Qmzlgk1TxODN+G1H91HW7t
+0l7VnL27IWyYo2qRRK3jzxqUiPUCgYEAx0oQs2reBQGMVZnApD1jeq7n4MvNLcPv
+t8b/eU9iUv6Y4Mj0Suo/AU8lYZXm8ubbqAlwz2VSVunD2tOplHyMUrtCtObAfVDU
+AhCndKaA9gApgfb3xw1IKbuQ1u4IF1FJl3VtumfQn//LiH1B3rXhcdyo3/vIttEk
+48RakUKClU8CgYEAzV7W3COOlDDcQd935DdtKBFRAPRPAlspQUnzMi5eSHMD/ISL
+DY5IiQHbIH83D4bvXq0X7qQoSBSNP7Dvv3HYuqMhf0DaegrlBuJllFVVq9qPVRnK
+xt1Il2HgxOBvbhOT+9in1BzA+YJ99UzC85O0Qz06A+CmtHEy4aZ2kj5hHjECgYEA
+mNS4+A8Fkss8Js1RieK2LniBxMgmYml3pfVLKGnzmng7H2+cwPLhPIzIuwytXywh
+2bzbsYEfYx3EoEVgMEpPhoarQnYPukrJO4gwE2o5Te6T5mJSZGlQJQj9q4ZB2Dfz
+et6INsK0oG8XVGXSpQvQh3RUYekCZQkBBFcpqWpbIEsCgYAnM3DQf3FJoSnXaMhr
+VBIovic5l0xFkEHskAjFTevO86Fsz1C2aSeRKSqGFoOQ0tmJzBEs1R6KqnHInicD
+TQrKhArgLXX4v3CddjfTRJkFWDbE/CkvKZNOrcf1nhaGCPspRJj2KUkj1Fhl9Cnc
+dn/RsYEONbwQSjIfMPkvxF+8HQ==
+-----END PRIVATE KEY-----`)
+	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(privKeyPEMBytes)
+	h.Must(err)
+	jwk := test.RSAPubKeyToJWK(privKey.PublicKey)
+
 	for _, tc := range []testCase{
-		{"valid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + validToken}}, http.StatusOK, "", ""},
-		{"no token", "/jwt", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `Bearer`},
-		{"expired token", "/jwt", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer error="invalid_token", error_description="The access token expired"`},
-		{"invalid token", "/jwt", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer error="invalid_token"`},
+		{"valid Bearer token", "/jwt", http.Header{"Authorization": []string{"Bearer " + validToken}}, http.StatusOK, "", ""},
+		{"no Bearer token", "/jwt", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `Bearer`},
+		{"expired Bearer token", "/jwt", http.Header{"Authorization": []string{"Bearer " + expiredToken}}, http.StatusUnauthorized, "jwt_token_expired", `Bearer error="invalid_token", error_description="The access token expired"`},
+		{"invalid Bearer token", "/jwt", http.Header{"Authorization": []string{"Bearer " + invalidToken}}, http.StatusUnauthorized, "jwt_token_invalid", `Bearer error="invalid_token"`},
+
+		{"valid DPoP token", "/jwt/dpop", createDPoPHeaders(http.MethodGet, "/jwt/dpop", privKey, jwk, h, false, false), http.StatusOK, "", ""},
+		{"no DPoP token", "/jwt/dpop", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", `DPoP algs="RS256 RS384 RS512 ES256 ES384 ES512"`},
+		{"expired DPoP token", "/jwt/dpop", createDPoPHeaders(http.MethodGet, "/jwt/dpop", privKey, jwk, h, true, false), http.StatusUnauthorized, "jwt_token_expired", `DPoP algs="RS256 RS384 RS512 ES256 ES384 ES512", error="invalid_token", error_description="The access token expired"`},
+		{"DPoP token, missing DPoP proof", "/jwt/dpop", createDPoPHeaders(http.MethodGet, "/jwt/dpop", privKey, jwk, h, false, true), http.StatusUnauthorized, "jwt_token_invalid", `DPoP algs="RS256 RS384 RS512 ES256 ES384 ES512", error="invalid_token"`},
 
 		{"valid token in header", "/jwt/header", http.Header{"X-Token": []string{validToken}}, http.StatusOK, "", ""},
 		{"no token in header", "/jwt/header", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
@@ -3592,6 +3634,48 @@ func TestJWT_DefaultErrorHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+func createDPoPHeaders(method, path string, privKey *rsa.PrivateKey, jwk map[string]interface{}, h *test.Helper, expired, missingProof bool) http.Header {
+	jkt := ac.JwkToJKT(jwk)
+
+	header := http.Header{}
+	accessTokenClaims := jwt.MapClaims{
+		"cnf": map[string]interface{}{
+			"jkt": jkt,
+		},
+	}
+	if expired {
+		accessTokenClaims["exp"] = time.Now().Unix() - 60
+	} else {
+		accessTokenClaims["exp"] = time.Now().Unix() + 60
+	}
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
+	accessToken, err := at.SignedString([]byte("y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"))
+	h.Must(err)
+	hash := sha256.Sum256([]byte(accessToken))
+	ath := base64.RawURLEncoding.EncodeToString(hash[:])
+	header.Set("Authorization", "DPoP "+accessToken)
+
+	if missingProof {
+		return header
+	}
+
+	proofClaims := jwt.MapClaims{
+		"ath": ath,
+		"htm": method,
+		"htu": "http://back.end:8080" + path,
+		"iat": time.Now().Unix(),
+		"jti": "some_id",
+	}
+	p := jwt.NewWithClaims(jwt.SigningMethodRS256, proofClaims)
+	p.Header["jwk"] = jwk
+	p.Header["typ"] = ac.DpopTyp
+	proof, err := p.SignedString(privKey)
+	h.Must(err)
+	header.Set("DPoP", proof)
+
+	return header
 }
 
 func TestJWKsMaxStale(t *testing.T) {
