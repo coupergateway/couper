@@ -74,9 +74,6 @@ jobs:
           - image: 'coupergateway/couper'
             username_key: DOCKER_COUPER_GATEWAY_USERNAME
             password_key: DOCKER_COUPER_GATEWAY_PASSWORD
-          - image: 'avenga/couper' # TODO: remove later
-            username_key: DOCKER_USERNAME
-            password_key: DOCKER_PASSWORD
     steps:
       - name: checkout
         uses: actions/checkout@v4
