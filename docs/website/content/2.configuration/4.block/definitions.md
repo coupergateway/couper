@@ -24,7 +24,7 @@ values: [
     "name": "beta_job"
   },
   {
-    "description": "Configure an [OAuth2 assess control](/configuration/block/beta_oauth2) (zero or more).",
+    "description": "Configure an [OAuth2 access control](/configuration/block/beta_oauth2) (zero or more).",
     "name": "beta_oauth2"
   },
   {
