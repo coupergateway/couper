@@ -134,7 +134,7 @@ QolLGgj3tz4NbDEitq+zKMr0uTHvP1Vyu1mXAflcpYcJA4ZmuB3Oj39e0U0gnmr/
 					ClaimsRequired:     tt.fields.claimsRequired,
 					Name:               "test_ac",
 					SignatureAlgorithm: tt.fields.algorithm,
-				}, key, memStore)
+				}, nil, key, memStore)
 				if jerr != nil {
 					if tt.wantErr != jerr.Error() {
 						subT.Errorf("error: %v, want: %v", jerr.Error(), tt.wantErr)
@@ -331,7 +331,7 @@ func Test_JWT_Validate(t *testing.T) {
 					Cookie:             tt.fields.cookie,
 					Header:             tt.fields.header,
 					TokenValue:         tt.fields.tokenValue,
-				}, tt.fields.pubKey, memStore)
+				}, nil, tt.fields.pubKey, memStore)
 				if err != nil {
 					subT.Error(err)
 					return
@@ -475,7 +475,7 @@ func Test_JWT_Validate_claims(t *testing.T) {
 				SignatureAlgorithm: "HS256",
 				Claims:             hcl.StaticExpr(cty.ObjectVal(claimValMap), hcl.Range{}),
 				Bearer:             true,
-			}, key, memStore)
+			}, nil, key, memStore)
 			if err != nil {
 				subT.Error(err)
 				return
@@ -784,7 +784,7 @@ func Test_JWT_yields_permissions(t *testing.T) {
 				RolesClaim:         tt.rolesClaim,
 				RolesMap:           rolesMap,
 				SignatureAlgorithm: algo.String(),
-			}, pubKeyBytes, memStore)
+			}, nil, pubKeyBytes, memStore)
 			if err != nil {
 				subT.Fatal(err)
 			}
@@ -1251,7 +1251,7 @@ func Test_JWT_Validate_Concurrency(t *testing.T) {
 		Claims:             hcl.StaticExpr(cty.ObjectVal(claimValMap), hcl.Range{}),
 		Name:               "test_ac",
 		Bearer:             true,
-	}, key, memStore)
+	}, nil, key, memStore)
 	if err != nil {
 		t.Error(err)
 		return
