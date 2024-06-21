@@ -3,7 +3,6 @@ package ratelimit
 import (
 	"net/http"
 	"runtime/debug"
-	"sync"
 	"time"
 
 	"github.com/coupergateway/couper/errors"
@@ -12,7 +11,6 @@ import (
 type Limiter struct {
 	check     chan *slowTrip
 	limits    RateLimits
-	mu        sync.RWMutex
 	transport http.RoundTripper
 }
 
@@ -85,31 +83,25 @@ func (l *Limiter) slowTripper() {
 			default:
 			}
 
-			l.mu.Lock()
-
-			if mode, timeToWait := l.checkCapacity(); mode == modeBlock && timeToWait > 0 {
+			mode, timeToWait := l.checkCapacity()
+			if mode == modeBlock && timeToWait > 0 {
 				// We do not wait, we want block directly.
 				trip.err = errors.BetaBackendRateLimitExceeded
 				trip.out <- trip
-
-				l.mu.Unlock()
 			} else {
 				select {
-				// Noop if 'timeToWait' is 0.
 				case <-time.After(timeToWait):
+					// Noop if 'timeToWait' is 0.
 				case <-trip.req.Context().Done():
 					// The request was canceled while in the queue.
 					trip.err = trip.req.Context().Err()
 					trip.out <- trip
 
 					// Do not sleep for X canceled requests.
-					l.mu.Unlock()
 					continue
 				}
 
 				l.countRequest()
-
-				l.mu.Unlock()
 
 				// Do not wait for the response...
 				go func() {
@@ -125,22 +117,24 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 	now := time.Now()
 
 	for _, rl := range l.limits {
-		if rl.periodStart.IsZero() {
-			rl.periodStart = now
+		if rl.getPeriodStart().IsZero() {
+			rl.setPeriodStart(now)
 		}
-		
+
 		switch rl.window {
 		case windowFixed:
 			// Update current period.
-			multiplicator := ((now.UnixNano() - rl.periodStart.UnixNano()) / int64(time.Nanosecond)) / rl.period.Nanoseconds()
+			currentPeriod := rl.getPeriodStart()
+			multiplicator := ((now.UnixNano() - currentPeriod.UnixNano()) / int64(time.Nanosecond)) / rl.period.Nanoseconds()
 			if multiplicator > 0 {
-				rl.periodStart = rl.periodStart.Add(time.Duration(rl.period.Nanoseconds() * multiplicator))
-				rl.count = 0
+				currentPeriod = currentPeriod.Add(time.Duration(rl.period.Nanoseconds() * multiplicator))
+				rl.setPeriodStart(currentPeriod)
+				rl.count.Store(0)
 			}
 
-			if rl.count >= rl.perPeriod {
+			if rl.count.Load() >= rl.perPeriod {
 				// Calculate the 'timeToWait'.
-				t = time.Duration((rl.periodStart.Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
+				t = time.Duration((currentPeriod.Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
 
 				mode = rl.mode
 			}
@@ -160,9 +154,14 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 	return mode, t
 }
 
-// countRequest MUST only be called after checkCapacity()
+// countRequest MUST only be called after checkCapacity
 func (l *Limiter) countRequest() {
 	for _, rl := range l.limits {
-		rl.countRequest()
+		switch rl.window {
+		case windowFixed:
+			rl.count.Add(1)
+		case windowSliding:
+			rl.ringBuffer.put(time.Now())
+		}
 	}
 }
