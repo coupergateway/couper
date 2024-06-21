@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coupergateway/couper/config"
@@ -11,26 +13,42 @@ import (
 )
 
 const (
-	dummy = iota
+	notSet = iota
 	modeBlock
 	modeWait
 	windowFixed
 	windowSliding
 )
 
+// RateLimit represents a rate limit configuration.
 type RateLimit struct {
-	count       uint
-	logger      *logrus.Entry
-	mode        int
-	period      time.Duration
-	periodStart time.Time
-	perPeriod   uint
-	ringBuffer  *ringBuffer
-	window      int
-	quitCh      <-chan struct{}
+	count         *atomic.Uint64
+	logger        *logrus.Entry
+	mode          int
+	perPeriod     uint64
+	period        time.Duration
+	periodStart   time.Time
+	periodStartMu sync.RWMutex
+	quitCh        <-chan struct{}
+	ringBuffer    *ringBuffer
+	window        int
 }
 
 type RateLimits []*RateLimit
+
+func (r *RateLimit) setPeriodStart(t time.Time) {
+	r.periodStartMu.Lock()
+	defer r.periodStartMu.Unlock()
+
+	r.periodStart = t
+}
+
+func (r *RateLimit) getPeriodStart() time.Time {
+	r.periodStartMu.RLock()
+	defer r.periodStartMu.RUnlock()
+
+	return r.periodStart
+}
 
 func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
 	var (
@@ -83,12 +101,13 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 		}
 
 		rateLimit := &RateLimit{
+			count:     &atomic.Uint64{},
 			logger:    logger,
 			mode:      mode,
-			period:    time.Duration(d.Nanoseconds()),
 			perPeriod: limit.PerPeriod,
-			window:    window,
+			period:    time.Duration(d.Nanoseconds()),
 			quitCh:    ctx.Done(),
+			window:    window,
 		}
 
 		if rateLimit.window == windowSliding {
@@ -104,14 +123,4 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 	})
 
 	return rateLimits, nil
-}
-
-// countRequest MUST only be called after checkCapacity()
-func (rl *RateLimit) countRequest() {
-	switch rl.window {
-	case windowFixed:
-		rl.count++
-	case windowSliding:
-		rl.ringBuffer.put(time.Now())
-	}
 }

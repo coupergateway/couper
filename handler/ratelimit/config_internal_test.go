@@ -18,9 +18,9 @@ func TestConfig_Errors(t *testing.T) {
 		min     string = "1m"
 		sec     string = "60s"
 		neg     string = "-1s"
-		num     uint   = 123
+		num     uint64 = 123
 		zeroStr string = "0s"
-		zeroInt uint   = 0
+		zeroInt uint64 = 0
 	)
 
 	for _, tc := range []testCase{

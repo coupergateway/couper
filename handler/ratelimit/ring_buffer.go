@@ -7,15 +7,15 @@ import (
 
 type ringBuffer struct {
 	buf []time.Time
-	len uint
+	len uint64
 	mu  sync.RWMutex
-	r   uint
-	w   uint
+	r   uint64
+	w   uint64
 }
 
 // newRingBuffer creates a new ringBuffer
 // instance. ringBuffer is thread safe.
-func newRingBuffer(len uint) *ringBuffer {
+func newRingBuffer(len uint64) *ringBuffer {
 	return &ringBuffer{
 		buf: make([]time.Time, len),
 		len: len,
