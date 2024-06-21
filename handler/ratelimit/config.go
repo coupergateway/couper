@@ -91,8 +91,7 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 			quitCh:    ctx.Done(),
 		}
 
-		switch rateLimit.window {
-		case windowSliding:
+		if rateLimit.window == windowSliding {
 			rateLimit.ringBuffer = newRingBuffer(rateLimit.perPeriod)
 		}
 
