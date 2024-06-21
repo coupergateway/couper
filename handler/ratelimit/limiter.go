@@ -153,10 +153,11 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 
 				mode = rl.mode
 			}
+			// no default: config validation ensures that only 'windowFixed' and 'windowSliding' are possible
 		}
 	}
 
-	return
+	return mode, t
 }
 
 // countRequest MUST only be called after checkCapacity()
