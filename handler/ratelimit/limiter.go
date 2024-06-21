@@ -16,6 +16,7 @@ type Limiter struct {
 	transport http.RoundTripper
 }
 
+// slowTrip is a RoundTrip container for the limiter.
 type slowTrip struct {
 	err    error
 	out    chan *slowTrip
@@ -24,6 +25,7 @@ type slowTrip struct {
 	res    *http.Response
 }
 
+// NewLimiter creates a new Rate Limiter. See RateLimit for configuration options.
 func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
 	if len(limits) == 0 {
 		return nil
@@ -33,11 +35,6 @@ func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
 		check:     make(chan *slowTrip),
 		limits:    limits,
 		transport: transport,
-	}
-
-	for _, rl := range limits {
-		// Init the start of a period.
-		rl.periodStart = time.Now()
 	}
 
 	go limiter.slowTripper()
@@ -133,6 +130,10 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 	now := time.Now()
 
 	for _, rl := range l.limits {
+		if rl.periodStart.IsZero() {
+			rl.periodStart = now
+		}
+		
 		switch rl.window {
 		case windowFixed:
 			// Update current period.
