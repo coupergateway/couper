@@ -114,11 +114,6 @@ func (l *Limiter) slowTripper() {
 				// Do not wait for the response...
 				go func() {
 					trip.res, trip.err = l.transport.RoundTrip(trip.req)
-
-					if trip.res != nil && trip.res.StatusCode == http.StatusTooManyRequests {
-						trip.err = errors.BetaBackendRateLimitExceeded.With(trip.err)
-					}
-
 					trip.out <- trip
 				}()
 			}
