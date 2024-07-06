@@ -72,17 +72,6 @@ func (l *Limiter) slowTripper() {
 		case <-l.limits[0].quitCh:
 			return
 		case trip := <-l.check:
-			select {
-			case <-trip.req.Context().Done():
-				// The request was canceled while in the queue.
-				trip.err = trip.req.Context().Err()
-				trip.out <- trip
-
-				// Do not sleep for X canceled requests.
-				continue
-			default:
-			}
-
 			mode, timeToWait := l.checkCapacity()
 			if mode == modeBlock && timeToWait > 0 {
 				// We do not wait, we want block directly.
