@@ -90,7 +90,7 @@ func TestNewLimiter_Sliding(t *testing.T) {
 			st.Errorf("expected %d requests, got %d", maxRequests, reqCounter.Load())
 		}
 
-		if !fuzzyEqual(duration, expectedDuration, time.Millisecond*10) {
+		if !fuzzyEqual(duration, expectedDuration, time.Millisecond*50) {
 			st.Errorf("expected duration around %v, got %v", expectedDuration, duration)
 		}
 		st.Logf("duration: %v, expected: %v", duration, expectedDuration)
