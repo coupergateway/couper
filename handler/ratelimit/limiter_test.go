@@ -22,10 +22,12 @@ func TestNewLimiter(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 
+	const period = "2s"
+
 	limits, err := ratelimit.ConfigureRateLimits(ctx, config.RateLimits{
 		&config.RateLimit{
 			Mode:         "wait",
-			Period:       "2s",
+			Period:       period,
 			PerPeriod:    1,
 			PeriodWindow: "sliding",
 		},
@@ -93,8 +95,9 @@ func TestNewLimiter(t *testing.T) {
 		st.Logf("duration: %v, expected: %v", duration, expectedDuration)
 	})
 
+	// Note: This test does not hit the coverage of the limiter until the limiter is using a buffered channel.
 	t.Run("canceled request", func(st *testing.T) {
-		const maxRequests = 3
+		const maxRequests = 4
 		stHelper := test.New(st)
 
 		reqCounter := &atomic.Int32{}
@@ -108,37 +111,39 @@ func TestNewLimiter(t *testing.T) {
 		stHelper.Must(rerr)
 
 		var cancelReqFn func()
+		const cancelIdx = 2
 		var wg sync.WaitGroup
 		wg.Add(maxRequests)
 		for i := 0; i < maxRequests; i++ {
 			go func(idx int) {
 				defer wg.Done()
 				rctx := ctx
-				if idx == 1 {
+				if idx == cancelIdx {
 					rctx, cancelReqFn = context.WithCancel(ctx)
 				}
 				_, e := limiter.RoundTrip(req.WithContext(rctx))
-				if idx != 1 {
+				if e != nil && idx != cancelIdx {
 					stHelper.Must(e)
 					return
 				}
-				if e == nil {
-					st.Errorf("expected error, got nil")
+				if idx != cancelIdx {
 					return
 				}
+
 				if !errors.Is(e, context.Canceled) {
 					st.Errorf("expected context.Canceled error, got %v", err)
 				}
 			}(i)
 		}
 
-		// Cancel the request after a short delay
-		time.Sleep(100 * time.Millisecond)
+		// Cancel the request after some time so req-nr 3 is canceled while it should be in the queue.
+		d, _ := time.ParseDuration(period)
+		time.Sleep((cancelIdx + 1) * d)
 		cancelReqFn()
 
 		wg.Wait()
 
-		if reqCounter.Load() != 2 {
+		if reqCounter.Load() != maxRequests-1 {
 			st.Errorf("expected 2 requests, got %d", reqCounter.Load())
 		}
 	})
