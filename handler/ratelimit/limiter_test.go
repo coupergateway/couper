@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/coupergateway/couper/config"
+	couperErrors "github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/handler/ratelimit"
 	"github.com/coupergateway/couper/internal/test"
 )
 
-func TestNewLimiter(t *testing.T) {
+func TestNewLimiter_Sliding(t *testing.T) {
 	helper := test.New(t)
 	logger, _ := test.NewLogger()
 
@@ -95,7 +96,7 @@ func TestNewLimiter(t *testing.T) {
 		st.Logf("duration: %v, expected: %v", duration, expectedDuration)
 	})
 
-	// Note: This test does not hit the coverage of the limiter until the limiter is using a buffered channel.
+	// Note: This test does not hit (reproducible) the coverage of the limiter until the limiter is using a buffered channel.
 	t.Run("canceled request", func(st *testing.T) {
 		const maxRequests = 4
 		stHelper := test.New(st)
@@ -145,6 +146,77 @@ func TestNewLimiter(t *testing.T) {
 
 		if reqCounter.Load() != maxRequests-1 {
 			st.Errorf("expected 2 requests, got %d", reqCounter.Load())
+		}
+	})
+}
+
+func TestNewLimiter_Block(t *testing.T) {
+	helper := test.New(t)
+	logger, _ := test.NewLogger()
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+
+	const period = "2s"
+
+	limits, err := ratelimit.ConfigureRateLimits(ctx, config.RateLimits{
+		&config.RateLimit{
+			Mode:         "block",
+			Period:       period,
+			PerPeriod:    1,
+			PeriodWindow: "sliding",
+		},
+	}, logger.WithContext(ctx))
+	helper.Must(err)
+
+	backend := &http.Transport{
+		MaxConnsPerHost: 1,
+	}
+
+	limiter := ratelimit.NewLimiter(backend, limits)
+	if limiter == nil {
+		t.Errorf("expected configured Limiter, got %v", limiter)
+	}
+
+	t.Run("successful and blocked requests", func(st *testing.T) {
+		const maxRequests = 4
+		stHelper := test.New(st)
+
+		reqCounter := &atomic.Int32{}
+		origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			reqCounter.Add(1)
+		}))
+		defer origin.Close()
+
+		req, rerr := http.NewRequest(http.MethodGet, origin.URL, nil)
+		stHelper.Must(rerr)
+
+		rctx, tCancel := context.WithCancel(ctx)
+		defer tCancel()
+
+		startTime := time.Now()
+		wg := sync.WaitGroup{}
+		wg.Add(maxRequests)
+		rateLimitErrs := &atomic.Uint32{}
+		for i := 0; i < maxRequests; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				_, e := limiter.RoundTrip(req.WithContext(rctx))
+				if errors.Is(e, couperErrors.BetaBackendRateLimitExceeded) {
+					rateLimitErrs.Add(1)
+				}
+			}(i)
+		}
+		wg.Wait()
+		st.Logf("duration: %v", time.Since(startTime))
+
+		if reqCounter.Load() != 1 {
+			st.Errorf("expected 1 request, got %d", reqCounter.Load())
+		}
+
+		if rateLimitErrs.Load() != 3 {
+			st.Errorf("expected 3 rate limit errors, got %d", rateLimitErrs.Load())
 		}
 	})
 }
