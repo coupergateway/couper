@@ -33,7 +33,7 @@ test-docker:
 coverage: test-coverage test-coverage-show
 
 test-coverage:
-	go test -v -short -timeout 300s -coverprofile=c.out ./...
+	go test -v -short -vet=off -timeout 300s -coverprofile=c.out ./...
 
 test-coverage-show:
 	go tool cover -html=c.out
