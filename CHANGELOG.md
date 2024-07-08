@@ -25,7 +25,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Duplicate [CORS](https://docs.couper.io/configuration/block/cors) response headers (with backend sending CORS response headers, too) ([#804](https://github.com/coupergateway/couper/pull/804))
 
 * **Dependencies**
-  * build with go 1.21 ([#800](https://github.com/coupergateway/couper/pull/800))
+  * build with go 1.22 ([#810](https://github.com/coupergateway/couper/pull/810))
   * upgrade jwt library from v4 to v5 ([#769](https://github.com/coupergateway/couper/issues/769))
 
 ---
