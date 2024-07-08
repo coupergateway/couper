@@ -106,6 +106,7 @@ func (l *Limiter) slowTripper() {
 					trip.out <- trip
 
 					// Do not sleep for X canceled requests.
+					l.mu.Unlock()
 					continue
 				}
 
