@@ -24,6 +24,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Use of boolean values for the `headers` attribute or [modifiers](https://docs.couper.io/configuration/modifiers) ([#805](https://github.com/coupergateway/couper/pull/805))
   * Duplicate [CORS](https://docs.couper.io/configuration/block/cors) response headers (with backend sending CORS response headers, too) ([#804](https://github.com/coupergateway/couper/pull/804))
   * Erroneously sending 404 when serving from [`files`](https://docs.couper.io/configuration/block/files) due to wrong registration of `base_path`s, and when serving from multiple `files` or [`spa`](https://docs.couper.io/configuration/block/spa) in combination with [`api`](https://docs.couper.io/configuration/block/api) due to wrong selecting of the API error template ([#803](https://github.com/coupergateway/couper/pull/803))
+  * Possible deadlock for `beta_rate_limit` ([#827](https://github.com/coupergateway/couper/issues/827))
 
 * **Dependencies**
   * build with go 1.22 ([#810](https://github.com/coupergateway/couper/pull/810))
