@@ -56,10 +56,8 @@ func NewRouter(doc *openapi3.T) (routers.Router, error) {
 
 	muxRouter := mux.NewRouter().UseEncodedPath()
 	r := &Router{}
-	for _, path := range orderedPaths(doc.Paths) {
-		servers := servers
-
-		pathItem := doc.Paths[path]
+	for _, path := range doc.Paths.InMatchingOrder() {
+		pathItem := doc.Paths.Value(path)
 		if len(pathItem.Servers) > 0 {
 			if servers, err = makeServers(pathItem.Servers); err != nil {
 				return nil, err
@@ -115,7 +113,7 @@ func (r *Router) FindRoute(req *http.Request) (*routers.Route, map[string]string
 			}
 			route := *r.routes[i]
 			route.Method = req.Method
-			route.Operation = route.Spec.Paths[route.Path].GetOperation(route.Method)
+			route.Operation = route.Spec.Paths.Value(route.Path).GetOperation(route.Method)
 			return &route, vars, nil
 		}
 		switch match.MatchErr {
@@ -140,19 +138,13 @@ func makeServers(in openapi3.Servers) ([]srv, error) {
 			if lhs := strings.TrimSuffix(serverURL, server.Variables[sVar].Default); lhs != "" {
 				varsUpdater = func(vars map[string]string) { vars[sVar] = lhs }
 			}
-			servers = append(servers, srv{
-				base:        server.Variables[sVar].Default,
-				server:      server,
-				varsUpdater: varsUpdater,
-			})
-			continue
-		}
+			svr, err := newSrv(serverURL, server, varsUpdater)
+			if err != nil {
+				return nil, err
+			}
 
-		var schemes []string
-		if strings.Contains(serverURL, "://") {
-			scheme0 := strings.Split(serverURL, "://")[0]
-			schemes = permutePart(scheme0, server)
-			serverURL = strings.Replace(serverURL, scheme0+"://", schemes[0]+"://", 1)
+			servers = append(servers, svr)
+			continue
 		}
 
 		// If a variable represents the port "http://domain.tld:{port}/bla"
@@ -172,21 +164,11 @@ func makeServers(in openapi3.Servers) ([]srv, error) {
 			}
 		}
 
-		u, err := url.Parse(bEncode(serverURL))
+		svr, err := newSrv(serverURL, server, varsUpdater)
 		if err != nil {
 			return nil, err
 		}
-		path := bDecode(u.EscapedPath())
-		if len(path) > 0 && path[len(path)-1] == '/' {
-			path = path[:len(path)-1]
-		}
-		servers = append(servers, srv{
-			host:        bDecode(u.Host), //u.Hostname()?
-			base:        path,
-			schemes:     schemes, // scheme: []string{scheme0}, TODO: https://github.com/gorilla/mux/issues/624
-			server:      server,
-			varsUpdater: varsUpdater,
-		})
+		servers = append(servers, svr)
 	}
 	if len(servers) == 0 {
 		servers = append(servers, srv{})
@@ -195,29 +177,30 @@ func makeServers(in openapi3.Servers) ([]srv, error) {
 	return servers, nil
 }
 
-func orderedPaths(paths map[string]*openapi3.PathItem) []string {
-	// https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md#pathsObject
-	// When matching URLs, concrete (non-templated) paths would be matched
-	// before their templated counterparts.
-	// NOTE: sorting by number of variables ASC then by descending lexicographical
-	// order seems to be a good heuristic.
-	vars := make(map[int][]string)
-	max := 0
-	for path := range paths {
-		count := strings.Count(path, "}")
-		vars[count] = append(vars[count], path)
-		if count > max {
-			max = count
-		}
+func newSrv(serverURL string, server *openapi3.Server, varsUpdater varsf) (srv, error) {
+	var schemes []string
+	if strings.Contains(serverURL, "://") {
+		scheme0 := strings.Split(serverURL, "://")[0]
+		schemes = permutePart(scheme0, server)
+		serverURL = strings.Replace(serverURL, scheme0+"://", schemes[0]+"://", 1)
 	}
-	ordered := make([]string, 0, len(paths))
-	for c := 0; c <= max; c++ {
-		if ps, ok := vars[c]; ok {
-			sort.Sort(sort.Reverse(sort.StringSlice(ps)))
-			ordered = append(ordered, ps...)
-		}
+
+	u, err := url.Parse(bEncode(serverURL))
+	if err != nil {
+		return srv{}, err
 	}
-	return ordered
+	path := bDecode(u.EscapedPath())
+	if len(path) > 0 && path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
+	}
+	svr := srv{
+		host:        bDecode(u.Host), //u.Hostname()?
+		base:        path,
+		schemes:     schemes, // scheme: []string{scheme0}, TODO: https://github.com/gorilla/mux/issues/624
+		server:      server,
+		varsUpdater: varsUpdater,
+	}
+	return svr, nil
 }
 
 // Magic strings that temporarily replace "{}" so net/url.Parse() works
