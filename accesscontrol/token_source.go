@@ -7,31 +7,34 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/zclconf/go-cty/cty"
 
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
 const (
+	DpopTyp                    = "dpop+jwt"
 	bearerType tokenSourceType = iota
 	cookieType
+	dpopType
 	headerType
 	valueType
 )
 
 type (
 	tokenSourceType uint8
-	// TokenSource represents the source from which a token is retrieved.
-	TokenSource struct {
-		expr   hcl.Expression
-		name   string
-		tsType tokenSourceType
-	}
 )
 
+// TokenSource represents the source from which a token is retrieved.
+type TokenSource interface {
+	// TokenValue retrieves the token value from the request.
+	TokenValue(req *http.Request) (string, error)
+	// ValidateTokenClaims validates the token (claims) according to e.g. a specific request header field.
+	ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error
+}
+
 // NewTokenSource creates a new token source according to various configuration attributes.
-func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*TokenSource, error) {
+func NewTokenSource(bearer, dpop bool, cookie, header string, value hcl.Expression) (TokenSource, error) {
 	c, h := strings.TrimSpace(cookie), strings.TrimSpace(header)
 
 	var b uint8
@@ -39,6 +42,10 @@ func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*
 
 	if bearer {
 		b |= (1 << bearerType)
+	}
+	if dpop {
+		b |= (1 << dpopType)
+		t = dpopType
 	}
 	if c != "" {
 		b |= (1 << cookieType)
@@ -59,7 +66,15 @@ func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*
 		return nil, fmt.Errorf("only one of bearer, cookie, header or token_value attributes is allowed")
 	}
 
-	ts := &TokenSource{
+	if t == dpopType {
+		return newDPoPTokenSource(), nil
+	}
+	if t == valueType {
+		return &ValueTokenSource{
+			expr: value,
+		}, nil
+	}
+	ts := &NameTokenSource{
 		tsType: t,
 	}
 	switch t {
@@ -67,21 +82,22 @@ func NewTokenSource(bearer bool, cookie, header string, value hcl.Expression) (*
 		ts.name = c
 	case headerType:
 		ts.name = h
-	case valueType:
-		ts.expr = value
 	}
-
 	return ts, nil
 }
 
-// TokenValue retrieves the token value from the request.
-func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
+type NameTokenSource struct {
+	name   string
+	tsType tokenSourceType
+}
+
+func (s *NameTokenSource) TokenValue(req *http.Request) (string, error) {
 	var tokenValue string
 	var err error
 
 	switch s.tsType {
 	case bearerType:
-		tokenValue, err = getBearerAuth(req.Header)
+		tokenValue, err = getTokenFromAuthorization(req.Header, "Bearer")
 	case cookieType:
 		cookie, cerr := req.Cookie(s.name)
 		if cerr != http.ErrNoCookie && cookie != nil {
@@ -89,19 +105,10 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 		}
 	case headerType:
 		if strings.ToLower(s.name) == "authorization" {
-			tokenValue, err = getBearerAuth(req.Header)
+			tokenValue, err = getTokenFromAuthorization(req.Header, "Bearer")
 		} else {
 			tokenValue = req.Header.Get(s.name)
 		}
-	case valueType:
-		requestContext := eval.ContextFromRequest(req).HCLContext()
-		var value cty.Value
-		value, err = eval.Value(requestContext, s.expr)
-		if err != nil {
-			return "", err
-		}
-
-		tokenValue = seetie.ValueToString(value)
 	}
 
 	if err != nil {
@@ -115,21 +122,44 @@ func (s *TokenSource) TokenValue(req *http.Request) (string, error) {
 	return tokenValue, nil
 }
 
-// getBearerAuth retrieves a bearer token from the request headers.
-func getBearerAuth(reqHeaders http.Header) (string, error) {
+func (s *NameTokenSource) ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error {
+	return nil
+}
+
+// getTokenFromAuthorization retrieves a token for the given auth scheme from the Authorization request header field.
+func getTokenFromAuthorization(reqHeaders http.Header, authScheme string) (string, error) {
 	authorization := reqHeaders.Get("Authorization")
 	if authorization == "" {
 		return "", fmt.Errorf("missing authorization header")
 	}
 
-	return getBearer(authorization)
+	pfx := strings.ToLower(authScheme) + " "
+	if strings.HasPrefix(strings.ToLower(authorization), pfx) {
+		return strings.Trim(authorization[len(pfx):], " "), nil
+	}
+
+	return "", fmt.Errorf("auth scheme %q required in authorization header", authScheme)
 }
 
-// getBearer retrieves a bearer token from the Authorization request header field value.
-func getBearer(authorization string) (string, error) {
-	const bearer = "bearer "
-	if strings.HasPrefix(strings.ToLower(authorization), bearer) {
-		return strings.Trim(authorization[len(bearer):], " "), nil
+type ValueTokenSource struct {
+	expr hcl.Expression
+}
+
+func (s *ValueTokenSource) TokenValue(req *http.Request) (string, error) {
+	requestContext := eval.ContextFromRequest(req).HCLContext()
+	value, err := eval.Value(requestContext, s.expr)
+	if err != nil {
+		return "", err
 	}
-	return "", fmt.Errorf("bearer with token required in authorization header")
+
+	tokenValue := seetie.ValueToString(value)
+	if tokenValue == "" {
+		return "", fmt.Errorf("token required")
+	}
+
+	return tokenValue, nil
+}
+
+func (s *ValueTokenSource) ValidateTokenClaims(token string, tokenClaims map[string]interface{}, req *http.Request) error {
+	return nil
 }
