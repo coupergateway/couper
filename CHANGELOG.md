@@ -26,8 +26,8 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Erroneously sending 404 when serving from [`files`](https://docs.couper.io/configuration/block/files) due to wrong registration of `base_path`s, and when serving from multiple `files` or [`spa`](https://docs.couper.io/configuration/block/spa) in combination with [`api`](https://docs.couper.io/configuration/block/api) due to wrong selecting of the API error template ([#803](https://github.com/coupergateway/couper/pull/803))
 
 * **Dependencies**
-  * build with go 1.21 ([#800](https://github.com/coupergateway/couper/pull/800))
-  * upgrade jwt library from v4 to v5 ([#769](https://github.com/coupergateway/couper/issues/769))
+  * build with go 1.22 ([#810](https://github.com/coupergateway/couper/pull/810))
+  * upgrade jwt library from v4 to v5 ([#769](https://github.com/coupergateway/couper/issues/769), [#834](https://github.com/coupergateway/couper/pull/834))
 
 ---
 
