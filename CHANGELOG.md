@@ -14,6 +14,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Changed**
   * More specific error log messages for [`oauth2`](https://docs.couper.io/configuration/block/oauth2) and [`beta_token_request`](https://docs.couper.io/configuration/block/token_request) token request errors ([#755](https://github.com/coupergateway/couper/pull/755))
   * In addition to having an appropriate JSON media type in the `Content-Type` header field, (backend) requests or backend responses for an endpoint are only JSON-parsed if indicated by a [`.json_body` reference](https://docs.couper.io/configuration/variables) in the endpoint configuration ([#749](https://github.com/coupergateway/couper/pull/749))
+  * `beta_rate_limit` status code `429` responses are no longer wrapped as a Couper error ([#827](https://github.com/coupergateway/couper/issues/827))
 
 * **Fixed**
   * Erroneously sending an empty [`Server-Timing` header](https://docs.couper.io/configuration/command-line#oberservation-options) ([#700](https://github.com/coupergateway/couper/pull/700))
