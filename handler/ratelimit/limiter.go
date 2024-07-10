@@ -106,18 +106,18 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 	now := time.Now()
 
 	for _, rl := range l.limits {
-		if rl.getPeriodStart().IsZero() {
-			rl.setPeriodStart(now)
+		if rl.periodStart.IsZero() {
+			rl.periodStart = now
 		}
 
 		switch rl.window {
 		case windowFixed:
 			// Update current period.
-			currentPeriod := rl.getPeriodStart()
+			currentPeriod := rl.periodStart
 			multiplicator := ((now.UnixNano() - currentPeriod.UnixNano()) / int64(time.Nanosecond)) / rl.period.Nanoseconds()
 			if multiplicator > 0 {
 				currentPeriod = currentPeriod.Add(time.Duration(rl.period.Nanoseconds() * multiplicator))
-				rl.setPeriodStart(currentPeriod)
+				rl.periodStart = currentPeriod
 				rl.count.Store(0)
 			}
 

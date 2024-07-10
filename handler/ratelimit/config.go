@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -22,33 +21,18 @@ const (
 
 // RateLimit represents a rate limit configuration.
 type RateLimit struct {
-	count         *atomic.Uint64
-	logger        *logrus.Entry
-	mode          int
-	perPeriod     uint64
-	period        time.Duration
-	periodStart   time.Time
-	periodStartMu sync.RWMutex
-	quitCh        <-chan struct{}
-	ringBuffer    *ringBuffer
-	window        int
+	count       *atomic.Uint64
+	logger      *logrus.Entry
+	mode        int
+	perPeriod   uint64
+	period      time.Duration
+	periodStart time.Time
+	quitCh      <-chan struct{}
+	ringBuffer  *ringBuffer
+	window      int
 }
 
 type RateLimits []*RateLimit
-
-func (r *RateLimit) setPeriodStart(t time.Time) {
-	r.periodStartMu.Lock()
-	defer r.periodStartMu.Unlock()
-
-	r.periodStart = t
-}
-
-func (r *RateLimit) getPeriodStart() time.Time {
-	r.periodStartMu.RLock()
-	defer r.periodStartMu.RUnlock()
-
-	return r.periodStart
-}
 
 func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
 	var (
