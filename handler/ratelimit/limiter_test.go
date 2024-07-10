@@ -142,7 +142,7 @@ func TestLimiter_Sliding(t *testing.T) {
 
 		// Cancel the request after some time so req-nr 3 is canceled while it should be in the queue.
 		d, _ := time.ParseDuration(period)
-		time.Sleep((cancelIdx + 1) * d)
+		time.Sleep((cancelIdx + 1) * (d - (time.Millisecond * 100))) // minus fuzzy time
 
 		cancelReqMu.Lock()
 		cancelReqFn()
