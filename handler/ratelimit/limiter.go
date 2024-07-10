@@ -121,8 +121,6 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 				rl.count.Store(0)
 			}
 
-			//fmt.Printf("Period start: %v, Current time: %v, Count: %d\n", currentPeriod, now, rl.count.Load()) // debug
-
 			if rl.count.Load() >= rl.perPeriod {
 				// Calculate the 'timeToWait'.
 				t = time.Duration((currentPeriod.Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
