@@ -289,7 +289,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				append(serverBodies, append(fileBodies, filesConf.Remain)...), fileHandler, "",
 			)
 
-			err = setRoutesFromHosts(serverConfiguration, portsHosts, serverOptions.FilesBasePaths[i], fileHandler, files)
+			err = setRoutesFromHosts(serverConfiguration, portsHosts, utils.JoinOpenAPIPath(serverOptions.FilesBasePaths[i], "/**"), fileHandler, files)
 			if err != nil {
 				return nil, err
 			}
