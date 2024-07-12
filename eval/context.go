@@ -493,7 +493,7 @@ func parseForm(r *http.Request) *http.Request {
 	return r
 }
 
-func isJSONMediaType(contentType string) bool {
+func IsJSONMediaType(contentType string) bool {
 	m, _, _ := mime.ParseMediaType(contentType)
 	mParts := strings.Split(m, "/")
 	return len(mParts) == 2 && mParts[0] == "application" && (mParts[1] == "json" || strings.HasSuffix(mParts[1], "+json"))
@@ -511,7 +511,7 @@ func parseReqBody(req *http.Request, parseJSON bool) (cty.Value, cty.Value) {
 		return cty.NilVal, jsonBody
 	}
 
-	if parseJSON && isJSONMediaType(req.Header.Get("Content-Type")) {
+	if parseJSON && IsJSONMediaType(req.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
 	return cty.StringVal(string(b)), jsonBody
@@ -525,7 +525,7 @@ func parseRespJsonBody(beresp *http.Response, parseJSON bool) (cty.Value, cty.Va
 		return cty.NilVal, jsonBody
 	}
 
-	if parseJSON && isJSONMediaType(beresp.Header.Get("Content-Type")) {
+	if parseJSON && IsJSONMediaType(beresp.Header.Get("Content-Type")) {
 		jsonBody = parseJSONBytes(b)
 	}
 	return cty.StringVal(string(b)), jsonBody
