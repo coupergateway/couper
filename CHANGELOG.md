@@ -32,6 +32,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * upgrade jwt library from v4 to v5 ([#769](https://github.com/coupergateway/couper/issues/769), [#834](https://github.com/coupergateway/couper/pull/834))
   * update OpenAPI lib to v0.126.0 ([#837](https://github.com/coupergateway/couper/pull/837))
   * update uuid lib to v1.6.0 and xid lib to 1.5.0 ([#838](https://github.com/coupergateway/couper/pull/838))
+  * update logrus lib to 1.9.3 ([#839](https://github.com/coupergateway/couper/pull/839))
 
 ---
 
