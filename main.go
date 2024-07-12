@@ -19,6 +19,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/command"
@@ -159,6 +160,12 @@ func realmain(ctx context.Context, arguments []string) int {
 		confFile.Settings.LogPretty = flags.LogPretty
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
+
+	// respect assigned CPU limits
+	_, err = maxprocs.Set(maxprocs.Logger(logger.Infof))
+	if err != nil {
+		logrus.Error("maxprocs.Set: ", err)
+	}
 
 	if flags.DebugEndpoint {
 		debugListenAndServe(flags.DebugPort, logger)

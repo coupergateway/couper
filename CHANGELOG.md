@@ -9,7 +9,8 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * [`url_decode()` function](https://docs.couper.io/configuration/functions) ([#781](https://github.com/coupergateway/couper/pull/781))
   * `bearer = true` attribute for [`jwt` block](https://docs.couper.io/configuration/block/jwt#attributes) to indicate retrieving token from `Authorization: Bearer ...`. This is the new default token source indicator. `header = "Authorization"` is now _deprecated_ in favour of this new attribute. ([#724](https://github.com/coupergateway/couper/pull/724))
   * IPv6 support via [`-bind-address`](https://docs.couper.io/configuration/command-line#network-options) option. ([#752](https://github.com/coupergateway/couper/pull/752))
-  * If Couper starts with `-watch` CLI flag, watch referenced files, too ([#747](https://github.com/coupergateway/couper/pull/747))
+  * also watch files which has been referenced within the configuration file when using [`-watch`] (https://docs.couper.io/configuration/command-line#basic-options) ([#747](https://github.com/coupergateway/couper/pull/747))
+  * automatic [`MAXPROCS`](https://pkg.go.dev/runtime#GOMAXPROCS) setting for Couper runtime to respect the number of available CPU resources in cloud environments ([#840](https://github.com/coupergateway/couper/pull/840))
 
 * **Changed**
   * More specific error log messages for [`oauth2`](https://docs.couper.io/configuration/block/oauth2) and [`beta_token_request`](https://docs.couper.io/configuration/block/token_request) token request errors ([#755](https://github.com/coupergateway/couper/pull/755))
