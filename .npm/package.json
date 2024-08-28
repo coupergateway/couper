@@ -23,7 +23,7 @@
   },
   "main": "couper-binary.js",
   "dependencies": {
-    "axios": "^1.6.8",
+    "axios": "^1.7.4",
     "tar": "^6.2.1",
     "unzip-stream": "^0.3.2"
   }
