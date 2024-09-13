@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.12.2...master)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.13.0...master)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
+
+---
+
+## [1.13.0](https://github.com/coupergateway/couper/releases/tag/v1.13.0)
 
 * **Added**
   * [`can()` function](https://docs.couper.io/configuration/functions) ([#699](https://github.com/coupergateway/couper/pull/699))
@@ -33,8 +37,6 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * update OpenAPI lib to v0.126.0 ([#837](https://github.com/coupergateway/couper/pull/837))
   * update uuid lib to v1.6.0 and xid lib to 1.5.0 ([#838](https://github.com/coupergateway/couper/pull/838))
   * update logrus lib to 1.9.3 ([#839](https://github.com/coupergateway/couper/pull/839))
-
----
 
 ## [1.12.2](https://github.com/coupergateway/couper/releases/tag/v1.12.2)
 
