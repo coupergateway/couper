@@ -64,6 +64,16 @@ jobs:
           overwrite: true
           post_command: |
             echo "::set-output name=${{ matrix.goos }}_${{ matrix.goarch }}::$SHA256_SUM"
+      - name: Archive macOS builds
+        if: ${{ matrix.goos == 'darwin' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.goarch }}
+          path: couper-${{ github.ref_name }}-darwin-${{ matrix.goarch }}.tar.gz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
   macos:
     name: 'sign MacOS binary'
     runs-on: ubuntu-latest
@@ -90,26 +100,37 @@ jobs:
         run: |
           echo $STORE_CONNECT_KEY > app_store_key.json
           echo -n "$P12_CERT_BASE64" | base64 --decode > cert.p12
-
+      - name: 'download artifacts'
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-${{ matrix.goarch }}
+      - name: 'extract artifacts'
+        run: |
+          tar -xzf couper-${{ github.ref_name }}-darwin-${{ matrix.goarch }}.tar.gz
+      - name: Sign
+        uses: indygreg/apple-code-sign-action@v1
+        with:
+          p12_file: cert.p12
+          p12_password: '${{ secrets.APPLE_DIST_CERT_P12_PASSWORD }}'
+          sign: true
+          sign_args: |
+            --code-signature-flags
+            runtime
+          input_path: couper
+      - name: 'Archive signed macOS binary'
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -qq couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip couper
       - name: Notarize
         uses: indygreg/apple-code-sign-action@v1
         with:
           app_store_connect_api_key_json_file: app_store_key.json
-          p12_file: cert.p12
-          p12_password: ${{ secrets.APPLE_DIST_CERT_P12_PASSWORD }}
-          sign: true
+          sign: false
           notarize: true
-          staple: true
-          input_path: ${{ steps.build.outputs.release_asset_dir }}/couper-${{ github.ref_name }}-darwin-${{ matrix.goarch }}
-
+          staple: false # we can't staple mach-o binaries; gatekeeper will check it: `spctl -a -vvv -t install couper`
+          input_path: ${{ github.workspace }}/couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip
       - name: 'install assets-uploader'
         run: go install github.com/wangyoucao577/assets-uploader/...@v0.13.0
-      - name: 'rename binary'
-        run: mv ${{ steps.build.outputs.release_asset_dir }}/couper-${{ github.ref_name }}-darwin-${{ matrix.goarch }} ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}
-      - name: 'archive macos binary'
-        uses: montudor/action-zip@v1
-        with:
-          args: zip -qq ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}
       - name: 'upload signed binary archive'
         id: 'upload'
         run: |
