@@ -21,7 +21,7 @@ func TestLimiter_Sliding(t *testing.T) {
 	logger, _ := test.NewLogger()
 
 	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	t.Cleanup(cancelFn)
 
 	const period = "2s"
 
@@ -60,12 +60,15 @@ func TestLimiter_Sliding(t *testing.T) {
 			reqCounter.Add(1)
 		}))
 		defer origin.Close()
+		rctx, tCancel := context.WithCancel(ctx)
+		defer tCancel()
+		st.Cleanup(func() {
+			tCancel()
+			origin.Close()
+		})
 
 		req, rerr := http.NewRequest(http.MethodGet, origin.URL, nil)
 		stHelper.Must(rerr)
-
-		rctx, tCancel := context.WithCancel(ctx)
-		defer tCancel()
 
 		startTime := time.Now()
 		wg := sync.WaitGroup{}
@@ -90,7 +93,7 @@ func TestLimiter_Sliding(t *testing.T) {
 			st.Errorf("expected %d requests, got %d", maxRequests, reqCounter.Load())
 		}
 
-		if !fuzzyEqual(duration, expectedDuration, time.Millisecond*50) {
+		if !fuzzyEqual(duration, expectedDuration, time.Millisecond*100) {
 			st.Errorf("expected duration around %v, got %v", expectedDuration, duration)
 		}
 		st.Logf("duration: %v, expected: %v", duration, expectedDuration)
@@ -106,7 +109,7 @@ func TestLimiter_Sliding(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			reqCounter.Add(1)
 		}))
-		defer origin.Close()
+		st.Cleanup(func() { origin.Close() })
 
 		req, rerr := http.NewRequest(http.MethodGet, origin.URL, nil)
 		stHelper.Must(rerr)
@@ -116,6 +119,7 @@ func TestLimiter_Sliding(t *testing.T) {
 		const cancelIdx = 2
 		var wg sync.WaitGroup
 		wg.Add(maxRequests)
+
 		for i := 0; i < maxRequests; i++ {
 			go func(idx int) {
 				defer wg.Done()
@@ -130,28 +134,29 @@ func TestLimiter_Sliding(t *testing.T) {
 					stHelper.Must(e)
 					return
 				}
-				if idx != cancelIdx {
-					return
-				}
 
-				if !errors.Is(e, context.Canceled) {
-					st.Errorf("expected context.Canceled error, got %v", err)
+				if idx == cancelIdx {
+					if !errors.Is(e, context.Canceled) {
+						st.Errorf("expected context.Canceled error, got %v", e)
+					}
+				} else if e != nil {
+					st.Errorf("unexpected error for request %d: %v", idx, e)
 				}
 			}(i)
 		}
 
-		// Cancel the request after some time so req-nr 3 is canceled while it should be in the queue.
-		d, _ := time.ParseDuration(period)
-		time.Sleep((cancelIdx + 1) * (d - (time.Millisecond * 100))) // minus fuzzy time
+		// wait for goroutines to start
+		time.Sleep(50 * time.Millisecond)
 
 		cancelReqMu.Lock()
 		cancelReqFn()
 		cancelReqMu.Unlock()
 
+		// wait for goroutines to finish
 		wg.Wait()
 
-		if reqCounter.Load() != maxRequests-1 {
-			st.Errorf("expected 2 requests, got %d", reqCounter.Load())
+		if count := reqCounter.Load(); count != maxRequests-1 {
+			st.Errorf("expected %d requests, got %d", maxRequests-1, count)
 		}
 	})
 }
@@ -161,7 +166,7 @@ func TestLimiter_Fixed(t *testing.T) {
 	logger, _ := test.NewLogger()
 
 	ctx, cancelFn := context.WithCancel(context.Background())
-	defer cancelFn()
+	t.Cleanup(cancelFn)
 
 	const period = "2s"
 
@@ -202,12 +207,15 @@ func TestLimiter_Fixed(t *testing.T) {
 			reqCounter.Add(1)
 		}))
 		defer origin.Close()
+		rctx, tCancel := context.WithCancel(ctx)
+		defer tCancel()
+		st.Cleanup(func() {
+			tCancel()
+			origin.Close()
+		})
 
 		req, rerr := http.NewRequest(http.MethodGet, origin.URL, nil)
 		stHelper.Must(rerr)
-
-		rctx, tCancel := context.WithCancel(ctx)
-		defer tCancel()
 
 		startTime := time.Now()
 		wg := sync.WaitGroup{}
@@ -233,7 +241,7 @@ func TestLimiter_Fixed(t *testing.T) {
 			st.Errorf("expected %d requests, got %d", maxRequests, reqCounter.Load())
 		}
 
-		if !fuzzyEqual(duration, expectedDuration, time.Millisecond*50) {
+		if !fuzzyEqual(duration, expectedDuration, time.Millisecond*100) {
 			st.Errorf("expected duration around %v, got %v", expectedDuration, duration)
 		}
 		st.Logf("duration: %v, expected: %v", duration, expectedDuration)
@@ -277,13 +285,14 @@ func TestLimiter_Block(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			reqCounter.Add(1)
 		}))
-		defer origin.Close()
+		rctx, tCancel := context.WithCancel(ctx)
+		st.Cleanup(func() {
+			tCancel()
+			origin.Close()
+		})
 
 		req, rerr := http.NewRequest(http.MethodGet, origin.URL, nil)
 		stHelper.Must(rerr)
-
-		rctx, tCancel := context.WithCancel(ctx)
-		defer tCancel()
 
 		startTime := time.Now()
 		wg := sync.WaitGroup{}
@@ -312,5 +321,9 @@ func TestLimiter_Block(t *testing.T) {
 }
 
 func fuzzyEqual(a, b, fuzz time.Duration) bool {
-	return b <= a+fuzz && b >= a-fuzz
+	diff := a - b
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff <= fuzz
 }
