@@ -2,51 +2,31 @@ package openapi3
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 
 	"github.com/go-openapi/jsonpointer"
-
-	"github.com/getkin/kin-openapi/jsoninfo"
 )
-
-type ParametersMap map[string]*ParameterRef
-
-var _ jsonpointer.JSONPointable = (*ParametersMap)(nil)
-
-// JSONLookup implements github.com/go-openapi/jsonpointer#JSONPointable
-func (p ParametersMap) JSONLookup(token string) (interface{}, error) {
-	ref, ok := p[token]
-	if ref == nil || ok == false {
-		return nil, fmt.Errorf("object has no field %q", token)
-	}
-
-	if ref.Ref != "" {
-		return &Ref{Ref: ref.Ref}, nil
-	}
-	return ref.Value, nil
-}
 
 // Parameters is specified by OpenAPI/Swagger 3.0 standard.
 type Parameters []*ParameterRef
 
 var _ jsonpointer.JSONPointable = (*Parameters)(nil)
 
-// JSONLookup implements github.com/go-openapi/jsonpointer#JSONPointable
-func (p Parameters) JSONLookup(token string) (interface{}, error) {
+// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func (p Parameters) JSONLookup(token string) (any, error) {
 	index, err := strconv.Atoi(token)
 	if err != nil {
 		return nil, err
 	}
-
 	if index < 0 || index >= len(p) {
 		return nil, fmt.Errorf("index %d out of bounds of array of length %d", index, len(p))
 	}
 
 	ref := p[index]
-
 	if ref != nil && ref.Ref != "" {
 		return &Ref{Ref: ref.Ref}, nil
 	}
@@ -69,7 +49,9 @@ func (parameters Parameters) GetByInAndName(in string, name string) *Parameter {
 }
 
 // Validate returns an error if Parameters does not comply with the OpenAPI spec.
-func (parameters Parameters) Validate(ctx context.Context) error {
+func (parameters Parameters) Validate(ctx context.Context, opts ...ValidationOption) error {
+	ctx = WithValidationOptions(ctx, opts...)
+
 	dupes := make(map[string]struct{})
 	for _, parameterRef := range parameters {
 		if v := parameterRef.Value; v != nil {
@@ -88,23 +70,23 @@ func (parameters Parameters) Validate(ctx context.Context) error {
 }
 
 // Parameter is specified by OpenAPI/Swagger 3.0 standard.
-// See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#parameterObject
+// See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#parameter-object
 type Parameter struct {
-	ExtensionProps `json:"-" yaml:"-"`
+	Extensions map[string]any `json:"-" yaml:"-"`
 
-	Name            string      `json:"name,omitempty" yaml:"name,omitempty"`
-	In              string      `json:"in,omitempty" yaml:"in,omitempty"`
-	Description     string      `json:"description,omitempty" yaml:"description,omitempty"`
-	Style           string      `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode         *bool       `json:"explode,omitempty" yaml:"explode,omitempty"`
-	AllowEmptyValue bool        `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
-	AllowReserved   bool        `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
-	Deprecated      bool        `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	Required        bool        `json:"required,omitempty" yaml:"required,omitempty"`
-	Schema          *SchemaRef  `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Example         interface{} `json:"example,omitempty" yaml:"example,omitempty"`
-	Examples        Examples    `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Content         Content     `json:"content,omitempty" yaml:"content,omitempty"`
+	Name            string     `json:"name,omitempty" yaml:"name,omitempty"`
+	In              string     `json:"in,omitempty" yaml:"in,omitempty"`
+	Description     string     `json:"description,omitempty" yaml:"description,omitempty"`
+	Style           string     `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode         *bool      `json:"explode,omitempty" yaml:"explode,omitempty"`
+	AllowEmptyValue bool       `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	AllowReserved   bool       `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	Deprecated      bool       `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Required        bool       `json:"required,omitempty" yaml:"required,omitempty"`
+	Schema          *SchemaRef `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example         any        `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples        Examples   `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Content         Content    `json:"content,omitempty" yaml:"content,omitempty"`
 }
 
 var _ jsonpointer.JSONPointable = (*Parameter)(nil)
@@ -167,17 +149,96 @@ func (parameter *Parameter) WithSchema(value *Schema) *Parameter {
 }
 
 // MarshalJSON returns the JSON encoding of Parameter.
-func (parameter *Parameter) MarshalJSON() ([]byte, error) {
-	return jsoninfo.MarshalStrictStruct(parameter)
+func (parameter Parameter) MarshalJSON() ([]byte, error) {
+	x, err := parameter.MarshalYAML()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(x)
+}
+
+// MarshalYAML returns the YAML encoding of Parameter.
+func (parameter Parameter) MarshalYAML() (any, error) {
+	m := make(map[string]any, 13+len(parameter.Extensions))
+	for k, v := range parameter.Extensions {
+		m[k] = v
+	}
+
+	if x := parameter.Name; x != "" {
+		m["name"] = x
+	}
+	if x := parameter.In; x != "" {
+		m["in"] = x
+	}
+	if x := parameter.Description; x != "" {
+		m["description"] = x
+	}
+	if x := parameter.Style; x != "" {
+		m["style"] = x
+	}
+	if x := parameter.Explode; x != nil {
+		m["explode"] = x
+	}
+	if x := parameter.AllowEmptyValue; x {
+		m["allowEmptyValue"] = x
+	}
+	if x := parameter.AllowReserved; x {
+		m["allowReserved"] = x
+	}
+	if x := parameter.Deprecated; x {
+		m["deprecated"] = x
+	}
+	if x := parameter.Required; x {
+		m["required"] = x
+	}
+	if x := parameter.Schema; x != nil {
+		m["schema"] = x
+	}
+	if x := parameter.Example; x != nil {
+		m["example"] = x
+	}
+	if x := parameter.Examples; len(x) != 0 {
+		m["examples"] = x
+	}
+	if x := parameter.Content; len(x) != 0 {
+		m["content"] = x
+	}
+
+	return m, nil
 }
 
 // UnmarshalJSON sets Parameter to a copy of data.
 func (parameter *Parameter) UnmarshalJSON(data []byte) error {
-	return jsoninfo.UnmarshalStrictStruct(data, parameter)
+	type ParameterBis Parameter
+	var x ParameterBis
+	if err := json.Unmarshal(data, &x); err != nil {
+		return unmarshalError(err)
+	}
+	_ = json.Unmarshal(data, &x.Extensions)
+
+	delete(x.Extensions, "name")
+	delete(x.Extensions, "in")
+	delete(x.Extensions, "description")
+	delete(x.Extensions, "style")
+	delete(x.Extensions, "explode")
+	delete(x.Extensions, "allowEmptyValue")
+	delete(x.Extensions, "allowReserved")
+	delete(x.Extensions, "deprecated")
+	delete(x.Extensions, "required")
+	delete(x.Extensions, "schema")
+	delete(x.Extensions, "example")
+	delete(x.Extensions, "examples")
+	delete(x.Extensions, "content")
+	if len(x.Extensions) == 0 {
+		x.Extensions = nil
+	}
+
+	*parameter = Parameter(x)
+	return nil
 }
 
-// JSONLookup implements github.com/go-openapi/jsonpointer#JSONPointable
-func (parameter Parameter) JSONLookup(token string) (interface{}, error) {
+// JSONLookup implements https://pkg.go.dev/github.com/go-openapi/jsonpointer#JSONPointable
+func (parameter Parameter) JSONLookup(token string) (any, error) {
 	switch token {
 	case "schema":
 		if parameter.Schema != nil {
@@ -212,7 +273,7 @@ func (parameter Parameter) JSONLookup(token string) (interface{}, error) {
 		return parameter.Content, nil
 	}
 
-	v, _, err := jsonpointer.GetForToken(parameter.ExtensionProps, token)
+	v, _, err := jsonpointer.GetForToken(parameter.Extensions, token)
 	return v, err
 }
 
@@ -247,7 +308,9 @@ func (parameter *Parameter) SerializationMethod() (*SerializationMethod, error) 
 }
 
 // Validate returns an error if Parameter does not comply with the OpenAPI spec.
-func (parameter *Parameter) Validate(ctx context.Context) error {
+func (parameter *Parameter) Validate(ctx context.Context, opts ...ValidationOption) error {
+	ctx = WithValidationOptions(ctx, opts...)
+
 	if parameter.Name == "" {
 		return errors.New("parameter name can't be blank")
 	}
@@ -300,12 +363,17 @@ func (parameter *Parameter) Validate(ctx context.Context) error {
 		return fmt.Errorf("parameter %q schema is invalid: %w", parameter.Name, e)
 	}
 
-	if (parameter.Schema == nil) == (parameter.Content == nil) {
+	if (parameter.Schema == nil) == (len(parameter.Content) == 0) {
 		e := errors.New("parameter must contain exactly one of content and schema")
 		return fmt.Errorf("parameter %q schema is invalid: %w", parameter.Name, e)
 	}
 
 	if content := parameter.Content; content != nil {
+		e := errors.New("parameter content must only contain one entry")
+		if len(content) > 1 {
+			return fmt.Errorf("parameter %q content is invalid: %w", parameter.Name, e)
+		}
+
 		if err := content.Validate(ctx); err != nil {
 			return fmt.Errorf("parameter %q content is invalid: %w", parameter.Name, err)
 		}
@@ -319,7 +387,7 @@ func (parameter *Parameter) Validate(ctx context.Context) error {
 			return fmt.Errorf("parameter %q example and examples are mutually exclusive", parameter.Name)
 		}
 
-		if vo := getValidationOptions(ctx); vo.ExamplesValidationDisabled {
+		if vo := getValidationOptions(ctx); vo.examplesValidationDisabled {
 			return nil
 		}
 		if example := parameter.Example; example != nil {
@@ -344,5 +412,5 @@ func (parameter *Parameter) Validate(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	return validateExtensions(ctx, parameter.Extensions)
 }
