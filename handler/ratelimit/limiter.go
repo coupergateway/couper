@@ -3,7 +3,6 @@ package ratelimit
 import (
 	"net/http"
 	"runtime/debug"
-	"sync"
 	"time"
 
 	"github.com/coupergateway/couper/errors"
@@ -12,10 +11,10 @@ import (
 type Limiter struct {
 	check     chan *slowTrip
 	limits    RateLimits
-	mu        sync.RWMutex
 	transport http.RoundTripper
 }
 
+// slowTrip is a RoundTrip container for the limiter.
 type slowTrip struct {
 	err    error
 	out    chan *slowTrip
@@ -24,6 +23,7 @@ type slowTrip struct {
 	res    *http.Response
 }
 
+// NewLimiter creates a new Rate Limiter. See RateLimit for configuration options.
 func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
 	if len(limits) == 0 {
 		return nil
@@ -33,11 +33,6 @@ func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
 		check:     make(chan *slowTrip),
 		limits:    limits,
 		transport: transport,
-	}
-
-	for _, rl := range limits {
-		// Init the start of a period.
-		rl.periodStart = time.Now()
 	}
 
 	go limiter.slowTripper()
@@ -77,51 +72,29 @@ func (l *Limiter) slowTripper() {
 		case <-l.limits[0].quitCh:
 			return
 		case trip := <-l.check:
-			select {
-			case <-trip.req.Context().Done():
-				// The request was canceled while in the queue.
-				trip.err = trip.req.Context().Err()
-				trip.out <- trip
-
-				// Do not sleep for X canceled requests.
-				continue
-			default:
-			}
-
-			l.mu.Lock()
-
-			if mode, timeToWait := l.checkCapacity(); mode == modeBlock && timeToWait > 0 {
+			mode, timeToWait := l.checkCapacity()
+			if mode == modeBlock && timeToWait > 0 {
 				// We do not wait, we want block directly.
 				trip.err = errors.BetaBackendRateLimitExceeded
 				trip.out <- trip
-
-				l.mu.Unlock()
 			} else {
 				select {
-				// Noop if 'timeToWait' is 0.
 				case <-time.After(timeToWait):
+					// Noop if 'timeToWait' is 0.
 				case <-trip.req.Context().Done():
 					// The request was canceled while in the queue.
 					trip.err = trip.req.Context().Err()
 					trip.out <- trip
 
 					// Do not sleep for X canceled requests.
-					l.mu.Unlock()
 					continue
 				}
 
 				l.countRequest()
 
-				l.mu.Unlock()
-
 				// Do not wait for the response...
 				go func() {
 					trip.res, trip.err = l.transport.RoundTrip(trip.req)
-
-					if trip.res != nil && trip.res.StatusCode == http.StatusTooManyRequests {
-						trip.err = errors.BetaBackendRateLimitExceeded.With(trip.err)
-					}
-
 					trip.out <- trip
 				}()
 			}
@@ -133,18 +106,24 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 	now := time.Now()
 
 	for _, rl := range l.limits {
+		if rl.periodStart.IsZero() {
+			rl.periodStart = now
+		}
+
 		switch rl.window {
 		case windowFixed:
 			// Update current period.
-			multiplicator := ((now.UnixNano() - rl.periodStart.UnixNano()) / int64(time.Nanosecond)) / rl.period.Nanoseconds()
+			currentPeriod := rl.periodStart
+			multiplicator := ((now.UnixNano() - currentPeriod.UnixNano()) / int64(time.Nanosecond)) / rl.period.Nanoseconds()
 			if multiplicator > 0 {
-				rl.periodStart = rl.periodStart.Add(time.Duration(rl.period.Nanoseconds() * multiplicator))
-				rl.count = 0
+				currentPeriod = currentPeriod.Add(time.Duration(rl.period.Nanoseconds() * multiplicator))
+				rl.periodStart = currentPeriod
+				rl.count.Store(0)
 			}
 
-			if rl.count >= rl.perPeriod {
+			if rl.count.Load() >= rl.perPeriod {
 				// Calculate the 'timeToWait'.
-				t = time.Duration((rl.periodStart.Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
+				t = time.Duration((currentPeriod.Add(rl.period).UnixNano() - now.UnixNano()) / int64(time.Nanosecond))
 
 				mode = rl.mode
 			}
@@ -157,15 +136,21 @@ func (l *Limiter) checkCapacity() (mode int, t time.Duration) {
 
 				mode = rl.mode
 			}
+			// no default: config validation ensures that only 'windowFixed' and 'windowSliding' are possible
 		}
 	}
 
-	return
+	return mode, t
 }
 
-// countRequest MUST only be called after checkCapacity()
+// countRequest MUST only be called after checkCapacity
 func (l *Limiter) countRequest() {
 	for _, rl := range l.limits {
-		rl.countRequest()
+		switch rl.window {
+		case windowFixed:
+			rl.count.Add(1)
+		case windowSliding:
+			rl.ringBuffer.put(time.Now())
+		}
 	}
 }

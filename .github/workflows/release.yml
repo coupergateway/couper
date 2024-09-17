@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'wait for tests'
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ github.ref }}
           check-name: 'go test & build'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
 
-  linux-windows:
-    name: 'build linux and windows binaries'
+  build-all:
+    name: 'build all binaries'
     runs-on: ubuntu-latest
     needs:
       - test
@@ -29,12 +29,14 @@ jobs:
       VERSION_PACKAGE: 'github.com/coupergateway/couper/utils'
     strategy:
       matrix:
-        goos: [linux, windows]
+        goos: [linux, darwin, windows]
         goarch: [amd64, arm64]
       fail-fast: false
     outputs:
       linux_amd64: ${{ steps.build.outputs.linux_amd64 }}
       linux_arm64: ${{ steps.build.outputs.linux_arm64 }}
+      darwin_amd64: ${{ steps.build.outputs.darwin_amd64 }}
+      darwin_arm64: ${{ steps.build.outputs.darwin_arm64 }}
       windows_amd64: ${{ steps.build.outputs.windows_amd64 }}
       windows_arm64: ${{ steps.build.outputs.windows_arm64 }}
     steps:
@@ -46,7 +48,7 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
           echo "::set-output name=build_date::$(date +'%F')"
 
-      - uses: wangyoucao577/go-release-action@v1.40
+      - uses: wangyoucao577/go-release-action@v1.51
         id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -62,11 +64,22 @@ jobs:
           overwrite: true
           post_command: |
             echo "::set-output name=${{ matrix.goos }}_${{ matrix.goarch }}::$SHA256_SUM"
+      - name: Archive macOS builds
+        if: ${{ matrix.goos == 'darwin' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.goarch }}
+          path: couper-${{ github.ref_name }}-darwin-${{ matrix.goarch }}.tar.gz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
   macos:
-    name: 'build and sign MacOS binary'
-    runs-on: macos-11
+    name: 'sign MacOS binary'
+    runs-on: ubuntu-latest
     needs:
       - test
+      - build-all
     strategy:
       matrix:
         goarch: [amd64, arm64]
@@ -75,85 +88,64 @@ jobs:
       contents: write
       packages: write
     env:
-      AC_PASSWORD: ${{ secrets.MACOS_DEVELOPER_APPLICATION_PWD }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      VERSION_PACKAGE: 'github.com/coupergateway/couper/utils'
     outputs:
       amd64: ${{ steps.upload.outputs.amd64 }}
       arm64: ${{ steps.upload.outputs.arm64 }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 'setup go'
+    steps: # Write Apple Store Connect Key & cert to file
+      - name: 'setup distribution keys'
+        env:
+          STORE_CONNECT_KEY: ${{ secrets.APPLE_APP_STORE_CONNECT_KEY_JSON }}
+          P12_CERT_BASE64: ${{ secrets.APPLE_DIST_CERT_P12_FILE_BASE64 }}
+        run: |
+          echo $STORE_CONNECT_KEY > app_store_key.json
+          echo -n "$P12_CERT_BASE64" | base64 --decode > cert.p12
+      - name: 'download artifacts'
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-${{ matrix.goarch }}
+      - name: 'extract artifacts'
+        run: |
+          tar -xzf couper-${{ github.ref_name }}-darwin-${{ matrix.goarch }}.tar.gz
+      - name: Sign
+        uses: indygreg/apple-code-sign-action@v1
+        with:
+          p12_file: cert.p12
+          p12_password: '${{ secrets.APPLE_DIST_CERT_P12_PASSWORD }}'
+          sign: true
+          sign_args: |
+            --code-signature-flags
+            runtime
+          input_path: couper
+      - name: 'Archive signed macOS binary'
+        uses: montudor/action-zip@v1
+        with:
+          args: zip -qq couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip couper
+      - name: Notarize
+        uses: indygreg/apple-code-sign-action@v1
+        with:
+          app_store_connect_api_key_json_file: app_store_key.json
+          sign: false
+          notarize: true
+          staple: false # we can't staple mach-o binaries; gatekeeper will check it: `spctl -a -vvv -t install couper`
+          input_path: ${{ github.workspace }}/couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip
+      - name: Set up Go 1.x
         uses: actions/setup-go@v5.0.0
         with:
           go-version: '1.22'
-
-      - name: Set GOARCH environment variable
-        run: echo "GOARCH=${{ matrix.goarch }}" >> $GITHUB_ENV
-
-      - name: 'import certificate'
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
-        run: |
-          # create variables
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-
-          # import certificate and provisioning profile from secrets
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-
-          # create temporary keychain
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          # import certificate to keychain
-          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-      - name: 'install gon'
-        run: go install github.com/mitchellh/gon/...@v0.2.5
       - name: 'install assets-uploader'
-        run: go install github.com/wangyoucao577/assets-uploader/...@v0.10.0
-      - name: 'build Couper'
-        run: |
-          go build -ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" -v -o ./.macos/Couper.app/Contents/couper main.go
-      - name: 'cleanup finder attributes'
-        run: |
-          xattr -c ./.macos/Couper.app/Contents/Info.plist
-          xattr -c ./.macos/Entitlements.plist
-          plutil -convert xml1 .macos/Entitlements.plist && plutil -lint .macos/Entitlements.plist
-      - name: 'verify identity'
-        run: security find-identity -v
-      - name: 'sign Couper binary'
-        run: codesign -i "binary.com.xxx.couper" -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime ./.macos/Couper.app/Contents/couper
-      - name: 'create signed binary archive' # keep utf8 things with ditto
-        run: ditto -c -k --sequesterRsrc ./.macos/Couper.app/Contents/couper ./.macos/couper.zip
-#      - name: 'create macOS dmg with signed binary'
-#        run: |
-#          mkdir -p ./.macos/Couper.app/Contents/MacOS
-#          mv ./.macos/Couper.app/Contents/couper ./.macos/Couper.app/Contents/MacOS/couper
-#          codesign -s "4B8FA10CCB8F16F9F464385768D82645831F4644" -f -v --timestamp --options runtime --entitlements ./.macos/Entitlements.plist ./.macos/Couper.app/Contents/MacOS/couper
-#          cd .macos && go run make.go && cd ..
-      - name: 'notarize' # and stable'
-        run: gon -log-level=info -log-json ./.gon.hcl
-#      - name: 'verify image notarization'
-#        run: spctl --assess --type open --context context:primary-signature -v ./.macos/couper.dmg
-      - name: 'upload archive'
+        run: go install github.com/wangyoucao577/assets-uploader/...@v0.13.0
+      - name: 'upload signed binary archive'
         id: 'upload'
         run: |
-          mv ./.macos/couper.zip ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          shasum -a 256 ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256 -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN
-          echo "::set-output name=${{ matrix.goarch }}::$(cat ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.zip.sha256)"
-#      - name: 'upload image'
-#        run: mv ./.macos/couper.dmg ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg && github-assets-uploader -f ./couper-$GITHUB_REF_NAME-macos-${{ matrix.goarch }}.dmg -overwrite -repo coupergateway/couper -releasename $GITHUB_REF_NAME -token $GITHUB_TOKEN -mediatype 'application/octet-stream'
+          github-assets-uploader -f ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip -overwrite -repo coupergateway/couper -releasename ${{ github.ref_name }} -token $GITHUB_TOKEN
+          shasum -a 256 ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip.sha256 -overwrite -repo coupergateway/couper -releasename ${{ github.ref_name }} -token $GITHUB_TOKEN
+          echo "::set-output name=${{ matrix.goarch }}::$(cat ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip.sha256)"
   brewlease:
     name: 'update homebrew formula'
     runs-on: ubuntu-latest
     needs:
-      - linux-windows
+      - build-all
       - macos
     steps:
       - name: 'checkout'
