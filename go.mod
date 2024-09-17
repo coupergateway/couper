@@ -5,15 +5,15 @@ go 1.22
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0
-	github.com/getkin/kin-openapi v0.110.0
+	github.com/getkin/kin-openapi v0.126.0
 	github.com/hashicorp/hcl/v2 v2.12.0
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/client_model v0.5.0
-	github.com/rs/xid v1.4.0
+	github.com/rs/xid v1.5.0
 	github.com/russellhaering/gosaml2 v0.9.0
 	github.com/russellhaering/goxmldsig v1.2.0
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.3
 	github.com/zclconf/go-cty v1.12.1
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.44.0
@@ -33,8 +33,9 @@ require (
 	github.com/algolia/algoliasearch-client-go/v3 v3.26.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
-	github.com/google/uuid v1.3.1
-	github.com/gorilla/mux v1.8.0
+	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
+	go.uber.org/automaxprocs v1.5.3
 )
 
 require (
@@ -46,11 +47,11 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/go-openapi/jsonpointer v0.21.0 // indirect
+	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
-	github.com/invopop/yaml v0.2.0 // indirect
+	github.com/invopop/yaml v0.3.1 // indirect
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -60,6 +61,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
+	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect

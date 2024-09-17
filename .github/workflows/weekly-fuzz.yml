@@ -50,7 +50,7 @@ jobs:
 
       - name: uploading current state
         if: always() # even on previous timeout or cancel
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: fuzz-results
           path: |

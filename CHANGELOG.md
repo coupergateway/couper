@@ -1,34 +1,42 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.12.2...master)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.13.0...master)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
+
+---
+
+## [1.13.0](https://github.com/coupergateway/couper/releases/tag/v1.13.0)
 
 * **Added**
   * [`can()` function](https://docs.couper.io/configuration/functions) ([#699](https://github.com/coupergateway/couper/pull/699))
   * [`url_decode()` function](https://docs.couper.io/configuration/functions) ([#781](https://github.com/coupergateway/couper/pull/781))
   * `bearer = true` attribute for [`jwt` block](https://docs.couper.io/configuration/block/jwt#attributes) to indicate retrieving token from `Authorization: Bearer ...`. This is the new default token source indicator. `header = "Authorization"` is now _deprecated_ in favour of this new attribute. ([#724](https://github.com/coupergateway/couper/pull/724))
   * IPv6 support via [`-bind-address`](https://docs.couper.io/configuration/command-line#network-options) option. ([#752](https://github.com/coupergateway/couper/pull/752))
-  * If Couper starts with `-watch` CLI flag, watch referenced files, too ([#747](https://github.com/coupergateway/couper/pull/747))
+  * also watch files which has been referenced within the configuration file when using [`-watch`] (https://docs.couper.io/configuration/command-line#basic-options) ([#747](https://github.com/coupergateway/couper/pull/747))
+  * automatic [`MAXPROCS`](https://pkg.go.dev/runtime#GOMAXPROCS) setting for Couper runtime to respect the number of available CPU resources in cloud environments ([#840](https://github.com/coupergateway/couper/pull/840))
 
 * **Changed**
   * More specific error log messages for [`oauth2`](https://docs.couper.io/configuration/block/oauth2) and [`beta_token_request`](https://docs.couper.io/configuration/block/token_request) token request errors ([#755](https://github.com/coupergateway/couper/pull/755))
   * In addition to having an appropriate JSON media type in the `Content-Type` header field, (backend) requests or backend responses for an endpoint are only JSON-parsed if indicated by a [`.json_body` reference](https://docs.couper.io/configuration/variables) in the endpoint configuration ([#749](https://github.com/coupergateway/couper/pull/749))
+  * `beta_rate_limit` status code `429` responses are no longer wrapped as a Couper error ([#827](https://github.com/coupergateway/couper/issues/827))
 
 * **Fixed**
-  * Erroneously sending an empty [`Server-Timing` header](https://docs.couper.io/configuration/command-line#oberservation-options) ([#700](https://github.com/coupergateway/couper/pull/700))
   * `WWW-Authenticate` header `realm` param value for [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth) ([#715](https://github.com/coupergateway/couper/pull/715))
   * [`Server-Timing` header](https://docs.couper.io/configuration/block/settings) only reporting last requests/proxies of [endpoint sequences](https://docs.couper.io/configuration/block/endpoint#endpoint-sequence) ([#751](https://github.com/coupergateway/couper/pull/751))
   * Selecting of appropriate [error handler](https://docs.couper.io/configuration/block/error_handler) in two cases ([#753](https://github.com/coupergateway/couper/pull/753))
   * Storing of digit-starting string object keys in [request context](https://docs.couper.io/configuration/variables#request) and of digit-starting string header field names in [request](https://docs.couper.io/configuration/variables#request) variable ([#799](https://github.com/coupergateway/couper/pull/799))
   * Use of boolean values for the `headers` attribute or [modifiers](https://docs.couper.io/configuration/modifiers) ([#805](https://github.com/coupergateway/couper/pull/805))
   * Duplicate [CORS](https://docs.couper.io/configuration/block/cors) response headers (with backend sending CORS response headers, too) ([#804](https://github.com/coupergateway/couper/pull/804))
+  * Erroneously sending 404 when serving from [`files`](https://docs.couper.io/configuration/block/files) due to wrong registration of `base_path`s, and when serving from multiple `files` or [`spa`](https://docs.couper.io/configuration/block/spa) in combination with [`api`](https://docs.couper.io/configuration/block/api) due to wrong selecting of the API error template ([#803](https://github.com/coupergateway/couper/pull/803))
+  * Possible deadlock for `beta_rate_limit` ([#827](https://github.com/coupergateway/couper/issues/827))
 
 * **Dependencies**
   * build with go 1.22 ([#810](https://github.com/coupergateway/couper/pull/810))
   * upgrade jwt library from v4 to v5 ([#769](https://github.com/coupergateway/couper/issues/769), [#834](https://github.com/coupergateway/couper/pull/834))
-
----
+  * update OpenAPI lib to v0.126.0 ([#837](https://github.com/coupergateway/couper/pull/837))
+  * update uuid lib to v1.6.0 and xid lib to 1.5.0 ([#838](https://github.com/coupergateway/couper/pull/838))
+  * update logrus lib to 1.9.3 ([#839](https://github.com/coupergateway/couper/pull/839))
 
 ## [1.12.2](https://github.com/coupergateway/couper/releases/tag/v1.12.2)
 

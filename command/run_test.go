@@ -105,6 +105,8 @@ func TestNewRun(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
+			defer time.Sleep(time.Millisecond * 100)
+
 			resultSettings := make(chan *config.Settings, 1)
 			listenCh := make(chan struct{})
 			RunCmdTestCallback = func() {
