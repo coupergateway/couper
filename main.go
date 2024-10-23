@@ -162,7 +162,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
 
 	// respect assigned CPU limits
-	_, err = maxprocs.Set(maxprocs.Logger(logger.Infof))
+	_, err = maxprocs.Set(maxprocs.Logger(logger.Debugf))
 	if err != nil {
 		logrus.Error("maxprocs.Set: ", err)
 	}
