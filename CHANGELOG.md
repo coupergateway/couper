@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+* **Changed**
+  * `ulimit`, open files and max procs values are now logged with `debug` log level ([#857](https://github.com/coupergateway/couper/pull/857))
+
 ---
 
 ## [1.13.0](https://github.com/coupergateway/couper/releases/tag/v1.13.0)
