@@ -33,6 +33,7 @@ type JWT struct {
 	Cookie                string              `hcl:"cookie,optional" docs:"Read token value from a cookie. Cannot be used together with {bearer}, {header} or {token_value}"`
 	DisablePrivateCaching bool                `hcl:"disable_private_caching,optional" docs:"If set to {true}, Couper does not add the {private} directive to the {Cache-Control} HTTP header field value."`
 	Header                string              `hcl:"header,optional" docs:"Read token value from the given request header field. Implies {Bearer} if {Authorization} (case-insensitive) is used (deprecated!), otherwise any other header name can be used. Cannot be used together with {bearer}, {cookie} or {token_value}."`
+	Introspection         *Introspection      `hcl:"beta_introspection,block" docs:"Configures a [client for OAuth2 token introspection](/configuration/block/introspection)."`
 	JWKsURL               string              `hcl:"jwks_url,optional" docs:"URI pointing to a set of [JSON Web Keys (RFC 7517)](https://datatracker.ietf.org/doc/html/rfc7517)"`
 	JWKsTTL               string              `hcl:"jwks_ttl,optional" docs:"Time period the JWK set stays valid and may be cached." type:"duration" default:"1h"`
 	JWKsMaxStale          string              `hcl:"jwks_max_stale,optional" docs:"Time period the cached JWK set stays valid after its TTL has passed." type:"duration" default:"1h"`
@@ -60,6 +61,12 @@ func (j *JWT) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if j.JWKsURL != "" {
 		j.Backend, err = backendFunc("jwks_url", j.JWKsURL, j)
 		if err != nil {
+			return err
+		}
+	}
+
+	if j.Introspection != nil {
+		if err = j.Introspection.Prepare(backendFunc); err != nil {
 			return err
 		}
 	}
@@ -162,6 +169,12 @@ func (j *JWT) DefaultErrorHandlers() []*ErrorHandler {
 			Kinds: []string{"jwt_token_expired"},
 			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
 				"Www-Authenticate": wwwAuthenticateValue + ` error="invalid_token", error_description="The access token expired"`,
+			}), hcl.Range{Filename: "default_jwt_error_handler"}),
+		},
+		{
+			Kinds: []string{"jwt_token_inactive"},
+			Remain: body.NewHCLSyntaxBodyWithAttr("set_response_headers", seetie.MapToValue(map[string]interface{}{
+				"Www-Authenticate": wwwAuthenticateValue + ` error="invalid_token", error_description="The access token is inactive"`,
 			}), hcl.Range{Filename: "default_jwt_error_handler"}),
 		},
 	}
