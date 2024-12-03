@@ -113,6 +113,12 @@ server "acs" {
     }
   }
 
+  endpoint "/jwt/dpop" {
+    disable_access_control = ["ba1"]
+    access_control = ["JWTTokenDPoP"]
+    response {}
+  }
+
   endpoint "/jwt/cookie" {
     disable_access_control = ["ba1"]
     access_control = ["JWTTokenCookie"]
@@ -326,6 +332,11 @@ definitions {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     permissions_claim = "scope"
+  }
+  jwt "JWTTokenDPoP" {
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+    beta_dpop = true
   }
   jwt "JWTTokenCookie" {
     signature_algorithm = "HS256"
