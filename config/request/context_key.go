@@ -17,6 +17,7 @@ const (
 	EndpointExpectedStatus
 	EndpointKind
 	EndpointSequenceDependsOn
+	EndpointUnexpectedStatus
 	Error
 	GrantedPermissions
 	Handler
