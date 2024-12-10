@@ -37,7 +37,7 @@ type JWT struct {
 	claims                hcl.Expression
 	claimsRequired        []string
 	disablePrivateCaching bool
-	source                *TokenSource
+	source                TokenSource
 	hmacSecret            []byte
 	name                  string
 	pubKey                interface{}
@@ -163,7 +163,7 @@ func (p parserConfig) newParser() *jwt.Parser {
 }
 
 func newJWT(jwtConf *config.JWT, memStore *cache.MemoryStore) (*JWT, error) {
-	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
+	source, err := NewTokenSource(jwtConf.Bearer, jwtConf.Dpop, jwtConf.Cookie, jwtConf.Header, jwtConf.TokenValue)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +191,8 @@ func (j *JWT) DisablePrivateCaching() bool {
 	return j.disablePrivateCaching
 }
 
-// getParser returns a JWT parser for a parser config
-func (j *JWT) getParser(p parserConfig) *jwt.Parser {
+// getParserForConfig returns a JWT parser for a parser config
+func (j *JWT) getParserForConfig(p parserConfig) *jwt.Parser {
 	key := p.key()
 	if parser, ok := j.memStore.Get(key).(*jwt.Parser); ok {
 		return parser
@@ -201,6 +201,20 @@ func (j *JWT) getParser(p parserConfig) *jwt.Parser {
 	parser := p.newParser()
 	j.memStore.Set(key, parser, 3600)
 	return parser
+}
+
+// getParserForExpectedClaims returns a JWT parser for expected claims
+func (j *JWT) getParserForExpectedClaims(expectedClaims map[string]interface{}) *jwt.Parser {
+	parserConfig := parserConfig{
+		algorithms: j.algos,
+	}
+	if aud, ok := expectedClaims["aud"].(string); ok {
+		parserConfig.audience = aud
+	}
+	if iss, ok := expectedClaims["iss"].(string); ok {
+		parserConfig.issuer = iss
+	}
+	return j.getParserForConfig(parserConfig)
 }
 
 // Validate reading the token from configured source and validates against the key.
@@ -215,16 +229,7 @@ func (j *JWT) Validate(req *http.Request) error {
 		return err
 	}
 
-	parserConfig := parserConfig{
-		algorithms: j.algos,
-	}
-	if aud, ok := expectedClaims["aud"].(string); ok {
-		parserConfig.audience = aud
-	}
-	if iss, ok := expectedClaims["iss"].(string); ok {
-		parserConfig.issuer = iss
-	}
-	parser := j.getParser(parserConfig)
+	parser := j.getParserForExpectedClaims(expectedClaims)
 
 	if j.jwks != nil {
 		// load JWKS if needed
@@ -241,6 +246,10 @@ func (j *JWT) Validate(req *http.Request) error {
 			// TODO throw different error?
 			return errors.JwtTokenInvalid.With(err)
 		}
+		return errors.JwtTokenInvalid.With(err)
+	}
+
+	if err = j.source.ValidateTokenClaims(tokenValue, tokenClaims, req); err != nil {
 		return errors.JwtTokenInvalid.With(err)
 	}
 
