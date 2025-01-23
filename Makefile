@@ -1,7 +1,7 @@
 .PHONY: docker-telemetry build generate image
 .PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
 
-GO_VERSION := 1.22
+GO_VERSION := 1.23
 
 build:
 	go build -race -v -o couper main.go
