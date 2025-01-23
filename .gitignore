@@ -27,3 +27,5 @@ docs/website/.vite
 # tls
 /*.crt
 /*.key
+
+vendor
