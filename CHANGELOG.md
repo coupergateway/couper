@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+* **Dependencies**
+  * build with go 1.23 ([#862](https://github.com/coupergateway/couper/pull/862))
+
 ---
 
 ## [1.13.0](https://github.com/coupergateway/couper/releases/tag/v1.13.0)
