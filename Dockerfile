@@ -3,8 +3,7 @@ FROM golang:1.23 AS builder
 WORKDIR /go/src/app
 COPY . .
 
-ENV GOFLAGS="-mod=vendor" \
-    VERSION_PACKAGE="github.com/coupergateway/couper/utils"
+ENV VERSION_PACKAGE="github.com/coupergateway/couper/utils"
 
 RUN go mod download
 
