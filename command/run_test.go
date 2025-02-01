@@ -117,11 +117,10 @@ func TestNewRun(t *testing.T) {
 				close(resultSettings)
 			}
 
-			ctx, shutdown := context.WithCancel(context.Background())
+			ctx, shutdown := context.WithTimeout(context.Background(), 22*time.Second) // fail fast for port binds
 			defer func() {
 				n := time.Now()
 				shutdown()
-				test.WaitForClosedPort(8080)
 				subT.Log("shutdown duration: " + time.Since(n).String())
 				RunCmdTestCallback = nil
 				RunCmdConfigTestCallback = nil
