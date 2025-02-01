@@ -1,7 +1,7 @@
 .PHONY: docker-telemetry build generate image
 .PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
 
-GO_VERSION := 1.22
+GO_VERSION := 1.23
 
 build:
 	go build -race -v -o couper main.go
@@ -25,7 +25,19 @@ image:
 	docker build -t coupergateway/couper:latest .
 
 test:
-	go test -v -short -race -count 1 -timeout 300s ./...
+	@echo "Running tests..."
+	@for PACKAGE in $$(go list ./...); do \
+		echo "Testing $$PACKAGE"; \
+		if go test -v -timeout 90s -race -count=1 $$PACKAGE; then \
+			echo "\033[32m✔ $$PACKAGE PASSED\033[0m"; \
+		else \
+			echo "\033[31m✖ $$PACKAGE FAILED\033[0m"; \
+			exit 1; \
+		fi; \
+	done
+	@echo "\033[32m✔ All tests passed!\033[0m"
+
+
 
 test-docker:
 	docker run --rm -v $(CURDIR):/go/app -w /go/app golang:$(GO_VERSION) sh -c "go test -short -count 1 -v -timeout 300s -race ./..."

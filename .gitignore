@@ -1,6 +1,7 @@
 /*.out
 
 .vscode/settings.json
+.idea
 
 #binary
 /couper
@@ -26,3 +27,5 @@ docs/website/.vite
 # tls
 /*.crt
 /*.key
+
+vendor

@@ -1,10 +1,12 @@
-FROM golang:1.22 AS builder
+FROM golang:1.23 AS builder
 
 WORKDIR /go/src/app
 COPY . .
 
 ENV GOFLAGS="-mod=vendor" \
     VERSION_PACKAGE="github.com/coupergateway/couper/utils"
+
+RUN go mod download
 
 RUN go generate && \
 	CGO_ENABLED=0 go build -v \
