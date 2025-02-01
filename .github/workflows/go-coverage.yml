@@ -19,6 +19,8 @@ jobs:
         with:
           go-version: '1.23'
       - uses: actions/checkout@v4
+      - name: Dependencies
+        run: go mod download
       - name: 'test & report'
         run: |
           curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter

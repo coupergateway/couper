@@ -6,6 +6,8 @@ COPY . .
 ENV GOFLAGS="-mod=vendor" \
     VERSION_PACKAGE="github.com/coupergateway/couper/utils"
 
+RUN go mod download
+
 RUN go generate && \
 	CGO_ENABLED=0 go build -v \
 	-ldflags "-X ${VERSION_PACKAGE}.VersionName=`git describe --tags --abbrev=0 --exact-match || git symbolic-ref -q --short HEAD` -X ${VERSION_PACKAGE}.BuildName=`git rev-parse --short HEAD` -X ${VERSION_PACKAGE}.BuildDate=`date +'%F'`" \
