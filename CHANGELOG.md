@@ -6,6 +6,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 
 * **Dependencies**
   * build with go 1.23 ([#862](https://github.com/coupergateway/couper/pull/862))
+  * hcl 2.23.0 and go-cty 1.16.2 ([#816](https://github.com/coupergateway/couper/pull/816))
 
 ---
 
