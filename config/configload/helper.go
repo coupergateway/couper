@@ -85,6 +85,11 @@ func (h *helper) configureDefinedBackends() error {
 
 func (h *helper) configureACBackends() error {
 	var acs []config.BackendInitialization
+
+	for _, ac := range h.config.Definitions.AuthZExternal {
+		acs = append(acs, ac)
+	}
+
 	for _, ac := range h.config.Definitions.JWT {
 		acs = append(acs, ac)
 	}
