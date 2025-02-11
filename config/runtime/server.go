@@ -17,6 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/accesscontrol/authz"
 	"github.com/coupergateway/couper/accesscontrol/jwk"
 	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config"
@@ -510,12 +511,22 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	return oidcConfigs, nil
 }
 
-func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,
-	memStore *cache.MemoryStore, oidcConfigs oidc.Configs) (ACDefinitions, error) {
-
+func configureAccessControls(
+	conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,
+	memStore *cache.MemoryStore, oidcConfigs oidc.Configs,
+) (ACDefinitions, error) {
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
+		for _, authZExternal := range conf.Definitions.AuthZExternal {
+			confErr := errors.Configuration.Label(authZExternal.Name)
+			authZExt, err := authz.NewExternal(nil, false)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+			accessControls.Add(authZExternal.Name, authZExt, nil)
+		}
+
 		for _, baConf := range conf.Definitions.BasicAuth {
 			confErr := errors.Configuration.Label(baConf.Name)
 			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)

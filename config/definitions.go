@@ -2,6 +2,7 @@ package config
 
 // Definitions represents the <Definitions> object.
 type Definitions struct {
+	AuthZExternal     []*AuthZExternal     `hcl:"authz_external,block" docs:"Configure a [authz_external](/configuration/block/authz_external) (zero or more)."`
 	Backend           []*Backend           `hcl:"backend,block" docs:"Configure a [backend](/configuration/block/backend) (zero or more)."`
 	BasicAuth         []*BasicAuth         `hcl:"basic_auth,block" docs:"Configure a [BasicAuth access control](/configuration/block/basic_auth) (zero or more)."`
 	Job               []*Job               `hcl:"beta_job,block" docs:"Configure a [job](/configuration/block/job) (zero or more)."`
