@@ -121,6 +121,16 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 		var hasWSblock bool
 		proxyBody := proxyConf.HCLBody()
+		_, hasExpStatus := proxyBody.Attributes["expected_status"]
+		_, hasUnexpStatus := proxyBody.Attributes["unexpected_status"]
+		if hasExpStatus && hasUnexpStatus {
+			r := proxyBody.SrcRange
+			return nil, hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "only one of expected_status and unexpected_status is allowed in a proxy block",
+				Subject:  &r,
+			}}
+		}
 		for _, b := range proxyBody.Blocks {
 			if b.Type == "websockets" {
 				hasWSblock = true
