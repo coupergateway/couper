@@ -212,8 +212,7 @@ func (h *helper) configureJWTSigningConfig() (map[string]*lib.JWTSigningConfig, 
 }
 
 // Reads per server block and merge backend settings which results in a final server configuration.
-func (h *helper) configureServers(body *hclsyntax.Body) error {
-	var err error
+func (h *helper) configureServers(body *hclsyntax.Body) (err error) {
 	defsACs := h.getDefinedACs()
 
 	for _, serverBlock := range hclbody.BlocksOfType(body, server) {
@@ -232,13 +231,13 @@ func (h *helper) configureServers(body *hclsyntax.Body) error {
 		}
 
 		for _, fileConfig := range serverConfig.Files {
-			if err := checkReferencedAccessControls(fileConfig.HCLBody(), fileConfig.AccessControl, fileConfig.DisableAccessControl, defsACs); err != nil {
+			if err = checkReferencedAccessControls(fileConfig.HCLBody(), fileConfig.AccessControl, fileConfig.DisableAccessControl, defsACs); err != nil {
 				return err
 			}
 		}
 
 		for _, spaConfig := range serverConfig.SPAs {
-			if err := checkReferencedAccessControls(spaConfig.HCLBody(), spaConfig.AccessControl, spaConfig.DisableAccessControl, defsACs); err != nil {
+			if err = checkReferencedAccessControls(spaConfig.HCLBody(), spaConfig.AccessControl, spaConfig.DisableAccessControl, defsACs); err != nil {
 				return err
 			}
 		}
@@ -261,9 +260,7 @@ func (h *helper) configureServers(body *hclsyntax.Body) error {
 }
 
 // Reads api blocks and merge backends with server and definitions backends.
-func (h *helper) configureAPIs(apis config.APIs, defsACs map[string]struct{}) error {
-	var err error
-
+func (h *helper) configureAPIs(apis config.APIs, defsACs map[string]struct{}) (err error) {
 	for _, apiConfig := range apis {
 		apiBody := apiConfig.HCLBody()
 
@@ -303,9 +300,7 @@ func (h *helper) configureAPIs(apis config.APIs, defsACs map[string]struct{}) er
 	return nil
 }
 
-func (h *helper) configureJobs() error {
-	var err error
-
+func (h *helper) configureJobs() (err error) {
 	for _, job := range h.config.Definitions.Job {
 		attrs := job.Remain.(*hclsyntax.Body).Attributes
 		r := attrs["interval"].Expr.Range()
@@ -461,22 +456,25 @@ func (h *helper) collectFromBlocks(authorizerBlocks hclsyntax.Blocks, name strin
 }
 
 func (h *helper) getDefinedACs() map[string]struct{} {
-	definitions := h.config.Definitions
 	definedACs := make(map[string]struct{})
 
-	for _, ac := range definitions.BasicAuth {
+	for _, ac := range h.config.Definitions.AuthZExternal {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range definitions.JWT {
+
+	for _, ac := range h.config.Definitions.BasicAuth {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range definitions.OAuth2AC {
+	for _, ac := range h.config.Definitions.JWT {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range definitions.OIDC {
+	for _, ac := range h.config.Definitions.OAuth2AC {
 		definedACs[ac.Name] = struct{}{}
 	}
-	for _, ac := range definitions.SAML {
+	for _, ac := range h.config.Definitions.OIDC {
+		definedACs[ac.Name] = struct{}{}
+	}
+	for _, ac := range h.config.Definitions.SAML {
 		definedACs[ac.Name] = struct{}{}
 	}
 

@@ -362,13 +362,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					protectedHandler = epHandler
 				} else {
 					permissionsControl := ac.NewPermissionsControl(requiredPermissionExpr)
-					permissionsErrorHandler, _, err := newErrorHandler(confCtx, conf, &protectedOptions{
+					permissionsErrorHandler, _, permErr := newErrorHandler(confCtx, conf, &protectedOptions{
 						epOpts:   epOpts,
 						memStore: memStore,
 						srvOpts:  serverOptions,
 					}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
-					if err != nil {
-						return nil, err
+					if permErr != nil {
+						return nil, permErr
 					}
 
 					protectedHandler = middleware.NewErrorHandler(permissionsControl.Validate, permissionsErrorHandler)(epHandler)
