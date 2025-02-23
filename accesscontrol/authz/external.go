@@ -22,11 +22,6 @@ type External struct {
 	// pass certificate
 }
 
-//func (c *External) Prepare(backendFunc config.PrepareBackendFunc) error {
-//	//TODO implement me
-//	panic("implement me")
-//}
-
 type clientRequest struct {
 	Method string
 	URL    string

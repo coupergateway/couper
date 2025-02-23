@@ -36,3 +36,4 @@ vendor
 
 # generated files
 vscode-schema.json
+/.run/

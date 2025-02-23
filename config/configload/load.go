@@ -131,58 +131,58 @@ func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	h, err := newHelper(body)
+	confHelper, err := newHelper(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.configureBlocks()
+	err = confHelper.configureBlocks()
 	if err != nil {
 		return nil, err
 	}
 
-	e = h.configureJWTSigningProfile()
+	e = confHelper.configureJWTSigningProfile()
 	if e != nil {
 		return nil, e
 	}
 
-	e = h.configureSAML()
+	e = confHelper.configureSAML()
 	if e != nil {
 		return nil, e
 	}
 
-	jwtSigningConfigs, e := h.configureJWTSigningConfig()
+	jwtSigningConfigs, e := confHelper.configureJWTSigningConfig()
 	if e != nil {
 		return nil, e
 	}
 
-	h.config.Context = h.config.Context.(*eval.Context).
+	confHelper.config.Context = confHelper.config.Context.(*eval.Context).
 		WithJWTSigningConfigs(jwtSigningConfigs).
-		WithOAuth2AC(h.config.Definitions.OAuth2AC)
+		WithOAuth2AC(confHelper.config.Definitions.OAuth2AC)
 
-	err = h.configureBindAddresses()
+	err = confHelper.configureBindAddresses()
 	if err != nil {
 		return nil, e
 	}
 
-	err = h.configureServers(body)
+	err = confHelper.configureServers(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.configureJobs()
+	err = confHelper.configureJobs()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(h.config.Servers) == 0 {
+	if len(confHelper.config.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
 
-	return h.config, nil
+	return confHelper.config, nil
 }
 
-func absolutizePaths(fileBody *hclsyntax.Body) ([]configfile.File, error) {
+func resolveAbsolutePaths(fileBody *hclsyntax.Body) ([]configfile.File, error) {
 	const watchFilePrefix = "COUPER-WATCH-FILE: "
 
 	visitor := func(node hclsyntax.Node) hcl.Diagnostics {
@@ -299,7 +299,7 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 	var watchFiles configfile.Files
 
 	for _, body := range parsedBodies {
-		files, err := absolutizePaths(body)
+		files, err := resolveAbsolutePaths(body)
 		if err != nil {
 			return nil, err
 		}
