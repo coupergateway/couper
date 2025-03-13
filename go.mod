@@ -1,7 +1,6 @@
 module github.com/coupergateway/couper
 
 go 1.23
-
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.18.0
@@ -24,8 +23,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.34.0
 	go.opentelemetry.io/otel/sdk/metric v1.34.0
 	go.opentelemetry.io/otel/trace v1.34.0
-	golang.org/x/crypto v0.33.0
-	golang.org/x/net v0.35.0
+	golang.org/x/crypto v0.35.0
+	golang.org/x/net v0.36.0
 	google.golang.org/grpc v1.70.0
 )
 
