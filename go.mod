@@ -1,6 +1,8 @@
 module github.com/coupergateway/couper
 
 go 1.23
+toolchain go1.24.1
+
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.18.0
@@ -30,7 +32,7 @@ require (
 
 require (
 	github.com/algolia/algoliasearch-client-go/v3 v3.31.4
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
