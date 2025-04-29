@@ -10,9 +10,10 @@ on:
       - '.github/workflows/weekly-fuzz.yml'
       - 'docs/**'
   pull_request:
-    paths:
-      - '!*.MD'
-      - '!docs/**'
+    paths-ignore:
+      - '**/README.md'
+      - '.github/workflows/weekly-fuzz.yml'
+      - 'docs/**'
 
 jobs:
   build:
