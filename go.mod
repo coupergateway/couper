@@ -1,6 +1,9 @@
 module github.com/coupergateway/couper
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.5
+
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.18.0
