@@ -539,7 +539,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 
 		for _, rlConf := range conf.Definitions.RateLimiter {
 			confErr := errors.Configuration.Label(rlConf.Name)
-			rateLimiter, err := ac.NewRateLimiter(rlConf.Name)
+			rateLimiter, err := ac.NewRateLimiter(rlConf.Name, rlConf)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
