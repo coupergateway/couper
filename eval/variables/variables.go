@@ -22,6 +22,7 @@ const (
 	Path             = "path"
 	PathParam        = "path_params"
 	Query            = "query"
+	RemoteIp         = "remote_ip"
 	TokenResponse    = "beta_token_response"
 	URL              = "url"
 	Origin           = "origin"
