@@ -182,6 +182,7 @@ func (c *Context) WithClientRequest(req *http.Request) *Context {
 		variables.Port:      cty.NumberIntVal(port),
 		variables.Path:      cty.StringVal(req.URL.Path),
 		variables.Query:     seetie.ValuesMapToValue(req.URL.Query()),
+		variables.RemoteIp:  cty.StringVal(strings.Split(req.RemoteAddr, ":")[0]),
 		variables.Body:      body,
 		variables.JSONBody:  jsonBody,
 		variables.FormBody:  seetie.ValuesMapToValue(parseForm(req).PostForm),
