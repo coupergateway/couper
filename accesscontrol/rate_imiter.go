@@ -1,6 +1,7 @@
 package accesscontrol
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"strings"
@@ -29,7 +30,7 @@ type RateLimiter struct {
 	perPeriod  int
 	windowType int
 	conf       *config.RateLimiter
-	visitors   map[string]limiter.Limiter
+	visitors   map[[32]byte]limiter.Limiter
 	mu         sync.Mutex
 }
 
@@ -65,13 +66,13 @@ func NewRateLimiter(name string, conf *config.RateLimiter) (*RateLimiter, error)
 		perPeriod:  conf.PerPeriod,
 		windowType: windowType,
 		conf:       conf,
-		visitors:   make(map[string]limiter.Limiter),
+		visitors:   make(map[[32]byte]limiter.Limiter),
 	}
 
 	return rl, nil
 }
 
-func (rl *RateLimiter) getVisitor(key string) limiter.Limiter {
+func (rl *RateLimiter) getVisitor(key [32]byte) limiter.Limiter {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -100,7 +101,8 @@ func (rl *RateLimiter) Validate(req *http.Request) error {
 		return errors.BetaRateLimiterKey.With(err).Message("Empty key value")
 	}
 
-	if !rl.getVisitor(keyValue).Allow() {
+	keyHash := sha256.Sum256([]byte(keyValue))
+	if !rl.getVisitor(keyHash).Allow() {
 		return errors.BetaRateLimiter.Messagef("Request not allowed for %q", keyValue)
 	}
 	return nil
