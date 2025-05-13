@@ -92,12 +92,12 @@ func (rl *RateLimiter) Validate(req *http.Request) error {
 	ctx := eval.ContextFromRequest(req).HCLContext()
 	keyVal, err := eval.ValueFromBodyAttribute(ctx, rl.conf.HCLBody(), "key")
 	if err != nil {
-		return errors.BetaRateLimiter.With(err)
+		return errors.BetaRateLimiterKey.With(err)
 	}
 
 	keyValue := strings.TrimSpace(seetie.ValueToString(keyVal))
 	if keyValue == "" {
-		return errors.BetaRateLimiter.With(err).Message("Empty key value")
+		return errors.BetaRateLimiterKey.With(err).Message("Empty key value")
 	}
 
 	if !rl.getVisitor(keyValue).Allow() {
