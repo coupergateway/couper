@@ -7,6 +7,10 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Added**
   * [`beta_introspection` block](https://docs.couper.io/configuration/block/introspection) in [`jwt` block](https://docs.couper.io/configuration/block/jwt) to facilitate token introspection in order to detect revocated tokens ([#649](https://github.com/avenga/couper/pull/649))
 
+* **Dependencies**
+  * build with go 1.23 ([#862](https://github.com/coupergateway/couper/pull/862))
+  * hcl 2.23.0 and go-cty 1.16.2 ([#816](https://github.com/coupergateway/couper/pull/816))
+
 ---
 
 ## [1.13.0](https://github.com/coupergateway/couper/releases/tag/v1.13.0)

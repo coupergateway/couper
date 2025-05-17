@@ -21,7 +21,7 @@ type Backend struct {
 	Health                 *Health     `hcl:"beta_health,block" docs:"Configures a [health check](/configuration/block/health) (zero or one)."`
 	HTTP2                  bool        `hcl:"http2,optional" docs:"Enables the HTTP2 support. Must not be used in backend refinement."`
 	MaxConnections         int         `hcl:"max_connections,optional" docs:"The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. Must not be used in backend refinement." default:"0"`
-	Name                   string      `hcl:"name,label,optional"`
+	Name                   string      `hcl:"name,label_optional"`
 	OpenAPI                *OpenAPI    `hcl:"openapi,block" docs:"Configures [OpenAPI validation](/configuration/block/openapi) (zero or one)."`
 	RateLimits             RateLimits  `hcl:"beta_rate_limit,block" docs:"Configures [rate limiting](/configuration/block/rate_limit) (zero or one)."`
 	Remain                 hcl.Body    `hcl:",remain"`
