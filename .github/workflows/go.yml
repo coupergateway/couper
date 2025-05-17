@@ -10,9 +10,10 @@ on:
       - '.github/workflows/weekly-fuzz.yml'
       - 'docs/**'
   pull_request:
-    paths:
-      - '!*.MD'
-      - '!docs/**'
+    paths-ignore:
+      - '**/README.md'
+      - '.github/workflows/weekly-fuzz.yml'
+      - 'docs/**'
 
 jobs:
   build:
@@ -24,12 +25,15 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v5.0.0
       with:
-        go-version: '1.22'
+        go-version: '1.23'
       id: go
     - run: go version
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v4
+
+    - name: Dependencies
+      run: go mod download
 
     - name: Source-Code formatting
       run: test -z $(go fmt ./...)

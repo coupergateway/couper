@@ -24,7 +24,7 @@ type Spa struct {
 	BootstrapFile        string         `hcl:"bootstrap_file" docs:"Location of the bootstrap file."`
 	CORS                 *CORS          `hcl:"cors,block" docs:"Configures [CORS](/configuration/block/cors) settings (zero or one)."`
 	DisableAccessControl []string       `hcl:"disable_access_control,optional" docs:"Disables access controls by name."`
-	Name                 string         `hcl:"name,label,optional"`
+	Name                 string         `hcl:"name,label_optional"`
 	Paths                []string       `hcl:"paths" docs:"List of SPA paths that need the bootstrap file."`
 	Remain               hcl.Body       `hcl:",remain"`
 }

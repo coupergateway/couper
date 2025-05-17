@@ -31,6 +31,9 @@ jobs:
     - name: Set up Go 1.x in order to write go.list file
       uses: actions/setup-go@v5.0.0
 
+    - name: Dependencies
+      run: go mod download
+
     - name: WriteGoList
       run: go list -json -mod=readonly -m all > go.list
 
