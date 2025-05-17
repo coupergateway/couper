@@ -7,19 +7,20 @@ var (
 	BasicAuthCredentialsMissing  = Definitions[2]
 	Jwt                          = Definitions[3]
 	JwtTokenExpired              = Definitions[4]
-	JwtTokenInvalid              = Definitions[5]
-	JwtTokenMissing              = Definitions[6]
-	Oauth2                       = Definitions[7]
-	Saml2                        = Definitions[8]
-	Saml                         = Definitions[9]
-	InsufficientPermissions      = Definitions[10]
-	BackendOpenapiValidation     = Definitions[12]
-	BetaBackendRateLimitExceeded = Definitions[13]
-	BackendTimeout               = Definitions[14]
-	BetaBackendTokenRequest      = Definitions[15]
-	BackendUnhealthy             = Definitions[16]
-	Sequence                     = Definitions[18]
-	UnexpectedStatus             = Definitions[19]
+	JwtTokenInactive             = Definitions[5]
+	JwtTokenInvalid              = Definitions[6]
+	JwtTokenMissing              = Definitions[7]
+	Oauth2                       = Definitions[8]
+	Saml2                        = Definitions[9]
+	Saml                         = Definitions[10]
+	InsufficientPermissions      = Definitions[11]
+	BackendOpenapiValidation     = Definitions[13]
+	BetaBackendRateLimitExceeded = Definitions[14]
+	BackendTimeout               = Definitions[15]
+	BetaBackendTokenRequest      = Definitions[16]
+	BackendUnhealthy             = Definitions[17]
+	Sequence                     = Definitions[19]
+	UnexpectedStatus             = Definitions[20]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -34,6 +35,7 @@ var types = typeDefinitions{
 	"basic_auth_credentials_missing":   BasicAuthCredentialsMissing,
 	"jwt":                              Jwt,
 	"jwt_token_expired":                JwtTokenExpired,
+	"jwt_token_inactive":               JwtTokenInactive,
 	"jwt_token_invalid":                JwtTokenInvalid,
 	"jwt_token_missing":                JwtTokenMissing,
 	"oauth2":                           Oauth2,
