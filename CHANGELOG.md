@@ -4,10 +4,15 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+---
+
+## [1.13.1](https://github.com/coupergateway/couper/releases/tag/v1.13.1)
+
 * **Changed**
   * `ulimit`, open files and max procs values are now logged with `debug` log level ([#857](https://github.com/coupergateway/couper/pull/857))
 
----
+* **Fixed**
+  * Addressed the third-party [CVE-2025-30153](https://www.mend.io/vulnerability-database/CVE-2025-30153) affecting our OpenAPI feature by upgrading to the non-affected version `v0.132.0` ([#883](https://github.com/coupergateway/couper/pull/883))
 
 ## [1.13.0](https://github.com/coupergateway/couper/releases/tag/v1.13.0)
 

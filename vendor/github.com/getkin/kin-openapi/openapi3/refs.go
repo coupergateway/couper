@@ -19,12 +19,13 @@ type CallbackRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *Callback
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*CallbackRef)(nil)
@@ -38,17 +39,16 @@ func (x *CallbackRef) RefString() string { return x.Ref }
 func (x *CallbackRef) CollectionName() string { return "callbacks" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *CallbackRef) RefPath() *url.URL { return &x.refPath }
+func (x *CallbackRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *CallbackRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of CallbackRef.
@@ -73,6 +73,7 @@ func (x *CallbackRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -156,12 +157,13 @@ type ExampleRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *Example
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*ExampleRef)(nil)
@@ -175,17 +177,16 @@ func (x *ExampleRef) RefString() string { return x.Ref }
 func (x *ExampleRef) CollectionName() string { return "examples" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *ExampleRef) RefPath() *url.URL { return &x.refPath }
+func (x *ExampleRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *ExampleRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of ExampleRef.
@@ -210,6 +211,7 @@ func (x *ExampleRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -293,12 +295,13 @@ type HeaderRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *Header
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*HeaderRef)(nil)
@@ -312,17 +315,16 @@ func (x *HeaderRef) RefString() string { return x.Ref }
 func (x *HeaderRef) CollectionName() string { return "headers" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *HeaderRef) RefPath() *url.URL { return &x.refPath }
+func (x *HeaderRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *HeaderRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of HeaderRef.
@@ -347,6 +349,7 @@ func (x *HeaderRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -430,12 +433,13 @@ type LinkRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *Link
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*LinkRef)(nil)
@@ -449,17 +453,16 @@ func (x *LinkRef) RefString() string { return x.Ref }
 func (x *LinkRef) CollectionName() string { return "links" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *LinkRef) RefPath() *url.URL { return &x.refPath }
+func (x *LinkRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *LinkRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of LinkRef.
@@ -484,6 +487,7 @@ func (x *LinkRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -567,12 +571,13 @@ type ParameterRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *Parameter
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*ParameterRef)(nil)
@@ -586,17 +591,16 @@ func (x *ParameterRef) RefString() string { return x.Ref }
 func (x *ParameterRef) CollectionName() string { return "parameters" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *ParameterRef) RefPath() *url.URL { return &x.refPath }
+func (x *ParameterRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *ParameterRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of ParameterRef.
@@ -621,6 +625,7 @@ func (x *ParameterRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -704,12 +709,13 @@ type RequestBodyRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *RequestBody
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*RequestBodyRef)(nil)
@@ -723,17 +729,16 @@ func (x *RequestBodyRef) RefString() string { return x.Ref }
 func (x *RequestBodyRef) CollectionName() string { return "requestBodies" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *RequestBodyRef) RefPath() *url.URL { return &x.refPath }
+func (x *RequestBodyRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *RequestBodyRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of RequestBodyRef.
@@ -758,6 +763,7 @@ func (x *RequestBodyRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -841,12 +847,13 @@ type ResponseRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *Response
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*ResponseRef)(nil)
@@ -860,17 +867,16 @@ func (x *ResponseRef) RefString() string { return x.Ref }
 func (x *ResponseRef) CollectionName() string { return "responses" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *ResponseRef) RefPath() *url.URL { return &x.refPath }
+func (x *ResponseRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *ResponseRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of ResponseRef.
@@ -895,6 +901,7 @@ func (x *ResponseRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -978,12 +985,13 @@ type SchemaRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *Schema
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*SchemaRef)(nil)
@@ -997,17 +1005,16 @@ func (x *SchemaRef) RefString() string { return x.Ref }
 func (x *SchemaRef) CollectionName() string { return "schemas" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *SchemaRef) RefPath() *url.URL { return &x.refPath }
+func (x *SchemaRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *SchemaRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of SchemaRef.
@@ -1032,6 +1039,7 @@ func (x *SchemaRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {
@@ -1115,12 +1123,13 @@ type SecuritySchemeRef struct {
 	// Extensions only captures fields starting with 'x-' as no other fields
 	// are allowed by the openapi spec.
 	Extensions map[string]any
+	Origin     *Origin
 
 	Ref   string
 	Value *SecurityScheme
 	extra []string
 
-	refPath url.URL
+	refPath *url.URL
 }
 
 var _ jsonpointer.JSONPointable = (*SecuritySchemeRef)(nil)
@@ -1134,17 +1143,16 @@ func (x *SecuritySchemeRef) RefString() string { return x.Ref }
 func (x *SecuritySchemeRef) CollectionName() string { return "securitySchemes" }
 
 // RefPath returns the path of the $ref relative to the root document.
-func (x *SecuritySchemeRef) RefPath() *url.URL { return &x.refPath }
+func (x *SecuritySchemeRef) RefPath() *url.URL { return copyURI(x.refPath) }
 
 func (x *SecuritySchemeRef) setRefPath(u *url.URL) {
-	// Do not set to null or override a path already set.
-	// References can be loaded multiple times not all with access
-	// to the correct path info.
-	if u == nil || x.refPath != (url.URL{}) {
+	// Once the refPath is set don't override. References can be loaded
+	// multiple times not all with access to the correct path info.
+	if x.refPath != nil {
 		return
 	}
 
-	x.refPath = *u
+	x.refPath = copyURI(u)
 }
 
 // MarshalYAML returns the YAML encoding of SecuritySchemeRef.
@@ -1169,6 +1177,7 @@ func (x *SecuritySchemeRef) UnmarshalJSON(data []byte) error {
 	var refOnly Ref
 	if extra, err := marshmallow.Unmarshal(data, &refOnly, marshmallow.WithExcludeKnownFieldsFromMap(true)); err == nil && refOnly.Ref != "" {
 		x.Ref = refOnly.Ref
+		x.Origin = refOnly.Origin
 		if len(extra) != 0 {
 			x.extra = make([]string, 0, len(extra))
 			for key := range extra {

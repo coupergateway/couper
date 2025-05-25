@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"github.com/oasdiff/yaml3"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
@@ -53,7 +53,7 @@ func (e *ParseError) Error() string {
 	if p := e.Path(); len(p) > 0 {
 		var arr []string
 		for _, v := range p {
-			arr = append(arr, fmt.Sprintf("%v", v))
+			arr = append(arr, fmt.Sprint(v))
 		}
 		msg = append(msg, fmt.Sprintf("path %v", strings.Join(arr, ".")))
 	}
@@ -320,7 +320,11 @@ func decodeValue(dec valueDecoder, param string, sm *openapi3.SerializationMetho
 		switch {
 		case schema.Value.Type.Is("array"):
 			decodeFn = func(param string, sm *openapi3.SerializationMethod, schema *openapi3.SchemaRef) (any, bool, error) {
-				return dec.DecodeArray(param, sm, schema)
+				res, b, e := dec.DecodeArray(param, sm, schema)
+				if len(res) == 0 {
+					return nil, b, e
+				}
+				return res, b, e
 			}
 		case schema.Value.Type.Is("object"):
 			decodeFn = func(param string, sm *openapi3.SerializationMethod, schema *openapi3.SchemaRef) (any, bool, error) {
@@ -1260,18 +1264,20 @@ func decodeBody(body io.Reader, header http.Header, schema *openapi3.SchemaRef, 
 func init() {
 	RegisterBodyDecoder("application/json", JSONBodyDecoder)
 	RegisterBodyDecoder("application/json-patch+json", JSONBodyDecoder)
+	RegisterBodyDecoder("application/ld+json", JSONBodyDecoder)
+	RegisterBodyDecoder("application/hal+json", JSONBodyDecoder)
+	RegisterBodyDecoder("application/vnd.api+json", JSONBodyDecoder)
 	RegisterBodyDecoder("application/octet-stream", FileBodyDecoder)
 	RegisterBodyDecoder("application/problem+json", JSONBodyDecoder)
-	RegisterBodyDecoder("application/x-www-form-urlencoded", urlencodedBodyDecoder)
-	RegisterBodyDecoder("application/x-yaml", yamlBodyDecoder)
-	RegisterBodyDecoder("application/yaml", yamlBodyDecoder)
-	RegisterBodyDecoder("application/zip", zipFileBodyDecoder)
-	RegisterBodyDecoder("multipart/form-data", multipartBodyDecoder)
-	RegisterBodyDecoder("text/csv", csvBodyDecoder)
-	RegisterBodyDecoder("text/plain", plainBodyDecoder)
+	RegisterBodyDecoder("application/x-www-form-urlencoded", UrlencodedBodyDecoder)
+	RegisterBodyDecoder("application/x-yaml", YamlBodyDecoder)
+	RegisterBodyDecoder("application/yaml", YamlBodyDecoder)
+	RegisterBodyDecoder("multipart/form-data", MultipartBodyDecoder)
+	RegisterBodyDecoder("text/csv", CsvBodyDecoder)
+	RegisterBodyDecoder("text/plain", PlainBodyDecoder)
 }
 
-func plainBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
+func PlainBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
 	data, err := io.ReadAll(body)
 	if err != nil {
 		return nil, &ParseError{Kind: KindInvalidFormat, Cause: err}
@@ -1291,7 +1297,7 @@ func JSONBodyDecoder(body io.Reader, header http.Header, schema *openapi3.Schema
 	return value, nil
 }
 
-func yamlBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
+func YamlBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
 	var value any
 	if err := yaml.NewDecoder(body).Decode(&value); err != nil {
 		return nil, &ParseError{Kind: KindInvalidFormat, Cause: err}
@@ -1299,7 +1305,7 @@ func yamlBodyDecoder(body io.Reader, header http.Header, schema *openapi3.Schema
 	return value, nil
 }
 
-func urlencodedBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
+func UrlencodedBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
 	// Validate schema of request body.
 	// By the OpenAPI 3 specification request body's schema must have type "object".
 	// Properties of the schema describes individual parts of request body.
@@ -1333,18 +1339,6 @@ func urlencodedBodyDecoder(body io.Reader, header http.Header, schema *openapi3.
 	obj := make(map[string]any)
 	dec := &urlValuesDecoder{values: values}
 
-	// Decode schema constructs (allOf, anyOf, oneOf)
-	if err := decodeSchemaConstructs(dec, schema.Value.AllOf, obj, encFn); err != nil {
-		return nil, err
-	}
-	if err := decodeSchemaConstructs(dec, schema.Value.AnyOf, obj, encFn); err != nil {
-		return nil, err
-	}
-	if err := decodeSchemaConstructs(dec, schema.Value.OneOf, obj, encFn); err != nil {
-		return nil, err
-	}
-
-	// Decode properties from the main schema
 	if err := decodeSchemaConstructs(dec, []*openapi3.SchemaRef{schema}, obj, encFn); err != nil {
 		return nil, err
 	}
@@ -1356,6 +1350,18 @@ func urlencodedBodyDecoder(body io.Reader, header http.Header, schema *openapi3.
 // This function is for decoding purposes only and not for validation.
 func decodeSchemaConstructs(dec *urlValuesDecoder, schemas []*openapi3.SchemaRef, obj map[string]any, encFn EncodingFn) error {
 	for _, schemaRef := range schemas {
+
+		// Decode schema constructs (allOf, anyOf, oneOf)
+		if err := decodeSchemaConstructs(dec, schemaRef.Value.AllOf, obj, encFn); err != nil {
+			return err
+		}
+		if err := decodeSchemaConstructs(dec, schemaRef.Value.AnyOf, obj, encFn); err != nil {
+			return err
+		}
+		if err := decodeSchemaConstructs(dec, schemaRef.Value.OneOf, obj, encFn); err != nil {
+			return err
+		}
+
 		for name, prop := range schemaRef.Value.Properties {
 			value, _, err := decodeProperty(dec, name, prop, encFn)
 			if err != nil {
@@ -1384,7 +1390,7 @@ func decodeProperty(dec valueDecoder, name string, prop *openapi3.SchemaRef, enc
 	return decodeValue(dec, name, sm, prop, false)
 }
 
-func multipartBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
+func MultipartBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
 	if !schema.Value.Type.Is("object") {
 		return nil, errors.New("unsupported schema of request body")
 	}
@@ -1512,8 +1518,9 @@ func FileBodyDecoder(body io.Reader, header http.Header, schema *openapi3.Schema
 	return string(data), nil
 }
 
-// zipFileBodyDecoder is a body decoder that decodes a zip file body to a string.
-func zipFileBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
+// ZipFileBodyDecoder is a body decoder that decodes a zip file body to a string.
+// Use with caution as this implementation may be susceptible to a zip bomb attack.
+func ZipFileBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
 	buff := bytes.NewBuffer([]byte{})
 	size, err := io.Copy(buff, body)
 	if err != nil {
@@ -1562,8 +1569,8 @@ func zipFileBodyDecoder(body io.Reader, header http.Header, schema *openapi3.Sch
 	return string(content), nil
 }
 
-// csvBodyDecoder is a body decoder that decodes a csv body to a string.
-func csvBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
+// CsvBodyDecoder is a body decoder that decodes a csv body to a string.
+func CsvBodyDecoder(body io.Reader, header http.Header, schema *openapi3.SchemaRef, encFn EncodingFn) (any, error) {
 	r := csv.NewReader(body)
 
 	var sb strings.Builder
