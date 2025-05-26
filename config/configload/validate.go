@@ -131,6 +131,13 @@ func validateBody(body *hclsyntax.Body, afterMerge bool) error {
 					}
 				}
 			}
+		} else if outerBlock.Type == "defaults" {
+			// pass
+		} else if outerBlock.Type == "settings" {
+			// pass
+		} else {
+			r := outerBlock.Range()
+			return newDiagErr(&r, fmt.Sprintf("unknown block type %q", outerBlock.Type))
 		}
 	}
 
