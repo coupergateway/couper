@@ -124,56 +124,56 @@ func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	helper, err := newHelper(body)
+	h, err := newHelper(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = helper.configureBlocks()
+	err = h.configureBlocks()
 	if err != nil {
 		return nil, err
 	}
 
-	e = helper.configureJWTSigningProfile()
+	e = h.configureJWTSigningProfile()
 	if e != nil {
 		return nil, e
 	}
 
-	e = helper.configureSAML()
+	e = h.configureSAML()
 	if e != nil {
 		return nil, e
 	}
 
-	jwtSigningConfigs, e := helper.configureJWTSigningConfig()
+	jwtSigningConfigs, e := h.configureJWTSigningConfig()
 	if e != nil {
 		return nil, e
 	}
 
-	helper.config.Context = helper.config.Context.(*eval.Context).
+	h.config.Context = h.config.Context.(*eval.Context).
 		WithJWTSigningConfigs(jwtSigningConfigs).
-		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
-		WithSAML(helper.config.Definitions.SAML)
+		WithOAuth2AC(h.config.Definitions.OAuth2AC).
+		WithSAML(h.config.Definitions.SAML)
 
-	err = helper.configureBindAddresses()
+	err = h.configureBindAddresses()
 	if err != nil {
 		return nil, e
 	}
 
-	err = helper.configureServers(body)
+	err = h.configureServers(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = helper.configureJobs()
+	err = h.configureJobs()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(helper.config.Servers) == 0 {
+	if len(h.config.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
 
-	return helper.config, nil
+	return h.config, nil
 }
 
 func absolutizePaths(fileBody *hclsyntax.Body) ([]configfile.File, error) {
