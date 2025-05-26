@@ -439,7 +439,7 @@ func TestEnvironmentBlocksWithoutEnvironment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			config := []byte(tt.hcl)
-			err := os.Truncate(file.Name(), 0)
+			err = os.Truncate(file.Name(), 0)
 			helper.Must(err)
 			_, err = file.Seek(0, 0)
 			helper.Must(err)
@@ -683,5 +683,21 @@ func TestConfigErrors(t *testing.T) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
 			}
 		})
+	}
+}
+
+func TestUnknownBlockDefinition(t *testing.T) {
+	template := `
+		server {}
+		  %s
+		}`
+	_, err := configload.LoadBytes([]byte(fmt.Sprintf(template, `
+whatever "unsupported" {}
+`)), "couper.hcl")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != `couper.hcl:4,1-26: unknown block type "whatever"; ` {
+		t.Errorf("unexpected error message:\n\tWant: %q\n\tGot:  %q", `couper.hcl:4,1-26: unknown block type "whatever";`, err.Error())
 	}
 }
