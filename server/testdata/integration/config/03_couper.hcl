@@ -309,6 +309,25 @@ server "acs" {
       body = jwt_sign(request.query.type[0], {"sub":1234567890})
     }
   }
+
+  endpoint "/rate1/**" {
+    disable_access_control = ["ba1"]
+    access_control = ["jwt_rate", "rate"]
+    response {
+      json_body = {
+        ok = true
+      }
+    }
+  }
+  endpoint "/rate2/**" {
+    disable_access_control = ["ba1"]
+    access_control = ["jwt_rate", "rate"]
+    response {
+      json_body = {
+        ok = true
+      }
+    }
+  }
 }
 
 definitions {
@@ -457,6 +476,17 @@ definitions {
     signature_algorithm = "HS256"
     key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
     permissions_claim = "scope"
+  }
+
+  jwt "jwt_rate" {
+    signature_algorithm = "HS256"
+    key = "y0urS3cretT08eU5edF0rC0uPerInThe3xamp1e"
+  }
+  beta_rate_limiter "rate" {
+    period = "100s"
+    per_period = 1
+    # period_window = "fixed"
+    key = request.context.jwt_rate.sub
   }
 
   backend "jwks" {
