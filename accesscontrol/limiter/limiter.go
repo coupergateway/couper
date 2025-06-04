@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 )
@@ -71,9 +72,13 @@ func (l *SlidingWindowLimiter) Allow() bool {
 	defer l.mu.Unlock()
 
 	now := time.Now()
-	for len(l.requests) > 0 && now.Sub(l.requests[0]) >= l.window {
-		l.requests = l.requests[1:]
-	}
+	cutoff := now.Add(-l.window)
+
+	idx := sort.Search(len(l.requests), func(i int) bool {
+		return !l.requests[i].Before((cutoff))
+	})
+	l.requests = l.requests[idx:]
+
 	if len(l.requests) >= l.limit {
 		return false
 	}
