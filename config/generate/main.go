@@ -99,6 +99,7 @@ func main() {
 		&config.OpenAPI{},
 		&config.Proxy{},
 		&config.RateLimit{},
+		&config.RateLimiter{},
 		&config.Request{},
 		&config.Response{},
 		&config.SAML{},
