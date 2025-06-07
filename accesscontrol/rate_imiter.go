@@ -23,15 +23,20 @@ const (
 
 var _ AccessControl = &RateLimiter{}
 
+type LimiterEntry struct {
+	limiter  limiter.Limiter
+	lastUsed time.Time
+}
+
 // RateLimiter represents an AC-RateLimiter object
 type RateLimiter struct {
-	name       string
-	period     time.Duration
-	perPeriod  int
-	windowType int
-	conf       *config.RateLimiter
-	visitors   map[[32]byte]limiter.Limiter
-	mu         sync.Mutex
+	name           string
+	period         time.Duration
+	perPeriod      int
+	windowType     int
+	conf           *config.RateLimiter
+	limiterEntries map[[32]byte]*LimiterEntry
+	mu             sync.Mutex
 }
 
 // NewBasicAuth creates a new AC-RateLimiter object
@@ -61,31 +66,39 @@ func NewRateLimiter(name string, conf *config.RateLimiter) (*RateLimiter, error)
 	}
 
 	rl := &RateLimiter{
-		name:       name,
-		period:     period,
-		perPeriod:  conf.PerPeriod,
-		windowType: windowType,
-		conf:       conf,
-		visitors:   make(map[[32]byte]limiter.Limiter),
+		name:           name,
+		period:         period,
+		perPeriod:      conf.PerPeriod,
+		windowType:     windowType,
+		conf:           conf,
+		limiterEntries: make(map[[32]byte]*LimiterEntry),
 	}
+	rl.startLimiterGC()
 
 	return rl, nil
 }
 
-func (rl *RateLimiter) getVisitor(key [32]byte) limiter.Limiter {
+func (rl *RateLimiter) getLimiter(key [32]byte) limiter.Limiter {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	l, exists := rl.visitors[key]
-	if !exists {
-		if rl.windowType == windowFixed {
-			l = limiter.NewFixedWindowLimiter(rl.perPeriod, rl.period, time.Now)
-		} else {
-			l = limiter.NewSlidingWindowLimiter(rl.perPeriod, rl.period)
-		}
-		rl.visitors[key] = l
+	l, exists := rl.limiterEntries[key]
+	if exists {
+		l.lastUsed = time.Now()
+		return l.limiter
 	}
-	return l
+
+	var lim limiter.Limiter
+	if rl.windowType == windowFixed {
+		lim = limiter.NewFixedWindowLimiter(rl.perPeriod, rl.period, time.Now)
+	} else {
+		lim = limiter.NewSlidingWindowLimiter(rl.perPeriod, rl.period)
+	}
+	rl.limiterEntries[key] = &LimiterEntry{
+		limiter:  lim,
+		lastUsed: time.Now(),
+	}
+	return lim
 }
 
 // Validate implements the AccessControl interface
@@ -102,8 +115,27 @@ func (rl *RateLimiter) Validate(req *http.Request) error {
 	}
 
 	keyHash := sha256.Sum256([]byte(keyValue))
-	if !rl.getVisitor(keyHash).Allow() {
+	if !rl.getLimiter(keyHash).Allow() {
 		return errors.BetaRateLimiter.Messagef("Request not allowed for %q", keyValue)
 	}
 	return nil
+}
+
+func (rl *RateLimiter) startLimiterGC() {
+	idleTimeout := 3 * rl.period
+	interval := rl.period / 2
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for range ticker.C {
+			rl.mu.Lock()
+			now := time.Now()
+			for key, entry := range rl.limiterEntries {
+				if now.Sub(entry.lastUsed) > idleTimeout {
+					delete(rl.limiterEntries, key)
+				}
+			}
+			rl.mu.Unlock()
+		}
+	}()
 }
