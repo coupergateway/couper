@@ -328,6 +328,15 @@ server "acs" {
       }
     }
   }
+  endpoint "/rate3/**" {
+    disable_access_control = ["ba1"]
+    access_control = ["rate_eh"]
+    response {
+      json_body = {
+        ok = true
+      }
+    }
+  }
 }
 
 definitions {
@@ -487,6 +496,16 @@ definitions {
     per_period = 1
     # period_window = "fixed"
     key = request.context.jwt_rate.sub
+  }
+  beta_rate_limiter "rate_eh" {
+    period = "1s"
+    per_period = 1
+    key = "asdf"
+    error_handler "beta_rate_limiter" {
+      response {
+        status = 418
+      }
+    }
   }
 
   backend "jwks" {
