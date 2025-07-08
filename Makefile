@@ -1,7 +1,7 @@
 .PHONY: docker-telemetry build generate image
-.PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
+.PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show go-mod-tidy
 
-GO_VERSION := 1.22
+GO_VERSION := 1.23
 
 build:
 	go build -race -v -o couper main.go
@@ -29,6 +29,10 @@ test:
 
 test-docker:
 	docker run --rm -v $(CURDIR):/go/app -w /go/app golang:$(GO_VERSION) sh -c "go test -short -count 1 -v -timeout 300s -race ./..."
+
+go-mod-tidy:
+	docker run --rm -v $(CURDIR):/go/app -w /go/app golang:$(GO_VERSION) sh -c "go mod tidy && go mod vendor"
+
 
 coverage: test-coverage test-coverage-show
 
