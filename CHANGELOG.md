@@ -4,12 +4,14 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+---
+
+## [1.13.2](https://github.com/coupergateway/couper/releases/tag/v1.13.2)
+
 * **Dependencies**
   * build with go 1.23 ([#886](https://github.com/coupergateway/couper/pull/886))
   * `golang-jwt` to the unaffected version v5.2.2 to address the third-party [CVE-2025-30204](https://access.redhat.com/security/cve/cve-2025-30204) ([#886](https://github.com/coupergateway/couper/pull/886))
   * `golang.org/x/crypto` v0.39.0 ([#886](https://github.com/coupergateway/couper/pull/886))
-
----
 
 ## [1.13.1](https://github.com/coupergateway/couper/releases/tag/v1.13.1)
 
