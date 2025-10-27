@@ -1,7 +1,6 @@
 package limiter
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -42,7 +41,6 @@ func (l *FixedWindowLimiter) Allow() bool {
 	if currentWindow.After(l.window) {
 		l.window = currentWindow
 		l.count = 0
-		fmt.Println("new window")
 	}
 	if l.count >= l.limit {
 		return false
