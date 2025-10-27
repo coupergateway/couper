@@ -43,7 +43,7 @@ func Test_FixedWindowLimiter(t *testing.T) {
 	}
 }
 
-func Test_SlidingdWindowLimiter(t *testing.T) {
+func Test_SlidingWindowLimiter(t *testing.T) {
 	l := limiter.NewSlidingWindowLimiter(5, 1*time.Second)
 	results := []bool{}
 
