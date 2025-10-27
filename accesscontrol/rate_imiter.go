@@ -39,7 +39,7 @@ type RateLimiter struct {
 	mu             sync.Mutex
 }
 
-// NewBasicAuth creates a new AC-RateLimiter object
+// NewRateLimiter creates a new AC-RateLimiter object
 func NewRateLimiter(name string, conf *config.RateLimiter) (*RateLimiter, error) {
 	period, err := config.ParseDuration("period", conf.Period, 0)
 	if err != nil {
