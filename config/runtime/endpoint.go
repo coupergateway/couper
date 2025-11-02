@@ -176,7 +176,7 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 		r := endpointConf.HCLBody().SrcRange
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("endpoint: %q: parsing request body limit" + endpointConf.Pattern),
+			Summary:  fmt.Sprintf("endpoint: %q: parsing request body limit", endpointConf.Pattern),
 			Subject:  &r,
 		}}
 	}

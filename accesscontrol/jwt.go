@@ -337,14 +337,14 @@ func (j *JWT) getConfiguredClaims(req *http.Request) (map[string]interface{}, er
 func (j *JWT) validateClaims(tokenClaims jwt.MapClaims, expectedClaims map[string]interface{}) error {
 	for _, key := range j.claimsRequired {
 		if _, ok := tokenClaims[key]; !ok {
-			return fmt.Errorf("required claim is missing: " + key)
+			return fmt.Errorf("required claim is missing: %s", key)
 		}
 	}
 
 	for k, v := range expectedClaims {
 		val, exist := tokenClaims[k]
 		if !exist {
-			return fmt.Errorf("required claim is missing: " + k)
+			return fmt.Errorf("required claim is missing: %s", k)
 		}
 
 		if k == "iss" {

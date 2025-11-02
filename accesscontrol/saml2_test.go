@@ -312,7 +312,7 @@ func Test_SAML2ACS_GetAssertionData(t *testing.T) {
 		t.Run(tc.name, func(subT *testing.T) {
 			assertionData := sa.GetAssertionData(tc.assertionInfo)
 			if !cmp.Equal(tc.want, assertionData) {
-				subT.Errorf(cmp.Diff(tc.want, assertionData))
+				subT.Errorf("%s", cmp.Diff(tc.want, assertionData))
 			}
 		})
 	}

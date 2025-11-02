@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/coupergateway/couper/config/request"
@@ -58,13 +57,13 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 
 		up := strings.SplitN(line, ":", 2)
 		if len(up) != 2 {
-			return nil, fmt.Errorf("parse error: invalid line: " + strconv.Itoa(lineNr))
+			return nil, fmt.Errorf("parse error: invalid line: %d", lineNr)
 		}
 
 		username, password := up[0], up[1]
 
 		if _, ok := ba.htFile[username]; ok {
-			return nil, fmt.Errorf("multiple user: " + username)
+			return nil, fmt.Errorf("multiple user: %s", username)
 		}
 
 		switch pwdType := getPwdType(password); pwdType {
@@ -78,7 +77,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 
 			parts := strings.Split(strings.TrimPrefix(password, prefix), "$")
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("parse error: malformed password for user: " + username)
+				return nil, fmt.Errorf("parse error: malformed password for user: %s", username)
 			}
 
 			ba.htFile[username] = pwd{

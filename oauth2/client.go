@@ -277,7 +277,7 @@ func (c *Client) GetTokenResponse(ctx context.Context, formParams url.Values) (m
 		if uExists {
 			msg += fmt.Sprintf(", error_uri=%s", errorURI)
 		}
-		return nil, "", fmt.Errorf(msg)
+		return nil, "", fmt.Errorf("%s", msg)
 	}
 
 	return tokenResponseData, accessToken, nil

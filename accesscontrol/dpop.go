@@ -249,7 +249,7 @@ func (s *DPoPTokenSource) validateDPoPValue(dpop, token string, req *http.Reques
 	//    JWT
 	proof, err := s.parser.ParseWithClaims(dpop, proofClaims, getJwkAndPubKey)
 	if err != nil {
-		return nil, fmt.Errorf("DPoP proof parse error: " + err.Error())
+		return nil, fmt.Errorf("DPoP proof parse error: %w", err)
 	}
 
 	// 3. All required claims per Section 4.2 are contained in the JWT.
