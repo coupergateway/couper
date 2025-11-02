@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -49,7 +48,7 @@ const (
 	searchClientKey = "SEARCH_CLIENT_API_KEY"
 
 	configurationPath = "docs/website/content/2.configuration"
-	docsBlockPath     = configurationPath + "/4.block"
+	docsBlockPath     = configurationPath + "/block"
 
 	urlBasePath = "/configuration/"
 )
@@ -240,33 +239,42 @@ func main() {
 
 		scanner := bufio.NewScanner(file)
 		var skipMode, seenAttr, seenBlock bool
+		var endToken string
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			if bAttr != nil && strings.HasPrefix(line, "::attributes") {
-				fileBytes.WriteString(fmt.Sprintf(`::attributes
----
-values: %s
----
-::
-`, bAttr.String()))
+			// handle attributes/blocks markers in either legacy (::attributes/::blocks) or shortcode ({{< attributes >}}/{{< blocks >}}) form
+			if bAttr != nil && (strings.HasPrefix(line, "::attributes") || strings.HasPrefix(line, "{{< attributes")) {
+				// write shortcode version
+				fileBytes.WriteString("{{< attributes >}}\n")
+				fileBytes.WriteString(bAttr.String())
+				fileBytes.WriteString("{{< /attributes >}}\n")
 				skipMode = true
+				if strings.HasPrefix(line, "::attributes") {
+					endToken = "::"
+				} else {
+					endToken = "{{< /attributes >}}"
+				}
 				seenAttr = true
 				continue
-			} else if bBlock != nil && strings.HasPrefix(line, "::blocks") {
-				fileBytes.WriteString(fmt.Sprintf(`::blocks
----
-values: %s
----
-::
-`, bBlock.String()))
+			} else if bBlock != nil && (strings.HasPrefix(line, "::blocks") || strings.HasPrefix(line, "{{< blocks")) {
+				// write shortcode version
+				fileBytes.WriteString("{{< blocks >}}\n")
+				fileBytes.WriteString(bBlock.String())
+				fileBytes.WriteString("{{< /blocks >}}\n")
 				skipMode = true
+				if strings.HasPrefix(line, "::blocks") {
+					endToken = "::"
+				} else {
+					endToken = "{{< /blocks >}}"
+				}
 				seenBlock = true
 				continue
 			}
 
-			if skipMode && line == "::" {
+			if skipMode && line == endToken {
 				skipMode = false
+				endToken = ""
 				continue
 			}
 
@@ -276,23 +284,15 @@ values: %s
 			}
 		}
 
-		if bAttr != nil && !seenAttr { // TODO: from func/template
-			fileBytes.WriteString(fmt.Sprintf(`
-::attributes
----
-values: %s
----
-::
-`, bAttr.String()))
+		if bAttr != nil && !seenAttr {
+			fileBytes.WriteString("\n{{< attributes >}}\n")
+			fileBytes.WriteString(bAttr.String())
+			fileBytes.WriteString("{{< /attributes >}}\n")
 		}
-		if bBlock != nil && !seenBlock { // TODO: from func/template
-			fileBytes.WriteString(fmt.Sprintf(`
-::blocks
----
-values: %s
----
-::
-`, bBlock.String()))
+		if bBlock != nil && !seenBlock {
+			fileBytes.WriteString("\n{{< blocks >}}\n")
+			fileBytes.WriteString(bBlock.String())
+			fileBytes.WriteString("{{< /blocks >}}\n")
 		}
 
 		size, err := file.WriteAt(fileBytes.Bytes(), 0)
@@ -359,7 +359,7 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 		println("Indexing from file: " + dirEntry.Name())
 		fileContent, rerr := os.ReadFile(entryPath)
 		if rerr != nil {
-			panic(err)
+			panic(rerr)
 		}
 		println(dirEntry.Name())
 		fileName := mdFileRegex.FindStringSubmatch(dirEntry.Name())[1]
