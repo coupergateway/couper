@@ -3,12 +3,12 @@ on:
   push:
     branches:
       - master
-    tags:
-      - '!*' # Do not execute on tags
+    tags-ignore:
+      - '**' # Do not execute on any tag
   pull_request:
-    paths:
-      - '!*.MD'
-      - '!docs/**'
+    paths-ignore:
+      - '*.MD'
+      - 'docs/**'
 jobs:
   coverage:
     name: coverage
@@ -27,6 +27,6 @@ jobs:
       - uses: qltysh/qlty-action/coverage@v2
         with:
           add-prefix: "github.com/coupergateway/couper"
-          token: {{secrets.QLTY_COVERAGE_TOKEN}}
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: c.out
           verbose: 'true'
