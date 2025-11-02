@@ -3,6 +3,7 @@
 [![Go Test](https://github.com/coupergateway/couper/actions/workflows/go.yml/badge.svg)](https://github.com/coupergateway/couper/actions/workflows/go.yml)
 [![Go Report](https://goreportcard.com/badge/github.com/coupergateway/couper)](https://goreportcard.com/report/github.com/coupergateway/couper)
 ![Docker](https://github.com/coupergateway/couper/workflows/Docker/badge.svg)
+[![Code Coverage](https://qlty.sh/gh/coupergateway/projects/couper/coverage.svg)](https://qlty.sh/gh/coupergateway/projects/couper)
 
 ![Couper](docs/website/public/img/couper-logo.svg)
 

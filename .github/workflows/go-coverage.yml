@@ -23,10 +23,10 @@ jobs:
         run: go mod download
       - name: 'test & report'
         run: |
-          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-          chmod +x ./cc-test-reporter
-          ./cc-test-reporter before-build
           make test-coverage
-          ./cc-test-reporter after-build --debug --prefix "github.com/coupergateway/couper" --exit-code $?
-        env:
-          CC_TEST_REPORTER_ID: 8b070e62baadacda6fdfd7bac69c3f46795b7cae456073982599e9dd87c66ce9
+      - uses: qltysh/qlty-action/coverage@v2
+        with:
+          add-prefix: "github.com/coupergateway/couper"
+          token: {{secrets.QLTY_COVERAGE_TOKEN}}
+          files: c.out
+          verbose: 'true'
