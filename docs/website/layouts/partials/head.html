@@ -1,0 +1,5 @@
+{{ $tw := resources.Get "css/tailwind.css" | resources.PostCSS }}
+{{ if hugo.IsProduction }}
+{{ $tw = $tw | minify | fingerprint }}
+{{ end }}
+<link rel="stylesheet" href="{{ $tw.RelPermalink }}"{{ if hugo.IsProduction }} integrity="{{ $tw.Data.Integrity }}"{{ end }}>
