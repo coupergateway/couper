@@ -124,59 +124,59 @@ func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 		return nil, diags
 	}
 
-	helper, err := newHelper(body)
+	confHelper, err := newHelper(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = helper.configureBlocks()
+	err = confHelper.configureBlocks()
 	if err != nil {
 		return nil, err
 	}
 
-	e = helper.configureJWTSigningProfile()
+	e = confHelper.configureJWTSigningProfile()
 	if e != nil {
 		return nil, e
 	}
 
-	e = helper.configureSAML()
+	e = confHelper.configureSAML()
 	if e != nil {
 		return nil, e
 	}
 
-	jwtSigningConfigs, e := helper.configureJWTSigningConfig()
+	jwtSigningConfigs, e := confHelper.configureJWTSigningConfig()
 	if e != nil {
 		return nil, e
 	}
 
-	helper.config.Context = helper.config.Context.(*eval.Context).
+	confHelper.config.Context = confHelper.config.Context.(*eval.Context).
 		WithJWTSigningConfigs(jwtSigningConfigs).
-		WithOAuth2AC(helper.config.Definitions.OAuth2AC).
-		WithSAML(helper.config.Definitions.SAML)
+		WithOAuth2AC(confHelper.config.Definitions.OAuth2AC).
+		WithSAML(confHelper.config.Definitions.SAML)
 
-	err = helper.configureBindAddresses()
+	err = confHelper.configureBindAddresses()
 	if err != nil {
 		return nil, e
 	}
 
-	err = helper.configureServers(body)
+	err = confHelper.configureServers(body)
 	if err != nil {
 		return nil, err
 	}
 
-	err = helper.configureJobs()
+	err = confHelper.configureJobs()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(helper.config.Servers) == 0 {
+	if len(confHelper.config.Servers) == 0 {
 		return nil, fmt.Errorf("configuration error: missing 'server' block")
 	}
 
-	return helper.config, nil
+	return confHelper.config, nil
 }
 
-func absolutizePaths(fileBody *hclsyntax.Body) ([]configfile.File, error) {
+func resolveAbsolutePaths(fileBody *hclsyntax.Body) ([]configfile.File, error) {
 	const watchFilePrefix = "COUPER-WATCH-FILE: "
 
 	visitor := func(node hclsyntax.Node) hcl.Diagnostics {
@@ -293,7 +293,7 @@ func bodiesToConfig(parsedBodies []*hclsyntax.Body, srcBytes [][]byte, env strin
 	var watchFiles configfile.Files
 
 	for _, body := range parsedBodies {
-		files, err := absolutizePaths(body)
+		files, err := resolveAbsolutePaths(body)
 		if err != nil {
 			return nil, err
 		}
