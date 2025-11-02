@@ -54,7 +54,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          goversion: '1.23'
+          goversion: '1.25'
           binary_name: 'couper'
           ldflags: '-X ${{ env.VERSION_PACKAGE }}.VersionName=${{ github.ref_name }} -X ${{ env.VERSION_PACKAGE }}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${{ env.VERSION_PACKAGE }}.BuildDate=${{ steps.vars.outputs.build_date }}'
           sha256sum: true
@@ -132,7 +132,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v5.0.0
         with:
-          go-version: '1.23'
+          go-version: '1.25'
       - name: 'install assets-uploader'
         run: go install github.com/wangyoucao577/assets-uploader/...@v0.13.0
       - name: 'upload signed binary archive'
