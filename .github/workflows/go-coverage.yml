@@ -26,7 +26,7 @@ jobs:
           make test-coverage
       - uses: qltysh/qlty-action/coverage@v2
         with:
-          add-prefix: "github.com/coupergateway/couper"
+#          add-prefix: "github.com/coupergateway/couper"
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: c.out
           verbose: 'true'
