@@ -704,14 +704,14 @@ whatever "unsupported" {}
 
 func TestLocalAndLocalsSupport(t *testing.T) {
 	t.Skip()
-	// TOOD: check cyclic expressions
+	// TODO: check cyclic expressions
 	tests := []struct {
 		name  string
 		hcl   string
 		error string
 	}{
 		{
-			"missing per_period",
+			"local block with expression and sensitive attribute",
 			`
 local "mylocal" {
   expression = "${env.secret_api_key}"
