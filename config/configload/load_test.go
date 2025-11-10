@@ -439,7 +439,7 @@ func TestEnvironmentBlocksWithoutEnvironment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			config := []byte(tt.hcl)
-			err := os.Truncate(file.Name(), 0)
+			err = os.Truncate(file.Name(), 0)
 			helper.Must(err)
 			_, err = file.Seek(0, 0)
 			helper.Must(err)
@@ -680,6 +680,80 @@ func TestConfigErrors(t *testing.T) {
 			}
 
 			if tt.error != errorMsg {
+				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
+			}
+		})
+	}
+}
+
+func TestUnknownBlockDefinition(t *testing.T) {
+	template := `
+		server {}
+		  %s
+		}`
+	_, err := configload.LoadBytes([]byte(fmt.Sprintf(template, `
+whatever "unsupported" {}
+`)), "couper.hcl")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != `couper.hcl:4,1-26: unknown block type "whatever"; ` {
+		t.Errorf("unexpected error message:\n\tWant: %q\n\tGot:  %q", `couper.hcl:4,1-26: unknown block type "whatever";`, err.Error())
+	}
+}
+
+func TestLocalAndLocalsSupport(t *testing.T) {
+	t.Skip()
+	// TODO: check cyclic expressions
+	tests := []struct {
+		name  string
+		hcl   string
+		error string
+	}{
+		{
+			"local block with expression and sensitive attribute",
+			`
+local "mylocal" {
+  expression = "${env.secret_api_key}"
+  sensitive  = true
+}
+`,
+			"",
+		},
+	}
+
+	logger, _ := test.NewLogger()
+	log := logger.WithContext(context.TODO())
+
+	template := `
+		server {}
+		  %s
+		}`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			h := test.New(subT)
+			conf, err := configload.LoadBytes([]byte(fmt.Sprintf(template, tt.hcl)), "couper.hcl")
+			h.Must(err)
+
+			closeCh := make(chan struct{})
+			defer close(closeCh)
+			memStore := cache.New(log, closeCh)
+
+			if conf != nil {
+				ctx, cancel := context.WithCancel(conf.Context)
+				conf.Context = ctx
+				defer cancel()
+
+				_, err = runtime.NewServerConfiguration(conf, log, memStore)
+			}
+
+			var errorMsg = ""
+			if err != nil {
+				errorMsg = err.Error()
+			}
+
+			if !strings.Contains(errorMsg, tt.error) {
 				subT.Errorf("%q: Unexpected configuration error:\n\tWant: %q\n\tGot:  %q", tt.name, tt.error, errorMsg)
 			}
 		})
