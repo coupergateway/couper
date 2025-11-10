@@ -1,0 +1,18 @@
+baseURL = 'https://docs.couper.io/'
+languageCode = 'en-us'
+title = 'Couper Documentation'
+
+[module]
+    [module.hugoVersion]
+    [[module.imports]]
+        path = "github.com/bep/docuapi/v2"
+
+[markup]
+    [markup.highlight]
+        codeFences = true
+        guessSyntax = false
+        lineNos = false
+        noClasses = true
+        style = "monokai"
+
+ignoreLogs = ['warning-goldmark-raw-html']
