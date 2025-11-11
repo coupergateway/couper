@@ -149,7 +149,7 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 			time.Sleep(time.Second)
 			for _, entry := range hook.AllEntries() {
 				s, _ := entry.String()
-				helper.Logf(s)
+				helper.Logf("%s", s)
 			}
 		}
 		cleanup(cancelFn, helper)
@@ -3887,7 +3887,7 @@ func TestJWTAccessControl_round(t *testing.T) {
 				subT.Fatalf("%q: groups must be array: %#v", tc.name, groupsclaim)
 			}
 			if !cmp.Equal(tc.expGroups, groupsclaimArray) {
-				subT.Errorf(cmp.Diff(tc.expGroups, groupsclaimArray))
+				subT.Errorf("%s", cmp.Diff(tc.expGroups, groupsclaimArray))
 			}
 		})
 	}
@@ -4166,7 +4166,7 @@ func TestWrapperHiJack_WebsocketUpgradeModifier(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(expectedHeader, header) {
-		t.Errorf(cmp.Diff(expectedHeader, header))
+		t.Errorf("%s", cmp.Diff(expectedHeader, header))
 	}
 
 	n, err := conn.Write([]byte("ping"))
@@ -4220,7 +4220,7 @@ func TestWrapperHiJack_WebsocketUpgradeBodyBuffer(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(expectedHeader, res.Header) {
-		t.Errorf(cmp.Diff(expectedHeader, res.Header))
+		t.Errorf("%s", cmp.Diff(expectedHeader, res.Header))
 	}
 }
 
@@ -5503,7 +5503,7 @@ func TestAllowedMethodsCORS_Preflight(t *testing.T) {
 
 			allowMethods := res.Header.Values("Access-Control-Allow-Methods")
 			if !cmp.Equal(tc.allowMethods, allowMethods) {
-				subT.Errorf(cmp.Diff(tc.allowMethods, allowMethods))
+				subT.Errorf("%s", cmp.Diff(tc.allowMethods, allowMethods))
 			}
 
 			couperError := res.Header.Get("Couper-Error")

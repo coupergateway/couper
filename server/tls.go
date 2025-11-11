@@ -193,7 +193,7 @@ func verifyClientCertificate(caPool *x509.CertPool, leafs map[string][]byte, lea
 	var err error
 	for i, asn1Data := range rawCerts {
 		if certs[i], err = x509.ParseCertificate(asn1Data); err != nil {
-			return fmt.Errorf("tls: failed to parse client certificate: " + err.Error())
+			return fmt.Errorf("tls: failed to parse client certificate: %w", err)
 		}
 	}
 
@@ -235,7 +235,7 @@ func verify(caPool *x509.CertPool, certs []*x509.Certificate) ([][]*x509.Certifi
 
 	chains, err := certs[0].Verify(opts)
 	if err != nil {
-		return nil, fmt.Errorf("tls: failed to verify client certificate: " + err.Error())
+		return nil, fmt.Errorf("tls: failed to verify client certificate: %w", err)
 	}
 	return chains, nil
 }

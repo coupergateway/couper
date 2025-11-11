@@ -152,8 +152,7 @@ func getSchemaComponents(body hcl.Body, obj interface{}) (hcl.Blocks, hcl.Diagno
 		typ = typ.Elem()
 	}
 
-	// TODO: How to implement this automatically?
-	if typ.String() == "config.Backend" {
+	if typ == reflect.TypeOf(config.Backend{}) {
 		meta.MergeSchemas(schema, config.OAuthBlockSchema, config.TokenRequestBlockSchema)
 	}
 
