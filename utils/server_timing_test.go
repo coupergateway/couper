@@ -44,7 +44,7 @@ func TestUtils_CollectMetricNames(t *testing.T) {
 		utils.CollectMetricNames(tc.header, serverTimings)
 
 		if !cmp.Equal(tc.exp, serverTimings) {
-			t.Errorf(cmp.Diff(tc.exp, serverTimings))
+			t.Errorf("%s", cmp.Diff(tc.exp, serverTimings))
 		}
 	}
 }
