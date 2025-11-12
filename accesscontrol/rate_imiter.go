@@ -1,6 +1,7 @@
 package accesscontrol
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -40,7 +41,7 @@ type RateLimiter struct {
 }
 
 // NewRateLimiter creates a new AC-RateLimiter object
-func NewRateLimiter(name string, conf *config.RateLimiter) (*RateLimiter, error) {
+func NewRateLimiter(ctx context.Context, name string, conf *config.RateLimiter) (*RateLimiter, error) {
 	period, err := config.ParseDuration("period", conf.Period, 0)
 	if err != nil {
 		return nil, err
@@ -73,7 +74,7 @@ func NewRateLimiter(name string, conf *config.RateLimiter) (*RateLimiter, error)
 		conf:           conf,
 		limiterEntries: make(map[[32]byte]*LimiterEntry),
 	}
-	rl.startLimiterGC()
+	rl.startLimiterGC(ctx)
 
 	return rl, nil
 }
@@ -121,21 +122,26 @@ func (rl *RateLimiter) Validate(req *http.Request) error {
 	return nil
 }
 
-func (rl *RateLimiter) startLimiterGC() {
+func (rl *RateLimiter) startLimiterGC(ctx context.Context) {
 	idleTimeout := 3 * rl.period
 	interval := rl.period / 2
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
-		for range ticker.C {
-			rl.mu.Lock()
-			now := time.Now()
-			for key, entry := range rl.limiterEntries {
-				if now.Sub(entry.lastUsed) > idleTimeout {
-					delete(rl.limiterEntries, key)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				rl.mu.Lock()
+				now := time.Now()
+				for key, entry := range rl.limiterEntries {
+					if now.Sub(entry.lastUsed) > idleTimeout {
+						delete(rl.limiterEntries, key)
+					}
 				}
+				rl.mu.Unlock()
 			}
-			rl.mu.Unlock()
 		}
 	}()
 }
