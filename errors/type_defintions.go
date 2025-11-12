@@ -17,6 +17,9 @@ var Definitions = []*Error{
 
 	AccessControl.Kind("oauth2"),
 
+	AccessControl.Kind("beta_rate_limiter").Status(http.StatusTooManyRequests),
+	AccessControl.Kind("beta_rate_limiter").Kind("beta_rate_limiter_key").Status(http.StatusForbidden),
+
 	AccessControl.Kind("saml2"),
 	AccessControl.Kind("saml2").Kind("saml"),
 
