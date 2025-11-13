@@ -32,6 +32,7 @@ func init() {
 
 	// Deprecated blocks:
 	// deprecatedBlocks["..."] = deprecated{"...", "..."}
+	deprecatedBlocks["beta_job"] = deprecated{"job", "1.15"}
 
 	// Deprecated labels:
 	// deprecatedLabels["..."] = deprecated{"...", "..."}

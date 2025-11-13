@@ -124,7 +124,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			if err != nil {
 				if diags, ok := err.(hcl.Diagnostics); ok {
 					derr := diags[0]
-					derr.Summary = strings.Replace(derr.Summary, "endpoint:", "beta_job:", 1)
+					derr.Summary = strings.Replace(derr.Summary, "endpoint:", "job:", 1)
 					if strings.Contains(derr.Summary, "requires at least") {
 						derr.Summary = strings.Join(append([]string{},
 							strings.SplitAfter(derr.Summary, `" `)[0], "requires at least one request block"), "")
