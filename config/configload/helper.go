@@ -26,6 +26,17 @@ type helper struct {
 	defsBackends map[string]*hclsyntax.Body
 }
 
+func renameDefinitionBlocks(body *hclsyntax.Body, from, to string) {
+	if body == nil {
+		return
+	}
+	for _, block := range body.Blocks {
+		if block.Type == from {
+			block.Type = to
+		}
+	}
+}
+
 // newHelper creates a container with some methods to keep things simple here and there.
 func newHelper(body hcl.Body) (*helper, error) {
 	couperConfig := &config.Couper{
@@ -112,6 +123,12 @@ func (h *helper) configureBlocks() error {
 	for _, outerBlock := range h.content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
+			defBody, ok := outerBlock.Body.(*hclsyntax.Body)
+			// only convert blocks if body is hclsyntax.Body
+			if ok {
+				renameDefinitionBlocks(defBody, betaJob, job)
+			}
+
 			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
 			if diags.HasErrors() {
 				return diags

@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+* **Changed**
+  * [`job`](https://docs.couper.io/configuration/block/job) block replaces the legacy `beta_job` name while keeping the alias for backwards compatibility. ([#898](https://github.com/coupergateway/couper/pull/898))
+
 * **Dependencies**
   * build with go 1.25 ([#862](https://github.com/coupergateway/couper/pull/862))
   * hcl 2.23.0 and go-cty 1.16.2 ([#816](https://github.com/coupergateway/couper/pull/816))
