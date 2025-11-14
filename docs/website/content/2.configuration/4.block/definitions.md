@@ -8,6 +8,8 @@ Use the `definitions` block to define configurations you want to reuse.
 |:--------------|:--------|:---------|
 | `definitions` | -       | no label |
 
+> Legacy configurations may still contain `beta_job` blocks; they remain supported as aliases for `job`.
+
 ::blocks
 ---
 values: [
@@ -21,7 +23,7 @@ values: [
   },
   {
     "description": "Configure a [job](/configuration/block/job) (zero or more).",
-    "name": "beta_job"
+    "name": "job"
   },
   {
     "description": "Configure an [OAuth2 access control](/configuration/block/beta_oauth2) (zero or more).",
