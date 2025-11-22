@@ -5317,6 +5317,68 @@ func TestOIDCDefaultNonceFunctions(t *testing.T) {
 	}
 }
 
+func TestRateLimiter(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/03_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testCase struct {
+		name       string
+		path       string
+		header     http.Header
+		body       string
+		status     int
+		wantErrLog string
+	}
+
+	tokenNoSub := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFzZGYifQ.08m5lqYnmM4idyiPQZFntk40YM1joidC21Ewde9vEbo"
+	tokenSub123 := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMifQ.FLIhvkj368mX9zBb0GNyqQV5w4mVqCB4oo_lY441FHg"
+	tokenSub456 := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0NTYifQ.2g5SAHbvBF3h_hkicA66T6o4CpQcicgCTNPRZT8bdfQ"
+
+	for _, tc := range []testCase{
+		{"request without sub", "/rate1/foo", http.Header{"Authorization": []string{"Bearer " + tokenNoSub}}, "", http.StatusForbidden, "access control error: rate: Empty key value"},
+		{"request with sub ok", "/rate1/foo", http.Header{"Authorization": []string{"Bearer " + tokenSub123}}, "", http.StatusOK, ""},
+		{"request with same sub blocked", "/rate2/foo", http.Header{"Authorization": []string{"Bearer " + tokenSub123}}, "", http.StatusTooManyRequests, `access control error: rate: Request not allowed for "123"`},
+		{"request with different sub ok", "/rate2/foo", http.Header{"Authorization": []string{"Bearer " + tokenSub456}}, "", http.StatusOK, ""},
+		{"error handler pre", "/rate3/foo", http.Header{}, "", http.StatusOK, ""},
+		{"error handler", "/rate3/foo", http.Header{}, "", http.StatusTeapot, `access control error: rate_eh: Request not allowed for "asdf"`},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080"+tc.path, strings.NewReader(tc.body))
+			helper.Must(err)
+
+			req.Header = tc.header
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			message := getFirstAccessLogMessage(hook)
+			if res.StatusCode != tc.status {
+				subT.Errorf("expected Status %d, got: %d (%s)", tc.status, res.StatusCode, message)
+				return
+			}
+
+			if tc.wantErrLog == "" {
+				if message != "" {
+					subT.Errorf("Expected error log: %q, actual: %#v", tc.wantErrLog, message)
+				}
+			} else {
+				if !strings.HasPrefix(message, tc.wantErrLog) {
+					subT.Errorf("Expected error log message: '%s', actual: '%s'", tc.wantErrLog, message)
+				}
+			}
+
+			if res.StatusCode != http.StatusOK {
+				return
+			}
+		})
+	}
+}
+
 func TestAllowedMethods(t *testing.T) {
 	client := newClient()
 

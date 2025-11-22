@@ -28,6 +28,10 @@ values: [
     "name": "beta_oauth2"
   },
   {
+    "description": "Configure a [Rate limiter access control](/configuration/block/rate_limiter) (zero or more).",
+    "name": "beta_rate_limiter"
+  },
+  {
     "description": "Configure a [JWT access control](/configuration/block/jwt) (zero or more).",
     "name": "jwt"
   },

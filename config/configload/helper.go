@@ -471,6 +471,9 @@ func (h *helper) getDefinedACs() map[string]struct{} {
 	for _, ac := range definitions.OIDC {
 		definedACs[ac.Name] = struct{}{}
 	}
+	for _, ac := range definitions.RateLimiter {
+		definedACs[ac.Name] = struct{}{}
+	}
 	for _, ac := range definitions.SAML {
 		definedACs[ac.Name] = struct{}{}
 	}
