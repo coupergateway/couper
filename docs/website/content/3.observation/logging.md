@@ -136,7 +136,7 @@ The following fields are found in the [log type](#log-types) `couper_daemon` in 
 
 | Name         |              | Description                                                                    |
 |:-------------|:-------------|:-------------------------------------------------------------------------------|
-| `"name"`     |              | Job name, label of [`beta_job` block](/configuration/block/job).               |
+| `"name"`     |              | Job name, label of [`job` block](/configuration/block/job) (`beta_job` alias). |
 | `"timings":` |              | Field regarding timing (ms).                                                   |
 |              | `{`          |                                                                                |
 |              | `"interval"` | Interval, see [`interval` attribute](/configuration/block/job#attributes).     |

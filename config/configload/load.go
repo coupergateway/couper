@@ -20,6 +20,7 @@ import (
 const (
 	api             = "api"
 	backend         = "backend"
+	betaJob         = "beta_job"
 	defaults        = "defaults"
 	definitions     = "definitions"
 	endpoint        = "endpoint"
@@ -35,8 +36,28 @@ const (
 	settings        = "settings"
 	spa             = "spa"
 	tls             = "tls"
+	job             = "job"
 	tokenRequest    = "beta_token_request"
 )
+
+func renameDeprecatedBlocks(body *hclsyntax.Body) {
+	if body == nil {
+		return
+	}
+
+	for _, outerBlock := range body.Blocks {
+		innerBody := outerBlock.Body
+		if innerBody == nil {
+			continue
+		}
+
+		if outerBlock.Type == definitions {
+			renameBetaBlocks(innerBody, betaJob, job)
+		}
+
+		renameDeprecatedBlocks(innerBody)
+	}
+}
 
 var defaultsConfig *config.Defaults
 var evalContext *eval.Context
@@ -81,6 +102,9 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	parsedBodies, srcBytes, err := parseFiles(configFiles)
 	if err != nil {
 		return nil, err
+	}
+	for _, body := range parsedBodies {
+		renameDeprecatedBlocks(body)
 	}
 
 	if len(srcBytes) == 0 {
