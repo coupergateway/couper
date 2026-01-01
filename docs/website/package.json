@@ -19,6 +19,6 @@
   "dependencies": {
     "@nuxt/content": "^2.11.0",
     "micromark": "^4.0.0",
-    "vue-instantsearch": "^4.13.6"
+    "vue-instantsearch": "^4.22.8"
   }
 }
