@@ -54,6 +54,7 @@ func Test_realmain(t *testing.T) {
 		{"non-string proxy reference", []string{"couper", "run", "-f", base + "/19_couper.hcl"}, nil, `level=error msg="%s/19_couper.hcl:3,13-14: proxy must evaluate to string; " build=dev`, 1},
 		{"proxy reference does not exist", []string{"couper", "run", "-f", base + "/20_couper.hcl"}, nil, `level=error msg="%s/20_couper.hcl:3,14-17: referenced proxy \"foo\" is not defined; " build=dev`, 1},
 		{"circular backend references", []string{"couper", "run", "-f", base + "/21_couper.hcl"}, nil, `level=error msg="configuration error: <nil>: configuration error; circular reference:`, 1},
+		{"expected and unexpected status in proxy", []string{"couper", "run", "-f", base + "/18_couper.hcl"}, nil, `level=error msg="%s/18_couper.hcl:4,13-10,8: only one of expected_status and unexpected_status is allowed in a proxy block; `, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {

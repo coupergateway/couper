@@ -45,7 +45,7 @@ values: [
   },
   {
     "default": "[]",
-    "description": "If defined, the response status code will be verified against this list of codes. If the status code not included in this list an `unexpected_status` error will be thrown which can be handled with an [`error_handler`](error_handler).",
+    "description": "If defined, the response status code will be verified against this list of codes. If the status code is not included in this list an `unexpected_status` error will be thrown which can be handled with an [`error_handler`](error_handler). Mutually exclusive with `unexpected_status`.",
     "name": "expected_status",
     "type": "tuple (int)"
   },
@@ -102,6 +102,12 @@ values: [
     "description": "Key/value pairs to set as response headers in the client response.",
     "name": "set_response_headers",
     "type": "object"
+  },
+  {
+    "default": "[]",
+    "description": "If defined, the response status code will be verified against this list of codes. If the status code is included in this list an `unexpected_status` error will be thrown which can be handled with an [`error_handler`](error_handler). Mutually exclusive with `expected_status`.",
+    "name": "unexpected_status",
+    "type": "tuple (int)"
   },
   {
     "default": "",
