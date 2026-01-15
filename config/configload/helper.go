@@ -26,6 +26,30 @@ type helper struct {
 	defsBackends map[string]*hclsyntax.Body
 }
 
+func renameBetaBlocks(body *hclsyntax.Body, from, to) error {
+	if from == "" {
+		return errors.Configuration.With(fmt.Errorf("from cannot be empty"))
+	}
+	if !strings.HasPrefix(from, "beta_") {
+		return errors.Configuration.With(fmt.Errorf("from must start with 'beta_', got: %q", from))
+	}
+
+	expected := strings.TrimPrefix(from, "beta_")
+	if to != expected {
+		return errors.Configuration.With(fmt.Errorf("to must be %q (from without 'beta_'), got: %q", expected, to))
+	}
+
+	if body == nil {
+		return nil
+	}
+
+	for _, block := range body.Blocks {
+		if block.Type == from {
+			block.Type = to
+		}
+	}
+}
+
 // newHelper creates a container with some methods to keep things simple here and there.
 func newHelper(body hcl.Body) (*helper, error) {
 	couperConfig := &config.Couper{
@@ -112,6 +136,12 @@ func (h *helper) configureBlocks() error {
 	for _, outerBlock := range h.content.Blocks {
 		switch outerBlock.Type {
 		case definitions:
+			defBody, ok := outerBlock.Body.(*hclsyntax.Body)
+			// only convert blocks if body is hclsyntax.Body
+			if ok {
+				renameBetaBlocks(defBody, betaJob, job)
+			}
+
 			backendContent, leftOver, diags := outerBlock.Body.PartialContent(backendBlockSchema)
 			if diags.HasErrors() {
 				return diags

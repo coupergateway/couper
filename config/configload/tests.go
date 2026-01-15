@@ -23,6 +23,7 @@ func loadTestContents(tcs []testContent) (*config.Couper, error) {
 		if err != nil {
 			return nil, err
 		}
+		renameDeprecatedBlocks(hclBody)
 
 		parsedBodies = append(parsedBodies, hclBody)
 		srcs = append(srcs, tc.src)
@@ -44,6 +45,7 @@ func LoadBytesEnv(src []byte, filename, env string) (*config.Couper, error) {
 	if err != nil {
 		return nil, err
 	}
+	renameDeprecatedBlocks(hclBody)
 
 	if err = validateBody(hclBody, false); err != nil {
 		return nil, err

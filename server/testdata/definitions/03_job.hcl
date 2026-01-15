@@ -1,7 +1,7 @@
 server {}
 
 definitions {
-  beta_job "withLabel" {
+  job "withLabel" {
     interval = "-100ms"
 
     request {}
