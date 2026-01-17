@@ -1,0 +1,145 @@
+---
+title: 'Examples'
+weight: 3
+slug: 'examples'
+---
+
+# Examples
+
+## File and Web Serving
+
+Couper contains a Web server for simple file serving and also takes care of the more complex web serving of SPA assets.
+
+```hcl
+server "example" {
+
+  files {
+    document_root = "htdocs"
+  }
+
+  spa {
+    bootstrap_file = "htdocs/index.html"
+    paths = ["/**"]
+  }
+}
+```
+
+The `files` block configures Couper's file server. It needs to know which directory to serve (`document_root`).
+
+The `spa` block is responsible for serving the bootstrap document for all paths that match the paths list.
+
+## Exposing APIs
+
+Couper's main concept is exposing APIs via the configuration block `endpoint`, fetching data from upstream or remote services, represented by the configuration block `backend`.
+
+```hcl
+server "example"{
+
+  endpoint "/public/**"{
+
+    proxy {
+      backend {
+        origin = "https://httpbin.org"
+        path = "/**"
+      }
+    }
+  }
+}
+```
+
+This basic configuration defines an upstream backend service (`https://httpbin.org`) and "mounts" it on the local API endpoint `/public/**`.
+
+An incoming request `/public/foo` will result in an outgoing request `https://httpbin.org/foo`.
+
+## Securing APIs
+
+Access control is controlled by an
+[access control](/configuration/access-control) attribute that can be set for many blocks.
+
+```hcl
+server "example" {
+
+  endpoint "/private/**" {
+    access_control = ["accessToken"]
+
+    proxy {
+      backend {
+        origin = "https://httpbin.org"
+        path = "/**"
+      }
+    }
+  }
+
+  definitions {
+    jwt "accessToken" {
+      signature_algorithm = "RS256"
+      key_file = "keys/public.pem"
+    }
+  }
+}
+```
+
+This configuration protects the endpoint `/private/**` with the access control `"accessToken"` configured in the `definitions` block.
+
+## Routing: Path Mapping
+
+```hcl
+api "my_api" {
+  base_path = "/api/v1"
+
+  endpoint "/login/**" {
+    proxy {
+      backend {
+        origin = "http://identityprovider:8080"
+      }
+    }
+  }
+
+  endpoint "/cart/**" {
+    proxy {
+      url = "http://cartservice:8080/api/v1/**"
+    }
+  }
+
+  endpoint "/account/{id}" {
+    proxy {
+      backend {
+        path = "/user/${request.param.id}/info"
+        origin = "http://accountservice:8080"
+      }
+    }
+  }
+}
+```
+
+| Incoming request       | Outgoing request                              |
+|:-----------------------|:----------------------------------------------|
+| /api/v1/login/foo      | `http://identityprovider:8080/login/foo`      |
+| /api/v1/cart/items     | `http://cartservice:8080/api/v1/items`        |
+| /api/v1/account/brenda | `http://accountservice:8080/user/brenda/info` |
+
+## Using Variables and Expressions
+
+An example to send an additional header with client request header to a configured
+backend and gets evaluated on per-request basis:
+
+```hcl
+server {
+  endpoint "/" {
+    proxy {
+      backend {
+        origin = "https://httpbin.org/"
+        path = "/anything"
+        set_request_headers = {
+          # simple variable lookup
+          x-uuid = request.id
+          # template string
+          user-agent = "myproxyClient/${request.headers.app-version}"
+          # expressions and function calls
+          x-env-user = env.USER != "" ? to_upper(env.USER) : "UNKNOWN"
+        }
+      }
+    }
+  }
+}
+```

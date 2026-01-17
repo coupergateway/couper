@@ -1,0 +1,31 @@
+<header class="flex justify-between p-1 headerShadow">
+    <div class="relative w-2/5 flex items-center m-4">
+        {{ partial "logo.html" . }}
+        <h1 class="text-2xl font-medium align-top p-4">Couper Documentation</h1>
+        <div class="box-border text-base">
+            <div class="rounded-md bg-lime-500 p-1">edge</div>
+        </div>
+    </div>
+    <div class="flex justify-around w-full">
+        <!-- SearchBar placeholder - will be added later -->
+        <div class="px-4 sm:px-8 lg:px-16 xl:px-5 mx-auto"></div>
+    </div>
+    <div class="w-1/5">
+        <a href="https://github.com/coupergateway/couper" target="_blank">
+            {{ partial "github-icon.html" . }}
+        </a>
+    </div>
+</header>
+
+<style>
+pre > code {
+  /* since code bg is bright, disable within pre */
+  background-color: inherit !important;
+  padding: 0 !important;
+  white-space: pre !important /* line breaks for copy/paste! */
+}
+
+.headerShadow {
+  box-shadow: rgb(203 203 203) 0 5px 10px 0;
+}
+</style>

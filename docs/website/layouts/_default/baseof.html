@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }} | {{ .Site.Title }}</title>
+    {{ partial "head.html" . }}
+</head>
+<body class="antialiasing text-slate-700">
+    {{ partial "header.html" . }}
+
+    <div class="flex justify-between m-2 p-2 min-h-screen">
+        {{ block "main" . }}{{ end }}
+    </div>
+
+    {{ partial "footer.html" . }}
+</body>
+</html>
