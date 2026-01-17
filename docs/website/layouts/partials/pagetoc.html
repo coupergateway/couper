@@ -1,0 +1,9 @@
+<nav class="w-1/5 grow-0 p-2">
+    {{ $toc := .TableOfContents }}
+    {{ if and $toc (findRE "<li>" $toc 1) }}
+    <h2 class="text-amber-500">On this Page</h2>
+    <div class="toc">
+        {{ $toc }}
+    </div>
+    {{ end }}
+</nav>

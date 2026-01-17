@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ .Title }} | {{ .Site.Title }}</title>
+    <script>
+        // Set theme before page renders to prevent flash
+        (function() {
+            const saved = localStorage.getItem('theme');
+            const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.add('light');
+            }
+        })();
+    </script>
+    {{ partial "head.html" . }}
+</head>
+<body class="antialiasing text-slate-700">
+    {{ partial "header.html" . }}
+
+    <div class="flex justify-between m-2 p-2 min-h-screen">
+        {{ block "main" . }}{{ end }}
+    </div>
+
+    {{ partial "footer.html" . }}
+
+    <script>
+    // Dark Mode Toggle with System Preference Detection
+    (function() {
+        const toggle = document.getElementById('dark-mode-toggle');
+        const html = document.documentElement;
+        const sunIcon = toggle.querySelector('.sun-icon');
+        const moonIcon = toggle.querySelector('.moon-icon');
+
+        // Check for saved preference or system preference
+        function getThemePreference() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                return saved;
+            }
+            // Detect system preference
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                html.classList.add('dark');
+                html.classList.remove('light');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        // Initialize theme on page load
+        const currentTheme = getThemePreference();
+        setTheme(currentTheme);
+
+        // Toggle theme on button click
+        toggle.addEventListener('click', function() {
+            const newTheme = html.classList.contains('dark') ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            // Only auto-switch if user hasn't manually set a preference
+            if (!localStorage.getItem('theme')) {
+                setTheme(e.matches ? 'dark' : 'light');
+            }
+        });
+    })();
+    </script>
+
+    <script>
+    // Copy to clipboard functionality for code blocks
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('pre').forEach(function(pre) {
+            pre.addEventListener('click', function(e) {
+                // Only trigger if clicking the clipboard icon area
+                const rect = pre.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                // Check if click is in the top-right area where the icon is
+                if (clickX > rect.width - 60 && clickY < 60) {
+                    const code = pre.querySelector('code');
+                    if (code) {
+                        const text = code.textContent;
+                        navigator.clipboard.writeText(text).then(function() {
+                            pre.classList.add('copied');
+                            setTimeout(function() {
+                                pre.classList.remove('copied');
+                            }, 2000);
+                        }).catch(function(err) {
+                            console.error('Failed to copy code: ', err);
+                        });
+                    }
+                }
+            });
+        });
+    });
+    </script>
+
+    <script>
+    // Algolia Search Configuration
+    // TODO: Replace with your actual Algolia credentials
+    const ALGOLIA_APP_ID = 'YOUR_APP_ID';
+    const ALGOLIA_SEARCH_KEY = 'YOUR_SEARCH_KEY';
+    const ALGOLIA_INDEX = 'docs';
+
+    if (typeof algoliasearch !== 'undefined' && typeof instantsearch !== 'undefined') {
+        const searchClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_SEARCH_KEY);
+
+        // Wrapper to prevent empty queries
+        const customSearchClient = {
+            ...searchClient,
+            search(requests) {
+                if (requests.every(({ params }) => !params.query || params.query === '')) {
+                    return Promise.resolve({
+                        results: requests.map(() => ({
+                            hits: [],
+                            nbHits: 0,
+                            nbPages: 0,
+                            page: 0,
+                            processingTimeMS: 0,
+                        })),
+                    });
+                }
+                return searchClient.search(requests);
+            },
+        };
+
+        const search = instantsearch({
+            indexName: ALGOLIA_INDEX,
+            searchClient: customSearchClient,
+            stalledSearchDelay: 150,
+        });
+
+        // Add search box widget
+        search.addWidgets([
+            instantsearch.widgets.searchBox({
+                container: '#searchbox',
+                placeholder: 'Search documentation...',
+                cssClasses: {
+                    root: 'w-full',
+                    form: 'w-full relative',
+                    input: 'block mt-1 p-4 pl-10 w-full text-sm text-gray-900 rounded-lg border-2 border-lime-500 focus:ring-blue-500 focus:border-blue-500 bg-white',
+                    submit: 'hidden',
+                    reset: 'absolute right-3 top-1/2 transform -translate-y-1/2',
+                },
+            }),
+        ]);
+
+        // Custom hits widget with transformation
+        const renderHits = (renderOptions, isFirstRender) => {
+            const { hits, widgetParams } = renderOptions;
+
+            if (hits.length === 0) {
+                widgetParams.container.innerHTML = '';
+                return;
+            }
+
+            // Transform items (similar to Vue component)
+            const transformedHits = hits.map(item => {
+                if (item._highlightResult && item._highlightResult.attributes) {
+                    item._highlightResult.attributes.forEach(attr => {
+                        if (attr.description && !attr.transformed) {
+                            let description = attr.description.value;
+                            // do not mark markdown _highlights_ as search hits
+                            description = description.replace(/\b_(.*?)_\b/g, '$1');
+                            // drop link markdown
+                            description = description.replace(/\[(.*?)\]\(.*?\)/g, '$1');
+                            // render code markdown
+                            description = description.replace(/`(.*?)`/g, '<code>$1</code>');
+                            attr.description.value = description;
+                            attr.transformed = true;
+                        }
+                    });
+                }
+                return item;
+            });
+
+            // Filter and sort hits
+            const filteredHits = transformedHits
+                .filter(item => item._highlightResult !== undefined)
+                .sort((a, b) => (a.__position > b.__position ? 1 : -1));
+
+            // Render results
+            widgetParams.container.innerHTML = filteredHits
+                .map(item => {
+                    const name = item._highlightResult?.name?.value || item.name || '';
+                    const url = (item.url || '').toLowerCase();
+
+                    // Filter attributes with matches
+                    const matchedAttrs = (item._highlightResult?.attributes || [])
+                        .filter(attr =>
+                            (attr.name?.matchedWords?.length > 0) ||
+                            (attr.description?.matchedWords?.length > 0)
+                        )
+                        .map(attr => ({
+                            name: attr.name?.value || '',
+                            desc: attr.description?.value || ''
+                        }));
+
+                    const attrsHtml = matchedAttrs.length > 0
+                        ? `<table class="table-auto w-full">
+                            <tbody>
+                                ${matchedAttrs.map(attr => `
+                                    <tr class="align-top">
+                                        <td class="font-semibold text-purple-600 w-1/3">${attr.name}</td>
+                                        <td>${attr.desc}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                           </table>`
+                        : '';
+
+                    return `
+                        <div class="bg-white border-4 border-gray-200 rounded-lg w-full mt-2">
+                            <a href="${url}" class="text-sky-600 block">
+                                <div class="pl-8 pr-2 py-1 relative cursor-pointer hover:bg-sky-50 hover:text-gray-900">
+                                    <div class="flex flex-col prose prose-slate prose-lg prose-code:bg-sky-100 search-result">
+                                        <div class="flex flex-col m-2">
+                                            <h3 class="uppercase blockTitle pt-4 text-lg text-gray-800">${name}</h3>
+                                            ${attrsHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    `;
+                })
+                .join('');
+        };
+
+        const customHits = instantsearch.connectors.connectHits(renderHits);
+
+        search.addWidgets([
+            customHits({
+                container: document.querySelector('#search-results'),
+            }),
+        ]);
+
+        search.start();
+
+        // Clear results on blur
+        document.addEventListener('click', (e) => {
+            const searchBox = document.querySelector('#searchbox');
+            const searchResults = document.querySelector('#search-results');
+            if (searchBox && !searchBox.contains(e.target) && searchResults) {
+                setTimeout(() => {
+                    const input = document.querySelector('.ais-SearchBox-input');
+                    if (input) input.value = '';
+                    searchResults.innerHTML = '';
+                }, 200);
+            }
+        });
+    }
+    </script>
+</body>
+</html>

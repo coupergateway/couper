@@ -1,0 +1,64 @@
+{{- $raw := .Inner | strings.TrimSpace -}}
+{{- $parsed := $raw | transform.Unmarshal -}}
+{{- $list := $parsed -}}
+{{- if and (reflect.IsMap $parsed) (isset $parsed "values") -}}
+  {{- $list = index $parsed "values" -}}
+{{- end -}}
+
+{{- $defaultHeader := slice
+(dict "name" "Name"        "value" "name")
+(dict "name" "Type"        "value" "type")
+(dict "name" "Default"     "value" "default")
+(dict "name" "Description" "value" "description")
+-}}
+
+{{- $headerParam := .Get "header" -}}
+{{- $header := cond (ne $headerParam nil) ($headerParam | transform.Unmarshal) $defaultHeader -}}
+
+<div class="attributes">
+    <h3 id="attributes"><a href="#attributes">Attributes</a></h3>
+    <table class="table-auto">
+        <thead>
+        <tr>
+            {{- range $header }}
+            <th>{{ .name }}</th>
+            {{- end }}
+        </tr>
+        </thead>
+        <tbody>
+        {{- range $list }}
+        <tr>
+            {{- $row := . -}}
+            {{- range $head := $header }}
+            {{- $key := $head.value -}}
+            <td>
+                {{- if eq $key "name" -}}
+                <code>{{ with index $row $key }}{{ . }}{{ else }}-{{ end }}</code>
+                {{- else if eq $key "default" -}}
+                {{- $def := index $row $key -}}
+                {{- if and (ne $def nil) (ne (printf "%v" $def) "") -}}
+                <code>{{ $def }}</code>
+                {{- else -}}
+                -
+                {{- end -}}
+                {{- else if eq $key "description" -}}
+                {{- with index $row $key -}}
+                <div>{{ . | markdownify }}</div>
+                {{- else -}}
+                -
+                {{- end -}}
+                {{- else -}}
+                {{- $val := index $row $key -}}
+                {{- if $val -}}
+                <div>{{ $val | markdownify }}</div>
+                {{- else -}}
+                -
+                {{- end -}}
+                {{- end -}}
+            </td>
+            {{- end }}
+        </tr>
+        {{- end }}
+        </tbody>
+    </table>
+</div>

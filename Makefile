@@ -21,6 +21,10 @@ generate:
 generate-docs:
 	go run config/generate/main.go
 
+.PHONY: serve-docs
+serve-docs: generate-docs
+	cd docs/website && hugo server
+
 image:
 	docker build -t coupergateway/couper:latest .
 

@@ -1,0 +1,128 @@
+---
+title: 'Command Line Interface (CLI)'
+description: 'Configure Couper with cli arguments.'
+---
+
+# Command Line Interface
+
+Couper is build as binary called `couper` with the following commands:
+
+| Command   | Description                                        |
+|:----------|:---------------------------------------------------|
+| `run`     | Start the server with given configuration file.    |
+| `help`    | Print the usage for the given command: `help run`  |
+| `verify`  | Verify the syntax of the given configuration file. |
+| `version` | Print the current version and build information.   |
+
+Most of the following command-line options map to [settings](/configuration/block/settings).
+
+## Basic Options
+
+| Argument             | Default      | Environment                | Description                                                                                                     |
+|:---------------------|:-------------|:---------------------------|:----------------------------------------------------------------------------------------------------------------|
+| `-f`                 | `couper.hcl` | `COUPER_FILE`              | Path to a Couper configuration file.                                                                            |
+| `-d`                 | `""`         | `COUPER_FILE_DIRECTORY`    | Path to a directory containing Couper configuration files.                                                      |
+| `-p`                 | `8080`       | `COUPER_DEFAULT_PORT`      | Sets the default port to the given value and does not override explicit `[host:port]` configurations from file. |
+| `-e`                 | `""`         | `COUPER_ENVIRONMENT`       | Name of environment in which Couper is currently running.                                                       |
+| `-watch`             | `false`      | `COUPER_WATCH`             | Watch for configuration file changes and reload on modifications.                                               |
+| `-watch-retries`     | `5`          | `COUPER_WATCH_RETRIES`     | Maximum retry count for configuration reloads which could not bind the configured port.                         |
+| `-watch-retry-delay` | `500ms`      | `COUPER_WATCH_RETRY_DELAY` | Delay [duration](#duration) before next attempt if an error occurs.                                             |
+
+> Note: Apart from `e` and `p`, these options **do not** map to [settings](/configuration/block/settings).
+
+> Note: Couper can be started with multiple `-f <file>` and `-d <dir>` arguments.
+
+Files in the `-d <dir>` are loaded in alphabetical order. Blocks and attributes defined in later files may override those defined earlier. See [Merging](/configuration/multiple-files) for details.
+
+{{< duration >}}
+
+## Example
+
+```shell
+$ tree
+.
+├── conf
+│ ├── a.hcl
+│ ├── b.hcl
+│ └── c.hcl
+├── devel.hcl
+└── global.hcl
+
+1 directory, 5 files
+
+$ couper run -f global.hcl -d conf/ -f devel.hcl -log-level=debug
+DEBU[0000] loaded files … […/global.hcl …/conf/a.hcl …/conf/b.hcl …/conf/c.hcl …/devel.hcl] …
+…
+```
+
+## Network Options
+
+| Argument        | Default | Environment Variable  | Description                                  |
+|:----------------|:--------|:----------------------|:---------------------------------------------|
+| `-bind-address` | `"*"`   | `COUPER_BIND_ADDRESS` | A comma-separated list of addresses to bind. |
+
+## Oberservation Options
+
+| Argument                         | Default             | Environment Variable                   | Description                                                                                                                                                                                                                                 |
+|:---------------------------------|:--------------------|:---------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-health-path`                   | `/healthz`          | `COUPER_HEALTH_PATH`                   | Path for health-check requests for all servers and ports.                                                                                                                                                                                   |
+| `-log-format`                    | `common`            | `COUPER_LOG_FORMAT`                    | Can be set to `json` output format. This is the default on containers.                                                                                                                                                                      |
+| `-log-level`                     | `info`              | `COUPER_LOG_LEVEL`                     | Set the log-level to one of: `info`, `panic`, `fatal`, `error`, `warn`, `debug`, `trace`.                                                                                                                                                   |
+| `-log-pretty`                    | `false`             | `COUPER_LOG_PRETTY`                    | Option for `json` log format which pretty prints with basic key coloring.                                                                                                                                                                   |
+| `-request-id-accept-from-header` | `""`                | `COUPER_REQUEST_ID_ACCEPT_FROM_HEADER` | Name of a client request HTTP header field that transports the `request.id` which Couper takes for logging and transport to the backend (if configured).                                                                                    |
+| `-request-id-backend-header`     | `Couper-Request-ID` | `COUPER_REQUEST_ID_BACKEND_HEADER`     | Name of a HTTP header field which Couper uses to transport the `request.id` to the backend.                                                                                                                                                 |
+| `-request-id-client-header`      | `Couper-Request-ID` | `COUPER_REQUEST_ID_CLIENT_HEADER`      | Name of a HTTP header field which Couper uses to transport the `request.id` to the client.                                                                                                                                                  |
+| `-request-id-format`             | `common`            | `COUPER_REQUEST_ID_FORMAT`             | If set to `uuid4` a [RFC 4122 UUID](https://www.rfc-editor.org/rfc/rfc4122) is used for `request.id` and related log fields.                                                                                                                |
+| `-server-timing-header`          | `false`             | `COUPER_SERVER_TIMING_HEADER`          | If enabled, Couper includes an additional [Server-Timing](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server-Timing) HTTP response header field detailing connection and transport relevant metrics for each backend request. |
+| `-beta-metrics`                  | `false`             | `COUPER_BETA_METRICS`                  | Option to enable the Prometheus [metrics](/observation/metrics) exporter.                                                                                                                                                                   |
+| `-beta-metrics-port`             | `9090`              | `COUPER_BETA_METRICS_PORT`             | Prometheus exporter listen port.                                                                                                                                                                                                            |
+| `-beta-service-name`             | `couper`            | `COUPER_BETA_SERVICE_NAME`             | The service name which applies to the `service_name` metric labels.                                                                                                                                                                         |
+
+### Oberservation Environment Variables
+
+The following environment variables have no corresponding command-line arguments or [settings](/configuration/block/settings):
+
+| Environment Variable                  | Default                                                | Description                                                                    |
+|:--------------------------------------|:-------------------------------------------------------|:-------------------------------------------------------------------------------|
+| `COUPER_ACCESS_LOG_REQUEST_HEADERS`   | `User-Agent,Accept,Referer`                            | A comma separated list of request header names whose values should be logged.  |
+| `COUPER_ACCESS_LOG_RESPONSE_HEADERS`  | `Cache-Control,Content-Encoding,Content-Type,Location` | A comma separated list of response header names whose values should be logged. |
+| `COUPER_ACCESS_LOG_TYPE_VALUE`        | `couper_access`                                        | Value for the log field `type`.                                                |
+| `COUPER_BACKEND_LOG_REQUEST_HEADERS`  | `User-Agent, Accept, Referer`                          | A comma separated list of request header names whose values should be logged.  |
+| `COUPER_BACKEND_LOG_RESPONSE_HEADERS` | `Cache-Control,Content-Encoding,Content-Type,Location` | A comma separated list of response header names whose values should be logged. |
+| `COUPER_BACKEND_LOG_TYPE_VALUE`       | `couper_backend`                                       | Value for the log field `type`.                                                |
+| `COUPER_LOG_PARENT_FIELD`             | `""`                                                   | An option for `json` log format to add all log fields as child properties.     |
+| `COUPER_LOG_TYPE_VALUE`               | `couper_daemon`                                        | Value for the runtime log field `type`.                                        |
+
+## TLS Options
+
+| Argument                | Default      | Environment Variable          | Description                                                                                                                                                     |
+|:------------------------|:-------------|:------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-ca-file`              | `""`         | `COUPER_CA_FILE`              | Option for adding the given PEM encoded CA certificate to the existing system certificate pool for all outgoing connections.                                    |
+| `-https-dev-proxy`      | `""`         | `COUPER_HTTPS_DEV_PROXY`      | List of TLS port mappings to define the TLS listen port and the target one. A self-signed certificate will be generated on the fly based on the given hostname. |
+| `-secure-cookies`       | `""`         | `COUPER_SECURE_COOKIES`       | If set to `strip`, the `Secure` flag is removed from all `Set-Cookie` HTTP header fields.                                                                       |
+
+## Profiling Options
+
+| Argument      | Default | Environment Variable | Description                   |
+|:--------------|:--------|:---------------------|:------------------------------|
+| `-pprof`      | `false` | `COUPER_PPROF`       | Enables profiling.            |
+| `-pprof-port` | `6060`  | `COUPER_PPROF_PORT`  | Port for profiling interface. |
+
+## Timing Environment Variables
+
+The following environment variables have no corresponding command-line arguments or [settings](/configuration/block/settings):
+
+| Environment Variable                | Default | Description                                                                                                 |
+|:------------------------------------|:--------|:------------------------------------------------------------------------------------------------------------|
+| `COUPER_TIMING_IDLE_TIMEOUT`        | `60s`   | The maximum amount of time to wait for the next request on client connections when keep-alives are enabled. |
+| `COUPER_TIMING_READ_HEADER_TIMEOUT` | `10s`   | The amount of time allowed to read client request headers.                                                  |
+| `COUPER_TIMING_SHUTDOWN_DELAY`      | `0`     | The amount of time the server is marked as unhealthy until calling server close finally.                    |
+| `COUPER_TIMING_SHUTDOWN_TIMEOUT`    | `0`     | The maximum amount of time allowed to close the server with all running connections.                        |
+
+## Surrounding Architecture Options
+
+| Argument                | Default      | Environment Variable          | Description                                                                                                                                                                                                                                     |
+|:------------------------|:-------------|:------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `-accept-forwarded-url` | `""`         | `COUPER_ACCEPT_FORWARDED_URL` | Which `X-Forwarded-*` request headers should be accepted to change the [request variables](/configuration/variables#request) `url`, `origin`, `protocol`, `host`, `port`. Comma-separated list of values. Valid values: `proto`, `host`, `port` |
+| `-no-proxy-from-env`    | `false`      | `COUPER_NO_PROXY_FROM_ENV`    | Disables the connect hop to configured [proxy via environment](https://godoc.org/golang.org/x/net/http/httpproxy).                                                                                                                              |
+| `-xfh`                  | `false`      | `COUPER_XFH`                  | Global configurations which uses the `X-Forwarded-Host` header instead of the request host.                                                                                                                                                     |

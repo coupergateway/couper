@@ -1,0 +1,20 @@
+baseURL = 'https://docs.couper.io/'
+languageCode = 'en-us'
+title = 'Couper Documentation'
+
+
+[markup]
+    [markup.highlight]
+        codeFences = true
+        guessSyntax = false
+        lineNos = false
+        noClasses = true
+        style = "monokai"
+    [markup.tableOfContents]
+        startLevel = 2
+        endLevel = 4
+        ordered = false
+    [markup.goldmark.renderer]
+        unsafe = true
+
+ignoreLogs = ['warning-goldmark-raw-html']

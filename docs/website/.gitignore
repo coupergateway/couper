@@ -1,8 +1,9 @@
 node_modules
-*.log*
-.nuxt
-.nitro
-.cache
-.output
-.env
-dist
+/public/
+/resources/
+.hugo_build.lock
+.cache/
+.tmp/
+dist/
+build/
+/assets/jsconfig.json
