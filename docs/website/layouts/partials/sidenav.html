@@ -6,17 +6,20 @@
         <div class="mb-4">
             <div class="font-semibold text-lg text-amber-500 mb-2">{{ .Title }}</div>
 
-            {{/* List regular pages in this section */}}
+            {{/* List regular pages in this section - skip pages with _build.render: false */}}
             {{ range .Pages.ByWeight }}
+                {{ if ne .RelPermalink "" }}
                 {{ $isActive := eq $currentPage.RelPermalink .RelPermalink }}
                 <div class="text-base pl-2 border-l-2{{ if $isActive }} border-sky-400 text-sky-500 rounded-r-md router-link-active router-link-exact-active{{ end }}">
                     <a href="{{ .RelPermalink }}">{{ .Title }}</a>
                 </div>
+                {{ end }}
             {{ end }}
 
             {{/* Check for subsections (like block/) */}}
             {{ range .Sections }}
                 <div class="pl-2 mt-2">
+                    {{/* Show subsection title as non-clickable heading (no link for Blocks index) */}}
                     <div class="font-semibold text-amber-500 mb-1">{{ .Title }}</div>
                     {{ range .Pages.ByWeight }}
                         {{ $isActive := eq $currentPage.RelPermalink .RelPermalink }}

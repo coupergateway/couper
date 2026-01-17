@@ -61,12 +61,23 @@ body {
     color: #a6adc8; /* Catppuccin Subtext0 */
 }
 
+
 .dark #dark-mode-toggle {
     color: #f9e2af; /* Catppuccin Yellow */
 }
 
 .dark #dark-mode-toggle:hover {
     background-color: #313244; /* Catppuccin Surface0 */
+}
+
+/* Light mode dark-mode toggle styling (bright sky blue) */
+#dark-mode-toggle {
+    color: #0284c7; /* Sky-600 */
+}
+
+#dark-mode-toggle:hover {
+    background-color: #e0f2fe; /* Sky-100 */
+    color: #0284c7; /* Sky-600 */
 }
 
 .dark .prose {
@@ -120,10 +131,24 @@ body {
     border-bottom-color: #313244; /* Catppuccin Surface0 */
 }
 
+.dark .ais-SearchBox-form {
+    background-color: transparent !important;
+}
+
 .dark .ais-SearchBox-input {
     background-color: #313244 !important; /* Catppuccin Surface0 */
     color: #cdd6f4 !important; /* Catppuccin Text */
     border-color: #a6e3a1 !important; /* Catppuccin Green */
+}
+
+.dark .ais-SearchBox-input:focus {
+    border-color: #89b4fa !important; /* Catppuccin Blue */
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.2) !important; /* Catppuccin Blue glow */
+}
+
+.dark .ais-SearchBox-input::placeholder {
+    color: #6c7086 !important; /* Catppuccin Overlay0 - dimmer text */
 }
 
 .dark .search-result {
@@ -135,6 +160,7 @@ body {
     background-color: #313244; /* Catppuccin Surface0 */
 }
 
+
 .dark nav a {
     color: #bac2de; /* Catppuccin Subtext1 */
 }
@@ -143,12 +169,26 @@ body {
     color: #f9e2af; /* Catppuccin Yellow */
 }
 
+/* Light mode navbar link styles */
+nav a {
+    color: #475569; /* Slate-600 */
+}
+
+nav a:hover {
+    color: #f59e0b; /* Amber-500 (matches existing highlight vibe) */
+}
+
+/* Search results dark mode - Catppuccin theme */
 .dark .bg-white {
     background-color: #181825; /* Catppuccin Mantle */
 }
 
 .dark .border-gray-200 {
     border-color: #45475a; /* Catppuccin Surface1 */
+}
+
+.dark .text-gray-600 {
+    color: #bac2de; /* Catppuccin Subtext1 */
 }
 
 .dark .text-gray-800,
@@ -164,9 +204,25 @@ body {
     color: #cba6f7; /* Catppuccin Mauve */
 }
 
+.dark .hover\:bg-sky-50:hover {
+    background-color: #313244 !important; /* Catppuccin Surface0 - darker hover */
+}
+
+.dark .hover\:text-gray-900:hover {
+    color: #cdd6f4 !important; /* Catppuccin Text */
+}
+
 /* Additional Catppuccin styling for search results */
+.dark .search-result {
+    max-width: 95%;
+}
+
 .dark .search-result em {
-    background-color: #f9e2af40; /* Catppuccin Yellow with transparency */
+    background-color: #f9e2af; /* Catppuccin Yellow */
+    color: #1e1e2e; /* Catppuccin Base for contrast */
+    font-style: normal;
+    padding: 0.125em 0.25em;
+    border-radius: 0.125em;
 }
 
 .dark .search-result .blockTitle {
@@ -175,6 +231,20 @@ body {
 
 .dark .blockTitle::before {
     background: #a6e3a1; /* Catppuccin Green */
+}
+
+.dark .search-result code {
+    font-weight: normal;
+    background: #45475a; /* Catppuccin Surface1 */
+    color: #f38ba8; /* Catppuccin Red */
+}
+
+.dark .search-result table {
+    table-layout: fixed;
+}
+
+.dark .search-result table td:first-child {
+    width: 35%;
 }
 
 /* Prose styles for content - manual since typography plugin doesn't work with TW v4 yet */

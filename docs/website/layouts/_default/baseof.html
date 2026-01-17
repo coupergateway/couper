@@ -49,13 +49,15 @@
             if (theme === 'dark') {
                 html.classList.add('dark');
                 html.classList.remove('light');
-                sunIcon.classList.add('hidden');
-                moonIcon.classList.remove('hidden');
+                // In dark mode, show sun icon (to switch to light mode)
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
             } else {
                 html.classList.remove('dark');
                 html.classList.add('light');
-                sunIcon.classList.remove('hidden');
-                moonIcon.classList.add('hidden');
+                // In light mode, show moon icon (to switch to dark mode)
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
             }
             localStorage.setItem('theme', theme);
         }
@@ -197,6 +199,7 @@
             widgetParams.container.innerHTML = filteredHits
                 .map(item => {
                     const name = item._highlightResult?.name?.value || item.name || '';
+                    const description = item._highlightResult?.description?.value || item.description || '';
                     const url = (item.url || '').toLowerCase();
 
                     // Filter attributes with matches
@@ -211,7 +214,7 @@
                         }));
 
                     const attrsHtml = matchedAttrs.length > 0
-                        ? `<table class="table-auto w-full">
+                        ? `<table class="table-auto w-full mt-2">
                             <tbody>
                                 ${matchedAttrs.map(attr => `
                                     <tr class="align-top">
@@ -229,7 +232,8 @@
                                 <div class="pl-8 pr-2 py-1 relative cursor-pointer hover:bg-sky-50 hover:text-gray-900">
                                     <div class="flex flex-col prose prose-slate prose-lg prose-code:bg-sky-100 search-result">
                                         <div class="flex flex-col m-2">
-                                            <h3 class="uppercase blockTitle pt-4 text-lg text-gray-800">${name}</h3>
+                                            <h3 class="uppercase blockTitle pt-4 text-lg text-gray-800 mb-1">${name}</h3>
+                                            ${description ? `<p class="text-sm text-gray-600 mb-2">${description}</p>` : ''}
                                             ${attrsHtml}
                                         </div>
                                     </div>
