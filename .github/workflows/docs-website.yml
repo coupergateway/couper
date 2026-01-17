@@ -20,14 +20,26 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 'lts/Hydrogen'
+          node-version: 'lts/Iron'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: 'latest'
+          extended: true
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
       - name: install algolia-client
         run: |
-          go get -u github.com/algolia/algoliasearch-client-go/v3@v3
+          go get -u github.com/algolia/algoliasearch-client-go/v3@latest
+          go mod tidy
           go mod vendor
 
       - name: generate block attributes from go source
@@ -38,14 +50,15 @@ jobs:
       - name: build website
         working-directory: docs/website
         run: |
-          npm ci && npm run build && npm run generate
+          pnpm install
+          hugo --minify
 
       - name: create artifact
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: |
-            docs/website/.output/public
+            docs/website/public
           if-no-files-found: warn
           retention-days: 2
 

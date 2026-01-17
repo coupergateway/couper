@@ -146,3 +146,53 @@ blockquote {
 main h2 code  {
 	font-size: 0.8em !important;
 }
+
+/* Algolia Search Styles */
+.ais-SearchBox-input {
+    background-color: white !important;
+}
+
+.ais-SearchBox-form {
+    width: 100%;
+}
+
+.ais-SearchBox-reset {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.search-result {
+    max-width: 95%;
+}
+
+.search-result em {
+    background-color: rgb(245 158 11);
+    font-style: normal;
+    padding: 0 0.2em;
+}
+
+.search-result code {
+    font-weight: normal;
+    background: #eee;
+}
+
+.search-result table {
+    table-layout: fixed;
+}
+
+.blockTitle::before {
+    content: "";
+    position: absolute;
+    top: 0.5em;
+    left: 2.2em;
+    height: 0.3em;
+    width: 2.6em;
+    background: rgb(101, 179, 46);
+}
+
+#search-results {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+

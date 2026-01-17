@@ -320,6 +320,13 @@ func main() {
 		return
 	}
 
+	// Clear existing index before rebuilding - done here after all file generation is complete
+	_, err := index.ClearObjects()
+	if err != nil {
+		panic(err)
+	}
+	println("SearchIndex cleared - rebuilding...")
+
 	// index non generated markdown
 	indexDirectory(configurationPath, "", processedFiles, index)
 	indexDirectory(docsBlockPath, "block", processedFiles, index)
