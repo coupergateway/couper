@@ -59,8 +59,7 @@ definitions {
 ```
 
 {{< attributes >}}
----
-values: [
+[
   {
     "default": "",
     "description": "Log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
@@ -92,8 +91,6 @@ values: [
     "type": "string"
   }
 ]
-
----
 {{< /attributes >}}
 
 {{< duration >}}
