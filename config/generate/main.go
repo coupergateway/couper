@@ -47,7 +47,7 @@ const (
 	searchIndex     = "docs"
 	searchClientKey = "SEARCH_CLIENT_API_KEY"
 
-	configurationPath = "docs/website/content/2.configuration"
+	configurationPath = "docs/website/content/configuration"
 	docsBlockPath     = configurationPath + "/block"
 
 	urlBasePath = "/configuration/"
