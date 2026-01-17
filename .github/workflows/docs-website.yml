@@ -9,7 +9,21 @@ jobs:
   docs:
     name: documentation-website
     runs-on: ubuntu-latest
+    if: github.event_name != 'push' || steps.docs_diff_run.outputs.changed == 'true'
     steps:
+
+      - name: Check docs/website diff
+        id: docs_diff
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - run: |
+          if git diff --quiet HEAD^ -- docs/website; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+        id: docs_diff_run
 
       - name: Set up Go 1.x
         uses: actions/setup-go@v5.0.0
@@ -67,6 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - docs
+    if: needs.docs.result == 'success'
     steps:
       - uses: actions/download-artifact@v4
         with:
