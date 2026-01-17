@@ -4,6 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ .Title }} | {{ .Site.Title }}</title>
+    <script>
+        // Set theme before page renders to prevent flash
+        (function() {
+            const saved = localStorage.getItem('theme');
+            const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.add('light');
+            }
+        })();
+    </script>
     {{ partial "head.html" . }}
 </head>
 <body class="antialiasing text-slate-700">
@@ -14,6 +26,89 @@
     </div>
 
     {{ partial "footer.html" . }}
+
+    <script>
+    // Dark Mode Toggle with System Preference Detection
+    (function() {
+        const toggle = document.getElementById('dark-mode-toggle');
+        const html = document.documentElement;
+        const sunIcon = toggle.querySelector('.sun-icon');
+        const moonIcon = toggle.querySelector('.moon-icon');
+
+        // Check for saved preference or system preference
+        function getThemePreference() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                return saved;
+            }
+            // Detect system preference
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                html.classList.add('dark');
+                html.classList.remove('light');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        // Initialize theme on page load
+        const currentTheme = getThemePreference();
+        setTheme(currentTheme);
+
+        // Toggle theme on button click
+        toggle.addEventListener('click', function() {
+            const newTheme = html.classList.contains('dark') ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            // Only auto-switch if user hasn't manually set a preference
+            if (!localStorage.getItem('theme')) {
+                setTheme(e.matches ? 'dark' : 'light');
+            }
+        });
+    })();
+    </script>
+
+    <script>
+    // Copy to clipboard functionality for code blocks
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('pre').forEach(function(pre) {
+            pre.addEventListener('click', function(e) {
+                // Only trigger if clicking the clipboard icon area
+                const rect = pre.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                // Check if click is in the top-right area where the icon is
+                if (clickX > rect.width - 60 && clickY < 60) {
+                    const code = pre.querySelector('code');
+                    if (code) {
+                        const text = code.textContent;
+                        navigator.clipboard.writeText(text).then(function() {
+                            pre.classList.add('copied');
+                            setTimeout(function() {
+                                pre.classList.remove('copied');
+                            }, 2000);
+                        }).catch(function(err) {
+                            console.error('Failed to copy code: ', err);
+                        });
+                    }
+                }
+            });
+        });
+    });
+    </script>
 
     <script>
     // Algolia Search Configuration

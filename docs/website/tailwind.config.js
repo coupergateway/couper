@@ -4,4 +4,5 @@ export default {
         './content/**/*.md',
         './layouts/**/*.html'
     ],
+    darkMode: 'class', // Enable class-based dark mode
 }

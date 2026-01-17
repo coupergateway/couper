@@ -9,7 +9,7 @@
             {{/* List regular pages in this section */}}
             {{ range .Pages.ByWeight }}
                 {{ $isActive := eq $currentPage.RelPermalink .RelPermalink }}
-                <div class="text-base pl-2 border-l-2{{ if $isActive }} border-sky-400 text-sky-500 rounded-r-md{{ end }}">
+                <div class="text-base pl-2 border-l-2{{ if $isActive }} border-sky-400 text-sky-500 rounded-r-md router-link-active router-link-exact-active{{ end }}">
                     <a href="{{ .RelPermalink }}">{{ .Title }}</a>
                 </div>
             {{ end }}
@@ -20,7 +20,7 @@
                     <div class="font-semibold text-amber-500 mb-1">{{ .Title }}</div>
                     {{ range .Pages.ByWeight }}
                         {{ $isActive := eq $currentPage.RelPermalink .RelPermalink }}
-                        <div class="text-base pl-2 border-l-2{{ if $isActive }} border-sky-400 text-sky-500 rounded-r-md{{ end }}">
+                        <div class="text-base pl-2 border-l-2{{ if $isActive }} border-sky-400 text-sky-500 rounded-r-md router-link-active router-link-exact-active{{ end }}">
                             <a href="{{ .RelPermalink }}">{{ .Title }}</a>
                         </div>
                     {{ end }}
