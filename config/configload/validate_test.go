@@ -1016,6 +1016,69 @@ func Test_validateBody(t *testing.T) {
 			 }`,
 			"",
 		},
+		{
+			"saml missing metadata source",
+			`server {}
+			 definitions {
+			   saml "foo" {
+			     sp_acs_url = "http://example.com/acs"
+			     sp_entity_id = "my-sp"
+			   }
+			 }`,
+			"configuration error",
+		},
+		{
+			"saml both metadata sources",
+			`server {}
+			 definitions {
+			   saml "foo" {
+			     idp_metadata_file = "testdata/idp-metadata.xml"
+			     idp_metadata_url = "https://idp.example.com/metadata"
+			     sp_acs_url = "http://example.com/acs"
+			     sp_entity_id = "my-sp"
+			   }
+			 }`,
+			"configuration error",
+		},
+		{
+			"saml backend with file",
+			`server {}
+			 definitions {
+			   saml "foo" {
+			     idp_metadata_file = "testdata/idp-metadata.xml"
+			     backend = "my-backend"
+			     sp_acs_url = "http://example.com/acs"
+			     sp_entity_id = "my-sp"
+			   }
+			 }`,
+			"configuration error",
+		},
+		{
+			"saml metadata_ttl with file",
+			`server {}
+			 definitions {
+			   saml "foo" {
+			     idp_metadata_file = "testdata/idp-metadata.xml"
+			     metadata_ttl = "1h"
+			     sp_acs_url = "http://example.com/acs"
+			     sp_entity_id = "my-sp"
+			   }
+			 }`,
+			"configuration error",
+		},
+		{
+			"saml metadata_max_stale with file",
+			`server {}
+			 definitions {
+			   saml "foo" {
+			     idp_metadata_file = "testdata/idp-metadata.xml"
+			     metadata_max_stale = "1h"
+			     sp_acs_url = "http://example.com/acs"
+			     sp_entity_id = "my-sp"
+			   }
+			 }`,
+			"configuration error",
+		},
 	}
 
 	for _, tt := range tests {
