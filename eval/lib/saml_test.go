@@ -14,6 +14,7 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/coupergateway/couper/accesscontrol/saml"
 	"github.com/coupergateway/couper/config/configload"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
@@ -55,7 +56,20 @@ func Test_SamlSsoURL(t *testing.T) {
 				h.Must(err)
 			}
 
+			// Create SAML providers from loaded config
+			providers := make(map[string]lib.SAMLConfigWithProvider)
+			for _, samlConf := range cf.Definitions.SAML {
+				provider, provErr := saml.NewStaticMetadata(samlConf.MetadataBytes)
+				h.Must(provErr)
+				providers[samlConf.Name] = lib.SAMLConfigWithProvider{
+					Config:   samlConf,
+					Provider: provider,
+				}
+			}
+
 			evalContext := cf.Context.Value(request.ContextType).(*eval.Context)
+			evalContext = evalContext.WithSAMLProviders(providers)
+
 			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
 			h.Must(err)
 			evalContext = evalContext.WithClientRequest(req)
@@ -173,7 +187,20 @@ func TestSamlSsoURLError(t *testing.T) {
 			couperConf.Context = ctx
 			defer cancel()
 
+			// Create SAML providers from loaded config
+			providers := make(map[string]lib.SAMLConfigWithProvider)
+			for _, samlConf := range couperConf.Definitions.SAML {
+				provider, provErr := saml.NewStaticMetadata(samlConf.MetadataBytes)
+				h.Must(provErr)
+				providers[samlConf.Name] = lib.SAMLConfigWithProvider{
+					Config:   samlConf,
+					Provider: provider,
+				}
+			}
+
 			evalContext := couperConf.Context.Value(request.ContextType).(*eval.Context)
+			evalContext = evalContext.WithSAMLProviders(providers)
+
 			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
 			h.Must(err)
 			evalContext = evalContext.WithClientRequest(req)

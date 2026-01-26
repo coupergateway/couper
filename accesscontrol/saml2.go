@@ -4,15 +4,14 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/xml"
 	"fmt"
 	"net/http"
 	"sort"
 
 	saml2 "github.com/russellhaering/gosaml2"
-	"github.com/russellhaering/gosaml2/types"
 	dsig "github.com/russellhaering/goxmldsig"
 
+	samlpkg "github.com/coupergateway/couper/accesscontrol/saml"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
@@ -20,14 +19,36 @@ import (
 )
 
 type Saml2 struct {
-	arrayAttributes []string
-	name            string
-	sp              *saml2.SAMLServiceProvider
+	arrayAttributes  []string
+	metadataProvider samlpkg.MetadataProvider
+	name             string
+	acsURL           string
+	spEntityID       string
 }
 
-func NewSAML2ACS(metadata []byte, name string, acsURL string, spEntityID string, arrayAttributes []string) (*Saml2, error) {
-	metadataEntity := &types.EntityDescriptor{}
-	if err := xml.Unmarshal(metadata, metadataEntity); err != nil {
+func NewSAML2ACS(provider samlpkg.MetadataProvider, name string, acsURL string, spEntityID string, arrayAttributes []string) (*Saml2, error) {
+	// Validate that we can get metadata initially
+	_, err := provider.Metadata()
+	if err != nil {
+		return nil, err
+	}
+
+	if arrayAttributes != nil {
+		sort.Strings(arrayAttributes)
+	}
+	samlObj := &Saml2{
+		arrayAttributes:  arrayAttributes,
+		metadataProvider: provider,
+		name:             name,
+		acsURL:           acsURL,
+		spEntityID:       spEntityID,
+	}
+	return samlObj, nil
+}
+
+func (s *Saml2) buildServiceProvider() (*saml2.SAMLServiceProvider, error) {
+	metadata, err := s.metadataProvider.Metadata()
+	if err != nil {
 		return nil, err
 	}
 
@@ -35,7 +56,7 @@ func NewSAML2ACS(metadata []byte, name string, acsURL string, spEntityID string,
 		Roots: []*x509.Certificate{},
 	}
 
-	for _, kd := range metadataEntity.IDPSSODescriptor.KeyDescriptors {
+	for _, kd := range metadata.IDPSSODescriptor.KeyDescriptors {
 		for idx, xcert := range kd.KeyInfo.X509Data.X509Certificates {
 			if xcert.Data == "" {
 				return nil, fmt.Errorf("metadata certificate(%d) must not be empty", idx)
@@ -54,21 +75,12 @@ func NewSAML2ACS(metadata []byte, name string, acsURL string, spEntityID string,
 		}
 	}
 
-	sp := &saml2.SAMLServiceProvider{
-		AssertionConsumerServiceURL: acsURL,
-		AudienceURI:                 spEntityID,
+	return &saml2.SAMLServiceProvider{
+		AssertionConsumerServiceURL: s.acsURL,
+		AudienceURI:                 s.spEntityID,
 		IDPCertificateStore:         &certStore,
-		IdentityProviderIssuer:      metadataEntity.EntityID,
-	}
-	if arrayAttributes != nil {
-		sort.Strings(arrayAttributes)
-	}
-	samlObj := &Saml2{
-		arrayAttributes: arrayAttributes,
-		name:            name,
-		sp:              sp,
-	}
-	return samlObj, nil
+		IdentityProviderIssuer:      metadata.EntityID,
+	}, nil
 }
 
 func contains(s []string, searchterm string) bool {
@@ -82,17 +94,22 @@ func (s *Saml2) Validate(req *http.Request) error {
 		return errors.Saml.With(err)
 	}
 
-	origin := eval.NewRawOrigin(req.URL)
-	absAcsURL, err := lib.AbsoluteURL(s.sp.AssertionConsumerServiceURL, origin)
+	sp, err := s.buildServiceProvider()
 	if err != nil {
 		return errors.Saml.With(err)
 	}
-	s.sp.AssertionConsumerServiceURL = absAcsURL
+
+	origin := eval.NewRawOrigin(req.URL)
+	absAcsURL, err := lib.AbsoluteURL(sp.AssertionConsumerServiceURL, origin)
+	if err != nil {
+		return errors.Saml.With(err)
+	}
+	sp.AssertionConsumerServiceURL = absAcsURL
 
 	encodedResponse := req.FormValue("SAMLResponse")
 	req.ContentLength = 0
 
-	assertionInfo, err := s.sp.RetrieveAssertionInfo(encodedResponse)
+	assertionInfo, err := sp.RetrieveAssertionInfo(encodedResponse)
 	if err != nil {
 		return errors.Saml.With(err)
 	}
