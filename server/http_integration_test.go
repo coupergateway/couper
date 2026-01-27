@@ -3811,6 +3811,136 @@ func TestJWKsMaxStale(t *testing.T) {
 	}
 }
 
+func TestSAMLMetadataFromURL(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	cfg := `
+	  server {
+	    endpoint "/" {
+	      response {
+	        headers = {
+	          Location = saml_sso_url("test")
+	        }
+	        status = 302
+	      }
+	    }
+	  }
+	  definitions {
+	    saml "test" {
+	      idp_metadata_url = "${env.COUPER_TEST_BACKEND_ADDR}/saml/metadata"
+	      sp_acs_url = "http://localhost:8080/saml/acs"
+	      sp_entity_id = "test-sp"
+	      backend {
+	        origin = env.COUPER_TEST_BACKEND_ADDR
+	      }
+	    }
+	  }
+	`
+
+	shutdown, _, err := newCouperWithBytes([]byte(cfg), helper)
+	defer shutdown()
+	helper.Must(err)
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusFound {
+		t.Fatalf("expected status %d, got: %d", http.StatusFound, res.StatusCode)
+	}
+
+	location := res.Header.Get("Location")
+	if !strings.HasPrefix(location, "http://localhost:8083/simplesaml/saml2/idp/SSOService.php?") {
+		t.Fatalf("expected SSO URL to start with IdP SSO service, got: %s", location)
+	}
+}
+
+func TestSAMLMetadataMaxStale(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	cfg := `
+	  server {
+	    endpoint "/" {
+	      response {
+	        headers = {
+	          Location = saml_sso_url("stale")
+	        }
+	        status = 302
+	      }
+	    }
+	  }
+	  definitions {
+	    saml "stale" {
+	      idp_metadata_url = "${env.COUPER_TEST_BACKEND_ADDR}/saml/metadata"
+	      metadata_ttl = "3s"
+	      metadata_max_stale = "2s"
+	      sp_acs_url = "http://localhost:8080/saml/acs"
+	      sp_entity_id = "test-sp"
+	      backend {
+	        origin = env.COUPER_TEST_BACKEND_ADDR
+	        set_request_headers = {
+	          Self-Destruct: ` + fmt.Sprint(time.Now().Add(2*time.Second).Unix()) + `
+	        }
+	      }
+	    }
+	  }
+	`
+
+	shutdown, hook, err := newCouperWithBytes([]byte(cfg), helper)
+	defer shutdown()
+	helper.Must(err)
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
+	helper.Must(err)
+
+	// A) Initial request should succeed with metadata from URL
+	res, err := client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusFound {
+		message := getFirstAccessLogMessage(hook)
+		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusFound, res.StatusCode, message)
+	}
+
+	location := res.Header.Get("Location")
+	if !strings.HasPrefix(location, "http://localhost:8083/simplesaml/saml2/idp/SSOService.php?") {
+		t.Fatalf("A) expected SSO URL, got: %s", location)
+	}
+
+	time.Sleep(3 * time.Second)
+	// TTL 3s expired, backend is now failing, but should respond with stale metadata
+
+	// B) Request within max_stale window should still succeed
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusFound {
+		message := getFirstAccessLogMessage(hook)
+		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusFound, res.StatusCode, message)
+	}
+
+	time.Sleep(3 * time.Second)
+	// max_stale time (2s) also exhausted -> should fail
+
+	// C) Request after max_stale should fail
+	res, err = client.Do(req)
+	helper.Must(err)
+
+	time.Sleep(time.Second)
+	if res.StatusCode != http.StatusInternalServerError {
+		message := getFirstAccessLogMessage(hook)
+		t.Fatalf("C) expected status %d, got: %d (%s)", http.StatusInternalServerError, res.StatusCode, message)
+	}
+}
+
 func TestJWTAccessControlSourceConfig(t *testing.T) {
 	helper := test.New(t)
 	couperConfig, err := configload.LoadFile("testdata/integration/config/05_couper.hcl", "")
