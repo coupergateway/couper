@@ -15,6 +15,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/coupergateway/couper/accesscontrol/saml"
+	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/configload"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
@@ -22,6 +23,22 @@ import (
 	"github.com/coupergateway/couper/eval/lib"
 	"github.com/coupergateway/couper/internal/test"
 )
+
+// createSAMLProviders creates SAML providers from loaded config for testing.
+func createSAMLProviders(t *testing.T, samlConfigs []*config.SAML) map[string]lib.SAMLConfigWithProvider {
+	t.Helper()
+	h := test.New(t)
+	providers := make(map[string]lib.SAMLConfigWithProvider)
+	for _, samlConf := range samlConfigs {
+		provider, err := saml.NewStaticMetadata(samlConf.MetadataBytes)
+		h.Must(err)
+		providers[samlConf.Name] = lib.SAMLConfigWithProvider{
+			Config:   samlConf,
+			Provider: provider,
+		}
+	}
+	return providers
+}
 
 func Test_SamlSsoURL(t *testing.T) {
 	tests := []struct {
@@ -56,17 +73,7 @@ func Test_SamlSsoURL(t *testing.T) {
 				h.Must(err)
 			}
 
-			// Create SAML providers from loaded config
-			providers := make(map[string]lib.SAMLConfigWithProvider)
-			for _, samlConf := range cf.Definitions.SAML {
-				provider, provErr := saml.NewStaticMetadata(samlConf.MetadataBytes)
-				h.Must(provErr)
-				providers[samlConf.Name] = lib.SAMLConfigWithProvider{
-					Config:   samlConf,
-					Provider: provider,
-				}
-			}
-
+			providers := createSAMLProviders(subT, cf.Definitions.SAML)
 			evalContext := cf.Context.Value(request.ContextType).(*eval.Context)
 			evalContext = evalContext.WithSAMLProviders(providers)
 
@@ -187,17 +194,7 @@ func TestSamlSsoURLError(t *testing.T) {
 			couperConf.Context = ctx
 			defer cancel()
 
-			// Create SAML providers from loaded config
-			providers := make(map[string]lib.SAMLConfigWithProvider)
-			for _, samlConf := range couperConf.Definitions.SAML {
-				provider, provErr := saml.NewStaticMetadata(samlConf.MetadataBytes)
-				h.Must(provErr)
-				providers[samlConf.Name] = lib.SAMLConfigWithProvider{
-					Config:   samlConf,
-					Provider: provider,
-				}
-			}
-
+			providers := createSAMLProviders(subT, couperConf.Definitions.SAML)
 			evalContext := couperConf.Context.Value(request.ContextType).(*eval.Context)
 			evalContext = evalContext.WithSAMLProviders(providers)
 

@@ -19,12 +19,43 @@ required _label_.
 
 A complete example can be found [here](https://github.com/coupergateway/couper-examples/tree/master/saml).
 
+### Using a metadata file
+
 ```hcl
 saml "SSO" {
   idp_metadata_file = "idp-metadata.xml"
   sp_entity_id = env.SP_ENTITY_ID
   sp_acs_url = "http://localhost:8080/saml/acs"
   array_attributes = ["eduPersonAffiliation"] # or ["memberOf"]
+}
+```
+
+### Using a metadata URL with automatic refresh
+
+```hcl
+saml "SSO" {
+  idp_metadata_url = "https://idp.example.com/metadata"
+  metadata_ttl = "1h"
+  metadata_max_stale = "1h"
+  sp_entity_id = env.SP_ENTITY_ID
+  sp_acs_url = "http://localhost:8080/saml/acs"
+  array_attributes = ["eduPersonAffiliation"]
+}
+```
+
+### Using a metadata URL with a custom backend
+
+```hcl
+saml "SSO" {
+  idp_metadata_url = "https://idp.example.com/metadata"
+  metadata_ttl = "30m"
+  sp_entity_id = env.SP_ENTITY_ID
+  sp_acs_url = "http://localhost:8080/saml/acs"
+
+  backend {
+    origin = "https://idp.example.com"
+    timeout = "10s"
+  }
 }
 ```
 
@@ -39,15 +70,39 @@ saml "SSO" {
   },
   {
     "default": "",
+    "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for IdP metadata requests. Mutually exclusive with `backend` block.",
+    "name": "backend",
+    "type": "string"
+  },
+  {
+    "default": "",
     "description": "Log fields for [custom logging](/observation/logging#custom-logging). Inherited by nested blocks.",
     "name": "custom_log_fields",
     "type": "object"
   },
   {
     "default": "",
-    "description": "File reference to the Identity Provider metadata XML file.",
+    "description": "File reference to the Identity Provider metadata XML file. Mutually exclusive with `idp_metadata_url`.",
     "name": "idp_metadata_file",
     "type": "string"
+  },
+  {
+    "default": "",
+    "description": "URL to fetch the Identity Provider metadata XML. Mutually exclusive with `idp_metadata_file`.",
+    "name": "idp_metadata_url",
+    "type": "string"
+  },
+  {
+    "default": "\"1h\"",
+    "description": "Time period the cached IdP metadata stays valid after its TTL has passed.",
+    "name": "metadata_max_stale",
+    "type": "duration"
+  },
+  {
+    "default": "\"1h\"",
+    "description": "Time period the IdP metadata stays valid and may be cached.",
+    "name": "metadata_ttl",
+    "type": "duration"
   },
   {
     "default": "",
@@ -72,6 +127,10 @@ Some information from the assertion consumed at the ACS endpoint is provided in 
 
 {{< blocks >}}
 [
+  {
+    "description": "Configures a [backend](/configuration/block/backend) for IdP metadata requests. Mutually exclusive with `backend` attribute.",
+    "name": "backend"
+  },
   {
     "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"

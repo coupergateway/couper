@@ -2,6 +2,8 @@ package saml
 
 import (
 	"testing"
+
+	"github.com/russellhaering/gosaml2/types"
 )
 
 func TestStaticMetadata(t *testing.T) {
@@ -75,4 +77,46 @@ func TestStaticMetadata_EmptyMetadata(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for empty metadata")
 	}
+}
+
+func TestSyncedMetadata_Unmarshal(t *testing.T) {
+	validMetadata := []byte(`<?xml version="1.0"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example.com">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example.com/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`)
+
+	t.Run("valid XML metadata", func(t *testing.T) {
+		sm := &SyncedMetadata{}
+		result, err := sm.Unmarshal(validMetadata)
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		descriptor, ok := result.(*types.EntityDescriptor)
+		if !ok {
+			t.Fatal("expected *types.EntityDescriptor")
+		}
+
+		if descriptor.EntityID != "https://idp.example.com" {
+			t.Errorf("expected entityID %q, got %q", "https://idp.example.com", descriptor.EntityID)
+		}
+	})
+
+	t.Run("invalid XML", func(t *testing.T) {
+		sm := &SyncedMetadata{}
+		_, err := sm.Unmarshal([]byte("not xml"))
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		sm := &SyncedMetadata{}
+		_, err := sm.Unmarshal([]byte(""))
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
 }
