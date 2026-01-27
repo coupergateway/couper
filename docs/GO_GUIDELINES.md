@@ -429,6 +429,49 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 ```
 
+### Minimize Inline Comments
+
+Let code be self-documenting through clear method and variable names. Only add inline comments for complex logic, non-obvious behavior, or important context that can't be expressed in code:
+
+```go
+// Bad - comments state the obvious
+func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
+    // Get data from synced JSON
+    data, err := s.syncedJSON.Data()
+    // Try to convert to EntityDescriptor
+    descriptor, ok := data.(*types.EntityDescriptor)
+    // If conversion failed, return error
+    if !ok {
+        return nil, fmt.Errorf("invalid metadata: %w", err)
+    }
+    // Return the descriptor
+    return descriptor, nil
+}
+
+// Good - comment explains non-obvious behavior
+func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
+    data, err := s.syncedJSON.Data()
+    // Ignore backend errors as long as we still get cached (stale) data.
+    descriptor, ok := data.(*types.EntityDescriptor)
+    if !ok {
+        return nil, fmt.Errorf("received no valid SAML metadata: %#v, %w", data, err)
+    }
+    return descriptor, nil
+}
+```
+
+When to comment:
+- **Non-obvious behavior**: Why something works a certain way, not what it does
+- **Workarounds**: Temporary fixes or compatibility hacks with issue references
+- **Algorithm explanations**: Complex logic that isn't clear from reading the code
+- **External constraints**: Requirements from specs, protocols, or third-party systems
+
+When not to comment:
+- Variable declarations with descriptive names
+- Simple control flow (`if err != nil { return err }`)
+- Standard patterns that Go developers recognize
+- Anything the code already clearly expresses
+
 ## Changelog
 
 All new features and changes targeting the master branch must be documented in [CHANGELOG.md](/CHANGELOG.md).

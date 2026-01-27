@@ -61,12 +61,10 @@ func NewSyncedMetadata(ctx context.Context, uri string, ttl string, maxStale str
 // Metadata returns the current cached entity descriptor.
 func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
 	data, err := s.syncedJSON.Data()
-	if err != nil {
-		return nil, err
-	}
+	// Ignore backend errors as long as we still get cached (stale) data.
 	descriptor, ok := data.(*types.EntityDescriptor)
 	if !ok {
-		return nil, fmt.Errorf("unexpected metadata type: %T", data)
+		return nil, fmt.Errorf("received no valid SAML metadata: %#v, %w", data, err)
 	}
 	return descriptor, nil
 }
