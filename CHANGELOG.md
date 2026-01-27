@@ -6,6 +6,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 
 * **Added**
   * [`beta_rate_limiter` access control](https://docs.couper.io/configuration/block/rate_limiter) for fixed/sliding window rate limiting ([#881](https://github.com/coupergateway/couper/pull/881))
+  * SAML IdP metadata auto-update: [`idp_metadata_url`](https://docs.couper.io/configuration/block/saml) attribute to fetch IdP metadata from a URL with automatic refresh via `metadata_ttl` and `metadata_max_stale` attributes ([#912](https://github.com/coupergateway/couper/pull/912))
 
 * **Dependencies**
   * build with go 1.25 ([#862](https://github.com/coupergateway/couper/pull/862))
