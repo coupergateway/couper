@@ -245,10 +245,10 @@ func jwks(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
+	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
-		file.Close()
 		return
 	}
 
@@ -274,10 +274,10 @@ func samlMetadata(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
-		file.Close()
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
