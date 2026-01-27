@@ -13,6 +13,7 @@ import (
 
 var (
 	_ BackendInitialization = &SAML{}
+	_ BackendReference      = &SAML{}
 	_ Body                  = &SAML{}
 	_ Inline                = &SAML{}
 )
@@ -89,10 +90,6 @@ func (s *SAML) check() error {
 		if s.MetadataMaxStale != "" {
 			return fmt.Errorf("metadata_max_stale is only valid with idp_metadata_url")
 		}
-	}
-
-	if s.IdpMetadataURL != "" && s.BackendName != "" && s.Backend == nil {
-		return fmt.Errorf("backend must be either a block or an attribute")
 	}
 
 	return nil

@@ -3,6 +3,7 @@ package saml
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -60,9 +61,12 @@ func NewSyncedMetadata(ctx context.Context, uri string, ttl string, maxStale str
 // Metadata returns the current cached entity descriptor.
 func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
 	data, err := s.syncedJSON.Data()
+	if err != nil {
+		return nil, err
+	}
 	descriptor, ok := data.(*types.EntityDescriptor)
 	if !ok {
-		return nil, err
+		return nil, fmt.Errorf("unexpected metadata type: %T", data)
 	}
 	return descriptor, nil
 }
