@@ -428,3 +428,12 @@ func (b *Backend) RoundTrip(req *http.Request) (*http.Response, error) {
     // ...
 }
 ```
+
+## Changelog
+
+All new features and changes targeting the master branch must be documented in [CHANGELOG.md](/CHANGELOG.md).
+
+- **Unreleased section**: New features and changes go in the `[Unreleased]` section at the top
+- **Categories**: Use `Added`, `Changed`, `Fixed`, `Removed`, or `Dependencies` subsections
+- **Format**: Include a brief description with a link to relevant documentation and the PR number
+- **Example**: `* Feature description ([docs link](https://docs.couper.io/...)) ([#123](https://github.com/coupergateway/couper/pull/123))`
