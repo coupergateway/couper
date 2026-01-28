@@ -2,7 +2,7 @@ name: 'go test-coverage report'
 on:
   push:
     branches:
-      - master
+      - main
     tags-ignore:
       - '**' # Do not execute on any tag
   pull_request:

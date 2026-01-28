@@ -2,7 +2,7 @@ name: 'go-test-build'
 
 on:
   push:
-    branches: [ master, release.* ]
+    branches: [ main, release.* ]
     tags:
       - v1.*
     paths-ignore:

@@ -3,7 +3,7 @@ name: Edge Release
 on:
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - '**/README.md'
       - '.github/workflows/weekly-fuzz.yml'
@@ -83,7 +83,7 @@ jobs:
           overwrite: true
           pre_command: |
             # Ensure the edge release exists (will be created as pre-release)
-            gh release view edge || gh release create edge --prerelease --title "Edge Release" --notes "Automated edge builds from the master branch. These binaries are built from the latest commit and may be unstable. Intended for use in DevContainers."
+            gh release view edge || gh release create edge --prerelease --title "Edge Release" --notes "Automated edge builds from the main branch. These binaries are built from the latest commit and may be unstable. Intended for use in DevContainers."
           post_command: |
             echo "linux_${{ matrix.goarch }}=$SHA256_SUM" >> $GITHUB_OUTPUT
         env:
