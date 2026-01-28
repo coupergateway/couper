@@ -1,0 +1,8 @@
+{{ $tw := resources.Get "css/tailwind.css" | css.PostCSS }}
+<link rel="stylesheet" href="{{ $tw.RelPermalink }}">
+
+<!-- Algolia InstantSearch -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/instantsearch.css@8/themes/satellite-min.css">
+<script src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/instantsearch.js@4"></script>
+

@@ -1,14 +1,413 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    html:not(.light) {
+        color-scheme: dark;
+    }
+}
 
 html {
     height: 100%;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-family: couper, ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
     min-height: 100%;
+}
+
+/* Header shadow - light mode */
+.headerShadow {
+    box-shadow: rgb(203 203 203) 0 5px 10px 0;
+}
+
+/* Dark mode color overrides - Catppuccin Mocha theme */
+.dark body {
+    background-color: #1e1e2e; /* Catppuccin Base */
+    color: #cdd6f4; /* Catppuccin Text */
+}
+
+.dark .headerShadow {
+    background-color: #181825; /* Catppuccin Mantle */
+    box-shadow: rgb(0 0 0 / 50%) 0 5px 10px 0;
+}
+
+.dark header h1 {
+    color: #cdd6f4; /* Catppuccin Text */
+}
+
+.dark header svg {
+    fill: #cdd6f4; /* Catppuccin Text */
+}
+
+.dark header a:hover svg {
+    fill: #89b4fa; /* Catppuccin Blue on hover */
+}
+
+.dark .text-amber-500 {
+    color: #f9e2af; /* Catppuccin Yellow */
+}
+
+.dark .border-sky-400 {
+    border-color: #89b4fa; /* Catppuccin Blue */
+}
+
+.dark .text-sky-500 {
+    color: #89b4fa; /* Catppuccin Blue */
+}
+
+.dark footer {
+    color: #a6adc8; /* Catppuccin Subtext0 */
+}
+
+
+.dark #dark-mode-toggle {
+    color: #f9e2af; /* Catppuccin Yellow */
+}
+
+.dark #dark-mode-toggle:hover {
+    background-color: #313244; /* Catppuccin Surface0 */
+}
+
+/* Light mode dark-mode toggle styling (bright sky blue) */
+#dark-mode-toggle {
+    color: #0284c7; /* Sky-600 */
+}
+
+#dark-mode-toggle:hover {
+    background-color: #e0f2fe; /* Sky-100 */
+    color: #0284c7; /* Sky-600 */
+}
+
+.dark .prose {
+    color: #cdd6f4; /* Catppuccin Text */
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4 {
+    color: #cba6f7; /* Catppuccin Mauve */
+}
+
+.dark .prose a {
+    color: #89b4fa; /* Catppuccin Blue */
+}
+
+.dark .prose a:hover {
+    color: #f9e2af; /* Catppuccin Yellow */
+}
+
+.dark .prose code {
+    background-color: #45475a; /* Catppuccin Surface1 - brighter than Surface0 */
+    color: #f38ba8; /* Catppuccin Red */
+    padding: 0.125em 0.25em;
+    border-radius: 0.25rem;
+}
+
+.dark .prose pre {
+    background-color: #313244; /* Catppuccin Surface0 - brighter than Mantle */
+    border: 1px solid #585b70; /* Catppuccin Surface2 - brighter border */
+}
+
+.dark .prose pre code {
+    background-color: transparent;
+    color: #cdd6f4; /* Catppuccin Text */
+    padding: 0;
+}
+
+.dark .prose blockquote {
+    background-color: #313244; /* Catppuccin Surface0 */
+    border-left-color: #cba6f7; /* Catppuccin Mauve */
+    color: #cdd6f4; /* Catppuccin Text */
+}
+
+.dark .prose table thead {
+    border-bottom-color: #45475a; /* Catppuccin Surface1 */
+}
+
+.dark .prose table tbody tr {
+    border-bottom-color: #313244; /* Catppuccin Surface0 */
+}
+
+.dark .ais-SearchBox-form {
+    background-color: transparent !important;
+}
+
+.dark .ais-SearchBox-input {
+    background-color: #313244 !important; /* Catppuccin Surface0 */
+    color: #cdd6f4 !important; /* Catppuccin Text */
+    border-color: #a6e3a1 !important; /* Catppuccin Green */
+}
+
+.dark .ais-SearchBox-input:focus {
+    border-color: #89b4fa !important; /* Catppuccin Blue */
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.2) !important; /* Catppuccin Blue glow */
+}
+
+.dark .ais-SearchBox-input::placeholder {
+    color: #6c7086 !important; /* Catppuccin Overlay0 - dimmer text */
+}
+
+.dark .search-result {
+    background-color: #181825; /* Catppuccin Mantle */
+    border-color: #45475a; /* Catppuccin Surface1 */
+}
+
+.dark .search-result:hover {
+    background-color: #313244; /* Catppuccin Surface0 */
+}
+
+
+.dark nav a {
+    color: #bac2de; /* Catppuccin Subtext1 */
+}
+
+.dark nav a:hover {
+    color: #f9e2af; /* Catppuccin Yellow */
+}
+
+/* Light mode navbar link styles */
+nav a {
+    color: #475569; /* Slate-600 */
+}
+
+nav a:hover {
+    color: #f59e0b; /* Amber-500 (matches existing highlight vibe) */
+}
+
+/* Search results dark mode - Catppuccin theme */
+.dark .bg-white {
+    background-color: #181825; /* Catppuccin Mantle */
+}
+
+.dark .border-gray-200 {
+    border-color: #45475a; /* Catppuccin Surface1 */
+}
+
+.dark .text-gray-600 {
+    color: #bac2de; /* Catppuccin Subtext1 */
+}
+
+.dark .text-gray-800,
+.dark .text-gray-900 {
+    color: #cdd6f4; /* Catppuccin Text */
+}
+
+.dark .text-sky-600 {
+    color: #89b4fa; /* Catppuccin Blue */
+}
+
+.dark .text-purple-600 {
+    color: #cba6f7; /* Catppuccin Mauve */
+}
+
+.dark .hover\:bg-sky-50:hover {
+    background-color: #313244 !important; /* Catppuccin Surface0 - darker hover */
+}
+
+.dark .hover\:text-gray-900:hover {
+    color: #cdd6f4 !important; /* Catppuccin Text */
+}
+
+/* Additional Catppuccin styling for search results */
+.dark .search-result {
+    max-width: 95%;
+}
+
+.dark .search-result em {
+    background-color: #f9e2af; /* Catppuccin Yellow */
+    color: #1e1e2e; /* Catppuccin Base for contrast */
+    font-style: normal;
+    padding: 0.125em 0.25em;
+    border-radius: 0.125em;
+}
+
+.dark .search-result .blockTitle {
+    color: #cba6f7; /* Catppuccin Mauve */
+}
+
+.dark .blockTitle::before {
+    background: #a6e3a1; /* Catppuccin Green */
+}
+
+.dark .search-result code {
+    font-weight: normal;
+    background: #45475a; /* Catppuccin Surface1 */
+    color: #f38ba8; /* Catppuccin Red */
+}
+
+.dark .search-result table {
+    table-layout: fixed;
+}
+
+.dark .search-result table td:first-child {
+    width: 35%;
+}
+
+/* Prose styles for content - manual since typography plugin doesn't work with TW v4 yet */
+.prose {
+    color: var(--color-slate-700);
+}
+
+.prose h1 {
+    font-size: 2.25em;
+    margin-top: 0;
+    margin-bottom: 0.8888889em;
+    line-height: 1.1111111;
+    font-weight: 800;
+}
+
+.prose h2 {
+    font-size: 1.5em;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    line-height: 1.3333333;
+    font-weight: 700;
+}
+
+.prose h3 {
+    font-size: 1.25em;
+    margin-top: 1.6em;
+    margin-bottom: 0.6em;
+    line-height: 1.6;
+    font-weight: 600;
+}
+
+.prose h4 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    line-height: 1.5;
+    font-weight: 600;
+}
+
+.prose p {
+    margin-top: 1.25em;
+    margin-bottom: 1.25em;
+}
+
+.prose a {
+    color: #0284c7;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.prose a:hover {
+    color: #f59e0b;
+}
+
+.prose strong {
+    font-weight: 600;
+}
+
+.prose ul, .prose ol {
+    margin-top: 1.25em;
+    margin-bottom: 1.25em;
+    padding-left: 1.625em;
+}
+
+.prose li {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.prose table {
+    width: 100%;
+    table-layout: auto;
+    text-align: left;
+    margin-top: 2em;
+    margin-bottom: 2em;
+    font-size: 0.875em;
+    line-height: 1.7142857;
+}
+
+.prose thead {
+    border-bottom-width: 1px;
+    border-bottom-color: #cbd5e1;
+}
+
+.prose thead th {
+    font-weight: 600;
+    vertical-align: bottom;
+    padding-right: 0.5714286em;
+    padding-bottom: 0.5714286em;
+    padding-left: 0.5714286em;
+}
+
+.prose tbody tr {
+    border-bottom-width: 1px;
+    border-bottom-color: #e2e8f0;
+}
+
+.prose tbody tr:last-child {
+    border-bottom-width: 0;
+}
+
+.prose tbody td {
+    vertical-align: baseline;
+    padding: 0.5714286em;
+}
+
+.prose code {
+    font-weight: 600;
+    font-size: 0.875em;
+    background-color: #e0e7ff; /* Light mode background */
+    color: #0284c7;
+    padding: 0.125em 0.25em;
+    border-radius: 0.25rem;
+}
+
+.prose pre {
+    overflow-x: auto;
+    font-size: 0.875em;
+    line-height: 1.5rem; /* Updated from 1.7142857 */
+    margin-top: 1.7142857em;
+    margin-bottom: 1.7142857em;
+    border-radius: 0.375rem;
+    padding: 0.8571429em 1.1428571em;
+    background-color: #f8fafc; /* Light mode background */
+    position: relative;
+    pointer-events: none;
+}
+
+.prose pre code {
+    font-weight: inherit;
+    font-size: inherit;
+    background-color: transparent;
+    padding: 0;
+}
+
+/* Copy to clipboard button for code blocks */
+pre::before {
+    content: "📋";
+    position: absolute;
+    right: 1rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+pre:hover::before {
+    filter: brightness(1.2);
+}
+
+pre.copied::after {
+    font-family: sans-serif;
+    content: "Copied!  ✅";
+    position: absolute;
+    background: #475569;
+    top: 0.5rem;
+    right: 1rem;
+    padding: 2px 10px;
+    border-radius: 5px;
+}
+
+/* Dark mode copy notification */
+.dark pre.copied::after {
+    background: #45475a; /* Catppuccin Surface1 */
+    color: #cdd6f4; /* Catppuccin Text */
 }
 
 /* Remove backticks around inline code */
@@ -24,3 +423,113 @@ blockquote {
 main h2 code  {
 	font-size: 0.8em !important;
 }
+
+/* Algolia Search Styles */
+.ais-SearchBox-input {
+    background-color: white !important;
+}
+
+.ais-SearchBox-form {
+    width: 100%;
+}
+
+.ais-SearchBox-reset {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.search-result {
+    max-width: 95%;
+}
+
+.search-result em {
+    background-color: rgb(245 158 11);
+    font-style: normal;
+    padding: 0 0.2em;
+}
+
+.search-result code {
+    font-weight: normal;
+    background: #eee;
+}
+
+.search-result table {
+    table-layout: fixed;
+}
+
+.blockTitle::before {
+    content: "";
+    position: absolute;
+    top: 0.5em;
+    left: 2.2em;
+    height: 0.3em;
+    width: 2.6em;
+    background: rgb(101, 179, 46);
+}
+
+#search-results {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Navigation active link styles (matching previous Nuxt router-link-active behavior) */
+.router-link-active,
+.router-link-exact-active {
+    font-weight: 500;
+}
+
+.router-link-active a,
+.router-link-exact-active a {
+    color: #0284c7;
+}
+
+/* Dark mode navigation active links */
+.dark .router-link-active a,
+.dark .router-link-exact-active a {
+    color: #89b4fa; /* Catppuccin Blue */
+}
+
+/* Table of Contents styling */
+.toc ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.toc li {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.toc a {
+    color: #475569;
+    text-decoration: none;
+}
+
+.toc a:hover {
+    color: #0284c7;
+}
+
+.toc code {
+    font-size: 0.875em;
+    font-weight: 600;
+    background-color: #e0e7ff;
+    color: #0284c7;
+    padding: 0.125em 0.25em;
+    border-radius: 0.25rem;
+}
+
+/* Dark mode ToC */
+.dark .toc a {
+    color: #bac2de; /* Catppuccin Subtext1 */
+}
+
+.dark .toc a:hover {
+    color: #89b4fa; /* Catppuccin Blue */
+}
+
+.dark .toc code {
+    background-color: #45475a; /* Catppuccin Surface1 */
+    color: #f38ba8; /* Catppuccin Red */
+}
+

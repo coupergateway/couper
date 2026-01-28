@@ -1,0 +1,19 @@
+<header class="flex justify-between items-center p-4 headerShadow">
+    <div class="flex items-center gap-4 w-2/5">
+        {{ partial "logo.html" . }}
+        <h1 class="text-2xl font-medium">Couper Documentation</h1>
+        <div class="rounded-md bg-lime-500 px-2 py-1 text-sm">edge</div>
+    </div>
+    <div class="flex justify-center w-full">
+        {{ partial "searchbar.html" . }}
+    </div>
+    <div class="flex items-center justify-end gap-4 w-1/5">
+        <button id="dark-mode-toggle" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Toggle dark mode">
+            {{ partial "darkmode-toggle.html" . }}
+        </button>
+        <a href="https://github.com/coupergateway/couper" target="_blank" class="flex items-center">
+            {{ partial "github-icon.html" . }}
+        </a>
+    </div>
+</header>
+

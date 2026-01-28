@@ -4,6 +4,8 @@
 
 * HTTP request routing/forwarding (proxy mode)
 * Virtual endpoints
+* Sequence and parallel backend requests
+* WebSockets support
 * Timeouts
 * Header enrichment
 * Path based routing
@@ -26,6 +28,7 @@
 
 ## Security
 
+* mTLS support (server and backend)
 * Upstream OpenAPI 3 schema validation
 * CORS
 * Request size limiting

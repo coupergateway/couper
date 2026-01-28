@@ -5,7 +5,7 @@
 ![Docker](https://github.com/coupergateway/couper/workflows/Docker/badge.svg)
 [![Code Coverage](https://qlty.sh/gh/coupergateway/projects/couper/coverage.svg)](https://qlty.sh/gh/coupergateway/projects/couper)
 
-![Couper](docs/website/public/img/couper-logo.svg)
+![Couper](docs/img/couper-logo.svg)
 
 **Couper** is a lightweight API gateway designed to support developers in building and operating API-driven Web projects.
 
@@ -25,7 +25,7 @@ Couper …
 * adds access control and observability to the project
 * needs no special development skills
 * is easy to configure & integrate
-* runs on Linux, Mac OS X, Windows, Docker and Kubernetes.
+* runs on Linux, macOS, Windows, Docker and Kubernetes.
 
 Key features are:
 
@@ -33,26 +33,30 @@ Key features are:
 * HTTP Request Routing / Forwarding
 * Custom Requests and Responses
 * Request / Response Manipulation
+* Sequence and Parallel Backend Requests
+* WebSockets Support
 * Centralized **Access-Control** Layer:
   * Basic-Auth
-  * JWT  Validation & Signing
+  * JWT Validation & Signing
   * Single Sign On with SAML2
   * OAuth2 Client Credentials
-  * OpenID-connect
+  * OpenID Connect
 * **Configurable Service Connectivity**
 * Upstream Validation & CORS
 * SPA & Web Serving
-  * inject server data / environment variables to your SPA
+  * Inject server data / environment variables to your SPA
 * Error Handling
 * Observability
   * Prometheus exporter
-* Security with mTLS support as server and for backend services
+* **Security**
+  * mTLS support (server and backend)
+  * Request size limiting
 
 The full list of features of Couper 1.x is [here](FEATURES.md) or at [couper.io](https://couper.io/en/features).
 
 ## Developers
 
-*Developers* requiring [Go](https://golang.org/) to start with `make build`.
+Development requires [Go](https://golang.org/). Start with `make build`.
 Couper requires a [configuration file](./docs/README.md#configuration-file). You can start with a simple one and use:
 
 ```ps

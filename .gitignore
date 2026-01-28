@@ -3,6 +3,9 @@
 .vscode/settings.json
 .idea
 
+# Claude Code personal settings
+.claude/settings.local.json
+
 #binary
 /couper
 /.macos/couper.dmg

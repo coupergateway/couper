@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -48,8 +47,8 @@ const (
 	searchIndex     = "docs"
 	searchClientKey = "SEARCH_CLIENT_API_KEY"
 
-	configurationPath = "docs/website/content/2.configuration"
-	docsBlockPath     = configurationPath + "/4.block"
+	configurationPath = "docs/website/content/configuration"
+	docsBlockPath     = configurationPath + "/block"
 
 	urlBasePath = "/configuration/"
 )
@@ -77,6 +76,7 @@ func main() {
 	}
 
 	processedFiles := make(map[string]struct{})
+	var allEntries []entry // Collect all entries to index after clearing
 
 	for _, impl := range []interface{}{
 		&config.API{},
@@ -123,10 +123,15 @@ func main() {
 		}
 
 		urlPath, _ := url.JoinPath(urlBasePath, "block", blockName)
+
+		// Extract description from the block's markdown file
+		blockDescription := extractBlockDescription(blockName)
+
 		result := entry{
-			Name: blockName,
-			URL:  strings.ToLower(urlPath),
-			Type: "block",
+			Name:        blockName,
+			URL:         strings.ToLower(urlPath),
+			Type:        "block",
+			Description: blockDescription,
 		}
 
 		result.ID = result.URL
@@ -241,33 +246,42 @@ func main() {
 
 		scanner := bufio.NewScanner(file)
 		var skipMode, seenAttr, seenBlock bool
+		var endToken string
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			if bAttr != nil && strings.HasPrefix(line, "::attributes") {
-				fileBytes.WriteString(fmt.Sprintf(`::attributes
----
-values: %s
----
-::
-`, bAttr.String()))
+			// handle attributes/blocks markers in either legacy (::attributes/::blocks) or shortcode ({{< attributes >}}/{{< blocks >}}) form
+			if bAttr != nil && (strings.HasPrefix(line, "::attributes") || strings.HasPrefix(line, "{{< attributes")) {
+				// write shortcode version
+				fileBytes.WriteString("{{< attributes >}}\n")
+				fileBytes.WriteString(bAttr.String())
+				fileBytes.WriteString("{{< /attributes >}}\n")
 				skipMode = true
+				if strings.HasPrefix(line, "::attributes") {
+					endToken = "::"
+				} else {
+					endToken = "{{< /attributes >}}"
+				}
 				seenAttr = true
 				continue
-			} else if bBlock != nil && strings.HasPrefix(line, "::blocks") {
-				fileBytes.WriteString(fmt.Sprintf(`::blocks
----
-values: %s
----
-::
-`, bBlock.String()))
+			} else if bBlock != nil && (strings.HasPrefix(line, "::blocks") || strings.HasPrefix(line, "{{< blocks")) {
+				// write shortcode version
+				fileBytes.WriteString("{{< blocks >}}\n")
+				fileBytes.WriteString(bBlock.String())
+				fileBytes.WriteString("{{< /blocks >}}\n")
 				skipMode = true
+				if strings.HasPrefix(line, "::blocks") {
+					endToken = "::"
+				} else {
+					endToken = "{{< /blocks >}}"
+				}
 				seenBlock = true
 				continue
 			}
 
-			if skipMode && line == "::" {
+			if skipMode && line == endToken {
 				skipMode = false
+				endToken = ""
 				continue
 			}
 
@@ -277,23 +291,15 @@ values: %s
 			}
 		}
 
-		if bAttr != nil && !seenAttr { // TODO: from func/template
-			fileBytes.WriteString(fmt.Sprintf(`
-::attributes
----
-values: %s
----
-::
-`, bAttr.String()))
+		if bAttr != nil && !seenAttr {
+			fileBytes.WriteString("\n{{< attributes >}}\n")
+			fileBytes.WriteString(bAttr.String())
+			fileBytes.WriteString("{{< /attributes >}}\n")
 		}
-		if bBlock != nil && !seenBlock { // TODO: from func/template
-			fileBytes.WriteString(fmt.Sprintf(`
-::blocks
----
-values: %s
----
-::
-`, bBlock.String()))
+		if bBlock != nil && !seenBlock {
+			fileBytes.WriteString("\n{{< blocks >}}\n")
+			fileBytes.WriteString(bBlock.String())
+			fileBytes.WriteString("{{< /blocks >}}\n")
 		}
 
 		size, err := file.WriteAt(fileBytes.Bytes(), 0)
@@ -308,12 +314,9 @@ values: %s
 		processedFiles[file.Name()] = struct{}{}
 		println("Attributes/Blocks written: "+blockName+":\r\t\t\t\t\t", file.Name())
 
+		// Collect entries for indexing after clearing
 		if os.Getenv(searchClientKey) != "" {
-			_, err = index.SaveObjects(result) //, opt.AutoGenerateObjectIDIfNotExist(true))
-			if err != nil {
-				panic(err)
-			}
-			println("SearchIndex updated")
+			allEntries = append(allEntries, result)
 		}
 	}
 
@@ -321,9 +324,32 @@ values: %s
 		return
 	}
 
-	// index non generated markdown
-	indexDirectory(configurationPath, "", processedFiles, index)
-	indexDirectory(docsBlockPath, "block", processedFiles, index)
+	// Clear existing index before rebuilding - done here after all file generation is complete
+	_, err := index.ClearObjects()
+	if err != nil {
+		panic(err)
+	}
+	println("SearchIndex cleared - rebuilding...")
+
+	// Save all collected block entries
+	if len(allEntries) > 0 {
+		_, err = index.SaveObjects(allEntries)
+		if err != nil {
+			panic(err)
+		}
+		println("Indexed", len(allEntries), "configuration blocks")
+	}
+
+	// Note: Algolia index settings (searchable attributes, ranking, etc.)
+	// can be configured via the Algolia dashboard if needed
+	// Default settings work well for our use case
+
+	// Index all markdown files recursively in configuration and other sections
+	indexDirectoryRecursive(configurationPath, processedFiles, index)
+
+	// Also index getting-started and observation sections
+	indexDirectoryRecursive("docs/website/content/getting-started", processedFiles, index)
+	indexDirectoryRecursive("docs/website/content/observation", processedFiles, index)
 }
 
 func collectFields(t reflect.Type, fields []reflect.StructField) []reflect.StructField {
@@ -360,7 +386,7 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 		println("Indexing from file: " + dirEntry.Name())
 		fileContent, rerr := os.ReadFile(entryPath)
 		if rerr != nil {
-			panic(err)
+			panic(rerr)
 		}
 		println(dirEntry.Name())
 		fileName := mdFileRegex.FindStringSubmatch(dirEntry.Name())[1]
@@ -481,4 +507,276 @@ func newFields(impl interface{}) []reflect.StructField {
 		fields = append(fields, it.Field(i))
 	}
 	return fields
+}
+
+// extractBlockDescription reads the block's markdown file to extract its description
+func extractBlockDescription(blockName string) string {
+	mdPath := filepath.Join(docsBlockPath, blockName+".md")
+	content, err := os.ReadFile(mdPath)
+	if err != nil {
+		return ""
+	}
+
+	// Extract description - skip frontmatter, skip H1, collect content until table/shortcode
+	lines := bytes.Split(content, []byte("\n"))
+	var inFrontmatter bool
+	var pastH1 bool
+	var description strings.Builder
+	var emptyLineCount int
+
+	for _, line := range lines {
+		lineStr := strings.TrimSpace(string(line))
+
+		// Handle frontmatter
+		if lineStr == "---" {
+			inFrontmatter = !inFrontmatter
+			continue
+		}
+		if inFrontmatter {
+			continue
+		}
+
+		// Skip H1 heading
+		if strings.HasPrefix(lineStr, "# ") {
+			pastH1 = true
+			continue
+		}
+
+		// Only collect content after H1
+		if !pastH1 {
+			continue
+		}
+
+		// Stop at tables, shortcodes, or comments
+		if strings.HasPrefix(lineStr, "|") ||
+			strings.HasPrefix(lineStr, "{{<") ||
+			strings.HasPrefix(lineStr, "<!--") {
+			break
+		}
+
+		// Handle empty lines
+		if lineStr == "" {
+			emptyLineCount++
+			// Stop after 2 consecutive empty lines (end of intro section)
+			if emptyLineCount >= 2 && description.Len() > 0 {
+				break
+			}
+			continue
+		}
+
+		emptyLineCount = 0
+
+		// Handle blockquotes - extract text content
+		if strings.HasPrefix(lineStr, ">") {
+			blockquoteText := strings.TrimPrefix(lineStr, ">")
+			blockquoteText = strings.TrimSpace(blockquoteText)
+			// Skip emoji-only or very short content
+			if len(blockquoteText) > 5 {
+				if description.Len() > 0 {
+					description.WriteString(" ")
+				}
+				description.WriteString(blockquoteText)
+			}
+			continue
+		}
+
+		// Add regular text
+		if description.Len() > 0 {
+			description.WriteString(" ")
+		}
+		description.WriteString(lineStr)
+	}
+
+	result := description.String()
+
+	// Clean up markdown syntax
+	// Remove inline code backticks for cleaner display
+	result = strings.ReplaceAll(result, "`", "")
+	// Remove links but keep the text
+	linkRegex := regexp.MustCompile(`\[([^\]]+)\]\([^\)]+\)`)
+	result = linkRegex.ReplaceAllString(result, "$1")
+
+	// Limit to ~200 characters
+	if len(result) > 200 {
+		result = result[:197] + "..."
+	}
+
+	return result
+}
+
+// indexDirectoryRecursive indexes all markdown files in a directory and its subdirectories
+func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{}, index *search.Index) {
+	dirEntries, err := os.ReadDir(dirPath)
+	if err != nil {
+		println("Warning: could not read directory " + dirPath + ": " + err.Error())
+		return
+	}
+
+	for _, dirEntry := range dirEntries {
+		entryPath := filepath.Join(dirPath, dirEntry.Name())
+
+		if dirEntry.IsDir() {
+			// Recursively index subdirectories
+			indexDirectoryRecursive(entryPath, processedFiles, index)
+			continue
+		}
+
+		// Skip non-markdown files and already processed files
+		if !strings.HasSuffix(dirEntry.Name(), ".md") || dirEntry.Name() == "_index.md" {
+			continue
+		}
+
+		if _, ok := processedFiles[entryPath]; ok {
+			continue
+		}
+
+		println("Indexing file: " + entryPath)
+
+		fileContent, rerr := os.ReadFile(entryPath)
+		if rerr != nil {
+			println("Warning: could not read file " + entryPath + ": " + rerr.Error())
+			continue
+		}
+
+		// Extract URL path from file path
+		relativePath := strings.TrimPrefix(entryPath, "docs/website/content/")
+		relativePath = strings.TrimSuffix(relativePath, ".md")
+		// Remove number prefixes from path segments
+		pathParts := strings.Split(relativePath, "/")
+		for i, part := range pathParts {
+			pathParts[i] = strings.TrimPrefix(part, regexp.MustCompile(`^\d+\.`).FindString(part))
+		}
+		urlPath := "/" + strings.Join(pathParts, "/") + "/"
+
+		// Extract title and description from frontmatter
+		title, description, _ := headerFromMeta(fileContent)
+
+		// If no frontmatter, extract from first H1
+		if title == "" {
+			h1Regex := regexp.MustCompile(`(?m)^#\s+(.+)$`)
+			if matches := h1Regex.FindSubmatch(fileContent); len(matches) > 1 {
+				title = string(matches[1])
+			}
+		}
+
+		if title == "" {
+			title = filepath.Base(relativePath)
+		}
+
+		// Determine document type from path
+		docType := "documentation"
+		docTypeLabel := "Documentation"
+		if strings.Contains(relativePath, "block/") {
+			docType = "block"
+			docTypeLabel = "Configuration Block"
+		} else if strings.Contains(relativePath, "getting-started") {
+			docType = "getting-started"
+			docTypeLabel = "Getting Started"
+		} else if strings.Contains(relativePath, "observation") {
+			docType = "observation"
+			docTypeLabel = "Observation"
+		} else if strings.Contains(relativePath, "configuration") {
+			docType = "configuration"
+			docTypeLabel = "Configuration"
+		}
+
+		// Add source path to description for context
+		sourceContext := docTypeLabel + " → " + strings.ReplaceAll(relativePath, "/", " › ")
+		if description != "" {
+			description = description + " | Source: " + sourceContext
+		} else {
+			description = "Source: " + sourceContext
+		}
+
+		// Create main entry for the page
+		result := &entry{
+			Description: description,
+			ID:          urlPath,
+			Name:        title,
+			Type:        docType,
+			URL:         urlPath,
+			Attributes:  extractSearchableContent(fileContent),
+		}
+
+		_, err = index.SaveObjects(result)
+		if err != nil {
+			println("Warning: failed to index " + entryPath + ": " + err.Error())
+		} else {
+			println("Indexed: " + urlPath)
+		}
+
+		// Also index H2 and H3 headings as separate searchable entries
+		indexHeadings(fileContent, urlPath, title, index)
+	}
+}
+
+// extractSearchableContent extracts code blocks, lists, and other searchable content
+func extractSearchableContent(content []byte) []interface{} {
+	attrs := make([]interface{}, 0)
+
+	// Extract code blocks with context
+	codeBlockRegex := regexp.MustCompile("(?s)```\\w*\\n(.*?)```")
+	codeMatches := codeBlockRegex.FindAllSubmatch(content, -1)
+	for _, match := range codeMatches {
+		if len(match) > 1 {
+			codeSnippet := string(match[1])
+			if len(codeSnippet) > 0 && len(codeSnippet) < 500 {
+				attrs = append(attrs, attr{
+					Name:        "code",
+					Description: codeSnippet,
+					Type:        "code",
+				})
+			}
+		}
+	}
+
+	// Extract inline code with surrounding context
+	inlineCodeRegex := regexp.MustCompile("`([^`]+)`")
+	inlineMatches := inlineCodeRegex.FindAllSubmatch(content, -1)
+	seen := make(map[string]bool)
+	for _, match := range inlineMatches {
+		if len(match) > 1 {
+			code := string(match[1])
+			if !seen[code] && len(code) < 100 {
+				attrs = append(attrs, attr{
+					Name:        code,
+					Description: "Reference to " + code,
+					Type:        "reference",
+				})
+				seen[code] = true
+			}
+		}
+	}
+
+	return attrs
+}
+
+// indexHeadings indexes H2 and H3 headings as separate entries for granular search
+func indexHeadings(content []byte, baseURL string, pageTitle string, index *search.Index) {
+	// Extract H2 headings
+	h2Regex := regexp.MustCompile(`(?m)^##\s+(.+)$`)
+	h2Matches := h2Regex.FindAllSubmatch(content, -1)
+
+	for _, match := range h2Matches {
+		if len(match) > 1 {
+			heading := string(match[1])
+			// Create anchor ID (simplified, matching Hugo's default)
+			anchor := strings.ToLower(heading)
+			anchor = regexp.MustCompile(`[^\w\s-]`).ReplaceAllString(anchor, "")
+			anchor = regexp.MustCompile(`\s+`).ReplaceAllString(anchor, "-")
+
+			headingEntry := &entry{
+				ID:          baseURL + "#" + anchor,
+				Name:        heading,
+				Description: "Section in " + pageTitle,
+				Type:        "heading",
+				URL:         baseURL + "#" + anchor,
+			}
+
+			_, err := index.SaveObjects(headingEntry)
+			if err != nil {
+				println("Warning: failed to index heading: " + heading)
+			}
+		}
+	}
 }

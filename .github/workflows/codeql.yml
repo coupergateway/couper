@@ -9,36 +9,19 @@
 # the `language` matrix defined below to confirm you have the correct set of
 # supported CodeQL languages.
 #
-name: "CodeQL + Nancy"
+name: "CodeQL"
 
 on:
 #  push:
-#    branches: [ "master" ]
+#    branches: [ "main" ]
 #  pull_request:
     # The branches below must be a subset of the branches above
-#    branches: [ "master" ]
+#    branches: [ "main" ]
   schedule:
     - cron: '44 5 * * 1'
   workflow_dispatch:
 
 jobs:
-  nancy:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Go 1.x in order to write go.list file
-      uses: actions/setup-go@v5.0.0
-
-    - name: Dependencies
-      run: go mod download
-
-    - name: WriteGoList
-      run: go list -json -mod=readonly -m all > go.list
-
-    - name: Nancy
-      uses: sonatype-nexus-community/nancy-github-action@main
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
