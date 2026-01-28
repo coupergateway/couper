@@ -1,24 +1,24 @@
 ---
-title: 'Job (Beta)'
+title: 'Job'
 slug: 'job'
 ---
 
-# Job (Beta)
+# Job
 
-The `beta_job` block lets you define recurring requests or sequences with an given interval. The job runs at startup
+The `job` block lets you define recurring requests or sequences with an given interval. The job runs at startup
 and for every interval and has an own log type: `job` which represents the starting point with an uid for tracing
-purposes.
+purposes. Older configurations may still use the legacy block name `beta_job`, which remains supported as an alias.
 
 | Block name | Context                                               | Label    |
-|:-----------|:------------------------------------------------------|:---------|
-| `beta_job` | [Definitions Block](/configuration/block/definitions) | required |
+| :--------- | :---------------------------------------------------- | :------- |
+| `job`      | [Definitions Block](/configuration/block/definitions) | required |
 
 ## Example
 
 ```hcl
 # ...
 definitions {
-  beta_job "update_data" {
+  job "update_data" {
     # Execute once at the start of Couper and then every minute
     interval = "1m"
 
