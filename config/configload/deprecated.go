@@ -31,7 +31,8 @@ func init() {
 	// deprecatedAttributes["..."] = deprecated{"...", "..."}
 
 	// Deprecated blocks:
-	deprecatedBlocks["beta_rate_limit"] = deprecated{"throttle", "1.15"}
+	// deprecatedBlocks["..."] = deprecated{"...", "..."}
+	deprecatedBlocks["beta_job"] = deprecated{"job", "1.15"}
 
 	// Deprecated labels:
 	deprecatedLabels["beta_backend_rate_limit_exceeded"] = deprecated{"backend_throttle_exceeded", "1.15"}
