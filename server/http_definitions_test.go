@@ -62,6 +62,29 @@ func TestDefinitions_Jobs(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}), false, logrus.Fields{"error_type": "unexpected_status"}, logrus.ErrorLevel, "endpoint error"},
 		{"beta_job without label", "06_beta_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel, ""},
+		{"beta_job alias", "07_beta_job_valid.hcl", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			payload := map[string]string{
+				"prop1": "val1",
+				"prop2": "val2",
+			}
+			b, _ := json.Marshal(payload)
+
+			switch req.Method {
+			case http.MethodGet:
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(b)
+			case http.MethodPost:
+				r, _ := io.ReadAll(req.Body)
+				if !bytes.Equal(b, r) {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			}
+		}), false, logrus.Fields{"custom": logrus.Fields{
+			"status_a": float64(http.StatusOK),
+			"status_b": float64(http.StatusOK),
+		}}, logrus.InfoLevel, ""},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			origin := httptest.NewServer(tc.origin)
