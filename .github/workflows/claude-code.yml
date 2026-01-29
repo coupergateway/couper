@@ -1,0 +1,89 @@
+name: Claude Code Assistant
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  claude-implement:
+    name: "Claude: Implement Issue"
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'claude-implement' &&
+      github.actor == 'malud'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install dependencies
+        run: go mod download
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Implement the changes described in this issue.
+
+            BEFORE STARTING:
+            - If the issue lacks specific requirements, acceptance criteria, or context needed to implement correctly, comment on the issue asking for clarification instead of proceeding.
+            - Do not guess at requirements - ask for details.
+
+            REQUIREMENTS:
+            1. Follow patterns in CLAUDE.md, docs/ARCHITECTURE.md, docs/GO_GUIDELINES.md
+            2. All tests must pass: `go test -v -timeout 300s -race ./...`
+            3. Run `go fmt ./...` and `go vet ./...` before committing
+            4. Update CHANGELOG.md under [Unreleased]
+            5. Add integration tests for new features
+
+            TESTING:
+            - Add tests for both happy path AND unhappy path (error cases, edge cases, invalid input)
+            - Test coverage should verify the feature works AND fails gracefully
+            - Follow existing test patterns in server/http_integration_test.go
+
+            VERIFY before creating PR:
+            - `make build` succeeds
+            - `make test` passes
+          allowed_tools: "Bash,Edit,Glob,Grep,Read,Write,mcp__github"
+          claude_args: "--max-turns 50"
+
+  claude-respond:
+    name: "Claude: Respond to Mention"
+    if: |
+      (github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment') &&
+      contains(github.event.comment.body, '@claude') &&
+      github.event.comment.user.login == 'malud'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Bash,Edit,Glob,Grep,Read,Write,mcp__github"
+          claude_args: "--max-turns 25"
