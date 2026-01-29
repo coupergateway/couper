@@ -605,20 +605,27 @@ func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
 	if err != nil {
 		return nil, err
 	}
+	var introspector *ac.Introspector
+	if jwtConf.Introspection != nil {
+		introspector, err = configureIntrospector(jwtConf, confCtx, log, conf, memStore)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if jwtConf.JWKsURL != "" {
 		jwks, jerr := configureJWKS(jwtConf, confCtx, log, conf, memStore)
 		if jerr != nil {
 			return nil, jerr
 		}
 
-		jwt, err = ac.NewJWTFromJWKS(jwtConf, jwks, memStore)
+		jwt, err = ac.NewJWTFromJWKS(jwtConf, introspector, jwks, memStore)
 	} else {
 		key, kerr := reader.ReadFromAttrFile("jwt key", jwtConf.Key, jwtConf.KeyFile)
 		if kerr != nil {
 			return nil, kerr
 		}
 
-		jwt, err = ac.NewJWT(jwtConf, key, memStore)
+		jwt, err = ac.NewJWT(jwtConf, introspector, key, memStore)
 	}
 	if err != nil {
 		return nil, err
@@ -634,6 +641,15 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 	}
 
 	return jwk.NewJWKS(conf.Context, jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
+}
+
+func configureIntrospector(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*ac.Introspector, error) {
+	backend, err := NewBackend(confContext, jwtConf.Introspection.Backend, log, conf, memStore)
+	if err != nil {
+		return nil, err
+	}
+
+	return ac.NewIntrospector(confContext, jwtConf.Introspection, backend, memStore)
 }
 
 type protectedOptions struct {
