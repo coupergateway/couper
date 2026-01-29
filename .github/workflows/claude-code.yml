@@ -49,14 +49,16 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
           prompt: |
-            Implement the changes described in this issue.
+            STEP 1 - LOAD CONTEXT:
+            First, run /init-context to load full project documentation from CLAUDE.md and linked files.
 
-            BEFORE STARTING:
-            - If the issue lacks specific requirements, acceptance criteria, or context needed to implement correctly, comment on the issue asking for clarification instead of proceeding.
-            - Do not guess at requirements - ask for details.
+            STEP 2 - ASSESS ISSUE:
+            Review the issue description. If it lacks specific requirements, acceptance criteria, or context needed to implement correctly, comment on the issue asking for clarification instead of proceeding. Do not guess at requirements.
 
-            REQUIREMENTS:
+            STEP 3 - IMPLEMENT:
+            If the issue is clear enough, implement the changes following these requirements:
             1. Follow patterns in CLAUDE.md, docs/ARCHITECTURE.md, docs/GO_GUIDELINES.md
             2. All tests must pass: `go test -v -timeout 300s -race ./...`
             3. Run `go fmt ./...` and `go vet ./...` before committing
@@ -68,13 +70,14 @@ jobs:
             - Test coverage should verify the feature works AND fails gracefully
             - Follow existing test patterns in server/http_integration_test.go
 
-            VERIFY before creating PR:
+            STEP 4 - VERIFY & CREATE PR:
             - `make build` succeeds
             - `make test` passes
+            - Create a PR with a clear description
           claude_args: |
             --model ${{ steps.model.outputs.model }}
             --max-turns 50
-            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "WebFetch"
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch"
 
   claude-respond:
     name: "Claude: Respond to Mention"
@@ -100,6 +103,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
           claude_args: |
             --max-turns 25
-            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "WebFetch"
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch"
