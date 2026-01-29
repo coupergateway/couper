@@ -82,7 +82,9 @@ jobs:
 
             STEP 4 - VERIFY & CREATE PR:
             - `make build` succeeds
-            - `make test` passes
+            - Run ONLY tests you created or modified (not `make test` - full suite runs on PR):
+              Use `go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName`
+              to run specific new/changed tests
             - Create a PR with a clear description
           claude_args: |
             --model ${{ steps.model.outputs.model }}
