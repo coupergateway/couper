@@ -51,11 +51,21 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           show_full_output: true
           prompt: |
+            ISSUE TO IMPLEMENT:
+            Repository: ${{ github.repository }}
+            Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+            URL: ${{ github.event.issue.html_url }}
+
+            Issue Description:
+            ${{ github.event.issue.body }}
+
+            ---
+
             STEP 1 - LOAD CONTEXT:
             First, run /init-context to load full project documentation from CLAUDE.md and linked files.
 
             STEP 2 - ASSESS ISSUE:
-            Review the issue description. If it lacks specific requirements, acceptance criteria, or context needed to implement correctly, comment on the issue asking for clarification instead of proceeding. Do not guess at requirements.
+            Review the issue description above. If it lacks specific requirements, acceptance criteria, or context needed to implement correctly, comment on the issue asking for clarification instead of proceeding. Do not guess at requirements.
 
             STEP 3 - IMPLEMENT:
             If the issue is clear enough, implement the changes following these requirements:
