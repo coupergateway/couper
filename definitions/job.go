@@ -20,10 +20,11 @@ import (
 )
 
 type Job struct {
-	conf     *config.Job
-	handler  http.Handler
-	interval time.Duration
-	settings *config.Settings
+	conf         *config.Job
+	handler      http.Handler
+	interval     time.Duration
+	startupDelay time.Duration
+	settings     *config.Settings
 }
 
 type Jobs []*Job
@@ -43,10 +44,11 @@ func (j Jobs) Run(ctx context.Context, log *logrus.Entry) {
 
 func NewJob(j *config.Job, h http.Handler, settings *config.Settings) *Job {
 	return &Job{
-		conf:     j,
-		handler:  h,
-		interval: j.IntervalDuration,
-		settings: settings,
+		conf:         j,
+		handler:      h,
+		interval:     j.IntervalDuration,
+		startupDelay: j.StartupDelayDuration,
+		settings:     settings,
 	}
 }
 
@@ -56,7 +58,13 @@ func (j *Job) Run(ctx context.Context, logEntry *logrus.Entry) {
 
 	uidFn := middleware.NewUIDFunc(j.settings.RequestIDBackendHeader)
 
-	t := time.NewTicker(time.Millisecond * 50)
+	// Use startup_delay if configured, otherwise use a minimal delay (50ms)
+	initialDelay := time.Millisecond * 50
+	if j.startupDelay > 0 {
+		initialDelay = j.startupDelay
+	}
+
+	t := time.NewTicker(initialDelay)
 	defer t.Stop()
 
 	firstRun := true
