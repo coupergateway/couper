@@ -12,6 +12,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  id-token: write
 
 jobs:
   claude-implement:
@@ -61,7 +62,6 @@ jobs:
             VERIFY before creating PR:
             - `make build` succeeds
             - `make test` passes
-          allowed_tools: "Bash,Edit,Glob,Grep,Read,Write,mcp__github"
           claude_args: "--max-turns 50"
 
   claude-respond:
@@ -85,5 +85,4 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Bash,Edit,Glob,Grep,Read,Write,mcp__github"
           claude_args: "--max-turns 25"
