@@ -5,8 +5,8 @@ slug: 'job'
 
 # Job
 
-The `job` block lets you define recurring requests or sequences with an given interval. The job runs at startup
-and for every interval and has an own log type: `job` which represents the starting point with an uid for tracing
+The `job` block lets you define recurring requests or sequences with a given interval. The job runs at startup
+and then at every interval and has its own log type: `couper_job`, which represents the starting point with a UID for tracing
 purposes. Older configurations may still use the legacy block name `beta_job`, which remains supported as an alias.
 
 | Block name | Context                                               | Label    |

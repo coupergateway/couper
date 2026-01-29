@@ -18,46 +18,31 @@ import (
 )
 
 const (
-	api             = "api"
-	backend         = "backend"
-	betaJob         = "beta_job"
-	defaults        = "defaults"
-	definitions     = "definitions"
-	endpoint        = "endpoint"
-	environment     = "environment"
-	environmentVars = "environment_variables"
-	errorHandler    = "error_handler"
-	files           = "files"
-	nameLabel       = "name"
-	oauth2          = "oauth2"
-	proxy           = "proxy"
-	request         = "request"
-	server          = "server"
-	settings        = "settings"
-	spa             = "spa"
-	tls             = "tls"
-	job             = "job"
-	tokenRequest    = "beta_token_request"
+	api                          = "api"
+	backend                      = "backend"
+	betaJob                      = "beta_job"
+	defaults                     = "defaults"
+	definitions                  = "definitions"
+	endpoint                     = "endpoint"
+	environment                  = "environment"
+	environmentVars              = "environment_variables"
+	errorHandler                 = "error_handler"
+	files                        = "files"
+	job                          = "job"
+	nameLabel                    = "name"
+	oauth2                       = "oauth2"
+	proxy                        = "proxy"
+	request                      = "request"
+	server                       = "server"
+	settings                     = "settings"
+	spa                          = "spa"
+	tls                          = "tls"
+	tokenRequest                 = "beta_token_request"
+	betaRateLimit                = "beta_rate_limit"
+	throttle                     = "throttle"
+	betaBackendRateLimitExceeded = "beta_backend_rate_limit_exceeded"
+	backendThrottleExceeded      = "backend_throttle_exceeded"
 )
-
-func renameDeprecatedBlocks(body *hclsyntax.Body) {
-	if body == nil {
-		return
-	}
-
-	for _, outerBlock := range body.Blocks {
-		innerBody := outerBlock.Body
-		if innerBody == nil {
-			continue
-		}
-
-		if outerBlock.Type == definitions {
-			renameBetaBlocks(innerBody, betaJob, job)
-		}
-
-		renameDeprecatedBlocks(innerBody)
-	}
-}
 
 var defaultsConfig *config.Defaults
 var evalContext *eval.Context
@@ -103,9 +88,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, body := range parsedBodies {
-		renameDeprecatedBlocks(body)
-	}
+	deprecate(parsedBodies)
 
 	if len(srcBytes) == 0 {
 		return nil, fmt.Errorf("missing configuration files")
