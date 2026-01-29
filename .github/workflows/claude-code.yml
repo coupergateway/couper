@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Determine model
+      - name: Determine model args
         id: model
         run: |
           if [[ "${{ github.event.label.name }}" == "claude-implement-opus" ]]; then
@@ -49,7 +49,6 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: ${{ steps.model.outputs.model }}
           prompt: |
             Implement the changes described in this issue.
 
@@ -72,16 +71,10 @@ jobs:
             VERIFY before creating PR:
             - `make build` succeeds
             - `make test` passes
-          additional_permissions: |
-            Bash(make build)
-            Bash(make test)
-            Bash(go test*)
-            Bash(go build*)
-            Bash(go fmt*)
-            Bash(go vet*)
-            Bash(go mod*)
-            Bash(git *)
-          claude_args: "--max-turns 50"
+          claude_args: |
+            --model ${{ steps.model.outputs.model }}
+            --max-turns 50
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "WebFetch"
 
   claude-respond:
     name: "Claude: Respond to Mention"
@@ -107,13 +100,6 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          additional_permissions: |
-            Bash(make build)
-            Bash(make test)
-            Bash(go test*)
-            Bash(go build*)
-            Bash(go fmt*)
-            Bash(go vet*)
-            Bash(go mod*)
-            Bash(git *)
-          claude_args: "--max-turns 25"
+          claude_args: |
+            --max-turns 25
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "WebFetch"
