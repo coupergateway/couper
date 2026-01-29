@@ -61,6 +61,10 @@ func TestDefinitions_Jobs(t *testing.T) {
 		{"unexpected status", "05_job.hcl", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}), false, logrus.Fields{"error_type": "unexpected_status"}, logrus.ErrorLevel, "endpoint error"},
+		{"with negative startup_delay", "06_job.hcl", http.HandlerFunc(nil), true, nil, logrus.InfoLevel, ""}, // wantLevel not used
+		{"with valid startup_delay", "07_job.hcl", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}), false, nil, logrus.InfoLevel, ""},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			origin := httptest.NewServer(tc.origin)
