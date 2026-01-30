@@ -20,6 +20,7 @@ import (
 const (
 	api             = "api"
 	backend         = "backend"
+	betaJob         = "beta_job"
 	defaults        = "defaults"
 	definitions     = "definitions"
 	endpoint        = "endpoint"
@@ -27,6 +28,7 @@ const (
 	environmentVars = "environment_variables"
 	errorHandler    = "error_handler"
 	files           = "files"
+	job             = "job"
 	nameLabel       = "name"
 	oauth2          = "oauth2"
 	proxy           = "proxy"
@@ -82,6 +84,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	if err != nil {
 		return nil, err
 	}
+	deprecate(parsedBodies)
 
 	if len(srcBytes) == 0 {
 		return nil, fmt.Errorf("missing configuration files")
