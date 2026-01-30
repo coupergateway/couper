@@ -86,7 +86,7 @@ jobs:
               Use `go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName`
               to run specific new/changed tests
             - Run `make generate-docs` to update documentation for new/changed config attributes
-            - Run `go fmt ./...` and `go vet ./...`
+            - Run `go fmt ./...` and `go list ./... | grep -v 'fuzz\/.*' | xargs go vet`
             - Create a PR with a clear description
             - After creating the PR, output the PR URL and stop immediately. Do not continue working.
           claude_args: |
