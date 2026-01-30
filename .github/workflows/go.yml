@@ -38,6 +38,15 @@ jobs:
     - name: Source-Code formatting
       run: test -z $(go fmt ./...)
 
+    - name: Check generated docs are up-to-date
+      run: |
+        make generate-docs
+        if [ -n "$(git status --porcelain docs/)" ]; then
+          echo "::error::Generated docs are out of date. Run 'make generate-docs' and commit the changes."
+          git diff docs/
+          exit 1
+        fi
+
     - name: Source-Code analysis
       run: go list ./... | grep -v 'fuzz\/.*' | xargs go vet
 
