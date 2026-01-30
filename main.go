@@ -165,7 +165,7 @@ func realmain(ctx context.Context, arguments []string) int {
 	configload.EmitWarnings(logger)
 
 	// respect assigned CPU limits
-	_, err = maxprocs.Set(maxprocs.Logger(logger.Infof))
+	_, err = maxprocs.Set(maxprocs.Logger(logger.Debugf))
 	if err != nil {
 		logrus.Error("maxprocs.Set: ", err)
 	}
