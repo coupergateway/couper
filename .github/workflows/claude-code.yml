@@ -85,10 +85,13 @@ jobs:
             - Run ONLY tests you created or modified (not `make test` - full suite runs on PR):
               Use `go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName`
               to run specific new/changed tests
+            - Run `make generate-docs` to update documentation for new/changed config attributes
+            - Run `go fmt ./...` and `go vet ./...`
             - Create a PR with a clear description
+            - After creating the PR, output the PR URL and stop immediately. Do not continue working.
           claude_args: |
             --model ${{ steps.model.outputs.model }}
-            --max-turns 50
+            --max-turns 75
             --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch"
 
   claude-respond:
