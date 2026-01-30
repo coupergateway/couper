@@ -117,5 +117,5 @@ jobs:
         run: |
           git config user.name "couper-bot"
           git config user.email "couperbot@gmail.com"
-          git add -A && git commit -m "Update website"
-          git push origin main
+          git add -A
+          git diff --staged --quiet || (git commit -m "Update website" && git push origin main)
