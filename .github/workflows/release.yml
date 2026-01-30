@@ -45,10 +45,10 @@ jobs:
       - name: Set outputs
         id: vars
         run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-          echo "::set-output name=build_date::$(date +'%F')"
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "build_date=$(date +'%F')" >> $GITHUB_OUTPUT
 
-      - uses: wangyoucao577/go-release-action@v1.51
+      - uses: wangyoucao577/go-release-action@v1.55
         id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -63,7 +63,7 @@ jobs:
           release_name: ${{ github.ref_name }}
           overwrite: true
           post_command: |
-            echo "::set-output name=${{ matrix.goos }}_${{ matrix.goarch }}::$SHA256_SUM"
+            echo "${{ matrix.goos }}_${{ matrix.goarch }}=$SHA256_SUM" >> $GITHUB_OUTPUT
       - name: Archive macOS builds
         if: ${{ matrix.goos == 'darwin' }}
         uses: actions/upload-artifact@v4
@@ -140,7 +140,7 @@ jobs:
         run: |
           github-assets-uploader -f ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip -overwrite -repo coupergateway/couper -releasename ${{ github.ref_name }} -token $GITHUB_TOKEN
           shasum -a 256 ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip | cut -d ' ' -f1 > ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip.sha256 && github-assets-uploader -f ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip.sha256 -overwrite -repo coupergateway/couper -releasename ${{ github.ref_name }} -token $GITHUB_TOKEN
-          echo "::set-output name=${{ matrix.goarch }}::$(cat ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip.sha256)"
+          echo "${{ matrix.goarch }}=$(cat ./couper-${{ github.ref_name }}-macos-${{ matrix.goarch }}.zip.sha256)" >> $GITHUB_OUTPUT
   brewlease:
     name: 'update homebrew formula'
     runs-on: ubuntu-latest

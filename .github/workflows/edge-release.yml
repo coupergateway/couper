@@ -67,7 +67,7 @@ jobs:
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "build_date=$(date +'%F')" >> $GITHUB_OUTPUT
 
-      - uses: wangyoucao577/go-release-action@v1.51
+      - uses: wangyoucao577/go-release-action@v1.55
         id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

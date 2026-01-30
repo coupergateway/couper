@@ -28,11 +28,11 @@ jobs:
           ./tg -i .npm/package.json
           cat .npm/package.json
       - name: 'setup node'
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - name: 'publish package'
-        uses: JS-DevTools/npm-publish@v1
+        uses: JS-DevTools/npm-publish@v3
         with:
           package: ".npm/package.json"
           access: "public"
