@@ -15,14 +15,16 @@ var (
 
 // Job represents the <Job> object.
 type Job struct {
-	Interval string   `hcl:"interval" docs:"Execution interval." type:"duration"`
-	Name     string   `hcl:"name,label"`
-	Remain   hcl.Body `hcl:",remain"`
-	Requests Requests `hcl:"request,block" docs:"Configures a [request](/configuration/block/request) (zero or more)."`
+	Interval     string   `hcl:"interval" docs:"Execution interval." type:"duration"`
+	Name         string   `hcl:"name,label"`
+	Remain       hcl.Body `hcl:",remain"`
+	Requests     Requests `hcl:"request,block" docs:"Configures a [request](/configuration/block/request) (zero or more)."`
+	StartupDelay string   `hcl:"startup_delay,optional" docs:"Delays the first execution of the job after startup." type:"duration" default:"0s"`
 
 	// Internally used
-	Endpoint         *Endpoint
-	IntervalDuration time.Duration
+	Endpoint             *Endpoint
+	IntervalDuration     time.Duration
+	StartupDelayDuration time.Duration
 }
 
 // Inline implements the <Inline> interface.
