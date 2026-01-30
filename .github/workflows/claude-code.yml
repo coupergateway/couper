@@ -89,6 +89,13 @@ jobs:
             - Run `go fmt ./...` and `go list ./... | grep -v 'fuzz\/.*' | xargs go vet`
             - Create a PR with a clear description
             - After creating the PR, output the PR URL and stop immediately. Do not continue working.
+
+            HANDLING UNRELATED ERRORS:
+            If you encounter errors unrelated to your task (e.g., pre-existing test failures, linter issues in other files):
+            1. Stay focused on the initial task - do not fix unrelated issues
+            2. First check if a similar issue already exists: `gh issue list --search "keyword"`
+            3. If no duplicate exists, create an issue with context: `gh issue create --title "..." --body "..."`
+            4. Continue with your original task
           claude_args: |
             --model ${{ steps.model.outputs.model }}
             --max-turns 75
