@@ -59,6 +59,12 @@ definitions {
     "description": "Execution interval.",
     "name": "interval",
     "type": "duration"
+  },
+  {
+    "default": "\"0s\"",
+    "description": "Delays the first execution of the job after startup.",
+    "name": "startup_delay",
+    "type": "duration"
   }
 ]
 {{< /attributes >}}
