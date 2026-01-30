@@ -26,16 +26,16 @@ Use the `definitions` block to define configurations you want to reuse.
     "name": "basic_auth"
   },
   {
-    "description": "Configure a [job](/configuration/block/job) (zero or more).",
-    "name": "job"
-  },
-  {
     "description": "Configure an [OAuth2 access control](/configuration/block/beta_oauth2) (zero or more).",
     "name": "beta_oauth2"
   },
   {
     "description": "Configure a [Rate limiter access control](/configuration/block/rate_limiter) (zero or more).",
     "name": "beta_rate_limiter"
+  },
+  {
+    "description": "Configure a [job](/configuration/block/job) (zero or more).",
+    "name": "job"
   },
   {
     "description": "Configure a [JWT access control](/configuration/block/jwt) (zero or more).",
