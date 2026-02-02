@@ -22,7 +22,10 @@ generate-llmstxt:
 	go run -tags exclude config/generate/llmstxt/main.go
 
 generate-docs: generate-llmstxt
-	go run config/generate/main.go
+	go run -tags exclude config/generate/docs/main.go
+
+generate-vscode:
+	go run -tags exclude ./config/generate/vscode/... -o vscode-schema.json
 
 .PHONY: serve-docs
 serve-docs: generate-docs
