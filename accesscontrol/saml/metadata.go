@@ -10,7 +10,7 @@ import (
 	"github.com/russellhaering/gosaml2/types"
 
 	"github.com/coupergateway/couper/config"
-	jsn "github.com/coupergateway/couper/json"
+	"github.com/coupergateway/couper/resource"
 )
 
 // MetadataProvider abstracts static (file-based) and dynamic (URL-based) metadata sources.
@@ -43,7 +43,7 @@ func (s *StaticMetadata) Stop() {}
 
 // SyncedMetadata provides metadata from a URL with automatic refresh.
 type SyncedMetadata struct {
-	syncedJSON *jsn.SyncedJSON
+	syncedResource *resource.SyncedResource
 }
 
 // NewSyncedMetadata creates a MetadataProvider that fetches and caches metadata from a URL.
@@ -58,13 +58,13 @@ func NewSyncedMetadata(ctx context.Context, uri string, ttl string, maxStale str
 	}
 
 	sm := &SyncedMetadata{}
-	sm.syncedJSON, err = jsn.NewSyncedJSON(ctx, "", "idp_metadata_url", uri, transport, "saml_metadata", timetolive, maxStaleTime, sm)
+	sm.syncedResource, err = resource.NewSyncedResource(ctx, "", "idp_metadata_url", uri, transport, "saml_metadata", timetolive, maxStaleTime, sm)
 	return sm, err
 }
 
 // Metadata returns the current cached entity descriptor.
 func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
-	data, err := s.syncedJSON.Data()
+	data, err := s.syncedResource.Data()
 	// Ignore backend errors as long as we still get cached (stale) data.
 	descriptor, ok := data.(*types.EntityDescriptor)
 	if !ok {
@@ -78,14 +78,14 @@ func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
 
 // Stop gracefully stops the background sync operation.
 func (s *SyncedMetadata) Stop() {
-	if s.syncedJSON != nil {
-		s.syncedJSON.Stop()
+	if s.syncedResource != nil {
+		s.syncedResource.Stop()
 	}
 }
 
-// Unmarshal implements jsn.SyncedJSONUnmarshaller for XML metadata.
-func (s *SyncedMetadata) Unmarshal(rawXML []byte) (interface{}, error) {
+// Unmarshal implements resource.ResourceUnmarshaller for XML metadata.
+func (s *SyncedMetadata) Unmarshal(raw []byte) (interface{}, error) {
 	descriptor := &types.EntityDescriptor{}
-	err := xml.Unmarshal(rawXML, descriptor)
+	err := xml.Unmarshal(raw, descriptor)
 	return descriptor, err
 }

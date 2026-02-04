@@ -1,4 +1,4 @@
-package json_test
+package resource_test
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 	"time"
 
 	"github.com/coupergateway/couper/internal/test"
-	jsn "github.com/coupergateway/couper/json"
+	"github.com/coupergateway/couper/resource"
 )
 
 type unmarshaller struct {
-	jsn.SyncedJSON
+	resource.SyncedResource
 }
 
 type data struct {
 	Foo int `json:"foo"`
 }
 
-func (u *unmarshaller) Unmarshal(rawJSON []byte) (interface{}, error) {
+func (u *unmarshaller) Unmarshal(raw []byte) (interface{}, error) {
 	jsonData := &data{}
-	err := json.Unmarshal(rawJSON, jsonData)
+	err := json.Unmarshal(raw, jsonData)
 	return jsonData, err
 }
 
@@ -44,11 +44,11 @@ func Test_LoadSynced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	syncedJSON, err := jsn.NewSyncedJSON(context.TODO(), "", "", origin.URL, http.DefaultTransport, "test", time.Second*2, time.Hour, &unmarshaller{})
+	syncedResource, err := resource.NewSyncedResource(context.TODO(), "", "", origin.URL, http.DefaultTransport, "test", time.Second*2, time.Hour, &unmarshaller{})
 	helper.Must(err)
 
 	expectJSONValue := func(expectedValue int, shouldFail bool) {
-		o, err := syncedJSON.Data()
+		o, err := syncedResource.Data()
 		if err == nil && shouldFail {
 			t.Fatalf("expected sync to fail - backoff too small!?")
 		} else if err != nil && !shouldFail {
