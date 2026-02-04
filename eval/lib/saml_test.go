@@ -40,6 +40,21 @@ func createSAMLProviders(t *testing.T, samlConfigs []*config.SAML) map[string]li
 	return providers
 }
 
+func setupSAMLTestContext(t *testing.T, cf *config.Couper) *eval.Context {
+	t.Helper()
+	h := test.New(t)
+
+	providers := createSAMLProviders(t, cf.Definitions.SAML)
+	evalContext := cf.Context.Value(request.ContextType).(*eval.Context)
+	evalContext = evalContext.WithSAMLProviders(providers)
+
+	req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
+	h.Must(err)
+	evalContext = evalContext.WithClientRequest(req)
+
+	return evalContext
+}
+
 func Test_SamlSsoURL(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -73,13 +88,7 @@ func Test_SamlSsoURL(t *testing.T) {
 				h.Must(err)
 			}
 
-			providers := createSAMLProviders(subT, cf.Definitions.SAML)
-			evalContext := cf.Context.Value(request.ContextType).(*eval.Context)
-			evalContext = evalContext.WithSAMLProviders(providers)
-
-			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
-			h.Must(err)
-			evalContext = evalContext.WithClientRequest(req)
+			evalContext := setupSAMLTestContext(subT, cf)
 
 			ssoURL, err := evalContext.HCLContext().Functions[lib.FnSamlSsoURL].Call([]cty.Value{cty.StringVal(tt.samlLabel)})
 			h.Must(err)
@@ -194,13 +203,7 @@ func TestSamlSsoURLError(t *testing.T) {
 			couperConf.Context = ctx
 			defer cancel()
 
-			providers := createSAMLProviders(subT, couperConf.Definitions.SAML)
-			evalContext := couperConf.Context.Value(request.ContextType).(*eval.Context)
-			evalContext = evalContext.WithSAMLProviders(providers)
-
-			req, err := http.NewRequest(http.MethodGet, "https://www.example.com/foo", nil)
-			h.Must(err)
-			evalContext = evalContext.WithClientRequest(req)
+			evalContext := setupSAMLTestContext(subT, couperConf)
 
 			_, err = evalContext.HCLContext().Functions[lib.FnSamlSsoURL].Call([]cty.Value{cty.StringVal(tt.label)})
 			if err == nil {

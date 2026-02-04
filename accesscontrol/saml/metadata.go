@@ -16,6 +16,7 @@ import (
 // MetadataProvider abstracts static (file-based) and dynamic (URL-based) metadata sources.
 type MetadataProvider interface {
 	Metadata() (*types.EntityDescriptor, error)
+	Stop() // Gracefully stop any background sync operations
 }
 
 // StaticMetadata provides metadata from a static source (file or inline bytes).
@@ -36,6 +37,9 @@ func NewStaticMetadata(raw []byte) (*StaticMetadata, error) {
 func (s *StaticMetadata) Metadata() (*types.EntityDescriptor, error) {
 	return s.descriptor, nil
 }
+
+// Stop is a no-op for static metadata (no background operations).
+func (s *StaticMetadata) Stop() {}
 
 // SyncedMetadata provides metadata from a URL with automatic refresh.
 type SyncedMetadata struct {
@@ -64,9 +68,19 @@ func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
 	// Ignore backend errors as long as we still get cached (stale) data.
 	descriptor, ok := data.(*types.EntityDescriptor)
 	if !ok {
-		return nil, fmt.Errorf("received no valid SAML metadata: %#v, %w", data, err)
+		if err != nil {
+			return nil, fmt.Errorf("received no valid SAML metadata: %#v, %w", data, err)
+		}
+		return nil, fmt.Errorf("received no valid SAML metadata: %#v", data)
 	}
 	return descriptor, nil
+}
+
+// Stop gracefully stops the background sync operation.
+func (s *SyncedMetadata) Stop() {
+	if s.syncedJSON != nil {
+		s.syncedJSON.Stop()
+	}
 }
 
 // Unmarshal implements jsn.SyncedJSONUnmarshaller for XML metadata.

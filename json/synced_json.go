@@ -12,6 +12,8 @@ import (
 	"github.com/coupergateway/couper/eval/buffer"
 )
 
+// SyncedJSONUnmarshaller defines the interface for unmarshalling fetched data.
+// Despite the "JSON" naming, this interface works with any data format (JSON, XML, etc.).
 type SyncedJSONUnmarshaller interface {
 	Unmarshal(rawJSON []byte) (interface{}, error)
 }
@@ -21,6 +23,9 @@ type dataRequest struct {
 	err error
 }
 
+// SyncedJSON provides automatic fetching and caching of remote data with TTL-based refresh.
+// Despite the "JSON" naming, it works with any data format via the SyncedJSONUnmarshaller interface.
+// It's used for JWKS (JSON), SAML metadata (XML), OIDC configuration (JSON), and other synced data.
 type SyncedJSON struct {
 	maxStale      time.Duration
 	roundTripName string
@@ -32,6 +37,8 @@ type SyncedJSON struct {
 	data        interface{}
 	dataRequest chan chan *dataRequest
 	fileMode    bool
+	stopCh      chan struct{} // Explicit stop signal
+	stoppedCh   chan struct{} // Confirmation of stop
 }
 
 func NewSyncedJSON(
@@ -45,6 +52,8 @@ func NewSyncedJSON(
 		ttl:           ttl,
 		unmarshaller:  unmarshaller,
 		uri:           uri,
+		stopCh:        make(chan struct{}),
+		stoppedCh:     make(chan struct{}),
 	}
 
 	if file != "" {
@@ -65,6 +74,8 @@ func NewSyncedJSON(
 }
 
 func (s *SyncedJSON) sync(ctx context.Context) {
+	defer close(s.stoppedCh)
+
 	var expired <-chan time.Time
 	var invalidated <-chan time.Time
 	var backoff time.Duration
@@ -76,7 +87,8 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 
 	init()
 
-	err := s.fetch(ctx) // initial fetch, provide any startup errors for first dataRequests
+	// Retry initial fetch with exponential backoff
+	err := s.fetchWithRetry(ctx, 3) // Try up to 3 times on initial fetch
 	if err != nil {
 		expired = time.After(0)
 	}
@@ -84,6 +96,8 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-s.stopCh:
 			return
 		case <-expired:
 			err = s.fetch(ctx)
@@ -107,15 +121,76 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 	}
 }
 
+// Stop gracefully stops the sync goroutine
+func (s *SyncedJSON) Stop() {
+	if s.fileMode {
+		return
+	}
+	close(s.stopCh)
+	<-s.stoppedCh
+}
+
 func (s *SyncedJSON) Data() (interface{}, error) {
 	if s.fileMode {
 		return s.data, nil
 	}
 
 	rCh := make(chan *dataRequest)
-	s.dataRequest <- rCh
-	result := <-rCh
-	return result.obj, result.err
+
+	// Use a timeout to prevent indefinite blocking if sync goroutine is dead
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+
+	select {
+	case s.dataRequest <- rCh:
+		select {
+		case result := <-rCh:
+			return result.obj, result.err
+		case <-timer.C:
+			return nil, fmt.Errorf("timeout waiting for data from sync goroutine")
+		}
+	case <-timer.C:
+		return nil, fmt.Errorf("timeout sending data request to sync goroutine")
+	}
+}
+
+// fetchWithRetry attempts to fetch with exponential backoff retry
+func (s *SyncedJSON) fetchWithRetry(ctx context.Context, maxRetries int) error {
+	var lastErr error
+	backoff := time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		lastErr = s.fetch(ctx)
+		if lastErr == nil {
+			return nil
+		}
+
+		// Don't retry if context is cancelled
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-s.stopCh:
+			return fmt.Errorf("sync stopped")
+		default:
+		}
+
+		// Wait before retry (unless this is the last attempt)
+		if i < maxRetries-1 {
+			select {
+			case <-time.After(backoff):
+				backoff *= 2
+				if backoff > time.Minute {
+					backoff = time.Minute
+				}
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-s.stopCh:
+				return fmt.Errorf("sync stopped")
+			}
+		}
+	}
+
+	return lastErr
 }
 
 // fetch blocks all data reads until we will have an updated one.
