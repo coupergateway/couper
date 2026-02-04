@@ -14,7 +14,7 @@ import (
 	"github.com/coupergateway/couper/backend"
 	"github.com/coupergateway/couper/config"
 	hclbody "github.com/coupergateway/couper/config/body"
-	jsn "github.com/coupergateway/couper/json"
+	"github.com/coupergateway/couper/resource"
 )
 
 // OpenidConfiguration represents an OpenID configuration (.../.well-known/openid-configuration)
@@ -40,13 +40,13 @@ var (
 // Config represents the configuration for an OIDC client
 type Config struct {
 	*config.OIDC
-	backends     map[string]http.RoundTripper
-	context      context.Context
-	syncedJSON   *jsn.SyncedJSON
-	jwks         *jwk.JWKS
-	jwksCheckSum [32]byte
-	jwksCancel   func()
-	jmu          sync.RWMutex // jkws
+	backends       map[string]http.RoundTripper
+	context        context.Context
+	syncedResource *resource.SyncedResource
+	jwks           *jwk.JWKS
+	jwksCheckSum   [32]byte
+	jwksCancel     func()
+	jmu            sync.RWMutex // jkws
 }
 
 // NewConfig creates a new configuration for an OIDC client
@@ -66,7 +66,7 @@ func NewConfig(ctx context.Context, oidc *config.OIDC, backends map[string]http.
 		context:  ctx,
 	}
 
-	conf.syncedJSON, err = jsn.NewSyncedJSON(ctx, "", "",
+	conf.syncedResource, err = resource.NewSyncedResource(ctx, "", "",
 		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, maxStale, conf)
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (c *Config) GetUserinfoEndpoint() (string, error) {
 }
 
 func (c *Config) Data() (*OpenidConfiguration, error) {
-	data, err := c.syncedJSON.Data()
+	data, err := c.syncedResource.Data()
 	if err != nil {
 		return nil, err
 	}
@@ -160,17 +160,17 @@ func (c *Config) JWKS() *jwk.JWKS {
 	return c.jwks
 }
 
-func (c *Config) Unmarshal(rawJSON []byte) (interface{}, error) {
+func (c *Config) Unmarshal(raw []byte) (interface{}, error) {
 	c.jmu.Lock()
 	defer c.jmu.Unlock()
 
 	jsonData := &OpenidConfiguration{}
-	err := json.Unmarshal(rawJSON, jsonData)
+	err := json.Unmarshal(raw, jsonData)
 	if err != nil {
 		return nil, err
 	}
 
-	checkSum := sha256.Sum256(rawJSON)
+	checkSum := sha256.Sum256(raw)
 	if bytes.Equal(checkSum[:], c.jwksCheckSum[:]) {
 		// return obtained (same) data here since Data() call will block
 		return jsonData, nil

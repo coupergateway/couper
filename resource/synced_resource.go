@@ -1,4 +1,4 @@
-package json
+package resource
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 	"github.com/coupergateway/couper/eval/buffer"
 )
 
-// SyncedJSONUnmarshaller defines the interface for unmarshalling fetched data.
-// Despite the "JSON" naming, this interface works with any data format (JSON, XML, etc.).
-type SyncedJSONUnmarshaller interface {
-	Unmarshal(rawJSON []byte) (interface{}, error)
+// ResourceUnmarshaller defines the interface for unmarshalling fetched data.
+// This interface works with any data format (JSON, XML, etc.).
+type ResourceUnmarshaller interface {
+	Unmarshal(raw []byte) (interface{}, error)
 }
 
 type dataRequest struct {
@@ -23,15 +23,15 @@ type dataRequest struct {
 	err error
 }
 
-// SyncedJSON provides automatic fetching and caching of remote data with TTL-based refresh.
-// Despite the "JSON" naming, it works with any data format via the SyncedJSONUnmarshaller interface.
+// SyncedResource provides automatic fetching and caching of remote data with TTL-based refresh.
+// It works with any data format via the ResourceUnmarshaller interface.
 // It's used for JWKS (JSON), SAML metadata (XML), OIDC configuration (JSON), and other synced data.
-type SyncedJSON struct {
+type SyncedResource struct {
 	maxStale      time.Duration
 	roundTripName string
 	transport     http.RoundTripper
 	ttl           time.Duration
-	unmarshaller  SyncedJSONUnmarshaller
+	unmarshaller  ResourceUnmarshaller
 	uri           string
 	// used internally
 	data        interface{}
@@ -41,10 +41,10 @@ type SyncedJSON struct {
 	stoppedCh   chan struct{} // Confirmation of stop
 }
 
-func NewSyncedJSON(
+func NewSyncedResource(
 	ctx context.Context, file, fileContext, uri string, transport http.RoundTripper, roundTripName string,
-	ttl time.Duration, maxStale time.Duration, unmarshaller SyncedJSONUnmarshaller) (*SyncedJSON, error) {
-	sj := &SyncedJSON{
+	ttl time.Duration, maxStale time.Duration, unmarshaller ResourceUnmarshaller) (*SyncedResource, error) {
+	sr := &SyncedResource{
 		dataRequest:   make(chan chan *dataRequest, 10),
 		maxStale:      maxStale,
 		roundTripName: roundTripName,
@@ -57,23 +57,23 @@ func NewSyncedJSON(
 	}
 
 	if file != "" {
-		if err := sj.readFile(fileContext, file); err != nil {
+		if err := sr.readFile(fileContext, file); err != nil {
 			return nil, err
 		}
-		sj.fileMode = true
+		sr.fileMode = true
 	} else if transport != nil {
 		// do not start go-routine on config check (-watch)
 		if _, exist := ctx.Value(request.ConfigDryRun).(bool); !exist {
-			go sj.sync(ctx)
+			go sr.sync(ctx)
 		}
 	} else {
-		return nil, fmt.Errorf("synced JSON: missing both file and request")
+		return nil, fmt.Errorf("synced resource: missing both file and request")
 	}
 
-	return sj, nil
+	return sr, nil
 }
 
-func (s *SyncedJSON) sync(ctx context.Context) {
+func (s *SyncedResource) sync(ctx context.Context) {
 	defer close(s.stoppedCh)
 
 	var expired <-chan time.Time
@@ -122,7 +122,7 @@ func (s *SyncedJSON) sync(ctx context.Context) {
 }
 
 // Stop gracefully stops the sync goroutine
-func (s *SyncedJSON) Stop() {
+func (s *SyncedResource) Stop() {
 	if s.fileMode {
 		return
 	}
@@ -130,7 +130,7 @@ func (s *SyncedJSON) Stop() {
 	<-s.stoppedCh
 }
 
-func (s *SyncedJSON) Data() (interface{}, error) {
+func (s *SyncedResource) Data() (interface{}, error) {
 	if s.fileMode {
 		return s.data, nil
 	}
@@ -155,7 +155,7 @@ func (s *SyncedJSON) Data() (interface{}, error) {
 }
 
 // fetchWithRetry attempts to fetch with exponential backoff retry
-func (s *SyncedJSON) fetchWithRetry(ctx context.Context, maxRetries int) error {
+func (s *SyncedResource) fetchWithRetry(ctx context.Context, maxRetries int) error {
 	var lastErr error
 	backoff := time.Second
 
@@ -194,7 +194,7 @@ func (s *SyncedJSON) fetchWithRetry(ctx context.Context, maxRetries int) error {
 }
 
 // fetch blocks all data reads until we will have an updated one.
-func (s *SyncedJSON) fetch(ctx context.Context) error {
+func (s *SyncedResource) fetch(ctx context.Context) error {
 	req, _ := http.NewRequest("GET", s.uri, nil)
 
 	outCtx, cancel := context.WithCancel(context.WithValue(ctx, request.RoundTripName, s.roundTripName))
@@ -223,7 +223,7 @@ func (s *SyncedJSON) fetch(ctx context.Context) error {
 	return err
 }
 
-func (s *SyncedJSON) readFile(context, path string) error {
+func (s *SyncedResource) readFile(context, path string) error {
 	raw, err := reader.ReadFromFile(context, path)
 	if err != nil {
 		return err
