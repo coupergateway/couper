@@ -46,60 +46,83 @@ jobs:
             echo "model=sonnet" >> $GITHUB_OUTPUT
           fi
 
+      - name: Fetch issue comments
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMENTS=$(gh issue view "${{ github.event.issue.number }}" --comments --json comments -q '.comments[] | "**\(.author.login)** (\(.createdAt)):\n\(.body)\n"' 2>/dev/null || echo "")
+          if [ -n "$COMMENTS" ]; then
+            echo "has_comments=true" >> $GITHUB_OUTPUT
+            {
+              echo "comments<<COMMENTS_EOF"
+              echo "$COMMENTS"
+              echo "COMMENTS_EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "has_comments=false" >> $GITHUB_OUTPUT
+          fi
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           show_full_output: true
+          track_progress: true
           prompt: |
             ISSUE TO IMPLEMENT:
-            Repository: ${{ github.repository }}
-            Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
-            URL: ${{ github.event.issue.html_url }}
+            - Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+            - URL: ${{ github.event.issue.html_url }}
 
             Issue Description:
             ${{ github.event.issue.body }}
 
+            ${{ steps.context.outputs.has_comments == 'true' && format('ISSUE COMMENTS:\n{0}', steps.context.outputs.comments) || '' }}
+
             ---
 
-            STEP 1 - LOAD CONTEXT:
-            First, run /init-context to load full project documentation from CLAUDE.md and linked files.
+            CRITICAL RULES:
+            1. NEVER give up on fixable errors - test failures MUST be fixed
+            2. A pre-commit hook enforces `go fmt` and `go vet` - if commit is blocked, fix the issues
+
+            STEP 1 - EXPLORE CODEBASE:
+            Use Task tool with subagent_type="Explore" to understand the codebase:
+            - Read CLAUDE.md and linked docs (docs/ARCHITECTURE.md, docs/GO_GUIDELINES.md)
+            - Find relevant files and patterns to follow
+            - Identify where to add tests
 
             STEP 2 - ASSESS ISSUE:
-            Review the issue description above. If it lacks specific requirements, acceptance criteria, or context needed to implement correctly, comment on the issue asking for clarification instead of proceeding. Do not guess at requirements.
+            If the issue lacks specific requirements or acceptance criteria, comment asking for clarification.
+            Do not guess at requirements.
 
             STEP 3 - IMPLEMENT:
-            If the issue is clear enough, implement the changes following these requirements:
-            1. Follow patterns in CLAUDE.md, docs/ARCHITECTURE.md, docs/GO_GUIDELINES.md
-            2. All tests must pass: `go test -v -timeout 300s -race ./...`
-            3. Run `go fmt ./...` and `go vet ./...` before committing
-            4. Update CHANGELOG.md under [Unreleased]
-            5. Add integration tests for new features
+            - Follow existing patterns in the codebase
+            - Update CHANGELOG.md under [Unreleased]
+            - Add integration tests (happy path AND error cases)
+            - Follow test patterns in server/http_integration_test.go
 
-            TESTING:
-            - Add tests for both happy path AND unhappy path (error cases, edge cases, invalid input)
-            - Test coverage should verify the feature works AND fails gracefully
-            - Follow existing test patterns in server/http_integration_test.go
+            STEP 4 - TEST:
+            Run tests for code you created/modified:
+            ```bash
+            go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName
+            ```
+            If tests fail: analyze, fix, re-run. Do not give up.
 
-            STEP 4 - VERIFY & CREATE PR:
-            - `make build` succeeds
-            - Run ONLY tests you created or modified (not `make test` - full suite runs on PR):
-              Use `go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName`
-              to run specific new/changed tests
-            - Run `make generate-docs` to update documentation for new/changed config attributes
-            - Run `go fmt ./...` and `go list ./... | grep -v 'fuzz\/.*' | xargs go vet`
-            - Create a PR with a clear description
-            - After creating the PR, output the PR URL and stop immediately. Do not continue working.
+            STEP 5 - COMMIT & CREATE PR:
+            - `make build` must succeed
+            - `make generate-docs` if you added/changed config attributes
+            - Commit and push (hook will verify go fmt/vet)
+            - Create PR: `gh pr create --fill`
+            - Output the PR URL
 
             HANDLING UNRELATED ERRORS:
-            If you encounter errors unrelated to your task (e.g., pre-existing test failures, linter issues in other files):
-            1. Stay focused on the initial task - do not fix unrelated issues
-            2. First check if a similar issue already exists: `gh issue list --search "keyword"`
-            3. If no duplicate exists, create an issue with context: `gh issue create --title "..." --body "..."`
-            4. Continue with your original task
+            If you encounter pre-existing failures unrelated to your task:
+            1. Check if issue exists: `gh issue list --search "keyword"`
+            2. If not, create one: `gh issue create --title "..." --body "..."`
+            3. Continue with your original task
           claude_args: |
             --model ${{ steps.model.outputs.model }}
             --max-turns 75
-            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch"
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch" "Task"
 
   claude-respond:
     name: "Claude: Respond to Mention"
@@ -206,6 +229,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           show_full_output: true
+          track_progress: true
           prompt: |
             CONTEXT:
             - Type: ${{ steps.meta.outputs.is_pr == 'true' && 'Pull Request' || 'Issue' }}
@@ -223,6 +247,10 @@ jobs:
             ---
 
             YOU ARE AN ORCHESTRATOR. Delegate exploration to subagents to keep context focused.
+
+            CRITICAL RULES:
+            1. NEVER give up on fixable errors - test failures MUST be fixed
+            2. A pre-commit hook enforces `go fmt` and `go vet` - if commit is blocked, fix the issues
 
             STEP 0 - CHECKOUT CORRECT BRANCH (if code changes needed):
             BEFORE making ANY edits, ensure you're on the correct branch:
@@ -257,27 +285,20 @@ jobs:
             - Follow patterns identified by Explore subagent
             - Make minimal, focused changes
 
-            STEP 5 - VERIFY:
-            - Run `go fmt ./...` and `go vet ./...`
-            - Run relevant tests: `go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName`
-            - First failure: Analyze and fix once
-            - Second failure: Document in comment, do NOT retry endlessly
+            STEP 5 - TEST (if you changed code):
+            Run relevant tests for the code you modified:
+            ```bash
+            go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName
+            ```
+            If tests fail: analyze the error, fix the code, re-run. Repeat until tests pass.
 
-            STEP 6 - COMMIT & PUSH (if code changes made):
+            STEP 6 - COMMIT & PUSH:
+            A pre-commit hook will run `go fmt` and `go vet` automatically.
+            If the hook blocks your commit, read the error and fix the issues.
             - `git add <specific files>`
             - `git commit -m "feat: description"`
             - `git push` (or `git push -u origin HEAD` for new branches)
             - If on Issue (new branch): `gh pr create --fill`
-
-            STEP 7 - POST STATUS COMMENT:
-            ALWAYS post a comment summarizing what you did:
-            `gh issue comment ${{ steps.meta.outputs.number }} --body "..."`
-
-            Include in your comment:
-            - What was requested
-            - What you did (files changed, commits made)
-            - Any issues encountered
-            - Next steps if applicable
           claude_args: |
-            --max-turns 50
+            --max-turns 60
             --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch" "Task"
