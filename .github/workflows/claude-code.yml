@@ -110,9 +110,52 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Compute event metadata
+        id: meta
+        env:
+          # Use env vars to safely pass values that might contain special characters
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_IS_PR: ${{ github.event.issue.pull_request && 'true' || 'false' }}
+        run: |
+          # Normalize between issue_comment and pull_request_review_comment events
+          # issue_comment: github.event.issue exists, .pull_request field indicates if it's a PR
+          # pull_request_review_comment: github.event.pull_request exists, no .issue
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+            echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "is_pr=true" >> $GITHUB_OUTPUT
+            echo "ref=refs/pull/$PR_NUMBER/head" >> $GITHUB_OUTPUT
+            {
+              echo "title<<EOF"
+              echo "$PR_TITLE"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            echo "url=$PR_URL" >> $GITHUB_OUTPUT
+          else
+            echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "is_pr=$ISSUE_IS_PR" >> $GITHUB_OUTPUT
+            if [ "$ISSUE_IS_PR" = "true" ]; then
+              echo "ref=refs/pull/$ISSUE_NUMBER/head" >> $GITHUB_OUTPUT
+            else
+              echo "ref=" >> $GITHUB_OUTPUT
+            fi
+            {
+              echo "title<<EOF"
+              echo "$ISSUE_TITLE"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            echo "url=$ISSUE_URL" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ steps.meta.outputs.ref || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -122,10 +165,119 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Fetch conversation context
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUM="${{ steps.meta.outputs.number }}"
+
+          # Fetch issue/PR comments
+          COMMENTS=$(gh issue view "$ISSUE_NUM" --comments --json comments -q '.comments[] | "**\(.author.login)** (\(.createdAt)):\n\(.body)\n"' 2>/dev/null || echo "")
+          if [ -n "$COMMENTS" ]; then
+            echo "has_comments=true" >> $GITHUB_OUTPUT
+            {
+              echo "comments<<COMMENTS_EOF"
+              echo "$COMMENTS"
+              echo "COMMENTS_EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "has_comments=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Fetch review comments (including Copilot) for PRs
+          if [ "${{ steps.meta.outputs.is_pr }}" = "true" ]; then
+            REVIEWS=$(gh api "repos/${{ github.repository }}/pulls/$ISSUE_NUM/comments" --jq '.[] | "**\(.user.login)** on `\(.path)`:\n\(.body)\n"' 2>/dev/null || echo "")
+            if [ -n "$REVIEWS" ]; then
+              echo "has_reviews=true" >> $GITHUB_OUTPUT
+              {
+                echo "reviews<<REVIEWS_EOF"
+                echo "$REVIEWS"
+                echo "REVIEWS_EOF"
+              } >> $GITHUB_OUTPUT
+            else
+              echo "has_reviews=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_reviews=false" >> $GITHUB_OUTPUT
+          fi
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           show_full_output: true
+          prompt: |
+            CONTEXT:
+            - Type: ${{ steps.meta.outputs.is_pr == 'true' && 'Pull Request' || 'Issue' }}
+            - URL: ${{ steps.meta.outputs.url }}
+            - Title: ${{ steps.meta.outputs.title }}
+            - Number: #${{ steps.meta.outputs.number }}
+
+            ${{ steps.context.outputs.has_comments == 'true' && format('PREVIOUS COMMENTS:\n{0}', steps.context.outputs.comments) || '' }}
+
+            ${{ steps.context.outputs.has_reviews == 'true' && format('CODE REVIEW COMMENTS (including Copilot):\n{0}', steps.context.outputs.reviews) || '' }}
+
+            USER REQUEST:
+            >>> ${{ github.event.comment.body }} <<<
+
+            ---
+
+            YOU ARE AN ORCHESTRATOR. Delegate exploration to subagents to keep context focused.
+
+            STEP 0 - CHECKOUT CORRECT BRANCH (if code changes needed):
+            BEFORE making ANY edits, ensure you're on the correct branch:
+            - If on a PR: `gh pr checkout ${{ steps.meta.outputs.number }}`
+            - If on an Issue: `git checkout -b feat/issue-${{ steps.meta.outputs.number }}-description`
+
+            STEP 1 - CATEGORIZE REQUEST:
+            - QUESTION: Answer directly, minimal file reads
+            - ANALYSIS: Delegate to Explore subagent
+            - CODE_CHANGE: Checkout branch first (Step 0), explore, then implement
+            - REVIEW_RESPONSE: Address code review comments from Copilot or reviewers
+
+            STEP 2 - DELEGATE EXPLORATION (DO NOT USE /init-context):
+            Use the Task tool with subagent_type="Explore" to understand the codebase:
+
+            Example:
+            Task(subagent_type="Explore", prompt="Find files related to [topic].
+            Read CLAUDE.md and relevant docs. Summarize:
+            1. Key patterns to follow
+            2. Files to modify
+            3. Testing approach")
+
+            STEP 3 - PLAN IF COMPLEX:
+            For complex multi-file changes, use Task with subagent_type="Plan":
+
+            Task(subagent_type="Plan", prompt="Design implementation for [task].
+            Context from exploration: [summary from step 2]
+            Return: numbered implementation steps")
+
+            STEP 4 - IMPLEMENT IN MAIN CONTEXT:
+            Make edits directly (don't delegate edits):
+            - Follow patterns identified by Explore subagent
+            - Make minimal, focused changes
+
+            STEP 5 - VERIFY:
+            - Run `go fmt ./...` and `go vet ./...`
+            - Run relevant tests: `go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName`
+            - First failure: Analyze and fix once
+            - Second failure: Document in comment, do NOT retry endlessly
+
+            STEP 6 - COMMIT & PUSH (if code changes made):
+            - `git add <specific files>`
+            - `git commit -m "feat: description"`
+            - `git push` (or `git push -u origin HEAD` for new branches)
+            - If on Issue (new branch): `gh pr create --fill`
+
+            STEP 7 - POST STATUS COMMENT:
+            ALWAYS post a comment summarizing what you did:
+            `gh issue comment ${{ steps.meta.outputs.number }} --body "..."`
+
+            Include in your comment:
+            - What was requested
+            - What you did (files changed, commits made)
+            - Any issues encountered
+            - Next steps if applicable
           claude_args: |
-            --max-turns 25
-            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch"
+            --max-turns 50
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch" "Task"
