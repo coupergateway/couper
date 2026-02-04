@@ -90,6 +90,7 @@ func main() {
 		&config.ErrorHandler{},
 		&config.Files{},
 		&config.Health{},
+		&config.Introspection{},
 		&config.JWTSigningProfile{},
 		&config.JWT{},
 		&config.Job{},

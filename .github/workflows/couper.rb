@@ -3,7 +3,7 @@ class Couper < Formula
     homepage "https://couper.io/"
     license "MIT"
     version "{{ GITHUB_REF_NAME }}"
-    head "https://github.com/coupergateway/couper.git", branch: "master"
+    head "https://github.com/coupergateway/couper.git", branch: "main"
 
     on_macos do
       if Hardware::CPU.arm?

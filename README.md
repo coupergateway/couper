@@ -5,7 +5,7 @@
 ![Docker](https://github.com/coupergateway/couper/workflows/Docker/badge.svg)
 [![Code Coverage](https://qlty.sh/gh/coupergateway/projects/couper/coverage.svg)](https://qlty.sh/gh/coupergateway/projects/couper)
 
-![Couper](docs/website/public/img/couper-logo.svg)
+![Couper](docs/img/couper-logo.svg)
 
 **Couper** is a lightweight API gateway designed to support developers in building and operating API-driven Web projects.
 

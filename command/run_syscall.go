@@ -18,6 +18,6 @@ func logRlimit(logEntry *logrus.Entry) {
 	if err != nil {
 		logEntry.Warnf("ulimit: error retrieving file descriptor limit")
 	} else {
-		logEntry.Infof("ulimit: max open files: %d (hard limit: %d)", lim.Cur, lim.Max)
+		logEntry.Debugf("ulimit: max open files: %d (hard limit: %d)", lim.Cur, lim.Max)
 	}
 }

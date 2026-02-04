@@ -1,0 +1,304 @@
+name: Claude Code Assistant
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  claude-implement:
+    name: "Claude: Implement Issue"
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      (github.event.label.name == 'claude-implement' || github.event.label.name == 'claude-implement-opus') &&
+      github.actor == 'malud'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Determine model args
+        id: model
+        run: |
+          if [[ "${{ github.event.label.name }}" == "claude-implement-opus" ]]; then
+            echo "model=opus" >> $GITHUB_OUTPUT
+          else
+            echo "model=sonnet" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch issue comments
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMENTS=$(gh issue view "${{ github.event.issue.number }}" --comments --json comments -q '.comments[] | "**\(.author.login)** (\(.createdAt)):\n\(.body)\n"' 2>/dev/null || echo "")
+          if [ -n "$COMMENTS" ]; then
+            echo "has_comments=true" >> $GITHUB_OUTPUT
+            {
+              echo "comments<<COMMENTS_EOF"
+              echo "$COMMENTS"
+              echo "COMMENTS_EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "has_comments=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          track_progress: true
+          prompt: |
+            ISSUE TO IMPLEMENT:
+            - Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+            - URL: ${{ github.event.issue.html_url }}
+
+            Issue Description:
+            ${{ github.event.issue.body }}
+
+            ${{ steps.context.outputs.has_comments == 'true' && format('ISSUE COMMENTS:\n{0}', steps.context.outputs.comments) || '' }}
+
+            ---
+
+            CRITICAL RULES:
+            1. NEVER give up on fixable errors - test failures MUST be fixed
+            2. A pre-commit hook enforces `go fmt` and `go vet` - if commit is blocked, fix the issues
+
+            STEP 1 - EXPLORE CODEBASE:
+            Use Task tool with subagent_type="Explore" to understand the codebase:
+            - Read CLAUDE.md and linked docs (docs/ARCHITECTURE.md, docs/GO_GUIDELINES.md)
+            - Find relevant files and patterns to follow
+            - Identify where to add tests
+
+            STEP 2 - ASSESS ISSUE:
+            If the issue lacks specific requirements or acceptance criteria, comment asking for clarification.
+            Do not guess at requirements.
+
+            STEP 3 - IMPLEMENT:
+            - Follow existing patterns in the codebase
+            - Update CHANGELOG.md under [Unreleased]
+            - Add integration tests (happy path AND error cases)
+            - Follow test patterns in server/http_integration_test.go
+
+            STEP 4 - TEST:
+            Run tests for code you created/modified:
+            ```bash
+            go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName
+            ```
+            If tests fail: analyze, fix, re-run. Do not give up.
+
+            STEP 5 - COMMIT & CREATE PR:
+            - `make build` must succeed
+            - `make generate-docs` if you added/changed config attributes
+            - Commit and push (hook will verify go fmt/vet)
+            - Create PR: `gh pr create --fill`
+            - Output the PR URL
+
+            HANDLING UNRELATED ERRORS:
+            If you encounter pre-existing failures unrelated to your task:
+            1. Check if issue exists: `gh issue list --search "keyword"`
+            2. If not, create one: `gh issue create --title "..." --body "..."`
+            3. Continue with your original task
+          claude_args: |
+            --model ${{ steps.model.outputs.model }}
+            --max-turns 75
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch" "Task"
+
+  claude-respond:
+    name: "Claude: Respond to Mention"
+    if: |
+      (github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment') &&
+      contains(github.event.comment.body, '@claude') &&
+      github.event.comment.user.login == 'malud'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Compute event metadata
+        id: meta
+        env:
+          # Use env vars to safely pass values that might contain special characters
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_IS_PR: ${{ github.event.issue.pull_request && 'true' || 'false' }}
+        run: |
+          # Normalize between issue_comment and pull_request_review_comment events
+          # issue_comment: github.event.issue exists, .pull_request field indicates if it's a PR
+          # pull_request_review_comment: github.event.pull_request exists, no .issue
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+            echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "is_pr=true" >> $GITHUB_OUTPUT
+            echo "ref=refs/pull/$PR_NUMBER/head" >> $GITHUB_OUTPUT
+            {
+              echo "title<<EOF"
+              echo "$PR_TITLE"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            echo "url=$PR_URL" >> $GITHUB_OUTPUT
+          else
+            echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "is_pr=$ISSUE_IS_PR" >> $GITHUB_OUTPUT
+            if [ "$ISSUE_IS_PR" = "true" ]; then
+              echo "ref=refs/pull/$ISSUE_NUMBER/head" >> $GITHUB_OUTPUT
+            else
+              echo "ref=" >> $GITHUB_OUTPUT
+            fi
+            {
+              echo "title<<EOF"
+              echo "$ISSUE_TITLE"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            echo "url=$ISSUE_URL" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.meta.outputs.ref || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Fetch conversation context
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUM="${{ steps.meta.outputs.number }}"
+
+          # Fetch issue/PR comments
+          COMMENTS=$(gh issue view "$ISSUE_NUM" --comments --json comments -q '.comments[] | "**\(.author.login)** (\(.createdAt)):\n\(.body)\n"' 2>/dev/null || echo "")
+          if [ -n "$COMMENTS" ]; then
+            echo "has_comments=true" >> $GITHUB_OUTPUT
+            {
+              echo "comments<<COMMENTS_EOF"
+              echo "$COMMENTS"
+              echo "COMMENTS_EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "has_comments=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Fetch review comments (including Copilot) for PRs
+          if [ "${{ steps.meta.outputs.is_pr }}" = "true" ]; then
+            REVIEWS=$(gh api "repos/${{ github.repository }}/pulls/$ISSUE_NUM/comments" --jq '.[] | "**\(.user.login)** on `\(.path)`:\n\(.body)\n"' 2>/dev/null || echo "")
+            if [ -n "$REVIEWS" ]; then
+              echo "has_reviews=true" >> $GITHUB_OUTPUT
+              {
+                echo "reviews<<REVIEWS_EOF"
+                echo "$REVIEWS"
+                echo "REVIEWS_EOF"
+              } >> $GITHUB_OUTPUT
+            else
+              echo "has_reviews=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_reviews=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          track_progress: true
+          prompt: |
+            CONTEXT:
+            - Type: ${{ steps.meta.outputs.is_pr == 'true' && 'Pull Request' || 'Issue' }}
+            - URL: ${{ steps.meta.outputs.url }}
+            - Title: ${{ steps.meta.outputs.title }}
+            - Number: #${{ steps.meta.outputs.number }}
+
+            ${{ steps.context.outputs.has_comments == 'true' && format('PREVIOUS COMMENTS:\n{0}', steps.context.outputs.comments) || '' }}
+
+            ${{ steps.context.outputs.has_reviews == 'true' && format('CODE REVIEW COMMENTS (including Copilot):\n{0}', steps.context.outputs.reviews) || '' }}
+
+            USER REQUEST:
+            >>> ${{ github.event.comment.body }} <<<
+
+            ---
+
+            YOU ARE AN ORCHESTRATOR. Delegate exploration to subagents to keep context focused.
+
+            CRITICAL RULES:
+            1. NEVER give up on fixable errors - test failures MUST be fixed
+            2. A pre-commit hook enforces `go fmt` and `go vet` - if commit is blocked, fix the issues
+
+            STEP 0 - CHECKOUT CORRECT BRANCH (if code changes needed):
+            BEFORE making ANY edits, ensure you're on the correct branch:
+            - If on a PR: `gh pr checkout ${{ steps.meta.outputs.number }}`
+            - If on an Issue: `git checkout -b feat/issue-${{ steps.meta.outputs.number }}-description`
+
+            STEP 1 - CATEGORIZE REQUEST:
+            - QUESTION: Answer directly, minimal file reads
+            - ANALYSIS: Delegate to Explore subagent
+            - CODE_CHANGE: Checkout branch first (Step 0), explore, then implement
+            - REVIEW_RESPONSE: Address code review comments from Copilot or reviewers
+
+            STEP 2 - DELEGATE EXPLORATION (DO NOT USE /init-context):
+            Use the Task tool with subagent_type="Explore" to understand the codebase:
+
+            Example:
+            Task(subagent_type="Explore", prompt="Find files related to [topic].
+            Read CLAUDE.md and relevant docs. Summarize:
+            1. Key patterns to follow
+            2. Files to modify
+            3. Testing approach")
+
+            STEP 3 - PLAN IF COMPLEX:
+            For complex multi-file changes, use Task with subagent_type="Plan":
+
+            Task(subagent_type="Plan", prompt="Design implementation for [task].
+            Context from exploration: [summary from step 2]
+            Return: numbered implementation steps")
+
+            STEP 4 - IMPLEMENT IN MAIN CONTEXT:
+            Make edits directly (don't delegate edits):
+            - Follow patterns identified by Explore subagent
+            - Make minimal, focused changes
+
+            STEP 5 - TEST (if you changed code):
+            Run relevant tests for the code you modified:
+            ```bash
+            go test -v -timeout 90s -race -count=1 ./path/to/package -run TestName
+            ```
+            If tests fail: analyze the error, fix the code, re-run. Repeat until tests pass.
+
+            STEP 6 - COMMIT & PUSH:
+            A pre-commit hook will run `go fmt` and `go vet` automatically.
+            If the hook blocks your commit, read the error and fix the issues.
+            - `git add <specific files>`
+            - `git commit -m "feat: description"`
+            - `git push` (or `git push -u origin HEAD` for new branches)
+            - If on Issue (new branch): `gh pr create --fill`
+          claude_args: |
+            --max-turns 60
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch" "Task"

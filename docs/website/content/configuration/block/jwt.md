@@ -197,6 +197,10 @@ The `jwt` block may also be referenced by the [`jwt_sign()` function](/configura
     "name": "backend"
   },
   {
+    "description": "Configures a [client for OAuth2 token introspection](/configuration/block/introspection).",
+    "name": "beta_introspection"
+  },
+  {
     "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
   }
