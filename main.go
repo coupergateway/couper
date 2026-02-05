@@ -161,6 +161,9 @@ func realmain(ctx context.Context, arguments []string) int {
 	}
 	logger := newLogger(confFile.Settings.LogFormat, confFile.Settings.LogLevel, confFile.Settings.LogPretty)
 
+	// Emit any deprecation warnings collected during config loading
+	configload.EmitWarnings(logger)
+
 	// respect assigned CPU limits
 	_, err = maxprocs.Set(maxprocs.Logger(logger.Debugf))
 	if err != nil {
@@ -238,6 +241,7 @@ func realmain(ctx context.Context, arguments []string) int {
 				time.Sleep(flags.FileWatchRetryDelay)
 				continue
 			}
+			configload.ClearWarnings() // clear warnings from dry-run, they'll be collected again in actual load
 
 			// dry run configuration
 			tmpStoreCh := make(chan struct{})
@@ -264,6 +268,7 @@ func realmain(ctx context.Context, arguments []string) int {
 				time.Sleep(flags.FileWatchRetryDelay)
 				continue
 			}
+			configload.EmitWarnings(logger)
 
 			restartSignal <- struct{}{}                              // shutdown running couper
 			<-errCh                                                  // drain current error due to cancel and ensure closed ports
