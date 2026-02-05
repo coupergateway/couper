@@ -385,19 +385,6 @@ func (c *Context) WithSAMLProviders(providers map[string]lib.SAMLConfigWithProvi
 	return c
 }
 
-// Close stops all background operations (SAML metadata sync, etc.) gracefully.
-func (c *Context) Close() {
-	c.cloneMu.Lock()
-	defer c.cloneMu.Unlock()
-
-	// Stop all SAML metadata providers
-	for _, samlProvider := range c.samlProviders {
-		if samlProvider.Provider != nil {
-			samlProvider.Provider.Stop()
-		}
-	}
-}
-
 func (c *Context) HCLContext() *hcl.EvalContext {
 	return c.eval
 }

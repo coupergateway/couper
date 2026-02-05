@@ -156,11 +156,6 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 
 	listenCmdShutdown()
 
-	// Stop all background operations (SAML metadata sync, etc.)
-	if evalCtx, ok := config.Context.(*eval.Context); ok {
-		evalCtx.Close()
-	}
-
 	for _, s := range tlsServer {
 		_ = s.Close()
 		logEntry.Infof("Server closed: %s", s.Addr)

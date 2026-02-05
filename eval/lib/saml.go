@@ -20,7 +20,6 @@ const (
 // SAMLMetadataProvider abstracts metadata access for the SAML SSO URL function.
 type SAMLMetadataProvider interface {
 	Metadata() (*types.EntityDescriptor, error)
-	Stop() // Gracefully stop any background sync operations
 }
 
 // SAMLConfigWithProvider combines SAML config with its metadata provider.
