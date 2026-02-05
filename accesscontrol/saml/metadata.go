@@ -14,9 +14,9 @@ import (
 )
 
 // MetadataProvider abstracts static (file-based) and dynamic (URL-based) metadata sources.
+// Dynamic providers use context cancellation to stop background sync operations.
 type MetadataProvider interface {
 	Metadata() (*types.EntityDescriptor, error)
-	Stop() // Gracefully stop any background sync operations
 }
 
 // StaticMetadata provides metadata from a static source (file or inline bytes).
@@ -37,9 +37,6 @@ func NewStaticMetadata(raw []byte) (*StaticMetadata, error) {
 func (s *StaticMetadata) Metadata() (*types.EntityDescriptor, error) {
 	return s.descriptor, nil
 }
-
-// Stop is a no-op for static metadata (no background operations).
-func (s *StaticMetadata) Stop() {}
 
 // SyncedMetadata provides metadata from a URL with automatic refresh.
 type SyncedMetadata struct {
@@ -65,7 +62,6 @@ func NewSyncedMetadata(ctx context.Context, uri string, ttl string, maxStale str
 // Metadata returns the current cached entity descriptor.
 func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
 	data, err := s.syncedResource.Data()
-	// Ignore backend errors as long as we still get cached (stale) data.
 	descriptor, ok := data.(*types.EntityDescriptor)
 	if !ok {
 		if err != nil {
@@ -74,13 +70,6 @@ func (s *SyncedMetadata) Metadata() (*types.EntityDescriptor, error) {
 		return nil, fmt.Errorf("received no valid SAML metadata: %#v", data)
 	}
 	return descriptor, nil
-}
-
-// Stop gracefully stops the background sync operation.
-func (s *SyncedMetadata) Stop() {
-	if s.syncedResource != nil {
-		s.syncedResource.Stop()
-	}
 }
 
 // Unmarshal implements resource.ResourceUnmarshaller for XML metadata.
