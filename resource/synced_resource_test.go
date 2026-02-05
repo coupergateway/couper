@@ -87,3 +87,75 @@ func Test_LoadSynced(t *testing.T) {
 	// After 2 more seconds, refresh again:
 	expectJSONValue(6, false)
 }
+
+func Test_SyncedResource_ContextCancellation(t *testing.T) {
+	helper := test.New(t)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"foo": 1}`))
+	}))
+	defer origin.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	sr, err := resource.NewSyncedResource(ctx, "", "", origin.URL, http.DefaultTransport, "test", time.Hour, time.Hour, &unmarshaller{})
+	helper.Must(err)
+
+	// Should work before cancellation
+	obj, err := sr.Data()
+	helper.Must(err)
+	if obj.(*data).Foo != 1 {
+		t.Fatalf("expected foo=1, got %v", obj)
+	}
+
+	// Cancel context
+	cancel()
+
+	// Give sync goroutine time to exit
+	time.Sleep(50 * time.Millisecond)
+
+	// Data() should return context error
+	_, err = sr.Data()
+	if err == nil {
+		t.Fatal("expected error after context cancellation")
+	}
+	if err != context.Canceled {
+		t.Fatalf("expected context.Canceled, got: %v", err)
+	}
+}
+
+func Test_SyncedResource_InitialFetchRetry(t *testing.T) {
+	helper := test.New(t)
+
+	requestCount := 0
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		// First 2 requests fail, 3rd succeeds
+		if requestCount < 3 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"foo": 42}`))
+	}))
+	defer origin.Close()
+
+	sr, err := resource.NewSyncedResource(context.Background(), "", "", origin.URL, http.DefaultTransport, "test", time.Hour, time.Hour, &unmarshaller{})
+	helper.Must(err)
+
+	// Despite initial failures, retry should succeed
+	obj, err := sr.Data()
+	helper.Must(err)
+
+	if obj.(*data).Foo != 42 {
+		t.Fatalf("expected foo=42, got %v", obj)
+	}
+
+	// Should have retried (3 requests total for initial fetch)
+	if requestCount < 3 {
+		t.Fatalf("expected at least 3 requests due to retry, got %d", requestCount)
+	}
+}
