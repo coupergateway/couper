@@ -255,20 +255,27 @@ func extractFunctions(schema *Schema) {
 	}
 }
 
+func buildProps(common []string, extra ...string) []string {
+	props := make([]string, 0, len(common)+len(extra))
+	props = append(props, common...)
+	props = append(props, extra...)
+	return props
+}
+
 func extractVariables(schema *Schema) {
 	commonProps := []string{"body", "context", "cookies", "headers", "json_body"}
 
-	requestProps := append(commonProps, []string{
+	requestProps := buildProps(commonProps,
 		"form_body", "host", "id", "method", "origin", "path",
 		"path_params", "port", "protocol", "query", "url",
-	}...)
+	)
 
-	backendRequestProps := append(commonProps, []string{
+	backendRequestProps := buildProps(commonProps,
 		"form_body", "host", "id", "method", "origin", "path",
 		"port", "protocol", "query", "url",
-	}...)
+	)
 
-	responseProps := append(commonProps, "status")
+	responseProps := buildProps(commonProps, "status")
 
 	schema.Variables["request"] = &Variable{
 		Values:      requestProps,

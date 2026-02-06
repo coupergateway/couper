@@ -85,12 +85,15 @@ func ParseHCLTag(tag string) HCLTagInfo {
 	return info
 }
 
+// configListType is the fully qualified name of config.List, which is a []string alias.
+const configListType = "config.List"
+
 // GoTypeToSchemaType converts a Go type to the corresponding schema type string
 func GoTypeToSchemaType(t reflect.Type) string {
 	typeStr := strings.Replace(t.String(), "*", "", 1)
 
-	// Handle special types
-	if typeStr == "config.List" {
+	// config.List is a []string alias used for CLI flag parsing (see config/settings.go)
+	if typeStr == configListType {
 		typeStr = "[]string"
 	}
 
