@@ -312,6 +312,15 @@ func (h *helper) configureJobs() error {
 			return newDiagErr(&r, "invalid duration")
 		}
 
+		// Parse startup_delay (optional, defaults to 0)
+		job.StartupDelayDuration, err = config.ParseDuration("startup_delay", job.StartupDelay, 0)
+		if err != nil {
+			if attr, exists := attrs["startup_delay"]; exists {
+				r = attr.Expr.Range()
+			}
+			return newDiagErr(&r, err.Error())
+		}
+
 		endpointConf := &config.Endpoint{
 			Pattern:  job.Name, // for error messages
 			Remain:   job.Remain,
