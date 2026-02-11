@@ -1,4 +1,4 @@
-.PHONY: docker-telemetry build generate image
+.PHONY: docker-telemetry build generate generate-llmstxt image
 .PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
 
 GO_VERSION := 1.25
@@ -18,7 +18,10 @@ docker-telemetry:
 generate:
 	go generate main.go
 
-generate-docs:
+generate-llmstxt:
+	go run -tags exclude config/generate/llmstxt/main.go
+
+generate-docs: generate-llmstxt
 	go run config/generate/main.go
 
 .PHONY: serve-docs
