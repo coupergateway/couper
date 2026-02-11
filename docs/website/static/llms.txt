@@ -1,0 +1,67 @@
+# Couper
+
+> Couper is a lightweight open-source API gateway that acts as an entry point for clients and an exit point to upstream services. It adds access control, observability, and backend connectivity on a separate configuration layer using HCL 2.0 syntax.
+
+Install via Docker (`docker pull coupergateway/couper`) or Homebrew (`brew install couper`). Supports file/SPA serving, API proxying, request/response manipulation, JWT, Basic Auth, OAuth2, OIDC, SAML, TLS/mTLS, WebSockets, CORS, rate limiting, and Prometheus metrics.
+
+## Getting Started
+
+- [Running Couper](https://docs.couper.io/getting-started/running-couper): Couper is available as _docker image_ from Docker Hub Running Couper requires a working Docker setup on your computer. Please visit the get started guide to get prepared. To download/install Couper...
+- [Examples](https://docs.couper.io/getting-started/examples)
+- [Beta Features](https://docs.couper.io/getting-started/beta-features): We use _beta_ features to have the possibility to develop new, complex features for you while still being able to maintain our compatibility promise. You can see beta features as a feature preview....
+- [Introduction](https://docs.couper.io/getting-started/welcome): Overview how Couper could work within a project.
+
+## Configuration
+
+- [Access Control](https://docs.couper.io/configuration/access-control): List of configurable access control layer blocks.
+- [Command Line Interface (CLI)](https://docs.couper.io/configuration/command-line): Configure Couper with cli arguments.
+- [Configuration File](https://docs.couper.io/configuration/configuration-file): Overview how to configure Couper with its configuration file.
+- [Errors](https://docs.couper.io/configuration/error-handling): Handling different error types.
+- [Expressions](https://docs.couper.io/configuration/expressions): Basic explanation of how to use hcl expressions.
+- [Functions](https://docs.couper.io/configuration/functions): Overview of usable function expressions
+- [Merge of Configuration File(s)](https://docs.couper.io/configuration/multiple-files): For more complex situations you can configure Couper with multiple files.
+- [Modifiers](https://docs.couper.io/configuration/modifiers): A set of `*_headers` attributes to manipulate HTTP header.
+- [Variables](https://docs.couper.io/configuration/variables): Powerful usage for different kinds of variables.
+
+## Configuration Blocks
+
+- [API](https://docs.couper.io/configuration/block/api): The api block bundles endpoints under a certain base_path. If an error occurred for api endpoints the response gets processed as JSON error with an error body payload. This can be customized via er...
+- [Backend](https://docs.couper.io/configuration/block/backend): The backend defines the connection pool with given origin for outgoing connections.
+- [Basic Auth](https://docs.couper.io/configuration/block/basic_auth)
+- [CORS](https://docs.couper.io/configuration/block/cors): The cors block configures the CORS (Cross-Origin Resource Sharing) behavior in Couper.
+- [Client Certificate](https://docs.couper.io/configuration/block/client_certificate): The `client_certificate` block is part of its parent `tls` block. Enables mTLS configuration.
+- [Defaults](https://docs.couper.io/configuration/block/defaults): The defaults block lets you define default values.
+- [Definitions](https://docs.couper.io/configuration/block/definitions): Use the definitions block to define configurations you want to reuse. &#9888; access control is **always** defined in the definitions block.
+- [Endpoint](https://docs.couper.io/configuration/block/endpoint): endpoint blocks define the entry points of Couper. The required _label_ defines the path suffix for the incoming client request. Each endpoint block must produce an explicit or implicit client resp...
+- [Environment](https://docs.couper.io/configuration/block/environment): The environment block lets you refine the Couper configuration based on the set environment.
+- [Error Handler](https://docs.couper.io/configuration/block/error_handler): The error_handler block lets you configure the handling of errors thrown in components configured by the parent blocks. The error handler label specifies which error type should be handled. Multipl...
+- [Files](https://docs.couper.io/configuration/block/files): The files blocks configure the file serving. Can be defined multiple times as long as the base_path is unique.
+- [Health](https://docs.couper.io/configuration/block/health): Defines a recurring health check request for its backend. Results can be obtained via the backends.<label>.health variables. Changes in health states and related requests will be logged. Default Us...
+- [JWT](https://docs.couper.io/configuration/block/jwt): The jwt block lets you configure JSON Web Token access control for your gateway. Like all access control types, the jwt block is defined in the definitions Block and can be referenced in all config...
+- [JWT Signing Profile](https://docs.couper.io/configuration/block/jwt_signing_profile): The jwt_signing_profile block lets you configure a JSON Web Token signing profile for your gateway. It is referenced in the jwt_sign() function by its required _label_. It can also be used (without...
+- [Job (Beta)](https://docs.couper.io/configuration/block/job): The beta_job block lets you define recurring requests or sequences with an given interval. The job runs at startup and for every interval and has an own log type: job which represents the starting ...
+- [OAuth2](https://docs.couper.io/configuration/block/oauth2): The oauth2 block in the Backend Block context configures an OAuth2 flow to request a bearer token for the backend request. **Note:** The token received from the authorization server's token endpoin...
+- [OAuth2 AC (Beta)](https://docs.couper.io/configuration/block/beta_oauth2): The beta_oauth2 block lets you configure the oauth2_authorization_url() function and an access control for an OAuth2 **Authorization Code Grant Flow** redirect endpoint. Like all access control typ...
+- [OIDC](https://docs.couper.io/configuration/block/oidc): The oidc block lets you configure the oauth2_authorization_url() function and an access control for an OIDC **Authorization Code Grant Flow** redirect endpoint. Like all access control types, the o...
+- [OpenAPI](https://docs.couper.io/configuration/block/openapi): The openapi block configures the backend's proxy behavior to validate outgoing and incoming requests to and from the origin, preventing the origin from invalid requests and the Couper client from i...
+- [Proxy](https://docs.couper.io/configuration/block/proxy): The proxy block creates and executes a proxy request to a backend service. 📝 Multiple proxy and request blocks are executed in parallel.
+- [Rate Limit (Beta)](https://docs.couper.io/configuration/block/rate_limit): Rate limiting protects backend services. It implements quota management used to avoid cascading failures or to spare resources.
+- [Rate Limiter (Beta)](https://docs.couper.io/configuration/block/rate_limiter)
+- [Request](https://docs.couper.io/configuration/block/request): The request block creates and executes a request to a backend service. 📝 Multiple proxy and request blocks are executed in parallel.
+- [Response](https://docs.couper.io/configuration/block/response): The response block creates and sends a client response.
+- [SAML](https://docs.couper.io/configuration/block/saml): The saml block lets you configure the saml_sso_url() function and an access control for a SAML Assertion Consumer Service (ACS) endpoint. Like all access control types, the saml block is defined in...
+- [SPA](https://docs.couper.io/configuration/block/spa): The spa blocks configure the Web serving for SPA assets. Can be defined multiple times as long as the base_path+paths is unique.
+- [Server](https://docs.couper.io/configuration/block/server): The server block is one of the root configuration blocks of Couper's configuration file.
+- [Server Certificate](https://docs.couper.io/configuration/block/server_certificate): The `server_certificate` block is part of its parent `tls` block. Enables TLS configuration.
+- [Settings](https://docs.couper.io/configuration/block/settings): The settings block lets you configure the more basic and global behavior of your gateway instance.
+- [TLS (Backend)](https://docs.couper.io/configuration/block/backend_tls): TLS settings for the related backend.
+- [TLS (Server)](https://docs.couper.io/configuration/block/server_tls): TLS settings for the related server.
+- [Token Introspection (Beta)](https://docs.couper.io/configuration/block/introspection): The beta_introspection block configures OAuth 2.0 Token Introspection (RFC 7662) for a jwt block. It allows Couper to verify token validity with an authorization server in addition to local JWT sig...
+- [Token Request (Beta)](https://docs.couper.io/configuration/block/token_request): The beta_token_request block in the Backend Block context configures a request to get a token used to authorize backend requests.
+- [WebSockets](https://docs.couper.io/configuration/block/websockets): The websockets block activates support for WebSocket connections in Couper.
+
+## Observation
+
+- [Health Check](https://docs.couper.io/observation/health): The health check will answer with status 200 OK on every port with the configured health_path setting or the COUPER_HEALTH_PATH environment variable. As soon as the gateway instance receives a SIGI...
+- [Metrics](https://docs.couper.io/observation/metrics): - Metrics - Prometheus - Grafana Dashboard - Preview - Developers Our metrics feature is beta for now. However, we want to provide some core metrics which can be directly collected from Couper.
+- [Logging](https://docs.couper.io/observation/logging)
