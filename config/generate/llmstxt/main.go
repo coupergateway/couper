@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -138,7 +139,8 @@ func parsePage(filePath, dir string) page {
 	}
 
 	// Build URL path from content directory structure.
-	relDir := strings.TrimPrefix(dir, contentDir)
+	// Use filepath.ToSlash to ensure forward slashes in URLs on all platforms.
+	relDir := filepath.ToSlash(strings.TrimPrefix(dir, contentDir))
 	fileName := strings.TrimSuffix(filepath.Base(filePath), ".md")
 	if slug != "" {
 		fileName = slug
@@ -177,7 +179,9 @@ func parseFrontmatter(content []byte) (title, description, slug string, weight i
 			slug = strings.Trim(slug, "'\"")
 		} else if strings.HasPrefix(line, "weight:") {
 			val := strings.TrimSpace(strings.TrimPrefix(line, "weight:"))
-			fmt.Sscanf(val, "%d", &weight)
+			if w, err := strconv.Atoi(val); err == nil {
+				weight = w
+			}
 		}
 	}
 	return
