@@ -18,11 +18,11 @@ docker-telemetry:
 generate:
 	go generate main.go
 
-generate-llmstxt:
-	go run -tags exclude config/generate/llmstxt/main.go
-
-generate-docs: generate-llmstxt
+generate-docs:
 	go run -tags exclude config/generate/docs/main.go
+
+generate-llmstxt: generate-docs
+	go run -tags exclude config/generate/llmstxt/main.go
 
 generate-vscode:
 	go run -tags exclude ./config/generate/vscode/... -o vscode-schema.json

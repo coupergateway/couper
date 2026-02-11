@@ -40,9 +40,9 @@ jobs:
 
     - name: Check generated docs are up-to-date
       run: |
-        make generate-docs
+        make generate-llmstxt
         if [ -n "$(git status --porcelain docs/)" ]; then
-          echo "::error::Generated docs are out of date. Run 'make generate-docs' and commit the changes (includes llms.txt)."
+          echo "::error::Generated docs are out of date. Run 'make generate-llmstxt' and commit the changes."
           git diff docs/
           exit 1
         fi
