@@ -54,8 +54,8 @@ var BlockNamesMap = map[string]string{
 	"oauth2_req_auth": "oauth2",
 }
 
-// VSCodeBlockNamesMap provides mappings for VS Code schema (HCL block names)
-// Some blocks like tls are the same block used in different contexts
+// VSCodeBlockNamesMap provides mappings for VS Code schema (HCL block names).
+// Maps internal Go type names to their HCL block names when they differ.
 var VSCodeBlockNamesMap = map[string]string{
 	"introspection":   "beta_introspection",
 	"oauth2_ac":       "beta_oauth2",
