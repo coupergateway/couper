@@ -34,7 +34,7 @@ allowed_origins = ["https://www.example.com", "https://www.another.host.org"]
     "default": "",
     "description": "An allowed origin or a list of allowed origins.",
     "name": "allowed_origins",
-    "type": "object"
+    "type": "string or tuple"
   },
   {
     "default": "false",
