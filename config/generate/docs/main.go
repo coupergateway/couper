@@ -16,8 +16,7 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
-	"github.com/coupergateway/couper/config"
-	"github.com/coupergateway/couper/config/meta"
+	"github.com/coupergateway/couper/config/generate/shared"
 )
 
 type entry struct {
@@ -53,78 +52,19 @@ const (
 	urlBasePath = "/configuration/"
 )
 
-// export md: 1) search for ::attribute, replace if exist or append at end
 func main() {
-
 	client := search.NewClient(searchAppID, os.Getenv(searchClientKey))
 	index := client.InitIndex(searchIndex)
 
-	filenameRegex := regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z0-9]+)`)
 	bracesRegex := regexp.MustCompile(`{([^}]*)}`)
 
-	attributesMap := map[string][]reflect.StructField{
-		"RequestHeadersAttributes":  newFields(&meta.RequestHeadersAttributes{}),
-		"ResponseHeadersAttributes": newFields(&meta.ResponseHeadersAttributes{}),
-		"FormParamsAttributes":      newFields(&meta.FormParamsAttributes{}),
-		"QueryParamsAttributes":     newFields(&meta.QueryParamsAttributes{}),
-		"LogFieldsAttribute":        newFields(&meta.LogFieldsAttribute{}),
-	}
-
-	blockNamesMap := map[string]string{
-		"oauth2_ac":       "beta_oauth2",
-		"oauth2_req_auth": "oauth2",
-	}
-
 	processedFiles := make(map[string]struct{})
-	var allEntries []entry // Collect all entries to index after clearing
+	var allEntries []entry
 
-	for _, impl := range []interface{}{
-		&config.API{},
-		&config.Backend{},
-		&config.BackendTLS{},
-		&config.BasicAuth{},
-		&config.CORS{},
-		&config.Defaults{},
-		&config.Definitions{},
-		&config.Endpoint{},
-		&config.ErrorHandler{},
-		&config.Files{},
-		&config.Health{},
-		&config.Introspection{},
-		&config.JWTSigningProfile{},
-		&config.JWT{},
-		&config.Job{},
-		&config.OAuth2AC{},
-		&config.OAuth2ReqAuth{},
-		&config.OIDC{},
-		&config.OpenAPI{},
-		&config.Proxy{},
-		&config.RateLimit{},
-		&config.RateLimiter{},
-		&config.Request{},
-		&config.Response{},
-		&config.SAML{},
-		&config.Server{},
-		&config.ClientCertificate{},
-		&config.ServerCertificate{},
-		&config.ServerTLS{},
-		&config.Settings{},
-		&config.Spa{},
-		&config.TokenRequest{},
-		&config.Websockets{},
-	} {
-		t := reflect.TypeOf(impl).Elem()
-		name := reflect.TypeOf(impl).String()
-		name = strings.TrimPrefix(name, "*config.")
-		blockName := strings.ToLower(strings.Trim(filenameRegex.ReplaceAllString(name, "${1}_"), "_"))
-
-		if _, exists := blockNamesMap[blockName]; exists {
-			blockName = blockNamesMap[blockName]
-		}
-
+	for _, info := range shared.GetAllConfigStructs() {
+		blockName := info.BlockName
 		urlPath, _ := url.JoinPath(urlBasePath, "block", blockName)
 
-		// Extract description from the block's markdown file
 		blockDescription := extractBlockDescription(blockName)
 
 		result := entry{
@@ -136,37 +76,23 @@ func main() {
 
 		result.ID = result.URL
 
-		var fields []reflect.StructField
-		fields = collectFields(t, fields)
-
-		inlineType, ok := impl.(config.Inline)
-		if ok {
-			it := reflect.TypeOf(inlineType.Inline()).Elem()
-			for i := 0; i < it.NumField(); i++ {
-				field := it.Field(i)
-				if _, ok := attributesMap[field.Name]; ok {
-					fields = append(fields, attributesMap[field.Name]...)
-				} else {
-					fields = append(fields, field)
-				}
-			}
-		}
+		fields := shared.GetInlineFields(info.Impl)
 
 		for _, field := range fields {
 			if field.Tag.Get("docs") == "" {
 				continue
 			}
 
-			hclParts := strings.Split(field.Tag.Get("hcl"), ",")
-			if len(hclParts) == 0 {
+			hclInfo := shared.ParseHCLTag(field.Tag.Get("hcl"))
+			if hclInfo.Name == "" {
 				continue
 			}
 
-			name := hclParts[0]
+			name := hclInfo.Name
 			fieldDescription := field.Tag.Get("docs")
 			fieldDescription = bracesRegex.ReplaceAllString(fieldDescription, "`${1}`")
 
-			if len(hclParts) > 1 && hclParts[1] == "block" {
+			if hclInfo.IsBlock {
 				b := block{
 					Description: fieldDescription,
 					Name:        name,
@@ -177,18 +103,7 @@ func main() {
 
 			fieldType := field.Tag.Get("type")
 			if fieldType == "" {
-				ft := strings.Replace(field.Type.String(), "*", "", 1)
-				if ft == "config.List" {
-					ft = "[]string"
-				}
-				if ft[:2] == "[]" {
-					ft = "tuple (" + ft[2:] + ")"
-				} else if strings.Contains(ft, "int") {
-					ft = "number"
-				} else if ft != "string" && ft != "bool" {
-					ft = "object"
-				}
-				fieldType = ft
+				fieldType = goTypeToDocType(field.Type)
 			}
 
 			fieldDefault := field.Tag.Get("default")
@@ -236,7 +151,6 @@ func main() {
 			}
 		}
 
-		// TODO: write func
 		file, err := os.OpenFile(filepath.Join(docsBlockPath, blockName+".md"), os.O_RDWR|os.O_CREATE, 0666)
 		if err != nil {
 			panic(err)
@@ -250,9 +164,7 @@ func main() {
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			// handle attributes/blocks markers in either legacy (::attributes/::blocks) or shortcode ({{< attributes >}}/{{< blocks >}}) form
 			if bAttr != nil && (strings.HasPrefix(line, "::attributes") || strings.HasPrefix(line, "{{< attributes")) {
-				// write shortcode version
 				fileBytes.WriteString("{{< attributes >}}\n")
 				fileBytes.WriteString(bAttr.String())
 				fileBytes.WriteString("{{< /attributes >}}\n")
@@ -265,7 +177,6 @@ func main() {
 				seenAttr = true
 				continue
 			} else if bBlock != nil && (strings.HasPrefix(line, "::blocks") || strings.HasPrefix(line, "{{< blocks")) {
-				// write shortcode version
 				fileBytes.WriteString("{{< blocks >}}\n")
 				fileBytes.WriteString(bBlock.String())
 				fileBytes.WriteString("{{< /blocks >}}\n")
@@ -314,7 +225,6 @@ func main() {
 		processedFiles[file.Name()] = struct{}{}
 		println("Attributes/Blocks written: "+blockName+":\r\t\t\t\t\t", file.Name())
 
-		// Collect entries for indexing after clearing
 		if os.Getenv(searchClientKey) != "" {
 			allEntries = append(allEntries, result)
 		}
@@ -324,14 +234,12 @@ func main() {
 		return
 	}
 
-	// Clear existing index before rebuilding - done here after all file generation is complete
 	_, err := index.ClearObjects()
 	if err != nil {
 		panic(err)
 	}
 	println("SearchIndex cleared - rebuilding...")
 
-	// Save all collected block entries
 	if len(allEntries) > 0 {
 		_, err = index.SaveObjects(allEntries)
 		if err != nil {
@@ -340,28 +248,24 @@ func main() {
 		println("Indexed", len(allEntries), "configuration blocks")
 	}
 
-	// Note: Algolia index settings (searchable attributes, ranking, etc.)
-	// can be configured via the Algolia dashboard if needed
-	// Default settings work well for our use case
-
-	// Index all markdown files recursively in configuration and other sections
 	indexDirectoryRecursive(configurationPath, processedFiles, index)
-
-	// Also index getting-started and observation sections
 	indexDirectoryRecursive("docs/website/content/getting-started", processedFiles, index)
 	indexDirectoryRecursive("docs/website/content/observation", processedFiles, index)
 }
 
-func collectFields(t reflect.Type, fields []reflect.StructField) []reflect.StructField {
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		if field.Anonymous {
-			fields = append(fields, collectFields(field.Type, fields)...)
-		} else {
-			fields = append(fields, field)
-		}
+func goTypeToDocType(t reflect.Type) string {
+	ft := strings.Replace(t.String(), "*", "", 1)
+	if ft == "config.List" {
+		ft = "[]string"
 	}
-	return fields
+	if len(ft) >= 2 && ft[:2] == "[]" {
+		ft = "tuple (" + ft[2:] + ")"
+	} else if strings.Contains(ft, "int") {
+		ft = "number"
+	} else if ft != "string" && ft != "bool" {
+		ft = "object"
+	}
+	return ft
 }
 
 var mdHeaderRegex = regexp.MustCompile(`#(.+)\n(\n(.+)\n)`)
@@ -413,7 +317,6 @@ func indexDirectory(dirPath, docType string, processedFiles map[string]struct{},
 			URL:         urlPath,
 		}
 
-		// debug
 		if index == nil {
 			b, merr := json.Marshal(result)
 			if merr != nil {
@@ -461,7 +364,6 @@ func attributesFromTable(content []byte, parse bool) []interface{} {
 	s := bufio.NewScanner(bytes.NewReader(content))
 	var tableHeadSeen bool
 	for s.Scan() {
-		// scan to table header
 		line := s.Text()
 		if !tableHeadSeen {
 			if strings.HasPrefix(line, "|:-") {
@@ -500,16 +402,6 @@ func (entries byName) Less(i, j int) bool {
 	return left < right
 }
 
-func newFields(impl interface{}) []reflect.StructField {
-	it := reflect.TypeOf(impl).Elem()
-	var fields []reflect.StructField
-	for i := 0; i < it.NumField(); i++ {
-		fields = append(fields, it.Field(i))
-	}
-	return fields
-}
-
-// extractBlockDescription reads the block's markdown file to extract its description
 func extractBlockDescription(blockName string) string {
 	mdPath := filepath.Join(docsBlockPath, blockName+".md")
 	content, err := os.ReadFile(mdPath)
@@ -517,7 +409,6 @@ func extractBlockDescription(blockName string) string {
 		return ""
 	}
 
-	// Extract description - skip frontmatter, skip H1, collect content until table/shortcode
 	lines := bytes.Split(content, []byte("\n"))
 	var inFrontmatter bool
 	var pastH1 bool
@@ -527,7 +418,6 @@ func extractBlockDescription(blockName string) string {
 	for _, line := range lines {
 		lineStr := strings.TrimSpace(string(line))
 
-		// Handle frontmatter
 		if lineStr == "---" {
 			inFrontmatter = !inFrontmatter
 			continue
@@ -536,28 +426,23 @@ func extractBlockDescription(blockName string) string {
 			continue
 		}
 
-		// Skip H1 heading
 		if strings.HasPrefix(lineStr, "# ") {
 			pastH1 = true
 			continue
 		}
 
-		// Only collect content after H1
 		if !pastH1 {
 			continue
 		}
 
-		// Stop at tables, shortcodes, or comments
 		if strings.HasPrefix(lineStr, "|") ||
 			strings.HasPrefix(lineStr, "{{<") ||
 			strings.HasPrefix(lineStr, "<!--") {
 			break
 		}
 
-		// Handle empty lines
 		if lineStr == "" {
 			emptyLineCount++
-			// Stop after 2 consecutive empty lines (end of intro section)
 			if emptyLineCount >= 2 && description.Len() > 0 {
 				break
 			}
@@ -566,11 +451,9 @@ func extractBlockDescription(blockName string) string {
 
 		emptyLineCount = 0
 
-		// Handle blockquotes - extract text content
 		if strings.HasPrefix(lineStr, ">") {
 			blockquoteText := strings.TrimPrefix(lineStr, ">")
 			blockquoteText = strings.TrimSpace(blockquoteText)
-			// Skip emoji-only or very short content
 			if len(blockquoteText) > 5 {
 				if description.Len() > 0 {
 					description.WriteString(" ")
@@ -580,7 +463,6 @@ func extractBlockDescription(blockName string) string {
 			continue
 		}
 
-		// Add regular text
 		if description.Len() > 0 {
 			description.WriteString(" ")
 		}
@@ -589,14 +471,10 @@ func extractBlockDescription(blockName string) string {
 
 	result := description.String()
 
-	// Clean up markdown syntax
-	// Remove inline code backticks for cleaner display
 	result = strings.ReplaceAll(result, "`", "")
-	// Remove links but keep the text
 	linkRegex := regexp.MustCompile(`\[([^\]]+)\]\([^\)]+\)`)
 	result = linkRegex.ReplaceAllString(result, "$1")
 
-	// Limit to ~200 characters
 	if len(result) > 200 {
 		result = result[:197] + "..."
 	}
@@ -604,7 +482,6 @@ func extractBlockDescription(blockName string) string {
 	return result
 }
 
-// indexDirectoryRecursive indexes all markdown files in a directory and its subdirectories
 func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{}, index *search.Index) {
 	dirEntries, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -616,12 +493,10 @@ func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{},
 		entryPath := filepath.Join(dirPath, dirEntry.Name())
 
 		if dirEntry.IsDir() {
-			// Recursively index subdirectories
 			indexDirectoryRecursive(entryPath, processedFiles, index)
 			continue
 		}
 
-		// Skip non-markdown files and already processed files
 		if !strings.HasSuffix(dirEntry.Name(), ".md") || dirEntry.Name() == "_index.md" {
 			continue
 		}
@@ -638,20 +513,16 @@ func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{},
 			continue
 		}
 
-		// Extract URL path from file path
 		relativePath := strings.TrimPrefix(entryPath, "docs/website/content/")
 		relativePath = strings.TrimSuffix(relativePath, ".md")
-		// Remove number prefixes from path segments
 		pathParts := strings.Split(relativePath, "/")
 		for i, part := range pathParts {
 			pathParts[i] = strings.TrimPrefix(part, regexp.MustCompile(`^\d+\.`).FindString(part))
 		}
 		urlPath := "/" + strings.Join(pathParts, "/") + "/"
 
-		// Extract title and description from frontmatter
 		title, description, _ := headerFromMeta(fileContent)
 
-		// If no frontmatter, extract from first H1
 		if title == "" {
 			h1Regex := regexp.MustCompile(`(?m)^#\s+(.+)$`)
 			if matches := h1Regex.FindSubmatch(fileContent); len(matches) > 1 {
@@ -663,7 +534,6 @@ func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{},
 			title = filepath.Base(relativePath)
 		}
 
-		// Determine document type from path
 		docType := "documentation"
 		docTypeLabel := "Documentation"
 		if strings.Contains(relativePath, "block/") {
@@ -680,7 +550,6 @@ func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{},
 			docTypeLabel = "Configuration"
 		}
 
-		// Add source path to description for context
 		sourceContext := docTypeLabel + " → " + strings.ReplaceAll(relativePath, "/", " › ")
 		if description != "" {
 			description = description + " | Source: " + sourceContext
@@ -688,7 +557,6 @@ func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{},
 			description = "Source: " + sourceContext
 		}
 
-		// Create main entry for the page
 		result := &entry{
 			Description: description,
 			ID:          urlPath,
@@ -705,16 +573,13 @@ func indexDirectoryRecursive(dirPath string, processedFiles map[string]struct{},
 			println("Indexed: " + urlPath)
 		}
 
-		// Also index H2 and H3 headings as separate searchable entries
 		indexHeadings(fileContent, urlPath, title, index)
 	}
 }
 
-// extractSearchableContent extracts code blocks, lists, and other searchable content
 func extractSearchableContent(content []byte) []interface{} {
 	attrs := make([]interface{}, 0)
 
-	// Extract code blocks with context
 	codeBlockRegex := regexp.MustCompile("(?s)```\\w*\\n(.*?)```")
 	codeMatches := codeBlockRegex.FindAllSubmatch(content, -1)
 	for _, match := range codeMatches {
@@ -730,7 +595,6 @@ func extractSearchableContent(content []byte) []interface{} {
 		}
 	}
 
-	// Extract inline code with surrounding context
 	inlineCodeRegex := regexp.MustCompile("`([^`]+)`")
 	inlineMatches := inlineCodeRegex.FindAllSubmatch(content, -1)
 	seen := make(map[string]bool)
@@ -751,16 +615,13 @@ func extractSearchableContent(content []byte) []interface{} {
 	return attrs
 }
 
-// indexHeadings indexes H2 and H3 headings as separate entries for granular search
 func indexHeadings(content []byte, baseURL string, pageTitle string, index *search.Index) {
-	// Extract H2 headings
 	h2Regex := regexp.MustCompile(`(?m)^##\s+(.+)$`)
 	h2Matches := h2Regex.FindAllSubmatch(content, -1)
 
 	for _, match := range h2Matches {
 		if len(match) > 1 {
 			heading := string(match[1])
-			// Create anchor ID (simplified, matching Hugo's default)
 			anchor := strings.ToLower(heading)
 			anchor = regexp.MustCompile(`[^\w\s-]`).ReplaceAllString(anchor, "")
 			anchor = regexp.MustCompile(`\s+`).ReplaceAllString(anchor, "-")

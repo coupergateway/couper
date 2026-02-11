@@ -1,0 +1,69 @@
+name: Sync VS Code Schema
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'config/**/*.go'
+      - 'eval/**/*.go'
+      - 'errors/**/*.go'
+      - 'config/generate/**'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout couper
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Generate VS Code schema
+        run: make generate-vscode
+
+      - name: Checkout couper-vscode
+        uses: actions/checkout@v4
+        with:
+          repository: coupergateway/couper-vscode
+          token: ${{ secrets.VSCODE_REPO_TOKEN }}
+          path: couper-vscode
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Copy schema and build
+        run: |
+          cp vscode-schema.json couper-vscode/generated/schema.json
+          cd couper-vscode
+          npm run build:schema
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          cd couper-vscode
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          cd couper-vscode
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add generated/schema.json src/schema.js
+          git commit -m "chore: sync schema from couper
+
+          Auto-generated from coupergateway/couper@${{ github.sha }}"
+          git push

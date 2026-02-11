@@ -5,6 +5,7 @@
 
 # Claude Code personal settings
 .claude/settings.local.json
+CLAUDE.local.md
 
 #binary
 /couper
@@ -32,3 +33,6 @@ docs/website/.vite
 /*.key
 
 vendor
+
+# generated files
+vscode-schema.json
