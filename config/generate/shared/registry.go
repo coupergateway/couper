@@ -57,6 +57,7 @@ var BlockNamesMap = map[string]string{
 // VSCodeBlockNamesMap provides mappings for VS Code schema (HCL block names)
 // Some blocks like tls are the same block used in different contexts
 var VSCodeBlockNamesMap = map[string]string{
+	"introspection":   "beta_introspection",
 	"oauth2_ac":       "beta_oauth2",
 	"oauth2_req_auth": "oauth2",
 	"backend_tls":     "tls",
