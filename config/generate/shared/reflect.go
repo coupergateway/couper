@@ -120,6 +120,8 @@ func GoTypeToSchemaType(t reflect.Type) string {
 		return "boolean"
 	case "hcl.Expression":
 		return "expression"
+	case "cty.Value":
+		return "string"
 	default:
 		return "object"
 	}
