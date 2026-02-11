@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: coupergateway/couper-vscode
-          token: ${{ secrets.VSCODE_REPO_TOKEN }}
+          ssh-key: ${{ secrets.VSCODE_DEPLOY_KEY }}
           path: couper-vscode
 
       - name: Setup Node.js
