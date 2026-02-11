@@ -1,15 +1,5 @@
 {
-  "projectTitle": "Couper",
-  "description": "Lightweight open-source API gateway with HCL configuration for routing, access control, and backend connectivity",
-  "folders": ["docs/website/content"],
-  "excludeFolders": ["node_modules", "vendor", "docs/website/public", "docs/website/resources"],
-  "excludeFiles": ["_index.md"],
-  "rules": [
-    "Couper configuration uses HCL 2.0 (HashiCorp Configuration Language) syntax",
-    "Configuration blocks nest hierarchically: server > api > endpoint > proxy/request > backend",
-    "Access controls (basic_auth, jwt, oauth2, oidc, saml) are defined in a definitions block and referenced by label name",
-    "Beta features use the beta_ prefix in block names (beta_job, beta_rate_limit, beta_oauth2)"
-  ],
   "url": "https://context7.com/coupergateway/couper",
   "public_key": "pk_5VT0FHUMinUbcZCZjNm3N"
 }
+
