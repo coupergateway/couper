@@ -86,10 +86,10 @@ func TestConfig_Synced(t *testing.T) {
 	}
 	wg.Wait()
 
-	// wait for possible goroutine leaks from syncedJSON due to low ttl
+	// wait for possible goroutine leaks from syncedResource due to low ttl
 	time.Sleep(time.Second / 2)
 
-	if n := test.NumGoroutines("json.(*SyncedJSON).sync"); n != 2 {
+	if n := test.NumGoroutines("resource.(*SyncedResource).sync"); n != 2 {
 		t.Errorf("Expected two running routines, got: %d", n)
 	}
 }

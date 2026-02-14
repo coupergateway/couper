@@ -15,6 +15,7 @@ import (
 	"github.com/russellhaering/gosaml2/types"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/accesscontrol/saml"
 	"github.com/coupergateway/couper/config/reader"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/internal/test"
@@ -34,7 +35,7 @@ func Test_NewSAML2ACS(t *testing.T) {
 		{"testdata/idp-metadata.xml", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{}, "", false},
 		{"not-there.xml", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{}, "not-there.xml: no such file or directory", true},
 	} {
-		metadata, err := reader.ReadFromAttrFile("saml2", "", tc.metadataFile)
+		metadataBytes, err := reader.ReadFromAttrFile("saml2", "", tc.metadataFile)
 		if err != nil {
 			readErr := err.(errors.GoError)
 			if tc.shouldFail {
@@ -47,17 +48,24 @@ func Test_NewSAML2ACS(t *testing.T) {
 			continue
 		}
 
-		_, err = ac.NewSAML2ACS(metadata, "test", tc.acsURL, tc.spEntityID, tc.arrayAttributes)
+		provider, err := saml.NewStaticMetadata(metadataBytes)
+		helper.Must(err)
+
+		_, err = ac.NewSAML2ACS(provider, "test", tc.acsURL, tc.spEntityID, tc.arrayAttributes)
 		helper.Must(err)
 	}
 }
 
 func Test_SAML2ACS_Validate(t *testing.T) {
-	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
-	if err != nil || metadata == nil {
+	metadataBytes, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	if err != nil || metadataBytes == nil {
 		t.Fatal("Expected a metadata object")
 	}
-	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
+	provider, err := saml.NewStaticMetadata(metadataBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sa, err := ac.NewSAML2ACS(provider, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")
 	}
@@ -100,11 +108,15 @@ func Test_SAML2ACS_Validate(t *testing.T) {
 }
 
 func Test_SAML2ACS_ValidateAssertionInfo(t *testing.T) {
-	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	metadataBytes, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
+	provider, err := saml.NewStaticMetadata(metadataBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sa, err := ac.NewSAML2ACS(provider, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")
 	}
@@ -141,11 +153,15 @@ func Test_SAML2ACS_ValidateAssertionInfo(t *testing.T) {
 }
 
 func Test_SAML2ACS_GetAssertionData(t *testing.T) {
-	metadata, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
-	if err != nil || metadata == nil {
+	metadataBytes, err := reader.ReadFromAttrFile("saml2", "", "testdata/idp-metadata.xml")
+	if err != nil || metadataBytes == nil {
 		t.Fatal("Expected a metadata object")
 	}
-	sa, err := ac.NewSAML2ACS(metadata, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
+	provider, err := saml.NewStaticMetadata(metadataBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sa, err := ac.NewSAML2ACS(provider, "test", "http://www.examle.org/saml/acs", "my-sp-entity-id", []string{"memberOf"})
 	if err != nil || sa == nil {
 		t.Fatal("Expected a saml acs object")
 	}
