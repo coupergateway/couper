@@ -13,11 +13,11 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `beta_backend_rate_limit_exceeded` [error type](https://docs.couper.io/configuration/error-handling) is renamed to `backend_throttle_exceeded`; the old name is deprecated and will be removed in version 1.15 ([#914](https://github.com/coupergateway/couper/issues/914))
 
 * **Security**
-  * Return explicit error when backend `origin` evaluates to empty string instead of falling back to the client request URL
-  * Sanitize `\r`, `\n`, and `\0` characters from header values set via HCL expressions to prevent header injection
-  * Reject path traversal sequences (`..`, `%2e%2e`) in `path` and `path_prefix` attributes
-  * Remove rate limiter key value from error messages to prevent information leakage
-  * Use constant-time comparison for username in `basic_auth`
+  * Return explicit error when backend `origin` evaluates to empty string instead of falling back to the client request URL ([#920](https://github.com/coupergateway/couper/pull/920))
+  * Sanitize `\r`, `\n`, and `\0` characters from header values set via HCL expressions to prevent header injection ([#920](https://github.com/coupergateway/couper/pull/920))
+  * Reject path traversal sequences (`..`, `%2e%2e`) in `path` and `path_prefix` attributes ([#920](https://github.com/coupergateway/couper/pull/920))
+  * Remove rate limiter key value from error messages to prevent information leakage ([#920](https://github.com/coupergateway/couper/pull/920))
+  * Use constant-time comparison for username in `basic_auth` ([#920](https://github.com/coupergateway/couper/pull/920))
 
 * **Dependencies**
   * build with go 1.25 ([#862](https://github.com/coupergateway/couper/pull/862))
