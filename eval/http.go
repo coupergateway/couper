@@ -260,11 +260,14 @@ func evalPathAttr(req *http.Request, pathAttr *hclsyntax.Attribute, httpCtx *hcl
 	}
 
 	if path := seetie.ValueToString(pathValue); path != "" {
-		// TODO: Check for a valid absolute path
 		if i := strings.Index(path, "#"); i >= 0 {
 			return errors.Configuration.Label("path attribute").Messagef("invalid fragment found in %q", path)
 		} else if i = strings.Index(path, "?"); i >= 0 {
 			return errors.Configuration.Label("path attribute").Messagef("invalid query string found in %q", path)
+		}
+
+		if err := validatePath(path, "path attribute"); err != nil {
+			return err
 		}
 
 		if pathMatch, isWildcard := req.Context().
@@ -280,6 +283,54 @@ func evalPathAttr(req *http.Request, pathAttr *hclsyntax.Attribute, httpCtx *hcl
 	}
 
 	return nil
+}
+
+// ValidatePath checks that a path value does not contain traversal sequences.
+// It rejects paths containing ".." segments (including percent-encoded variants
+// like %2e%2e). Relative paths are allowed since they are joined with "/" by
+// the caller.
+func ValidatePath(p, label string) error {
+	return validatePath(p, label)
+}
+
+func validatePath(p, label string) error {
+	if p == "" {
+		return nil
+	}
+
+	// Strip wildcard suffix "/**" for validation
+	checkPath := strings.TrimSuffix(p, "/**")
+	if checkPath == "" {
+		return nil
+	}
+
+	// Check for path traversal in the raw path
+	if containsTraversal(checkPath) {
+		return errors.Configuration.Label(label).
+			Messagef("path traversal not allowed: %q", p)
+	}
+
+	// Also check the percent-decoded path for encoded traversals (%2e%2e)
+	decoded, err := url.PathUnescape(checkPath)
+	if err != nil {
+		return errors.Configuration.Label(label).
+			Messagef("invalid path encoding: %q", p)
+	}
+	if containsTraversal(decoded) {
+		return errors.Configuration.Label(label).
+			Messagef("path traversal not allowed: %q", p)
+	}
+
+	return nil
+}
+
+func containsTraversal(p string) bool {
+	for _, segment := range strings.Split(p, "/") {
+		if segment == ".." {
+			return true
+		}
+	}
+	return false
 }
 
 func upgradeType(h http.Header) string {
@@ -533,6 +584,19 @@ func deleteHeader(val cty.Value, headerCtx http.Header) {
 	}
 }
 
+// sanitizeHeaderValue strips control characters (\r, \n, \0) from header
+// values to prevent header injection attacks. This is necessary because
+// SetHeader writes to the header map directly, bypassing net/http's
+// built-in validation in Header.Set()/Header.Add().
+func sanitizeHeaderValue(v string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '\r' || r == '\n' || r == 0 {
+			return -1
+		}
+		return r
+	}, v)
+}
+
 func toSlice(val interface{}) []string {
 	// as this is called with values from a map returned by seetie.ValueToMap(), val can currently be one of
 	// * nil
@@ -547,7 +611,7 @@ func toSlice(val interface{}) []string {
 	case float64:
 		return []string{strconv.FormatFloat(v, 'f', 0, 64)}
 	case string:
-		return []string{v}
+		return []string{sanitizeHeaderValue(v)}
 	case []interface{}:
 		var l []string
 		for _, e := range v {
@@ -568,7 +632,8 @@ func toString(val interface{}) *string {
 		s := strconv.FormatBool(v)
 		return &s
 	case string:
-		return &v
+		s := sanitizeHeaderValue(v)
+		return &s
 	case float64:
 		s := strconv.FormatFloat(v, 'f', 0, 64)
 		return &s

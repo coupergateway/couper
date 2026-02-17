@@ -117,7 +117,7 @@ func (rl *RateLimiter) Validate(req *http.Request) error {
 
 	keyHash := sha256.Sum256([]byte(keyValue))
 	if !rl.getLimiter(keyHash).Allow() {
-		return errors.BetaRateLimiter.Messagef("Request not allowed for %q", keyValue)
+		return errors.BetaRateLimiter.Message("rate limit exceeded")
 	}
 	return nil
 }

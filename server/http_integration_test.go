@@ -5339,10 +5339,10 @@ func TestRateLimiter(t *testing.T) {
 	for _, tc := range []testCase{
 		{"request without sub", "/rate1/foo", http.Header{"Authorization": []string{"Bearer " + tokenNoSub}}, "", http.StatusForbidden, "access control error: rate: Empty key value"},
 		{"request with sub ok", "/rate1/foo", http.Header{"Authorization": []string{"Bearer " + tokenSub123}}, "", http.StatusOK, ""},
-		{"request with same sub blocked", "/rate2/foo", http.Header{"Authorization": []string{"Bearer " + tokenSub123}}, "", http.StatusTooManyRequests, `access control error: rate: Request not allowed for "123"`},
+		{"request with same sub blocked", "/rate2/foo", http.Header{"Authorization": []string{"Bearer " + tokenSub123}}, "", http.StatusTooManyRequests, `access control error: rate: rate limit exceeded`},
 		{"request with different sub ok", "/rate2/foo", http.Header{"Authorization": []string{"Bearer " + tokenSub456}}, "", http.StatusOK, ""},
 		{"error handler pre", "/rate3/foo", http.Header{}, "", http.StatusOK, ""},
-		{"error handler", "/rate3/foo", http.Header{}, "", http.StatusTeapot, `access control error: rate_eh: Request not allowed for "asdf"`},
+		{"error handler", "/rate3/foo", http.Header{}, "", http.StatusTeapot, `access control error: rate_eh: rate limit exceeded`},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)
