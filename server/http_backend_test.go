@@ -154,10 +154,10 @@ func TestBackend_WithoutOrigin(t *testing.T) {
 		path    string
 		message string
 	}{
-		{"/proxy/backend-path", `configuration error: anonymous_6_13: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
-		{"/proxy/url", `configuration error: anonymous_15_13: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
-		{"/request/backend-path", `configuration error: anonymous_28_15: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
-		{"/request/url", `configuration error: anonymous_37_15: the origin attribute has to contain an absolute URL with a valid hostname: ""`},
+		{"/proxy/backend-path", `configuration error: anonymous_6_13: the origin attribute must not be empty`},
+		{"/proxy/url", `configuration error: anonymous_15_13: the origin attribute must not be empty`},
+		{"/request/backend-path", `configuration error: anonymous_28_15: the origin attribute must not be empty`},
+		{"/request/url", `configuration error: anonymous_37_15: the origin attribute must not be empty`},
 	} {
 		t.Run(tc.path, func(st *testing.T) {
 			hook.Reset()

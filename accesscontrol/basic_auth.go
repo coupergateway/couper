@@ -115,7 +115,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 		return errors.BasicAuth.Message("reading authorization failed")
 	}
 
-	if ba.user == user {
+	if subtle.ConstantTimeCompare([]byte(ba.user), []byte(user)) == 1 {
 		if ba.pass != "" {
 			if subtle.ConstantTimeCompare([]byte(ba.pass), []byte(pass)) == 1 {
 				return ba.withUsername(req, user)

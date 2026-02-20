@@ -402,11 +402,14 @@ func (b *Backend) withRetryTokenRequest(req *http.Request, res *http.Response) (
 
 func (b *Backend) withPathPrefix(req *http.Request, evalCtx *hcl.EvalContext, hclContext *hclsyntax.Body) error {
 	if pathPrefix := b.getAttribute(evalCtx, "path_prefix", hclContext); pathPrefix != "" {
-		// TODO: Check for a valid absolute path
 		if i := strings.Index(pathPrefix, "#"); i >= 0 {
 			return errors.Configuration.Messagef("path_prefix attribute: invalid fragment found in %q", pathPrefix)
 		} else if i = strings.Index(pathPrefix, "?"); i >= 0 {
 			return errors.Configuration.Messagef("path_prefix attribute: invalid query string found in %q", pathPrefix)
+		}
+
+		if err := eval.ValidatePath(pathPrefix, "path_prefix attribute"); err != nil {
+			return err
 		}
 
 		req.URL.Path = utils.JoinPath("/", pathPrefix, req.URL.Path)
@@ -542,7 +545,15 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params *hclsyntax.Body
 		return nil, errors.Configuration.Label(b.name).
 			Messagef("invalid url: %s", originURL.String())
 	} else if origin == "" {
-		originURL = req.URL
+		// For internal backends (e.g. JWKS, OIDC) where the request URL is the
+		// full absolute URL, derive origin from it. For user-facing proxy/request
+		// backends (relative URL), this is a configuration error.
+		if req.URL.IsAbs() && req.URL.Hostname() != "" {
+			originURL = req.URL
+		} else {
+			return nil, errors.Configuration.Label(b.name).
+				Message("the origin attribute must not be empty")
+		}
 	}
 
 	if hostname == "" {
