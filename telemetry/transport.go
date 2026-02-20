@@ -6,6 +6,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
@@ -52,6 +53,9 @@ func (t *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 
 	// Inject trace context into outgoing request headers so the
 	// backend receives the correct traceparent.
+	if req.Header == nil {
+		req.Header = http.Header{}
+	}
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 
 	req = req.WithContext(ctx)
@@ -74,7 +78,10 @@ func (t *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	span.AddEvent(spanName + ".response")
 	elapsed := time.Since(start).Seconds()
 
-	if beresp != nil {
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	} else if beresp != nil {
 		attrs = append(attrs, attribute.Key("code").Int(beresp.StatusCode))
 		respAttrs := semconv.HTTPAttributesFromHTTPStatusCode(beresp.StatusCode)
 		spanStatus, spanMessage := semconv.SpanStatusFromHTTPStatusCode(beresp.StatusCode)
