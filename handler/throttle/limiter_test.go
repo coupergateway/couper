@@ -1,4 +1,4 @@
-package ratelimit_test
+package throttle_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/coupergateway/couper/config"
 	couperErrors "github.com/coupergateway/couper/errors"
-	"github.com/coupergateway/couper/handler/ratelimit"
+	"github.com/coupergateway/couper/handler/throttle"
 	"github.com/coupergateway/couper/internal/test"
 )
 
@@ -25,8 +25,8 @@ func TestLimiter_Sliding(t *testing.T) {
 
 	const period = "2s"
 
-	limits, err := ratelimit.ConfigureRateLimits(ctx, config.RateLimits{
-		&config.RateLimit{
+	limits, err := throttle.ConfigureThrottles(ctx, config.Throttles{
+		&config.Throttle{
 			Mode:         "wait",
 			Period:       period,
 			PerPeriod:    1,
@@ -39,12 +39,12 @@ func TestLimiter_Sliding(t *testing.T) {
 		MaxConnsPerHost: 1,
 	}
 
-	limiter := ratelimit.NewLimiter(backend, nil)
+	limiter := throttle.NewLimiter(backend, nil)
 	if limiter != nil {
 		t.Errorf("expected nil Limiter, got %v", limiter)
 	}
 
-	limiter = ratelimit.NewLimiter(backend, limits)
+	limiter = throttle.NewLimiter(backend, limits)
 	if limiter == nil {
 		t.Errorf("expected configured Limiter, got %v", limiter)
 	}
@@ -170,8 +170,8 @@ func TestLimiter_Fixed(t *testing.T) {
 
 	const period = "2s"
 
-	limits, err := ratelimit.ConfigureRateLimits(ctx, config.RateLimits{
-		&config.RateLimit{
+	limits, err := throttle.ConfigureThrottles(ctx, config.Throttles{
+		&config.Throttle{
 			Mode:         "wait",
 			Period:       period,
 			PerPeriod:    1,
@@ -184,12 +184,12 @@ func TestLimiter_Fixed(t *testing.T) {
 		MaxConnsPerHost: 1,
 	}
 
-	limiter := ratelimit.NewLimiter(backend, nil)
+	limiter := throttle.NewLimiter(backend, nil)
 	if limiter != nil {
 		t.Errorf("expected nil Limiter, got %v", limiter)
 	}
 
-	limiter = ratelimit.NewLimiter(backend, limits)
+	limiter = throttle.NewLimiter(backend, limits)
 	if limiter == nil {
 		t.Errorf("expected configured Limiter, got %v", limiter)
 	}
@@ -257,8 +257,8 @@ func TestLimiter_Block(t *testing.T) {
 
 	const period = "2s"
 
-	limits, err := ratelimit.ConfigureRateLimits(ctx, config.RateLimits{
-		&config.RateLimit{
+	limits, err := throttle.ConfigureThrottles(ctx, config.Throttles{
+		&config.Throttle{
 			Mode:         "block",
 			Period:       period,
 			PerPeriod:    1,
@@ -271,7 +271,7 @@ func TestLimiter_Block(t *testing.T) {
 		MaxConnsPerHost: 1,
 	}
 
-	limiter := ratelimit.NewLimiter(backend, limits)
+	limiter := throttle.NewLimiter(backend, limits)
 	if limiter == nil {
 		t.Errorf("expected configured Limiter, got %v", limiter)
 	}
@@ -302,7 +302,7 @@ func TestLimiter_Block(t *testing.T) {
 			go func(idx int) {
 				defer wg.Done()
 				_, e := limiter.RoundTrip(req.WithContext(rctx))
-				if errors.Is(e, couperErrors.BetaBackendRateLimitExceeded) {
+				if errors.Is(e, couperErrors.BackendThrottleExceeded) {
 					rateLimitErrs.Add(1)
 				}
 			}(i)

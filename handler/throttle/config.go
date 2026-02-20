@@ -1,4 +1,4 @@
-package ratelimit
+package throttle
 
 import (
 	"context"
@@ -19,8 +19,8 @@ const (
 	windowSliding
 )
 
-// RateLimit represents a rate limit configuration.
-type RateLimit struct {
+// Throttle represents a throttle configuration.
+type Throttle struct {
 	count       *atomic.Uint64
 	logger      *logrus.Entry
 	mode        int
@@ -32,13 +32,13 @@ type RateLimit struct {
 	window      int
 }
 
-type RateLimits []*RateLimit
+type Throttles []*Throttle
 
-func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *logrus.Entry) (RateLimits, error) {
+func ConfigureThrottles(ctx context.Context, limits config.Throttles, logger *logrus.Entry) (Throttles, error) {
 	var (
-		mode       int
-		rateLimits RateLimits
-		window     int
+		mode      int
+		throttles Throttles
+		window    int
 	)
 
 	uniqueDurations := make(map[time.Duration]struct{})
@@ -84,7 +84,7 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 			return nil, fmt.Errorf("unsupported 'mode' (%q) given", limit.Mode)
 		}
 
-		rateLimit := &RateLimit{
+		t := &Throttle{
 			count:     &atomic.Uint64{},
 			logger:    logger,
 			mode:      mode,
@@ -94,17 +94,17 @@ func ConfigureRateLimits(ctx context.Context, limits config.RateLimits, logger *
 			window:    window,
 		}
 
-		if rateLimit.window == windowSliding {
-			rateLimit.ringBuffer = newRingBuffer(rateLimit.perPeriod)
+		if t.window == windowSliding {
+			t.ringBuffer = newRingBuffer(t.perPeriod)
 		}
 
-		rateLimits = append(rateLimits, rateLimit)
+		throttles = append(throttles, t)
 	}
 
-	// Sort 'rateLimits' by 'period' DESC.
-	sort.Slice(rateLimits, func(i, j int) bool {
-		return rateLimits[i].period > rateLimits[j].period
+	// Sort 'throttles' by 'period' DESC.
+	sort.Slice(throttles, func(i, j int) bool {
+		return throttles[i].period > throttles[j].period
 	})
 
-	return rateLimits, nil
+	return throttles, nil
 }

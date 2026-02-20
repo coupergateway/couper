@@ -23,7 +23,7 @@ type Backend struct {
 	MaxConnections         int         `hcl:"max_connections,optional" docs:"The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. Must not be used in backend refinement." default:"0"`
 	Name                   string      `hcl:"name,label_optional"`
 	OpenAPI                *OpenAPI    `hcl:"openapi,block" docs:"Configures [OpenAPI validation](/configuration/block/openapi) (zero or one)."`
-	RateLimits             RateLimits  `hcl:"beta_rate_limit,block" docs:"Configures [rate limiting](/configuration/block/rate_limit) (zero or one)."`
+	Throttles              Throttles   `hcl:"throttle,block" docs:"Configures [throttling](/configuration/block/throttle) (zero or one)."`
 	Remain                 hcl.Body    `hcl:",remain"`
 	TLS                    *BackendTLS `hcl:"tls,block" docs:"Configures [backend TLS](/configuration/block/backend_tls) (zero or one)."`
 

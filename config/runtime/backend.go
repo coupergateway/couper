@@ -19,7 +19,7 @@ import (
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/handler/producer"
-	"github.com/coupergateway/couper/handler/ratelimit"
+	"github.com/coupergateway/couper/handler/throttle"
 	"github.com/coupergateway/couper/handler/transport"
 	"github.com/coupergateway/couper/handler/validation"
 )
@@ -86,12 +86,12 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 		}}
 	}
 
-	if len(beConf.RateLimits) > 0 {
+	if len(beConf.Throttles) > 0 {
 		if strings.HasPrefix(beConf.Name, "anonymous_") {
-			return nil, fmt.Errorf("anonymous backend '%s' cannot define 'beta_rate_limit' block(s)", beConf.Name)
+			return nil, fmt.Errorf("anonymous backend '%s' cannot define 'throttle' block(s)", beConf.Name)
 		}
 
-		tc.RateLimits, err = ratelimit.ConfigureRateLimits(conf.Context, beConf.RateLimits, log)
+		tc.Throttles, err = throttle.ConfigureThrottles(conf.Context, beConf.Throttles, log)
 		if err != nil {
 			return nil, err
 		}

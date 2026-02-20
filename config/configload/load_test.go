@@ -103,8 +103,8 @@ definitions {
 }`,
 		},
 		{
-			"beta_rate_limit",
-			`beta_rate_limit {
+			"throttle",
+			`throttle {
   per_period = 10
   period = "10s"
 }`,
@@ -246,7 +246,7 @@ func TestRateLimit(t *testing.T) {
 		server {}
 		definitions {
 		  backend "foo" {
-		    beta_rate_limit {
+		    throttle {
 		      %s
 		    }
 		  }

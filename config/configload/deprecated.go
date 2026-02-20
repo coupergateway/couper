@@ -31,10 +31,10 @@ func init() {
 	// deprecatedAttributes["..."] = deprecated{"...", "..."}
 
 	// Deprecated blocks:
-	// deprecatedBlocks["..."] = deprecated{"...", "..."}
+	deprecatedBlocks["beta_rate_limit"] = deprecated{"throttle", "1.15"}
 
 	// Deprecated labels:
-	// deprecatedLabels["..."] = deprecated{"...", "..."}
+	deprecatedLabels["beta_backend_rate_limit_exceeded"] = deprecated{"backend_throttle_exceeded", "1.15"}
 }
 
 func deprecate(bodies []*hclsyntax.Body, logger *logrus.Entry) {

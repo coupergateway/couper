@@ -197,10 +197,6 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
     "name": "beta_health"
   },
   {
-    "description": "Configures [rate limiting](/configuration/block/rate_limit) (zero or one).",
-    "name": "beta_rate_limit"
-  },
-  {
     "description": "Configures a [token request authorization](/configuration/block/token_request) (zero or more).",
     "name": "beta_token_request"
   },
@@ -211,6 +207,10 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
   {
     "description": "Configures [OpenAPI validation](/configuration/block/openapi) (zero or one).",
     "name": "openapi"
+  },
+  {
+    "description": "Configures [throttling](/configuration/block/throttle) (zero or one).",
+    "name": "throttle"
   },
   {
     "description": "Configures [backend TLS](/configuration/block/backend_tls) (zero or one).",
