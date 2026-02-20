@@ -60,6 +60,22 @@ func TestJob_Run(t *testing.T) {
 				time.Sleep(time.Second)
 			}),
 		}, "", 2, time.Second * 3}, // initial req + one (hit at 2.5s)
+		{"job with startup_delay", fields{
+			conf: &config.Job{Name: "testCase5", IntervalDuration: time.Millisecond * 100, StartupDelayDuration: time.Millisecond * 300},
+			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
+					getST(r).Error("expected trigger req with Couper UA")
+				}
+			}),
+		}, "", 0, time.Millisecond * 200}, // no execution within 200ms due to startup_delay of 300ms
+		{"job with startup_delay executes after delay", fields{
+			conf: &config.Job{Name: "testCase6", IntervalDuration: time.Millisecond * 100, StartupDelayDuration: time.Millisecond * 200},
+			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				if !strings.HasPrefix(r.Header.Get("User-Agent"), "Couper") {
+					getST(r).Error("expected trigger req with Couper UA")
+				}
+			}),
+		}, "", 2, time.Millisecond * 350}, // first at ~200ms (startup_delay), second at ~300ms (interval)
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
