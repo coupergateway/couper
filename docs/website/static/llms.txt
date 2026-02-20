@@ -55,7 +55,7 @@ Install via Docker (`docker pull coupergateway/couper`) or Homebrew (`brew insta
 - [Settings](https://docs.couper.io/configuration/block/settings): The settings block lets you configure the more basic and global behavior of your gateway instance.
 - [TLS (Backend)](https://docs.couper.io/configuration/block/backend_tls): TLS settings for the related backend.
 - [TLS (Server)](https://docs.couper.io/configuration/block/server_tls): TLS settings for the related server.
-- [Throttle](https://docs.couper.io/configuration/block/throttle): Throttling protects backend services. It implements quota management used to avoid cascading failures or to spare resources.
+- [Throttle](https://docs.couper.io/configuration/block/throttle): Throttling protects backend services by limiting the number of requests forwarded to an origin within a given time period. This helps avoid cascading failures or spare resources on upstream service...
 - [Token Introspection (Beta)](https://docs.couper.io/configuration/block/introspection): The beta_introspection block configures OAuth 2.0 Token Introspection (RFC 7662) for a jwt block. It allows Couper to verify token validity with an authorization server in addition to local JWT sig...
 - [Token Request (Beta)](https://docs.couper.io/configuration/block/token_request): The beta_token_request block in the Backend Block context configures a request to get a token used to authorize backend requests.
 - [WebSockets](https://docs.couper.io/configuration/block/websockets): The websockets block activates support for WebSocket connections in Couper.

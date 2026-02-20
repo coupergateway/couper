@@ -5,11 +5,69 @@ slug: 'throttle'
 
 # Throttle
 
-Throttling protects backend services. It implements quota management used to avoid cascading failures or to spare resources.
+Throttling protects backend services by limiting the number of requests forwarded to an origin within a given time period. This helps avoid cascading failures or spare resources on upstream services with known capacity limits.
+
+If the throttle limit is exceeded, Couper either queues the request until the next period (`mode = "wait"`, default) or immediately responds with HTTP status `429` (`mode = "block"`). Exceeded limits in `block` mode can be handled with an [`error_handler`](/configuration/block/error_handler) using the [`backend_throttle_exceeded`](/configuration/error-handling#endpoint-error-types) error type.
 
 | Block name | Context                                               | Label    |
 |:-----------|:------------------------------------------------------|:---------|
 | `throttle` | named [`backend` block](/configuration/block/backend) | no label |
+
+## Example: Sliding window (wait mode)
+
+Allows 100 requests per minute to the backend. Excess requests wait for a free slot:
+
+```hcl
+definitions {
+  backend "my_api" {
+    origin = "https://api.example.com"
+
+    throttle {
+      period     = "1m"
+      per_period = 100
+    }
+  }
+}
+```
+
+## Example: Fixed window (block mode)
+
+Allows 10 requests per second. Excess requests are immediately rejected with HTTP `429`:
+
+```hcl
+definitions {
+  backend "strict_api" {
+    origin = "https://api.example.com"
+
+    throttle {
+      period        = "1s"
+      per_period    = 10
+      period_window = "fixed"
+      mode          = "block"
+    }
+  }
+}
+
+server {
+  endpoint "/strict" {
+    proxy {
+      backend = "strict_api"
+    }
+
+    error_handler "backend_throttle_exceeded" {
+      response {
+        status = 429
+        headers = {
+          retry-after = "1"
+        }
+        json_body = {
+          error = "rate limit exceeded, try again later"
+        }
+      }
+    }
+  }
+}
+```
 
 {{< attributes >}}
 [
