@@ -45,7 +45,6 @@ Install via Docker (`docker pull coupergateway/couper`) or Homebrew (`brew insta
 - [OIDC](https://docs.couper.io/configuration/block/oidc): The oidc block lets you configure the oauth2_authorization_url() function and an access control for an OIDC **Authorization Code Grant Flow** redirect endpoint. Like all access control types, the o...
 - [OpenAPI](https://docs.couper.io/configuration/block/openapi): The openapi block configures the backend's proxy behavior to validate outgoing and incoming requests to and from the origin, preventing the origin from invalid requests and the Couper client from i...
 - [Proxy](https://docs.couper.io/configuration/block/proxy): The proxy block creates and executes a proxy request to a backend service. 📝 Multiple proxy and request blocks are executed in parallel.
-- [Rate Limit (Beta)](https://docs.couper.io/configuration/block/rate_limit): Rate limiting protects backend services. It implements quota management used to avoid cascading failures or to spare resources.
 - [Rate Limiter (Beta)](https://docs.couper.io/configuration/block/rate_limiter)
 - [Request](https://docs.couper.io/configuration/block/request): The request block creates and executes a request to a backend service. 📝 Multiple proxy and request blocks are executed in parallel.
 - [Response](https://docs.couper.io/configuration/block/response): The response block creates and sends a client response.
@@ -56,6 +55,7 @@ Install via Docker (`docker pull coupergateway/couper`) or Homebrew (`brew insta
 - [Settings](https://docs.couper.io/configuration/block/settings): The settings block lets you configure the more basic and global behavior of your gateway instance.
 - [TLS (Backend)](https://docs.couper.io/configuration/block/backend_tls): TLS settings for the related backend.
 - [TLS (Server)](https://docs.couper.io/configuration/block/server_tls): TLS settings for the related server.
+- [Throttle](https://docs.couper.io/configuration/block/throttle): Throttling protects backend services. It implements quota management used to avoid cascading failures or to spare resources.
 - [Token Introspection (Beta)](https://docs.couper.io/configuration/block/introspection): The beta_introspection block configures OAuth 2.0 Token Introspection (RFC 7662) for a jwt block. It allows Couper to verify token validity with an authorization server in addition to local JWT sig...
 - [Token Request (Beta)](https://docs.couper.io/configuration/block/token_request): The beta_token_request block in the Backend Block context configures a request to get a token used to authorize backend requests.
 - [WebSockets](https://docs.couper.io/configuration/block/websockets): The websockets block activates support for WebSocket connections in Couper.
