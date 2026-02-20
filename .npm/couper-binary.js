@@ -1,10 +1,9 @@
 const { existsSync, mkdirSync, unlinkSync, chmodSync, copyFileSync } = require("fs")
 const axios = require("axios")
-const tar = require("tar")
 const crypto = require("crypto")
 const unzip = require("unzip-stream")
 const { join } = require("path")
-const { spawnSync } = require("child_process")
+const { spawnSync, spawn } = require("child_process")
 
 const osMap = {
 	"Linux":  "linux",
@@ -72,10 +71,20 @@ class CouperBinary {
 		.then(response => {
 			response.data.pipe(hash)
 			if (this.platform.archive === "tar.gz") {
-				return response.data.pipe(tar.x({
-					strip: 0,
-					cwd: this.targetDirectory
-				}))
+				const which = spawnSync('tar', ['--version'])
+				if (which.error) {
+					console.error('Error: "tar" command not found. Please install tar (e.g., apk add tar).')
+					process.exit(1)
+				}
+				const tarProcess = spawn('tar', ['xzf', '-', '-C', this.targetDirectory])
+				response.data.pipe(tarProcess.stdin)
+				return new Promise((resolve, reject) => {
+					tarProcess.on('close', (code) => {
+						if (code !== 0) reject(new Error(`tar extraction failed with exit code ${code}`))
+						else resolve()
+					})
+					tarProcess.on('error', reject)
+				})
 			} else if (this.platform.archive === "zip") {
 				return response.data.pipe(unzip.Extract({path: this.targetDirectory}))
 			}
