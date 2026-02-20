@@ -97,8 +97,11 @@ func initTraceExporter(ctx context.Context, opts *Options, log *logrus.Entry, wg
 		sdktrace.WithSpanProcessor(bsp),
 	)
 
-	// set global propagator to TraceContext (the default is no-op).
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	// set global propagator to TraceContext + Baggage (the default is no-op).
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
 	otel.SetTracerProvider(tracerProvider)
 
 	go pushOnShutdown(ctx, traceExp.Shutdown)

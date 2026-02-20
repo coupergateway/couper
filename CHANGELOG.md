@@ -14,6 +14,11 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `beta_backend_rate_limit_exceeded` [error type](https://docs.couper.io/configuration/error-handling) is renamed to `backend_throttle_exceeded`; the old name is deprecated and will be removed in version 1.15 ([#914](https://github.com/coupergateway/couper/issues/914))
   * [`beta_job` block](https://docs.couper.io/configuration/block/job) has left beta and is renamed to `job`; the old name is deprecated and will be removed in version 1.15 ([#898](https://github.com/coupergateway/couper/pull/898))
 
+* **Fixed**
+  * Fix `traceparent` header not being propagated to backends when using [`beta_traces`](https://docs.couper.io/configuration/block/settings) due to trace context injection into the wrong (request) headers; now correctly injected into response headers by `TraceHandler` and into outgoing request headers by `InstrumentedRoundTripper`
+  * Fix redundant span creation in producers and `innerRoundTrip` when using [`beta_traces`](https://docs.couper.io/configuration/block/settings); consolidate all backend tracing into a single `InstrumentedRoundTripper` with correct `SpanKindClient`
+  * Fix `TraceContext` propagator missing `Baggage` support when using [`beta_traces`](https://docs.couper.io/configuration/block/settings); use composite propagator with both `TraceContext` and `Baggage`
+
 * **Security**
   * Return explicit error when backend `origin` evaluates to empty string instead of falling back to the client request URL ([#920](https://github.com/coupergateway/couper/pull/920))
   * Sanitize `\r`, `\n`, and `\0` characters from header values set via HCL expressions to prevent header injection ([#920](https://github.com/coupergateway/couper/pull/920))

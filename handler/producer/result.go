@@ -3,8 +3,6 @@ package producer
 import (
 	"net/http"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 )
@@ -14,7 +12,6 @@ type Result struct {
 	Beresp        *http.Response
 	Err           error
 	RoundTripName string
-	// TODO: trace
 }
 
 // Results represents the producer <Result> channel.
@@ -32,10 +29,8 @@ func (rm ResultMap) List() []*http.Response {
 
 func roundtrip(rt http.RoundTripper, req *http.Request) *Result {
 	rtn := req.Context().Value(request.RoundTripName).(string)
-	span := trace.SpanFromContext(req.Context())
 
 	beresp, err := rt.RoundTrip(req)
-	span.End()
 
 	if _, ok := err.(*errors.Error); ok {
 		return &Result{

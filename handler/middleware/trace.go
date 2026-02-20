@@ -51,15 +51,17 @@ func (th *TraceHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	parentCtx := req.Context()
 	if th.trustParent {
 		parentCtx = otel.GetTextMapPropagator().Extract(parentCtx, propagation.HeaderCarrier(req.Header))
-		opts = append(opts, trace.WithLinks(trace.Link{SpanContext: trace.SpanContextFromContext(parentCtx)}))
 	}
 
 	tracer := otel.GetTracerProvider().Tracer(instrumentation.Name)
 	ctx, span := tracer.Start(parentCtx, spanName, opts...)
 	defer span.End()
 
-	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 	*req = *req.WithContext(ctx)
+
+	// Inject trace context into response headers for client-side correlation.
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(rw.Header()))
+
 	th.handler.ServeHTTP(rw, req)
 
 	if rsw, ok := rw.(logging.RecorderInfo); ok {

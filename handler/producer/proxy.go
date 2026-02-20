@@ -5,11 +5,9 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/eval"
-	"github.com/coupergateway/couper/telemetry"
 )
 
 type Proxy struct {
@@ -20,18 +18,11 @@ type Proxy struct {
 }
 
 func (p *Proxy) Produce(clientReq *http.Request) *Result {
-	ctx := clientReq.Context()
-	var rootSpan trace.Span
-	ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "proxies", trace.WithSpanKind(trace.SpanKindProducer))
-
-	outCtx := withRoundTripName(ctx, p.Name)
+	outCtx := withRoundTripName(clientReq.Context(), p.Name)
 	outCtx = context.WithValue(outCtx, request.RoundTripProxy, true)
 	if p.dependsOn != "" {
 		outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, p.dependsOn)
 	}
-
-	// span end by result reader
-	outCtx, _ = telemetry.NewSpanFromContext(outCtx, p.Name, trace.WithSpanKind(trace.SpanKindServer))
 
 	// since proxy and backend may work on the "same" outReq this must be cloned.
 	outReq := clientReq.Clone(outCtx)
@@ -50,10 +41,7 @@ func (p *Proxy) Produce(clientReq *http.Request) *Result {
 
 	outReq.URL = url
 
-	result := roundtrip(p.RoundTrip, outReq)
-
-	rootSpan.End()
-	return result
+	return roundtrip(p.RoundTrip, outReq)
 }
 
 func (p *Proxy) SetDependsOn(ps string) {

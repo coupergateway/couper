@@ -12,15 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/sirupsen/logrus"
-	"github.com/zclconf/go-cty/cty"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/coupergateway/couper/config"
 	hclbody "github.com/coupergateway/couper/config/body"
 	"github.com/coupergateway/couper/config/request"
@@ -34,9 +25,11 @@ import (
 	"github.com/coupergateway/couper/logging"
 	"github.com/coupergateway/couper/server/writer"
 	"github.com/coupergateway/couper/telemetry"
-	"github.com/coupergateway/couper/telemetry/instrumentation"
-	"github.com/coupergateway/couper/telemetry/provider"
 	"github.com/coupergateway/couper/utils"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/sirupsen/logrus"
+	"github.com/zclconf/go-cty/cty"
 )
 
 var (
@@ -96,11 +89,13 @@ func NewBackend(ctx *hclsyntax.Body, tc *Config, opts *BackendOptions, log *logr
 
 // initOnce ensures synced transport configuration. First request will setup the rate limits, origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
+	var innerTransport http.RoundTripper
 	if len(b.transportConf.Throttles) > 0 {
-		b.transport = throttle.NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.Throttles)
+		innerTransport = throttle.NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.Throttles)
 	} else {
-		b.transport = NewTransport(conf, b.logEntry)
+		innerTransport = NewTransport(conf, b.logEntry)
 	}
+	b.transport = telemetry.NewInstrumentedRoundTripper(innerTransport)
 
 	b.healthyMu.Lock()
 	b.transportConfResult = *conf
@@ -288,40 +283,7 @@ func (b *Backend) openAPIValidate(req *http.Request, tc *Config, deadlineErr <-c
 }
 
 func (b *Backend) innerRoundTrip(req *http.Request, tc *Config, deadlineErr <-chan error) (*http.Response, error) {
-	span := trace.SpanFromContext(req.Context())
-	span.SetAttributes(telemetry.KeyOrigin.String(tc.Origin))
-	span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(req)...)
-
-	spanMsg := "backend"
-	if b.name != "" {
-		spanMsg += "." + b.name
-	}
-
-	meter := provider.Meter(instrumentation.BackendInstrumentationName)
-	counter, _ := meter.Int64Counter(instrumentation.BackendRequest)
-	duration, _ := meter.Float64Histogram(instrumentation.BackendRequestDuration)
-
-	attrs := []attribute.KeyValue{
-		attribute.String("backend_name", tc.BackendName),
-		attribute.String("hostname", tc.Hostname),
-		attribute.String("method", req.Method),
-		attribute.String("origin", tc.Origin),
-	}
-
-	start := time.Now()
-	span.AddEvent(spanMsg + ".request")
 	beresp, err := b.transport.RoundTrip(req)
-	span.AddEvent(spanMsg + ".response")
-	endSeconds := time.Since(start).Seconds()
-
-	statusKey := attribute.Key("code")
-	if beresp != nil {
-		attrs = append(attrs, statusKey.Int(beresp.StatusCode))
-	}
-
-	option := metric.WithAttributes(attrs...)
-	defer counter.Add(req.Context(), 1, option)
-	defer duration.Record(req.Context(), endSeconds, option)
 
 	if err != nil {
 		select {
