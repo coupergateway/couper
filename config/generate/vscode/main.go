@@ -220,34 +220,34 @@ func extractAttributes(schema *Schema) {
 func extractFunctions(schema *Schema) {
 	// Core functions defined in eval/context.go newFunctionsMap()
 	functions := map[string]string{
-		"base64_decode":    "Decodes Base64 data, as specified in RFC 4648.",
-		"base64_encode":    "Encodes Base64 data, as specified in RFC 4648.",
-		"can":              "Tries to evaluate the expression given in its first argument.",
-		"coalesce":         "Returns the first of the given arguments that is not null.",
-		"contains":         "Determines whether a given list contains a given single value as one of its elements.",
-		"default":          "Returns the first of the given arguments that is not null.",
-		"join":             "Concatenates together the string elements of one or more lists with a given separator.",
-		"json_decode":      "Parses the given JSON string and, if it is valid, returns the value it represents.",
-		"json_encode":      "Returns a JSON serialization of the given value.",
-		"jwt_sign":         "Creates and signs a JSON Web Token (JWT) from information from a referenced jwt_signing_profile block and additional claims provided as a function parameter.",
-		"keys":             "Takes a map and returns a sorted list of the map keys.",
-		"length":           "Returns the number of elements in the given collection.",
-		"lookup":           "Performs a dynamic lookup into a map.",
-		"merge":            "Deep-merges two or more of either objects or tuples. `null` arguments are ignored.",
+		"base64_decode":            "Decodes Base64 data, as specified in RFC 4648.",
+		"base64_encode":            "Encodes Base64 data, as specified in RFC 4648.",
+		"can":                      "Tries to evaluate the expression given in its first argument.",
+		"coalesce":                 "Returns the first of the given arguments that is not null.",
+		"contains":                 "Determines whether a given list contains a given single value as one of its elements.",
+		"default":                  "Returns the first of the given arguments that is not null.",
+		"join":                     "Concatenates together the string elements of one or more lists with a given separator.",
+		"json_decode":              "Parses the given JSON string and, if it is valid, returns the value it represents.",
+		"json_encode":              "Returns a JSON serialization of the given value.",
+		"jwt_sign":                 "Creates and signs a JSON Web Token (JWT) from information from a referenced jwt_signing_profile block and additional claims provided as a function parameter.",
+		"keys":                     "Takes a map and returns a sorted list of the map keys.",
+		"length":                   "Returns the number of elements in the given collection.",
+		"lookup":                   "Performs a dynamic lookup into a map.",
+		"merge":                    "Deep-merges two or more of either objects or tuples. `null` arguments are ignored.",
 		"oauth2_authorization_url": "Creates an OAuth2 authorization URL from a referenced OAuth2 AC Block or OIDC Block.",
-		"oauth2_verifier":  "Creates a cryptographically random key as specified in RFC 7636.",
-		"relative_url":     "Returns a relative URL by retaining path, query and fragment components.",
-		"saml_sso_url":     "Creates a SAML SingleSignOn URL (including the SAMLRequest parameter) from a referenced saml block.",
-		"set_intersection": "Returns a new set containing the elements that exist in all of the given sets.",
-		"split":            "Divides a given string by a given separator.",
-		"substr":           "Extracts a sequence of characters from another string.",
-		"to_lower":         "Converts a given string to lowercase.",
-		"to_number":        "Converts its argument to a number value.",
-		"to_upper":         "Converts a given string to uppercase.",
-		"trim":             "Removes any whitespace characters from the start and end of the given string.",
-		"unixtime":         "Retrieves the current UNIX timestamp in seconds.",
-		"url_decode":       "URL-decodes a given string according to RFC 3986.",
-		"url_encode":       "URL-encodes a given string according to RFC 3986.",
+		"oauth2_verifier":          "Creates a cryptographically random key as specified in RFC 7636.",
+		"relative_url":             "Returns a relative URL by retaining path, query and fragment components.",
+		"saml_sso_url":             "Creates a SAML SingleSignOn URL (including the SAMLRequest parameter) from a referenced saml block.",
+		"set_intersection":         "Returns a new set containing the elements that exist in all of the given sets.",
+		"split":                    "Divides a given string by a given separator.",
+		"substr":                   "Extracts a sequence of characters from another string.",
+		"to_lower":                 "Converts a given string to lowercase.",
+		"to_number":                "Converts its argument to a number value.",
+		"to_upper":                 "Converts a given string to uppercase.",
+		"trim":                     "Removes any whitespace characters from the start and end of the given string.",
+		"unixtime":                 "Retrieves the current UNIX timestamp in seconds.",
+		"url_decode":               "URL-decodes a given string according to RFC 3986.",
+		"url_encode":               "URL-encodes a given string according to RFC 3986.",
 	}
 
 	for name, desc := range functions {
@@ -377,7 +377,6 @@ func normalizeBlockName(name string) string {
 	// Map internal names to HCL block names
 	nameMap := map[string]string{
 		"beta_health":        "beta_health",
-		"beta_rate_limit":    "beta_rate_limit",
 		"beta_token_request": "beta_token_request",
 		"beta_introspection": "beta_introspection",
 	}
@@ -465,14 +464,14 @@ func extractOptions(docs string) []string {
 
 func isLabelReference(attrName string) bool {
 	labelRefAttrs := map[string]bool{
-		"backend":               true,
-		"proxy":                 true,
-		"access_control":        true,
+		"backend":                true,
+		"proxy":                  true,
+		"access_control":         true,
 		"disable_access_control": true,
-		"configuration_backend": true,
-		"token_backend":         true,
-		"jwks_uri_backend":      true,
-		"userinfo_backend":      true,
+		"configuration_backend":  true,
+		"token_backend":          true,
+		"jwks_uri_backend":       true,
+		"userinfo_backend":       true,
 	}
 	return labelRefAttrs[attrName]
 }

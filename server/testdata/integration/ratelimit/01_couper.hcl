@@ -21,7 +21,7 @@ definitions {
     path = "/small"
     origin = env.COUPER_TEST_BACKEND_ADDR
 
-    beta_rate_limit {
+    throttle {
       period        = "3s"
       per_period    = 2
       period_window = "fixed"
@@ -31,7 +31,7 @@ definitions {
     path = "/small"
     origin = env.COUPER_TEST_BACKEND_ADDR
 
-    beta_rate_limit {
+    throttle {
       period        = "3s"
       per_period    = 2
       period_window = "sliding"
@@ -41,7 +41,7 @@ definitions {
     path = "/small"
     origin = env.COUPER_TEST_BACKEND_ADDR
 
-    beta_rate_limit {
+    throttle {
       period        = "1s"
       per_period    = 2
       period_window = "fixed"

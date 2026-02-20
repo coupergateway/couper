@@ -28,7 +28,7 @@ var Definitions = []*Error{
 
 	Backend,
 	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
-	Backend.Kind("beta_backend_rate_limit_exceeded").Status(http.StatusTooManyRequests),
+	Backend.Kind("backend_throttle_exceeded").Status(http.StatusTooManyRequests),
 	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout),
 	Backend.Kind("beta_backend_token_request"),
 	Backend.Kind("backend_unhealthy"),

@@ -28,7 +28,7 @@ import (
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/eval/variables"
-	"github.com/coupergateway/couper/handler/ratelimit"
+	"github.com/coupergateway/couper/handler/throttle"
 	"github.com/coupergateway/couper/handler/validation"
 	"github.com/coupergateway/couper/internal/seetie"
 	"github.com/coupergateway/couper/logging"
@@ -96,8 +96,8 @@ func NewBackend(ctx *hclsyntax.Body, tc *Config, opts *BackendOptions, log *logr
 
 // initOnce ensures synced transport configuration. First request will setup the rate limits, origin, hostname and tls.
 func (b *Backend) initOnce(conf *Config) {
-	if len(b.transportConf.RateLimits) > 0 {
-		b.transport = ratelimit.NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.RateLimits)
+	if len(b.transportConf.Throttles) > 0 {
+		b.transport = throttle.NewLimiter(NewTransport(conf, b.logEntry), b.transportConf.Throttles)
 	} else {
 		b.transport = NewTransport(conf, b.logEntry)
 	}

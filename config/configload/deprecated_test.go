@@ -81,3 +81,82 @@ error_handler "x" "couper_test_label" "abc couper_test_label def" "y" {
 		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
 	}
 }
+
+func Test_deprecated_beta_rate_limit(t *testing.T) {
+	src := []byte(`
+backend {
+	beta_rate_limit {
+		period = "1m"
+		per_period = 60
+	}
+}
+`)
+
+	body, err := parser.Load(src, "test.go")
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	logger, hook := test.NewLogger()
+	hook.Reset()
+
+	deprecate([]*hclsyntax.Body{body}, logger.WithContext(context.TODO()))
+
+	if len(body.Blocks) != 1 {
+		t.Fatal("Unexpected number of blocks given")
+	}
+
+	if len(body.Blocks[0].Body.Blocks) != 1 {
+		t.Fatal("Unexpected number of inner blocks given")
+	}
+
+	if body.Blocks[0].Body.Blocks[0].Type != "throttle" {
+		t.Errorf("Expected 'throttle' block name, got '%s'", body.Blocks[0].Body.Blocks[0].Type)
+	}
+
+	entries := hook.AllEntries()
+	if len(entries) != 1 {
+		t.Fatalf("Expected 1 log entry, got %d", len(entries))
+	}
+
+	exp := `replacing block "beta_rate_limit" with "throttle"; as of Couper version 1.15, the old value is no longer supported`
+	if entries[0].Message != exp {
+		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
+	}
+}
+
+func Test_deprecated_beta_backend_rate_limit_exceeded(t *testing.T) {
+	src := []byte(`
+error_handler "beta_backend_rate_limit_exceeded" {
+}
+`)
+
+	body, err := parser.Load(src, "test.go")
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	logger, hook := test.NewLogger()
+	hook.Reset()
+
+	deprecate([]*hclsyntax.Body{body}, logger.WithContext(context.TODO()))
+
+	if len(body.Blocks) != 1 {
+		t.Fatal("Unexpected number of blocks given")
+	}
+
+	expLabels := []string{"backend_throttle_exceeded"}
+	if !cmp.Equal(expLabels, body.Blocks[0].Labels) {
+		t.Errorf("Expected\n%#v, got:\n%#v", expLabels, body.Blocks[0].Labels)
+	}
+
+	entries := hook.AllEntries()
+	if len(entries) != 1 {
+		t.Fatalf("Expected 1 log entry, got %d", len(entries))
+	}
+
+	exp := `replacing label "beta_backend_rate_limit_exceeded" with "backend_throttle_exceeded"; as of Couper version 1.15, the old value is no longer supported`
+	if entries[0].Message != exp {
+		t.Errorf("Expected\n%#v, got:\n%#v", exp, entries[0].Message)
+	}
+}

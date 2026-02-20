@@ -30,7 +30,7 @@ var ConfigRegistry = []interface{}{
 	&config.OIDC{},
 	&config.OpenAPI{},
 	&config.Proxy{},
-	&config.RateLimit{},
+	&config.Throttle{},
 	&config.RateLimiter{},
 	&config.Request{},
 	&config.Response{},

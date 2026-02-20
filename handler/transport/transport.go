@@ -16,7 +16,7 @@ import (
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
-	"github.com/coupergateway/couper/handler/ratelimit"
+	"github.com/coupergateway/couper/handler/throttle"
 	coupertls "github.com/coupergateway/couper/internal/tls"
 	"github.com/coupergateway/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
@@ -31,7 +31,7 @@ type Config struct {
 	MaxConnections         int
 	NoProxyFromEnv         bool
 	Proxy                  string
-	RateLimits             ratelimit.RateLimits
+	Throttles              throttle.Throttles
 
 	ConnectTimeout time.Duration
 	TTFBTimeout    time.Duration

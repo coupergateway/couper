@@ -1,4 +1,4 @@
-package ratelimit
+package throttle
 
 import (
 	"net/http"
@@ -10,7 +10,7 @@ import (
 
 type Limiter struct {
 	check     chan *slowTrip
-	limits    RateLimits
+	limits    Throttles
 	transport http.RoundTripper
 }
 
@@ -23,8 +23,8 @@ type slowTrip struct {
 	res    *http.Response
 }
 
-// NewLimiter creates a new Rate Limiter. See RateLimit for configuration options.
-func NewLimiter(transport http.RoundTripper, limits RateLimits) *Limiter {
+// NewLimiter creates a new Limiter. See Throttle for configuration options.
+func NewLimiter(transport http.RoundTripper, limits Throttles) *Limiter {
 	if len(limits) == 0 {
 		return nil
 	}
@@ -75,7 +75,7 @@ func (l *Limiter) slowTripper() {
 			mode, timeToWait := l.checkCapacity()
 			if mode == modeBlock && timeToWait > 0 {
 				// We do not wait, we want block directly.
-				trip.err = errors.BetaBackendRateLimitExceeded
+				trip.err = errors.BackendThrottleExceeded
 				trip.out <- trip
 			} else {
 				select {
