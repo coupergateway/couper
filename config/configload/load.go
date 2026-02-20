@@ -18,24 +18,30 @@ import (
 )
 
 const (
-	api             = "api"
-	backend         = "backend"
-	defaults        = "defaults"
-	definitions     = "definitions"
-	endpoint        = "endpoint"
-	environment     = "environment"
-	environmentVars = "environment_variables"
-	errorHandler    = "error_handler"
-	files           = "files"
-	nameLabel       = "name"
-	oauth2          = "oauth2"
-	proxy           = "proxy"
-	request         = "request"
-	server          = "server"
-	settings        = "settings"
-	spa             = "spa"
-	tls             = "tls"
-	tokenRequest    = "beta_token_request"
+	api                          = "api"
+	backend                      = "backend"
+	betaJob                      = "beta_job"
+	defaults                     = "defaults"
+	definitions                  = "definitions"
+	endpoint                     = "endpoint"
+	environment                  = "environment"
+	environmentVars              = "environment_variables"
+	errorHandler                 = "error_handler"
+	files                        = "files"
+	job                          = "job"
+	nameLabel                    = "name"
+	oauth2                       = "oauth2"
+	proxy                        = "proxy"
+	request                      = "request"
+	server                       = "server"
+	settings                     = "settings"
+	spa                          = "spa"
+	tls                          = "tls"
+	tokenRequest                 = "beta_token_request"
+	betaRateLimit                = "beta_rate_limit"
+	throttle                     = "throttle"
+	betaBackendRateLimitExceeded = "beta_backend_rate_limit_exceeded"
+	backendThrottleExceeded      = "backend_throttle_exceeded"
 )
 
 var defaultsConfig *config.Defaults
@@ -82,6 +88,7 @@ func LoadFiles(filesList []string, env string) (*config.Couper, error) {
 	if err != nil {
 		return nil, err
 	}
+	deprecate(parsedBodies)
 
 	if len(srcBytes) == 0 {
 		return nil, fmt.Errorf("missing configuration files")

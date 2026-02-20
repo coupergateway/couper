@@ -7,11 +7,12 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Added**
   * [`beta_rate_limiter` access control](https://docs.couper.io/configuration/block/rate_limiter) for fixed/sliding window rate limiting ([#881](https://github.com/coupergateway/couper/pull/881))
   * [`beta_introspection` block](https://docs.couper.io/configuration/block/introspection) in [`jwt` block](https://docs.couper.io/configuration/block/jwt) to facilitate token introspection in order to detect revoked tokens ([#649](https://github.com/avenga/couper/pull/649))
-  * `startup_delay` attribute for [`beta_job` block](https://docs.couper.io/configuration/block/job) to delay the first job execution after startup ([#836](https://github.com/coupergateway/couper/issues/836))
+  * `startup_delay` attribute for [`job` block](https://docs.couper.io/configuration/block/job) to delay the first job execution after startup ([#836](https://github.com/coupergateway/couper/issues/836))
 
 * **Changed**
   * [`beta_rate_limit` block](https://docs.couper.io/configuration/block/throttle) in [`backend` block](https://docs.couper.io/configuration/block/backend) has left beta and is renamed to `throttle`; the old name is deprecated and will be removed in version 1.15 ([#914](https://github.com/coupergateway/couper/issues/914))
   * `beta_backend_rate_limit_exceeded` [error type](https://docs.couper.io/configuration/error-handling) is renamed to `backend_throttle_exceeded`; the old name is deprecated and will be removed in version 1.15 ([#914](https://github.com/coupergateway/couper/issues/914))
+  * [`beta_job` block](https://docs.couper.io/configuration/block/job) has left beta and is renamed to `job`; the old name is deprecated and will be removed in version 1.15 ([#898](https://github.com/coupergateway/couper/pull/898))
 
 * **Security**
   * Return explicit error when backend `origin` evaluates to empty string instead of falling back to the client request URL ([#920](https://github.com/coupergateway/couper/pull/920))

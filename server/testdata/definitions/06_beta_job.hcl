@@ -1,7 +1,7 @@
 server {}
 
 definitions {
-  job {
+  beta_job {
     # without label
     request {}
   }
