@@ -30,9 +30,33 @@ gateway instance.
   },
   {
     "default": "\"couper\"",
-    "description": "Service name which applies to the `service_name` metric labels.",
+    "description": "Service name which applies to the `service_name` metric and trace labels.",
     "name": "beta_service_name",
     "type": "string"
+  },
+  {
+    "default": "false",
+    "description": "Enables the [OpenTelemetry](/observation/tracing) traces exporter.",
+    "name": "beta_traces",
+    "type": "bool"
+  },
+  {
+    "default": "\"localhost:4317\"",
+    "description": "OpenTelemetry collector endpoint for exporting traces via gRPC.",
+    "name": "beta_traces_endpoint",
+    "type": "string"
+  },
+  {
+    "default": "false",
+    "description": "If enabled, Couper only creates trace spans for requests that carry a `traceparent` header. Requests without this header are not traced.",
+    "name": "beta_traces_parent_only",
+    "type": "bool"
+  },
+  {
+    "default": "false",
+    "description": "If enabled, the `traceparent` request header from an incoming request is used as the parent trace context. This connects Couper's spans to the calling service's trace.",
+    "name": "beta_traces_trust_parent",
+    "type": "bool"
   },
   {
     "default": "\"*\"",

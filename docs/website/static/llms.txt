@@ -65,3 +65,4 @@ Install via Docker (`docker pull coupergateway/couper`) or Homebrew (`brew insta
 - [Health Check](https://docs.couper.io/observation/health): The health check will answer with status 200 OK on every port with the configured health_path setting or the COUPER_HEALTH_PATH environment variable. As soon as the gateway instance receives a SIGI...
 - [Metrics](https://docs.couper.io/observation/metrics): - Metrics - Prometheus - Grafana Dashboard - Preview - Developers Our metrics feature is beta for now. However, we want to provide some core metrics which can be directly collected from Couper.
 - [Logging](https://docs.couper.io/observation/logging)
+- [Tracing](https://docs.couper.io/observation/tracing): Our tracing feature is beta for now. Couper supports distributed tracing using OpenTelemetry and the W3C Trace Context standard.

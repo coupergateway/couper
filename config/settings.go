@@ -59,11 +59,11 @@ type Settings struct {
 	TelemetryMetricsEndpoint      string `hcl:"beta_metrics_endpoint,optional" docs:"" default:""`
 	TelemetryMetricsExporter      string `hcl:"beta_metrics_exporter,optional" docs:"" default:""`
 	TelemetryMetricsPort          int    `hcl:"beta_metrics_port,optional" docs:"Prometheus exporter listen port." default:"9090"`
-	TelemetryServiceName          string `hcl:"beta_service_name,optional" docs:"Service name which applies to the {service_name} metric labels." default:"couper"`
-	TelemetryTraces               bool   `hcl:"beta_traces,optional" docs:"" default:""`
-	TelemetryTracesEndpoint       string `hcl:"beta_traces_endpoint,optional" docs:"" default:""`
-	TelemetryTracesTrustParent    bool   `hcl:"beta_traces_trust_parent,optional" docs:"" default:""`
-	TelemetryTracesWithParentOnly bool   `hcl:"beta_traces_parent_only,optional" docs:"" default:""`
+	TelemetryServiceName          string `hcl:"beta_service_name,optional" docs:"Service name which applies to the {service_name} metric and trace labels." default:"couper"`
+	TelemetryTraces               bool   `hcl:"beta_traces,optional" docs:"Enables the [OpenTelemetry](/observation/tracing) traces exporter."`
+	TelemetryTracesEndpoint       string `hcl:"beta_traces_endpoint,optional" docs:"OpenTelemetry collector endpoint for exporting traces via gRPC." default:"localhost:4317"`
+	TelemetryTracesTrustParent    bool   `hcl:"beta_traces_trust_parent,optional" docs:"If enabled, the {traceparent} request header from an incoming request is used as the parent trace context. This connects Couper's spans to the calling service's trace."`
+	TelemetryTracesWithParentOnly bool   `hcl:"beta_traces_parent_only,optional" docs:"If enabled, Couper only creates trace spans for requests that carry a {traceparent} header. Requests without this header are not traced."`
 	XForwardedHost                bool   `hcl:"xfh,optional" docs:"Whether to use the {X-Forwarded-Host} header as the request host."`
 }
 

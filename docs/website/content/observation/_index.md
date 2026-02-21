@@ -6,4 +6,4 @@ slug: 'observation'
 
 # Observation
 
-This section covers monitoring, logging, and health checks.
+This section covers monitoring, logging, tracing, and health checks.
