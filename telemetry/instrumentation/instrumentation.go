@@ -18,8 +18,8 @@ const (
 	ClientRequest              = Prefix + "client_request"
 	ClientRequestDuration      = Prefix + "client_request_duration_seconds"
 
-	AccessControlTotal       = Prefix + "access_control_total"
-	AccessControlDuration    = Prefix + "access_control_duration_seconds"
-	AccessControlRateLimited = Prefix + "access_control_rate_limited_total"
+	AccessControlTotal           = Prefix + "access_control_total"
+	AccessControlDuration        = Prefix + "access_control_duration_seconds"
+	AccessControlRateLimited     = Prefix + "access_control_rate_limited_total"
 	AccessControlRateLimiterKeys = Prefix + "access_control_rate_limiter_active_keys"
 )
