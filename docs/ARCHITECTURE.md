@@ -156,6 +156,177 @@ endpoint "/example" {
 - Returns `Option` flags: `Request`, `Response`, `JSONParseRequest`, `JSONParseResponse`
 - Used by endpoint to pre-buffer bodies that will be accessed in expressions
 
+## Sequence Execution
+
+Endpoints can contain multiple `proxy` and `request` blocks. These blocks execute as a **sequence** when one block references another's response via `backend_responses.<name>`. Independent blocks run concurrently; dependent blocks wait for their dependencies to complete.
+
+### Lifecycle Overview
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0B38FA', 'primaryTextColor': '#FFFFFF', 'primaryBorderColor': '#E5E3DB', 'lineColor': '#E5E3DB', 'secondaryColor': '#E5E3DB', 'tertiaryColor': '#FFFFFF', 'background': '#082d50', 'mainBkg': '#082d50', 'nodeBorder': '#E5E3DB', 'clusterBkg': '#082d50', 'clusterBorder': '#E5E3DB', 'titleColor': '#E5E3DB', 'edgeLabelBackground': '#082d50'}}}%%
+flowchart TD
+    subgraph Parse["Config Load"]
+        direction TB
+        style Parse fill:#082d50,stroke:#E5E3DB,color:#E5E3DB
+        P1(HCL parse)
+        style P1 fill:#E5E3DB,stroke:#082d50,color:#082d50
+        P2(Scan backend_responses refs)
+        style P2 fill:#E5E3DB,stroke:#082d50,color:#082d50
+        P3(Build sequence.Item tree)
+        style P3 fill:#E5E3DB,stroke:#082d50,color:#082d50
+        P1 --> P2 --> P3
+    end
+
+    subgraph Wire["Channel Wiring"]
+        direction TB
+        style Wire fill:#082d50,stroke:#E5E3DB,color:#E5E3DB
+        W1(newChannels per item)
+        style W1 fill:#E5E3DB,stroke:#082d50,color:#082d50
+        W2(Input ch: dep → self)
+        style W2 fill:#E5E3DB,stroke:#082d50,color:#082d50
+        W3(Output ch: self → deps + result)
+        style W3 fill:#E5E3DB,stroke:#082d50,color:#082d50
+        W1 --> W2 --> W3
+    end
+
+    subgraph Exec["Goroutine Execution"]
+        direction TB
+        style Exec fill:#082d50,stroke:#E5E3DB,color:#E5E3DB
+        E1(drainInputChannels)
+        style E1 fill:#0B38FA,stroke:#0B38FA,color:#FFFFFF
+        E2(Produce request)
+        style E2 fill:#0B38FA,stroke:#0B38FA,color:#FFFFFF
+        E3(passToOutputChannels)
+        style E3 fill:#0B38FA,stroke:#0B38FA,color:#FFFFFF
+        E1 --> E2 --> E3
+    end
+
+    Parse --> Wire --> Exec
+    linkStyle 6,7 stroke:#E5E3DB,stroke-width:2px
+```
+
+### Dependency Detection (`config/sequence/`)
+
+At config load time, HCL expressions in each `proxy`/`request` block are scanned for references to `backend_responses.<name>`. Each reference creates a dependency edge in the `sequence.Item` tree:
+
+- `sequence.Item` stores the block name and a list of `deps` (other Items it depends on)
+- `Item.Add()` registers a dependency and checks for **circular references** (panics with a diagnostic if detected)
+- `Item.Deps()` returns dependencies in reversed order so they resolve first
+- `sequence.Dependencies()` flattens the tree into ordered resolution lists for filtering
+
+**Example**: Given this configuration:
+```hcl
+endpoint "/pipeline" {
+  request "auth"  { backend = "auth_api" }
+  request "data"  {
+    backend = "data_api"
+    headers = { Authorization = backend_responses.auth.json_body.token }
+  }
+  proxy "default" {
+    backend = "main_api"
+    url     = backend_responses.data.json_body.url
+  }
+}
+```
+
+The dependency tree is: `default → data → auth`.
+
+### Channel Architecture (`handler/endpoint.go`)
+
+`newChannels()` builds three channel maps from the `sequence.List`:
+
+| Channel map | Key | Purpose |
+|-------------|-----|---------|
+| `inputChannels` | consumer name | Channels a goroutine reads from before executing (blocks until deps complete) |
+| `outputChannels` | producer name | Channels a goroutine writes to after completing (unblocks dependents + result) |
+| `resultChannels` | item name | One channel per item, collected by `readResults()` |
+
+`fillChannels()` walks the dependency tree recursively. For each dependency edge `A → B`:
+- Creates a buffered channel (`cap 1`)
+- Adds it to `inputChannels[A]` (A reads from it)
+- Adds it to `outputChannels[B]` (B writes to it)
+
+Each item's result channel is also added to its `outputChannels`, so completing a request fans out to both dependents and the result collector.
+
+### Execution Model
+
+`produce()` (`handler/endpoint.go:318`) orchestrates the sequence:
+
+1. Creates `outreq` from the incoming request context (carries the SERVER span from `TraceHandler`)
+2. Calls `newChannels()` to wire up the dependency graph
+3. Sorts producers so the `default` proxy runs last (`SortDefault`)
+4. Launches one **goroutine per producer** with a 2ms stagger (`time.Sleep`)
+5. Each goroutine:
+   - Calls `drainInputChannels()` — blocks until all dependency results arrive
+   - If any dependency errored, propagates the error to output channels and returns
+   - Calls `rt.Produce(outreq)` — executes the actual HTTP request
+   - Calls `passToOutputChannels()` — fans out the result to dependents and result channel
+6. `readResults()` collects from result channels in sequence order
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0B38FA', 'primaryTextColor': '#FFFFFF', 'primaryBorderColor': '#E5E3DB', 'lineColor': '#E5E3DB', 'secondaryColor': '#E5E3DB', 'tertiaryColor': '#FFFFFF', 'background': '#082d50', 'mainBkg': '#082d50', 'nodeBorder': '#E5E3DB', 'clusterBkg': '#082d50', 'clusterBorder': '#E5E3DB', 'titleColor': '#E5E3DB', 'edgeLabelBackground': '#082d50', 'noteBkgColor': '#E5E3DB', 'noteTextColor': '#082d50', 'noteBorderColor': '#082d50', 'actorBkg': '#0B38FA', 'actorTextColor': '#FFFFFF', 'actorBorder': '#E5E3DB', 'actorLineColor': '#E5E3DB', 'signalColor': '#E5E3DB', 'signalTextColor': '#E5E3DB', 'labelBoxBkgColor': '#082d50', 'labelBoxBorderColor': '#E5E3DB', 'labelTextColor': '#E5E3DB', 'loopTextColor': '#E5E3DB', 'activationBkgColor': '#0B38FA', 'activationBorderColor': '#E5E3DB', 'sequenceNumberColor': '#FFFFFF'}}}%%
+sequenceDiagram
+    participant EP as Endpoint
+    participant G1 as auth goroutine
+    participant G2 as data goroutine
+    participant G3 as default goroutine
+
+    EP->>G1: go (no input ch)
+    EP->>G2: go (input ch from auth)
+    EP->>G3: go (input ch from data)
+    G1->>G1: Produce(outreq)
+    G1-->>G2: result via ch
+    G1-->>EP: result via ch
+    G2->>G2: drainInputChannels
+    G2->>G2: Produce(outreq)
+    G2-->>G3: result via ch
+    G2-->>EP: result via ch
+    G3->>G3: drainInputChannels
+    G3->>G3: Produce(outreq)
+    G3-->>EP: result via ch
+    EP->>EP: readResults
+```
+
+### Error Propagation
+
+When a dependency fails:
+
+1. `drainInputChannels()` receives the error result from the input channel
+2. Wraps it with `errors.Sequence` kind (if not already a sequence error)
+3. Calls `passToOutputChannels()` to forward the error to all downstream dependents
+4. Returns `true`, causing the goroutine to exit without calling `Produce()`
+
+This cascading propagation ensures that if `auth` fails, both `data` and `default` receive the error without attempting their HTTP requests.
+
+### Response Selection
+
+After `readResults()` collects all results, `Endpoint.ServeHTTP()` selects the response to send to the client:
+
+- If a custom `response` block exists, it is evaluated with all `backend_responses` available
+- Otherwise, the **`default`** proxy/request result provides the client response
+- Named (non-default) results are available in HCL expressions but don't directly produce the client response
+
+### OTel Trace Hierarchy
+
+Each backend call within a sequence gets its own CLIENT span, all parented under the SERVER span:
+
+```
+SERVER "/pipeline"                  (TraceHandler)
+  ├── CLIENT "backend.auth_api"     (auth - runs first)
+  ├── CLIENT "backend.data_api"     (data - after auth)
+  └── CLIENT "backend.main_api"     (default - after data)
+```
+
+The span hierarchy is created by:
+
+1. `TraceHandler` (`handler/middleware/trace.go:57`) creates a **SERVER span** and stores it in the request context
+2. `produce()` creates `outreq` from that context — all goroutines share the same parent span
+3. Each producer's transport chain calls `InstrumentedRoundTripper.RoundTrip()` (`telemetry/transport.go:46`)
+4. `NewSpanFromContext(ctx, spanName)` creates a **CLIENT span** parented under the SERVER span
+5. `otel.GetTextMapPropagator().Inject()` writes the `traceparent` header so downstream services see the correct parent
+
+All CLIENT spans are **siblings** under the SERVER span — they are not nested under each other, even in a sequential dependency chain. This correctly represents that the gateway is the parent of each backend call.
+
 ## HCL Evaluation Context
 
 ### Available Functions
@@ -244,23 +415,6 @@ The project uses forked versions of `hashicorp/hcl/v2` and `zclconf/go-cty` (see
 2. **Base Type for Body Handling**: Extract `Remain`/`HCLBody()` into embedded base type
 3. **Centralized Modifier Pipeline**: Single modifier application point with clear ordering guarantees
 4. **Typed Inline Attributes**: Replace anonymous struct in `Inline()` with named type for better tooling
-
-### Sequence Execution Complexity
-
-**Current State**: `handler/endpoint.go:produce()` uses channels for parallel/sequential execution:
-- Channel creation in `newChannels()` with input/output channel maps
-- Goroutines wait on input channels, send to output channels
-- Complex coordination logic in `drainInputChannels()`
-
-**Observations**:
-- Hard to trace execution flow across goroutines
-- Error propagation through channels adds complexity
-- 2ms sleep between goroutine starts (`time.Sleep(time.Millisecond * 2)`)
-
-**Potential Improvements**:
-1. **Explicit Executor**: Replace channel coordination with task executor pattern
-2. **Sequence as First-Class Concept**: Make dependency graph walkable/debuggable
-3. **Structured Concurrency**: Use errgroup or similar for clearer lifecycle
 
 ### Buffer Detection via Static Analysis
 
