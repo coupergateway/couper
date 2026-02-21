@@ -237,16 +237,6 @@ func health(rw http.ResponseWriter, req *http.Request) {
 }
 
 func jwks(rw http.ResponseWriter, req *http.Request) {
-	destruct := req.Header.Get("Self-Destruct")
-	if destruct != "" {
-		seconds, _ := strconv.ParseInt(destruct, 10, 64)
-		if time.Now().After(time.Unix(seconds, 0)) {
-			rw.WriteHeader(http.StatusInternalServerError)
-			rw.Write([]byte(`{"booom":1}`))
-			return
-		}
-	}
-
 	_, currFile, _, _ := runtime.Caller(0)
 	rootDir := http.Dir(path.Join(path.Dir(currFile), "testdata"))
 

@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"text/template"
 	"time"
@@ -3724,6 +3725,22 @@ func TestJWKsMaxStale(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
 
+	// Test-controlled JWKS backend: atomic.Bool controls failure, no wall-clock timing.
+	var jwksFailing atomic.Bool
+	jwksData, err := os.ReadFile(filepath.Join(testWorkingDir, "../internal/test/testdata/jwks.json"))
+	helper.Must(err)
+
+	jwksBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		if jwksFailing.Load() {
+			rw.WriteHeader(http.StatusInternalServerError)
+			rw.Write([]byte(`{"booom":1}`))
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		rw.Write(jwksData)
+	}))
+	defer jwksBackend.Close()
+
 	cfg := `
 	  server {
 	    endpoint "/" {
@@ -3735,14 +3752,11 @@ func TestJWKsMaxStale(t *testing.T) {
 	  }
 	  definitions {
 	    jwt "stale" {
-	      jwks_url = "${env.COUPER_TEST_BACKEND_ADDR}/jwks.json"
+	      jwks_url = "` + jwksBackend.URL + `/jwks.json"
 	      jwks_ttl = "3s"
 	      jwks_max_stale = "2s"
 	      backend {
-	        origin = env.COUPER_TEST_BACKEND_ADDR
-	        set_request_headers = {
-	          Self-Destruct: ` + fmt.Sprint(time.Now().Add(2*time.Second).Unix()) + `
-	        }
+	        origin = "` + jwksBackend.URL + `"
 	      }
 	    }
 	  }
@@ -3759,6 +3773,7 @@ func TestJWKsMaxStale(t *testing.T) {
 
 	req.Header = http.Header{"Authorization": []string{"Bearer " + rsaToken}}
 
+	// A) JWKS backend is healthy → request succeeds
 	res, err := client.Do(req)
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
@@ -3766,8 +3781,11 @@ func TestJWKsMaxStale(t *testing.T) {
 		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
-	time.Sleep(3 * time.Second)
-	// TTL 3s, backend is already failing, responds with stale JWKS
+	// Switch backend to failing mode
+	jwksFailing.Store(true)
+
+	time.Sleep(4 * time.Second)
+	// B) TTL 3s expired, within max_stale 2s window → stale JWKS still usable
 
 	res, err = client.Do(req)
 	helper.Must(err)
@@ -3776,8 +3794,8 @@ func TestJWKsMaxStale(t *testing.T) {
 		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
-	time.Sleep(3 * time.Second)
-	// stale time (2s) exhausted -> 403
+	time.Sleep(2 * time.Second)
+	// C) Past max_stale window → 401
 	res, err = client.Do(req)
 	helper.Must(err)
 
