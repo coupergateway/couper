@@ -20,6 +20,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Fix `traceparent` header not being propagated to backends when using [`beta_traces`](https://docs.couper.io/configuration/block/settings) due to trace context injection into the wrong (request) headers; now correctly injected into response headers by `TraceHandler` and into outgoing request headers by `InstrumentedRoundTripper` ([#923](https://github.com/coupergateway/couper/pull/923))
   * Fix redundant span creation in producers and `innerRoundTrip` when using [`beta_traces`](https://docs.couper.io/configuration/block/settings); consolidate all backend tracing into a single `InstrumentedRoundTripper` with correct `SpanKindClient` ([#923](https://github.com/coupergateway/couper/pull/923))
   * Fix `TraceContext` propagator missing `Baggage` support when using [`beta_traces`](https://docs.couper.io/configuration/block/settings); use composite propagator with both `TraceContext` and `Baggage` ([#923](https://github.com/coupergateway/couper/pull/923))
+  * Fix `backend_response` not being available in `custom_log_fields` for OIDC/OAuth2 token and userinfo backend requests; also fixes request `name` showing as `<nil>` in upstream logs for these requests ([#797](https://github.com/coupergateway/couper/issues/797))
 
 * **Security**
   * Return explicit error when backend `origin` evaluates to empty string instead of falling back to the client request URL ([#920](https://github.com/coupergateway/couper/pull/920))
