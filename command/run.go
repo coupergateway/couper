@@ -228,6 +228,8 @@ func newFlagSet(settings *config.Settings, cmdName string) *flag.FlagSet {
 	set.StringVar(&settings.TelemetryServiceName, "beta-service-name", settings.TelemetryServiceName, "-beta-service-name [name]")
 	set.BoolVar(&settings.TelemetryTraces, "beta-traces", settings.TelemetryTraces, "-beta-traces")
 	set.StringVar(&settings.TelemetryTracesEndpoint, "beta-traces-endpoint", settings.TelemetryTracesEndpoint, "-beta-traces-endpoint [host:port]")
+	set.BoolVar(&settings.TelemetryTracesTrustParent, "beta-traces-trust-parent", settings.TelemetryTracesTrustParent, "-beta-traces-trust-parent")
+	set.BoolVar(&settings.TelemetryTracesWithParentOnly, "beta-traces-parent-only", settings.TelemetryTracesWithParentOnly, "-beta-traces-parent-only")
 
 	return set
 }

@@ -11,14 +11,11 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/handler/throttle"
 	coupertls "github.com/coupergateway/couper/internal/tls"
-	"github.com/coupergateway/couper/telemetry"
 	"golang.org/x/net/http/httpproxy"
 )
 
@@ -111,17 +108,14 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 				address = conf.Origin
 			} // Otherwise, proxy connect will use this dial method and addr could be a proxy one.
 
-			stx, span := telemetry.NewSpanFromContext(ctx, "connect", trace.WithAttributes(attribute.String("couper.address", addr)))
-			defer span.End()
-
 			connectTimeout, _ := ctx.Value(request.ConnectTimeout).(time.Duration)
 			if connectTimeout > 0 {
-				dtx, cancel := context.WithDeadline(stx, time.Now().Add(connectTimeout))
-				stx = dtx
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithDeadline(ctx, time.Now().Add(connectTimeout))
 				defer cancel()
 			}
 
-			conn, cerr := d.DialContext(stx, network, address)
+			conn, cerr := d.DialContext(ctx, network, address)
 			if cerr != nil {
 				host, port, _ := net.SplitHostPort(conf.Origin)
 				if port != "80" && port != "443" {
@@ -132,7 +126,7 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 				}
 				return nil, fmt.Errorf("connecting to %s '%s' failed: %w", conf.BackendName, conf.Origin, cerr)
 			}
-			return NewOriginConn(stx, conn, conf, logEntry), nil
+			return NewOriginConn(ctx, conn, conf, logEntry), nil
 		},
 		DisableCompression: true,
 		DisableKeepAlives:  conf.DisableConnectionReuse,

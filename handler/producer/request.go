@@ -6,13 +6,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/internal/seetie"
-	"github.com/coupergateway/couper/telemetry"
 )
 
 // Request represents the producer <Request> object.
@@ -24,14 +21,9 @@ type Request struct {
 }
 
 func (r *Request) Produce(req *http.Request) *Result {
-	ctx := req.Context()
-	var rootSpan trace.Span
-	ctx, rootSpan = telemetry.NewSpanFromContext(ctx, "requests", trace.WithSpanKind(trace.SpanKindProducer))
-
 	hclCtx := eval.ContextFromRequest(req).HCLContextSync() // also synced for requests due to sequence case
 
-	// span end by result reader
-	outCtx, span := telemetry.NewSpanFromContext(withRoundTripName(ctx, r.Name), r.Name, trace.WithSpanKind(trace.SpanKindClient))
+	outCtx := withRoundTripName(req.Context(), r.Name)
 	if r.dependsOn != "" {
 		outCtx = context.WithValue(outCtx, request.EndpointSequenceDependsOn, r.dependsOn)
 	}
@@ -87,12 +79,7 @@ func (r *Request) Produce(req *http.Request) *Result {
 		return &Result{Err: err}
 	}
 
-	span.SetAttributes(semconv.HTTPClientAttributesFromHTTPRequest(outreq)...)
-
-	result := roundtrip(r.Backend, outreq)
-
-	rootSpan.End()
-	return result
+	return roundtrip(r.Backend, outreq)
 }
 
 func (r *Request) SetDependsOn(ps string) {
