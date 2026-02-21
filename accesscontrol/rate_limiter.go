@@ -37,7 +37,7 @@ type RateLimiter struct {
 	windowType     int
 	conf           *config.RateLimiter
 	limiterEntries map[[32]byte]*LimiterEntry
-	mu             sync.Mutex
+	mu             sync.RWMutex
 }
 
 // NewRateLimiter creates a new AC-RateLimiter object
@@ -100,6 +100,18 @@ func (rl *RateLimiter) getLimiter(key [32]byte) limiter.Limiter {
 		lastUsed: time.Now(),
 	}
 	return lim
+}
+
+// Name returns the rate limiter's configured name.
+func (rl *RateLimiter) Name() string {
+	return rl.name
+}
+
+// ActiveKeyCount returns the number of currently tracked keys.
+func (rl *RateLimiter) ActiveKeyCount() int {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+	return len(rl.limiterEntries)
 }
 
 // Validate implements the AccessControl interface

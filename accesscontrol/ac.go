@@ -43,6 +43,14 @@ type ProtectedHandler interface {
 
 var _ AccessControl = ValidateFunc(func(_ *http.Request) error { return nil })
 
+func (i ListItem) Kind() string {
+	return i.kind
+}
+
+func (i ListItem) Label() string {
+	return i.label
+}
+
 func (i ListItem) Validate(req *http.Request) error {
 	if err := i.control.Validate(req); err != nil {
 		if e, ok := err.(*errors.Error); ok {

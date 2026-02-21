@@ -55,6 +55,10 @@ func InitExporter(ctx context.Context, opts *Options, memStore *cache.MemoryStor
 		if err := newBackendsObserver(memStore); err != nil {
 			return err
 		}
+
+		if err := newRateLimiterObserver(memStore); err != nil {
+			return err
+		}
 	}
 
 	if opts.Traces {
