@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"crypto/md5"
 	"crypto/subtle"
+	"encoding/base64"
+	"fmt"
+	"strconv"
 	"strings"
 
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -16,6 +20,8 @@ const (
 	pwdPrefixBcrypt2x = "$2x$"
 	pwdPrefixBcrypt2y = "$2y$"
 	pwdPrefixMD5      = "$1$"
+	pwdPrefixArgon2id = "$argon2id$"
+	pwdPrefixArgon2i  = "$argon2i$"
 )
 
 const (
@@ -23,6 +29,8 @@ const (
 	pwdTypeApr1
 	pwdTypeBcrypt
 	pwdTypeMD5
+	pwdTypeArgon2id
+	pwdTypeArgon2i
 )
 
 const (
@@ -38,15 +46,22 @@ var pwdPrefixes = map[string]int{
 	pwdPrefixBcrypt2x: pwdTypeBcrypt,
 	pwdPrefixBcrypt2y: pwdTypeBcrypt,
 	pwdPrefixMD5:      pwdTypeMD5,
+	pwdPrefixArgon2id: pwdTypeArgon2id,
+	pwdPrefixArgon2i:  pwdTypeArgon2i,
 }
 
 type htData map[string]pwd
 
 type pwd struct {
-	pwdOrig   []byte
-	pwdPrefix string
-	pwdSalt   string
-	pwdType   int
+	pwdOrig       []byte
+	pwdPrefix     string
+	pwdSalt       string
+	pwdType       int
+	argon2Time    uint32
+	argon2Memory  uint32
+	argon2Threads uint8
+	argon2KeyLen  uint32
+	argon2Salt    []byte
 }
 
 func getPwdType(pass string) int {
@@ -73,11 +88,115 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 				if err := bcrypt.CompareHashAndPassword(pass.pwdOrig, []byte(plainPass)); err == nil {
 					return true
 				}
+			case pwdTypeArgon2id, pwdTypeArgon2i:
+				if validateArgon2(plainPass, pass) {
+					return true
+				}
 			}
 		}
 	}
 
 	return false
+}
+
+func validateArgon2(plainPass string, p pwd) bool {
+	var key []byte
+	switch p.pwdType {
+	case pwdTypeArgon2id:
+		key = argon2.IDKey([]byte(plainPass), p.argon2Salt, p.argon2Time, p.argon2Memory, p.argon2Threads, p.argon2KeyLen)
+	case pwdTypeArgon2i:
+		key = argon2.Key([]byte(plainPass), p.argon2Salt, p.argon2Time, p.argon2Memory, p.argon2Threads, p.argon2KeyLen)
+	default:
+		return false
+	}
+
+	return subtle.ConstantTimeCompare(key, p.pwdOrig) == 1
+}
+
+func parseArgon2(password, prefix string) (pwd, error) {
+	// PHC format: $argon2id$v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
+	// After stripping the prefix ($argon2id$ or $argon2i$), we have:
+	// v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
+	remainder := strings.TrimPrefix(password, prefix)
+	parts := strings.Split(remainder, "$")
+	if len(parts) != 4 {
+		return pwd{}, fmt.Errorf("expected 4 parts, got %d", len(parts))
+	}
+
+	// parts[0] = "v=19"
+	if parts[0] != "v=19" {
+		return pwd{}, fmt.Errorf("unsupported argon2 version: %s", parts[0])
+	}
+
+	// parts[1] = "m=65536,t=3,p=2" (order-independent)
+	var memory, time, threads uint64
+	params := make(map[string]string)
+	for _, kv := range strings.Split(parts[1], ",") {
+		pair := strings.SplitN(kv, "=", 2)
+		if len(pair) != 2 {
+			return pwd{}, fmt.Errorf("invalid argon2 parameter: %s", kv)
+		}
+		params[pair[0]] = pair[1]
+	}
+
+	var parseErr error
+	if v, ok := params["m"]; ok {
+		memory, parseErr = strconv.ParseUint(v, 10, 32)
+	} else {
+		return pwd{}, fmt.Errorf("missing argon2 parameter: m")
+	}
+	if parseErr != nil {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter m: %w", parseErr)
+	}
+
+	if v, ok := params["t"]; ok {
+		time, parseErr = strconv.ParseUint(v, 10, 32)
+	} else {
+		return pwd{}, fmt.Errorf("missing argon2 parameter: t")
+	}
+	if parseErr != nil {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter t: %w", parseErr)
+	}
+
+	if v, ok := params["p"]; ok {
+		threads, parseErr = strconv.ParseUint(v, 10, 8)
+	} else {
+		return pwd{}, fmt.Errorf("missing argon2 parameter: p")
+	}
+	if parseErr != nil {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter p: %w", parseErr)
+	}
+	if threads < 1 {
+		return pwd{}, fmt.Errorf("invalid argon2 parallelism: must be >= 1")
+	}
+
+	// parts[2] = base64-encoded salt
+	salt, err := base64.RawStdEncoding.DecodeString(parts[2])
+	if err != nil {
+		return pwd{}, fmt.Errorf("invalid argon2 salt encoding: %w", err)
+	}
+
+	// parts[3] = base64-encoded hash
+	hash, err := base64.RawStdEncoding.DecodeString(parts[3])
+	if err != nil {
+		return pwd{}, fmt.Errorf("invalid argon2 hash encoding: %w", err)
+	}
+
+	pwdType := pwdTypeArgon2id
+	if prefix == pwdPrefixArgon2i {
+		pwdType = pwdTypeArgon2i
+	}
+
+	return pwd{
+		pwdOrig:       hash,
+		pwdPrefix:     prefix,
+		pwdType:       pwdType,
+		argon2Time:    uint32(time),
+		argon2Memory:  uint32(memory),
+		argon2Threads: uint8(threads),
+		argon2KeyLen:  uint32(len(hash)),
+		argon2Salt:    salt,
+	}, nil
 }
 
 func apr1MD5(pass, salt, pref string) []byte {
