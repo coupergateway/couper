@@ -1,6 +1,6 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.13.0...master)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.13.2...master)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
@@ -33,6 +33,21 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * hcl 2.23.0 and go-cty 1.16.2 ([#816](https://github.com/coupergateway/couper/pull/816))
 
 ---
+
+## [1.13.2](https://github.com/coupergateway/couper/releases/tag/v1.13.2)
+
+* **Dependencies**
+  * build with go 1.23 ([#886](https://github.com/coupergateway/couper/pull/886))
+  * `golang-jwt` to the unaffected version v5.2.2 to address the third-party [CVE-2025-30204](https://access.redhat.com/security/cve/cve-2025-30204) ([#886](https://github.com/coupergateway/couper/pull/886))
+  * `golang.org/x/crypto` v0.39.0 ([#886](https://github.com/coupergateway/couper/pull/886))
+
+## [1.13.1](https://github.com/coupergateway/couper/releases/tag/v1.13.1)
+
+* **Changed**
+  * `ulimit`, open files and max procs values are now logged with `debug` log level ([#857](https://github.com/coupergateway/couper/pull/857))
+
+* **Fixed**
+  * Addressed the third-party [CVE-2025-30153](https://www.mend.io/vulnerability-database/CVE-2025-30153) affecting our OpenAPI feature by upgrading to the non-affected version `v0.132.0` ([#883](https://github.com/coupergateway/couper/pull/883))
 
 ## [1.13.0](https://github.com/coupergateway/couper/releases/tag/v1.13.0)
 
