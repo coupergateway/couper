@@ -102,6 +102,18 @@ func (rl *RateLimiter) getLimiter(key [32]byte) limiter.Limiter {
 	return lim
 }
 
+// Name returns the rate limiter's configured name.
+func (rl *RateLimiter) Name() string {
+	return rl.name
+}
+
+// ActiveKeyCount returns the number of currently tracked keys.
+func (rl *RateLimiter) ActiveKeyCount() int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return len(rl.limiterEntries)
+}
+
 // Validate implements the AccessControl interface
 func (rl *RateLimiter) Validate(req *http.Request) error {
 	ctx := eval.ContextFromRequest(req).HCLContext()

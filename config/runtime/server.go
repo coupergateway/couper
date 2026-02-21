@@ -4,6 +4,7 @@ package runtime
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"path"
@@ -544,6 +545,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
+			memStore.Set("rate_limiter_"+rlConf.Name, rateLimiter, math.MaxInt64)
 			accessControls.Add(rlConf.Name, rateLimiter, rlConf.ErrorHandler)
 		}
 

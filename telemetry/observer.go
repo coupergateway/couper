@@ -32,6 +32,37 @@ func newBackendsObserver(memStore *cache.MemoryStore) error {
 	return err
 }
 
+// ActiveKeyCounter is implemented by rate limiters to report their active key count.
+type ActiveKeyCounter interface {
+	Name() string
+	ActiveKeyCount() int
+}
+
+func newRateLimiterObserver(memStore *cache.MemoryStore) error {
+	rls := memStore.GetAllWithPrefix("rate_limiter_")
+	var rateLimiters []ActiveKeyCounter
+	for _, rl := range rls {
+		if counter, ok := rl.(ActiveKeyCounter); ok {
+			rateLimiters = append(rateLimiters, counter)
+		}
+	}
+	if len(rateLimiters) == 0 {
+		return nil
+	}
+
+	meter := provider.Meter(instrumentation.AccessControlInstrumentationName)
+	gauge, _ := meter.Int64ObservableGauge(instrumentation.AccessControlRateLimiterKeys)
+
+	_, err := meter.RegisterCallback(func(_ context.Context, observer metric.Observer) error {
+		for _, rl := range rateLimiters {
+			attrs := metric.WithAttributes(attribute.String("ac_name", rl.Name()))
+			observer.ObserveInt64(gauge, int64(rl.ActiveKeyCount()), attrs)
+		}
+		return nil
+	}, gauge)
+	return err
+}
+
 func backendsObserver(gauge metric.Int64Observable, observer metric.Observer, backends []interface{ Value() cty.Value }) error {
 	for _, backend := range backends {
 		v := backend.Value().AsValueMap()
