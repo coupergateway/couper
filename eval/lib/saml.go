@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"encoding/xml"
 	"fmt"
 	"net/url"
 
@@ -17,6 +16,17 @@ const (
 	FnSamlSsoURL            = "saml_sso_url"
 	NameIDFormatUnspecified = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
 )
+
+// SAMLMetadataProvider abstracts metadata access for the SAML SSO URL function.
+type SAMLMetadataProvider interface {
+	Metadata() (*types.EntityDescriptor, error)
+}
+
+// SAMLConfigWithProvider combines SAML config with its metadata provider.
+type SAMLConfigWithProvider struct {
+	Config   *config.SAML
+	Provider SAMLMetadataProvider
+}
 
 var NoOpSamlSsoURLFunction = function.New(&function.Spec{
 	Params: []function.Parameter{
@@ -34,22 +44,10 @@ var NoOpSamlSsoURLFunction = function.New(&function.Spec{
 	},
 })
 
-func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Function {
-	type entity struct {
-		config     *config.SAML
-		descriptor *types.EntityDescriptor
-		err        error
-	}
-
-	samlEntities := make(map[string]*entity)
+func NewSamlSsoURLFunction(configs []SAMLConfigWithProvider, origin *url.URL) function.Function {
+	samlEntities := make(map[string]SAMLConfigWithProvider)
 	for _, conf := range configs {
-		metadata := &types.EntityDescriptor{}
-		err := xml.Unmarshal(conf.MetadataBytes, metadata)
-		samlEntities[conf.Name] = &entity{
-			config:     conf,
-			descriptor: metadata,
-			err:        err,
-		}
+		samlEntities[conf.Config.Name] = conf
 	}
 
 	return function.New(&function.Spec{
@@ -67,7 +65,11 @@ func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Fun
 				return NoOpSamlSsoURLFunction.Call(args)
 			}
 
-			metadata := ent.descriptor
+			metadata, err := ent.Provider.Metadata()
+			if err != nil {
+				return cty.StringVal(""), fmt.Errorf("failed to get SAML metadata for %q: %w", label, err)
+			}
+
 			var ssoURL string
 			for _, ssoService := range metadata.IDPSSODescriptor.SingleSignOnServices {
 				if ssoService.Binding == "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" {
@@ -78,7 +80,7 @@ func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Fun
 
 			nameIDFormat := getNameIDFormat(metadata.IDPSSODescriptor.NameIDFormats)
 
-			absAcsURL, err := AbsoluteURL(ent.config.SpAcsURL, origin)
+			absAcsURL, err := AbsoluteURL(ent.Config.SpAcsURL, origin)
 			if err != nil {
 				return cty.StringVal(""), err
 			}
@@ -86,7 +88,7 @@ func NewSamlSsoURLFunction(configs []*config.SAML, origin *url.URL) function.Fun
 			sp := &saml2.SAMLServiceProvider{
 				AssertionConsumerServiceURL: absAcsURL,
 				IdentityProviderSSOURL:      ssoURL,
-				ServiceProviderIssuer:       ent.config.SpEntityID,
+				ServiceProviderIssuer:       ent.Config.SpEntityID,
 				SignAuthnRequests:           false,
 			}
 			if nameIDFormat != "" {

@@ -158,8 +158,7 @@ func loadConfig(body *hclsyntax.Body) (*config.Couper, error) {
 
 	h.config.Context = h.config.Context.(*eval.Context).
 		WithJWTSigningConfigs(jwtSigningConfigs).
-		WithOAuth2AC(h.config.Definitions.OAuth2AC).
-		WithSAML(h.config.Definitions.SAML)
+		WithOAuth2AC(h.config.Definitions.OAuth2AC)
 
 	err = h.configureBindAddresses()
 	if err != nil {

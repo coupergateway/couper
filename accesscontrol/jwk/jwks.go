@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/coupergateway/couper/config"
-	jsn "github.com/coupergateway/couper/json"
+	"github.com/coupergateway/couper/resource"
 )
 
 var alg2kty = map[string]string{
@@ -28,7 +28,7 @@ type JWKSData struct {
 }
 
 type JWKS struct {
-	syncedJSON *jsn.SyncedJSON
+	syncedResource *resource.SyncedResource
 }
 
 func NewJWKS(ctx context.Context, uri string, ttl string, maxStale string, transport http.RoundTripper) (*JWKS, error) {
@@ -48,7 +48,7 @@ func NewJWKS(ctx context.Context, uri string, ttl string, maxStale string, trans
 	}
 
 	jwks := &JWKS{}
-	jwks.syncedJSON, err = jsn.NewSyncedJSON(ctx, file, "jwks_url", uri, transport, "jwks", timetolive, maxStaleTime, jwks)
+	jwks.syncedResource, err = resource.NewSyncedResource(ctx, file, "jwks_url", uri, transport, "jwks", timetolive, maxStaleTime, jwks)
 	return jwks, err
 }
 
@@ -115,7 +115,7 @@ func (j *JWKS) getKeys(kid string) ([]*JWK, error) {
 }
 
 func (j *JWKS) Data() (*JWKSData, error) {
-	data, err := j.syncedJSON.Data()
+	data, err := j.syncedResource.Data()
 	// Ignore backend errors as long as we still get cached (stale) data.
 	jwksData, ok := data.(*JWKSData)
 	if !ok {
@@ -125,8 +125,8 @@ func (j *JWKS) Data() (*JWKSData, error) {
 	return jwksData, nil
 }
 
-func (j *JWKS) Unmarshal(rawJSON []byte) (interface{}, error) {
+func (j *JWKS) Unmarshal(raw []byte) (interface{}, error) {
 	jsonData := &JWKSData{}
-	err := json.Unmarshal(rawJSON, jsonData)
+	err := json.Unmarshal(raw, jsonData)
 	return jsonData, err
 }

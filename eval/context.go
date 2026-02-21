@@ -53,7 +53,7 @@ type Context struct {
 	memorize          map[string]interface{}
 	oauth2            map[string]config.OAuth2Authorization
 	jwtSigningConfigs map[string]*lib.JWTSigningConfig
-	saml              []*config.SAML
+	samlProviders     []lib.SAMLConfigWithProvider
 	syncedVariables   *SyncedVariables
 
 	cloneMu sync.RWMutex
@@ -242,7 +242,7 @@ func (c *Context) clone() *Context {
 		memorize:          make(map[string]interface{}),
 		oauth2:            c.oauth2,
 		jwtSigningConfigs: c.jwtSigningConfigs,
-		saml:              c.saml[:],
+		samlProviders:     c.samlProviders[:],
 		syncedVariables:   NewSyncedVariables(),
 	}
 }
@@ -373,14 +373,14 @@ func (c *Context) WithMemStore(store *cache.MemoryStore) *Context {
 	return c
 }
 
-// WithSAML initially set up the saml configuration.
-func (c *Context) WithSAML(s []*config.SAML) *Context {
+// WithSAMLProviders initially sets up the SAML configuration with providers.
+func (c *Context) WithSAMLProviders(providers map[string]lib.SAMLConfigWithProvider) *Context {
 	c.cloneMu.Lock()
 	defer c.cloneMu.Unlock()
 
-	c.saml = s
-	if c.saml == nil {
-		c.saml = make([]*config.SAML, 0)
+	c.samlProviders = make([]lib.SAMLConfigWithProvider, 0, len(providers))
+	for _, p := range providers {
+		c.samlProviders = append(c.samlProviders, p)
 	}
 	return c
 }
@@ -441,8 +441,8 @@ func (c *Context) updateRequestRelatedFunctions(origin *url.URL) {
 	c.eval.Functions[lib.FnOAuthVerifier] = lib.NewOAuthCodeVerifierFunction(c.getCodeVerifier)
 	c.eval.Functions[lib.InternalFnOAuthHashedVerifier] = lib.NewOAuthCodeChallengeFunction(c.getCodeVerifier)
 
-	if len(c.saml) > 0 {
-		samlfn := lib.NewSamlSsoURLFunction(c.saml, origin)
+	if len(c.samlProviders) > 0 {
+		samlfn := lib.NewSamlSsoURLFunction(c.samlProviders, origin)
 		c.eval.Functions[lib.FnSamlSsoURL] = samlfn
 	} else {
 		c.eval.Functions[lib.FnSamlSsoURL] = lib.NoOpSamlSsoURLFunction
