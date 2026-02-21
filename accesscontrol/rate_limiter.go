@@ -37,7 +37,7 @@ type RateLimiter struct {
 	windowType     int
 	conf           *config.RateLimiter
 	limiterEntries map[[32]byte]*LimiterEntry
-	mu             sync.Mutex
+	mu             sync.RWMutex
 }
 
 // NewRateLimiter creates a new AC-RateLimiter object
@@ -109,8 +109,8 @@ func (rl *RateLimiter) Name() string {
 
 // ActiveKeyCount returns the number of currently tracked keys.
 func (rl *RateLimiter) ActiveKeyCount() int {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
 	return len(rl.limiterEntries)
 }
 
