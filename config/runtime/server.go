@@ -566,7 +566,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			oauth2Client, err := oauth2.NewAuthCodeClient(confCtx, oauth2Conf, oauth2Conf, backend)
+			oauth2Client, err := oauth2.NewAuthCodeClient(confCtx, oauth2Conf, oauth2Conf, backend, oauth2Conf.Name)
 			if err != nil {
 				return nil, confErr.With(err)
 			}

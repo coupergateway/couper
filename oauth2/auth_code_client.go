@@ -34,7 +34,7 @@ type AuthCodeClient struct {
 }
 
 // NewAuthCodeClient creates a new OAuth2 Authorization Code client.
-func NewAuthCodeClient(evalCtx *hcl.EvalContext, acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2AS, backend http.RoundTripper) (*AuthCodeClient, error) {
+func NewAuthCodeClient(evalCtx *hcl.EvalContext, acClientConf config.OAuth2AcClient, oauth2AsConf config.OAuth2AS, backend http.RoundTripper, name string) (*AuthCodeClient, error) {
 	grantType := acClientConf.GetGrantType()
 	if grantType != "authorization_code" {
 		return nil, fmt.Errorf("grant_type %s not supported", grantType)
@@ -54,7 +54,7 @@ func NewAuthCodeClient(evalCtx *hcl.EvalContext, acClientConf config.OAuth2AcCli
 		// skip this for oidc configurations due to possible startup errors
 	}
 
-	client, err := NewClient(evalCtx, grantType, oauth2AsConf, acClientConf, backend)
+	client, err := NewClient(evalCtx, grantType, oauth2AsConf, acClientConf, backend, name)
 	if err != nil {
 		return nil, err
 	}

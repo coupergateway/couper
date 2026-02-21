@@ -13,7 +13,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/oauth2/oidc"
 )
 
@@ -32,7 +34,7 @@ type OidcClient struct {
 // NewOidcClient creates a new OIDC client.
 func NewOidcClient(evalCtx *hcl.EvalContext, oidcConfig *oidc.Config) (*OidcClient, error) {
 	backends := oidcConfig.Backends()
-	acClient, err := NewAuthCodeClient(evalCtx, oidcConfig, oidcConfig, backends["token_backend"])
+	acClient, err := NewAuthCodeClient(evalCtx, oidcConfig, oidcConfig, backends["token_backend"], oidcConfig.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -278,5 +280,11 @@ func (o *OidcClient) newUserinfoRequest(ctx context.Context, userinfoEndpoint, a
 
 	outreq.Header.Set("Authorization", "Bearer "+accessToken)
 
-	return outreq.WithContext(ctx), nil
+	outCtx := ctx
+	if o.config.Name != "" {
+		outCtx = context.WithValue(outCtx, request.RoundTripName, o.config.Name)
+		outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Option(buffer.Response|buffer.JSONParseResponse))
+	}
+
+	return outreq.WithContext(outCtx), nil
 }
