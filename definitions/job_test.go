@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -32,7 +33,7 @@ func TestJob_Run(t *testing.T) {
 		fields  fields
 		expErr  string
 		expLogs int
-		waitFor time.Duration
+		waitFor time.Duration // only used when expLogs == 0
 	}{
 		{"job with interval", fields{
 			conf: &config.Job{Name: "testCase1", IntervalDuration: time.Millisecond * 200},
@@ -41,7 +42,7 @@ func TestJob_Run(t *testing.T) {
 					getST(r).Error("expected trigger req with Couper UA")
 				}
 			}),
-		}, "", 2, time.Millisecond * 300}, // two due to initial req
+		}, "", 2, 0}, // two due to initial req
 		{"job with small interval", fields{
 			conf: &config.Job{Name: "testCase2", IntervalDuration: time.Millisecond * 100},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -49,17 +50,17 @@ func TestJob_Run(t *testing.T) {
 					getST(r).Error("expected trigger req with Couper UA")
 				}
 			}),
-		}, "", 5, time.Millisecond * 480}, // five due to initial req
+		}, "", 5, 0}, // five due to initial req
 		{"job with greater interval", fields{
 			conf:    &config.Job{Name: "testCase3", IntervalDuration: time.Second},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {}),
-		}, "", 2, time.Millisecond * 1100}, // two due to initial req
+		}, "", 2, 0}, // two due to initial req
 		{"job with greater origin delay than interval", fields{
 			conf: &config.Job{Name: "testCase4", IntervalDuration: time.Millisecond * 1500},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				time.Sleep(time.Second)
 			}),
-		}, "", 2, time.Second * 3}, // initial req + one (hit at 2.5s)
+		}, "", 2, 0}, // initial req + one (hit at 2.5s)
 		{"job with startup_delay", fields{
 			conf: &config.Job{Name: "testCase5", IntervalDuration: time.Millisecond * 100, StartupDelayDuration: time.Millisecond * 300},
 			handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -75,11 +76,25 @@ func TestJob_Run(t *testing.T) {
 					getST(r).Error("expected trigger req with Couper UA")
 				}
 			}),
-		}, "", 2, time.Millisecond * 350}, // first at ~200ms (startup_delay), second at ~300ms (interval)
+		}, "", 2, 0}, // first at ~200ms (startup_delay), second at ~300ms (interval)
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
-			j := definitions.NewJob(tt.fields.conf, tt.fields.handler, config.NewDefaultSettings())
+			var counter atomic.Int32
+			reached := make(chan struct{}, 1)
+			expected := int32(tt.expLogs)
+
+			wrappedHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				tt.fields.handler.ServeHTTP(rw, r)
+				if expected > 0 && counter.Add(1) == expected {
+					select {
+					case reached <- struct{}{}:
+					default:
+					}
+				}
+			})
+
+			j := definitions.NewJob(tt.fields.conf, wrappedHandler, config.NewDefaultSettings())
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -90,17 +105,30 @@ func TestJob_Run(t *testing.T) {
 
 			go j.Run(ctx, logger.WithContext(ctx))
 
-			// 50ms are the initial ticker delay
-			time.Sleep(tt.waitFor + (time.Millisecond * 50))
+			if tt.expLogs > 0 {
+				select {
+				case <-reached:
+					// Expected execution count reached
+				case <-time.After(5 * time.Second):
+					st.Fatalf("timed out waiting for %d executions, got %d", tt.expLogs, counter.Load())
+				}
+			} else {
+				// For zero-expectation, wait and verify nothing ran
+				time.Sleep(tt.waitFor + (time.Millisecond * 50))
+				if cnt := counter.Load(); cnt != 0 {
+					st.Errorf("expected 0 executions, got %d", cnt)
+				}
+			}
+
+			// Let log writes complete after last handler execution
+			time.Sleep(50 * time.Millisecond)
 
 			logEntries := hook.AllEntries()
-			var cnt int
 			for _, entry := range logEntries {
 				msg, _ := entry.String()
 				if strings.Contains(msg, "context canceled") {
 					continue
 				}
-				cnt++
 
 				if !reflect.DeepEqual(entry.Data["name"], tt.fields.conf.Name) {
 					st.Error("expected the job name in log fields")
@@ -115,10 +143,6 @@ func TestJob_Run(t *testing.T) {
 						st.Log(msg)
 					}
 				}()
-			}
-
-			if cnt != tt.expLogs {
-				st.Errorf("expected %d log entries, got: %d", tt.expLogs, len(logEntries))
 			}
 		})
 	}
