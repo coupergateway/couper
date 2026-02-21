@@ -77,6 +77,10 @@ func Test_BasicAuth_Validate(t *testing.T) {
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("user:bass")), couperErr.BasicAuth},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-pass")), nil},
 		{"Basic " + b64.StdEncoding.EncodeToString([]byte("john:my-bass")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("jack:my-pass")), nil},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("jack:wrong")), couperErr.BasicAuth},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("jim:my-pass")), nil},
+		{"Basic " + b64.StdEncoding.EncodeToString([]byte("jim:wrong")), couperErr.BasicAuth},
 	} {
 		t.Run(testcase.headerValue, func(subT *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
