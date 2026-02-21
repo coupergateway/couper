@@ -91,13 +91,13 @@ func TestRelativeURL(t *testing.T) {
 		{"~", "", `invalid url given: "~"`},
 		{"abc@def.org", "", `invalid url given: "abc@def.org"`},
 		{"ftp://127.0.0.1", "", `invalid url given: "ftp://127.0.0.1"`},
+		{"https://abc.def:8443:9443", "", `parse "https://abc.def:8443:9443": invalid port ":8443:9443" after host`},
 
 		// Valid
 		{"/abs", "/abs", ``},
 		{"//path", "/", ``},
 		{"///path", "/path", ``},
 		{"/abs:8080", "/abs:8080", ``},
-		{"https://abc.def:8443:9443", "/", ``},
 		{"http://", "/", ``},
 		{"http://abc", "/", ``},
 		{"http://abc.def", "/", ``},

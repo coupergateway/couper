@@ -1,7 +1,7 @@
 .PHONY: docker-telemetry build generate generate-llmstxt image
 .PHONY: test test-docker coverage test-coverage convert-test-coverage test-coverage-show
 
-GO_VERSION := 1.25
+GO_VERSION := 1.26
 
 build:
 	go build -race -v -o couper main.go

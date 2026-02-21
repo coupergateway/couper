@@ -73,7 +73,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: linux
           goarch: ${{ matrix.goarch }}
-          goversion: '1.25'
+          goversion: '1.26'
           binary_name: 'couper'
           ldflags: '-X ${{ env.VERSION_PACKAGE }}.VersionName=edge -X ${{ env.VERSION_PACKAGE }}.BuildName=${{ steps.vars.outputs.sha_short }} -X ${{ env.VERSION_PACKAGE }}.BuildDate=${{ steps.vars.outputs.build_date }}'
           sha256sum: true

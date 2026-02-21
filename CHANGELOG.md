@@ -29,7 +29,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Use constant-time comparison for username in `basic_auth` ([#920](https://github.com/coupergateway/couper/pull/920))
 
 * **Dependencies**
-  * build with go 1.25 ([#862](https://github.com/coupergateway/couper/pull/862))
+  * build with go 1.26 ([#926](https://github.com/coupergateway/couper/pull/926))
   * hcl 2.23.0 and go-cty 1.16.2 ([#816](https://github.com/coupergateway/couper/pull/816))
 
 ---
