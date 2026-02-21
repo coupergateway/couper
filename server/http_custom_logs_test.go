@@ -394,11 +394,15 @@ func TestCustomLogs_OIDCBackendResponse(t *testing.T) {
 	}
 
 	// Verify the request name is set (not <nil>)
-	requestFields, _ := tokenUpstreamLog["request"].(logging.Fields)
-	if requestFields != nil {
-		name, _ := requestFields["name"].(string)
-		if name == "" {
-			t.Errorf("expected non-empty request name for token upstream log, got: %q", name)
-		}
+	requestFields, ok := tokenUpstreamLog["request"].(logging.Fields)
+	if !ok {
+		t.Fatalf("expected 'request' field of type logging.Fields, got: %#v", tokenUpstreamLog["request"])
+	}
+	name, ok := requestFields["name"].(string)
+	if !ok {
+		t.Fatalf("expected 'name' field of type string, got: %#v", requestFields["name"])
+	}
+	if name == "" {
+		t.Errorf("expected non-empty request name for token upstream log, got: %q", name)
 	}
 }
