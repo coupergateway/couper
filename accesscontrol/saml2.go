@@ -27,12 +27,6 @@ type Saml2 struct {
 }
 
 func NewSAML2ACS(provider samlpkg.MetadataProvider, name string, acsURL string, spEntityID string, arrayAttributes []string) (*Saml2, error) {
-	// Validate that we can get metadata initially
-	_, err := provider.Metadata()
-	if err != nil {
-		return nil, err
-	}
-
 	if arrayAttributes != nil {
 		sort.Strings(arrayAttributes)
 	}
