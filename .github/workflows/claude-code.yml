@@ -66,6 +66,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_commit_signing: true
           show_full_output: true
           track_progress: true
           prompt: |
@@ -228,6 +229,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_commit_signing: true
           show_full_output: true
           track_progress: true
           prompt: |
