@@ -170,7 +170,7 @@ func NewOAuth2ReqAuth(evalCtx *hcl.EvalContext, conf *config.OAuth2ReqAuth, memS
 		}
 	}
 
-	oauth2Client, err := oauth2.NewClient(evalCtx, conf.GrantType, conf, conf, asBackend)
+	oauth2Client, err := oauth2.NewClient(evalCtx, conf.GrantType, conf, conf, asBackend, "")
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
 )
 
 const (
@@ -29,9 +30,10 @@ type Client struct {
 	asConfig      config.OAuth2AS
 	clientConfig  config.OAuth2Client
 	grantType     string
+	name          string
 }
 
-func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper) (*Client, error) {
+func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth2AS, clientConfig config.OAuth2Client, backend http.RoundTripper, name string) (*Client, error) {
 	var authenticator ClientAuthenticator
 	if clientConfig.ClientAuthenticationRequired() {
 		tokenEndpoint, err := asConfig.GetTokenEndpoint()
@@ -50,6 +52,7 @@ func NewClient(evalCtx *hcl.EvalContext, grantType string, asConfig config.OAuth
 		asConfig,
 		clientConfig,
 		grantType,
+		name,
 	}, nil
 }
 
@@ -95,6 +98,10 @@ func (c *Client) newTokenRequest(ctx context.Context, formParams url.Values) (*h
 	}
 
 	outCtx := context.WithValue(ctx, request.TokenRequest, "oauth2")
+	if c.name != "" {
+		outCtx = context.WithValue(outCtx, request.RoundTripName, c.name)
+		outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Option(buffer.Response|buffer.JSONParseResponse))
+	}
 
 	eval.SetBody(outreq, []byte(formParams.Encode()))
 

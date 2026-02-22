@@ -1,16 +1,23 @@
 package server_test
 
 import (
+	"bytes"
 	"net/http"
+	"net/http/httptest"
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sirupsen/logrus"
 
+	"github.com/coupergateway/couper/eval/lib"
 	"github.com/coupergateway/couper/internal/test"
 	"github.com/coupergateway/couper/logging"
+	"github.com/coupergateway/couper/oauth2"
 )
 
 func TestCustomLogs_Upstream(t *testing.T) {
@@ -254,4 +261,148 @@ func TestCustomLogs_EvalError(t *testing.T) {
 	hook.Reset()
 	_, err = client.Do(req)
 	helper.Must(err)
+}
+
+func TestCustomLogs_OIDCBackendResponse(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	st := "qeirtbnpetrbi"
+	state := oauth2.Base64urlSha256(st)
+
+	oauthOrigin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/.well-known/openid-configuration" {
+			body := []byte(`{
+			"issuer": "https://authorization.server",
+			"authorization_endpoint": "https://authorization.server/oauth2/authorize",
+			"jwks_uri": "http://` + req.Host + `/jwks",
+			"token_endpoint": "http://` + req.Host + `/token",
+			"userinfo_endpoint": "http://` + req.Host + `/userinfo"
+			}`)
+			_, _ = rw.Write(body)
+			return
+		} else if req.URL.Path == "/jwks" {
+			jsonBytes, err := os.ReadFile("testdata/integration/files/jwks.json")
+			if err != nil {
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			b := bytes.NewBuffer(jsonBytes)
+			_, _ = b.WriteTo(rw)
+			return
+		} else if req.URL.Path == "/token" {
+			_ = req.ParseForm()
+			rw.Header().Set("Content-Type", "application/json")
+
+			nonce := state
+			mapClaims := jwt.MapClaims{
+				"aud":   []string{"foo"},
+				"iss":   "https://authorization.server",
+				"iat":   1000,
+				"exp":   4000000000,
+				"sub":   "myself",
+				"azp":   "foo",
+				"nonce": nonce,
+			}
+			keyBytes, err := os.ReadFile("testdata/integration/files/pkcs8.key")
+			if err != nil {
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			key, err := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
+			if err != nil {
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			idToken, err := lib.CreateJWT("RS256", key, mapClaims, map[string]interface{}{"kid": "rs256"})
+			if err != nil {
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			body := []byte(`{
+				"access_token": "abcdef0123456789",
+				"token_type": "bearer",
+				"expires_in": 100,
+				"id_token": "` + idToken + `"
+			}`)
+			_, _ = rw.Write(body)
+			return
+		} else if req.URL.Path == "/userinfo" {
+			rw.Header().Set("Content-Type", "application/json")
+			_, _ = rw.Write([]byte(`{"sub": "myself"}`))
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+	}))
+	defer oauthOrigin.Close()
+
+	shutdown, hook, err := newCouperWithTemplate("testdata/integration/logs/05_couper.hcl", test.New(t), map[string]interface{}{"asOrigin": oauthOrigin.URL})
+	helper.Must(err)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/cb?code=qeuboub", nil)
+	helper.Must(err)
+	req.Header.Set("Cookie", "nnc="+st)
+
+	hook.Reset()
+	res, err := client.Do(req)
+	helper.Must(err)
+	helper.Must(res.Body.Close())
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
+	}
+
+	// Wait for logs
+	time.Sleep(time.Second / 5)
+
+	entries := hook.AllEntries()
+
+	// Find upstream log entries for token request (not jwks or openid-configuration)
+	var tokenUpstreamLog logrus.Fields
+	for _, entry := range entries {
+		if entry.Data["type"] != "couper_backend" {
+			continue
+		}
+		r, ok := entry.Data["request"].(logging.Fields)
+		if !ok {
+			continue
+		}
+		path, _ := r["path"].(string)
+		if strings.HasSuffix(path, "/token") {
+			tokenUpstreamLog = entry.Data
+			break
+		}
+	}
+
+	if tokenUpstreamLog == nil {
+		t.Fatal("expected upstream log entry for token request")
+	}
+
+	// Verify the custom log fields from backend_response.json_body
+	customUpstream, ok := tokenUpstreamLog["custom"].(logrus.Fields)
+	if !ok {
+		t.Fatal("expected upstream custom log field for token request")
+	}
+
+	exp := logrus.Fields{
+		"token_type": "bearer",
+	}
+	if !cmp.Equal(exp, customUpstream) {
+		t.Error(cmp.Diff(exp, customUpstream))
+	}
+
+	// Verify the request name is set (not <nil>)
+	requestFields, ok := tokenUpstreamLog["request"].(logging.Fields)
+	if !ok {
+		t.Fatalf("expected 'request' field of type logging.Fields, got: %#v", tokenUpstreamLog["request"])
+	}
+	name, ok := requestFields["name"].(string)
+	if !ok {
+		t.Fatalf("expected 'name' field of type string, got: %#v", requestFields["name"])
+	}
+	if name == "" {
+		t.Errorf("expected non-empty request name for token upstream log, got: %q", name)
+	}
 }
