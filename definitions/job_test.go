@@ -21,8 +21,6 @@ func TestJob_Run(t *testing.T) {
 		handler http.Handler
 	}
 
-	logger, hook := test.NewLogger()
-
 	const subTestKey = "subTest"
 	getST := func(r *http.Request) *testing.T {
 		return eval.ContextFromRequest(r).Value(subTestKey).(*testing.T)
@@ -80,6 +78,10 @@ func TestJob_Run(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(st *testing.T) {
+			// Per-subtest logger prevents leaked goroutines from previous
+			// subtests contaminating the current subtest's log entries.
+			logger, hook := test.NewLogger()
+
 			var counter atomic.Int32
 			reached := make(chan struct{}, 1)
 			expected := int32(tt.expLogs)
@@ -101,9 +103,11 @@ func TestJob_Run(t *testing.T) {
 			ctx = context.WithValue(ctx, subTestKey, st)
 			ctx = eval.NewDefaultContext().WithContext(ctx)
 
-			hook.Reset()
-
-			go j.Run(ctx, logger.WithContext(ctx))
+			runDone := make(chan struct{})
+			go func() {
+				j.Run(ctx, logger.WithContext(ctx))
+				close(runDone)
+			}()
 
 			if tt.expLogs > 0 {
 				select {
@@ -120,7 +124,10 @@ func TestJob_Run(t *testing.T) {
 				}
 			}
 
-			// Let log writes complete after last handler execution
+			// Stop the job and wait for j.Run to exit before checking logs,
+			// so any in-flight run() goroutines finish their log writes.
+			cancel()
+			<-runDone
 			time.Sleep(50 * time.Millisecond)
 
 			logEntries := hook.AllEntries()
