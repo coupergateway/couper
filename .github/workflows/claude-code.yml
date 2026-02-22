@@ -63,7 +63,7 @@ jobs:
             echo "has_comments=false" >> $GITHUB_OUTPUT
           fi
 
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1.0.55
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_commit_signing: true
@@ -226,7 +226,7 @@ jobs:
             echo "has_reviews=false" >> $GITHUB_OUTPUT
           fi
 
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1.0.55
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_commit_signing: true
