@@ -14,6 +14,10 @@ permissions:
   pull-requests: write
   id-token: write
 
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   claude-implement:
     name: "Claude: Implement Issue"
@@ -176,20 +180,46 @@ jobs:
             echo "url=$ISSUE_URL" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check if this is the latest @claude mention
+        id: freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRIGGER_ID: ${{ github.event.comment.id }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          NUM="${{ steps.meta.outputs.number }}"
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+            API_PATH="repos/${{ github.repository }}/pulls/$NUM/comments"
+          else
+            API_PATH="repos/${{ github.repository }}/issues/$NUM/comments"
+          fi
+          LATEST_ID=$(gh api "$API_PATH" \
+            --jq '[.[] | select(.user.login == "malud" and (.body | contains("@claude")))] | last | .id' 2>/dev/null || echo "")
+          if [ -n "$LATEST_ID" ] && [ "$LATEST_ID" != "null" ] && [ "$LATEST_ID" != "$TRIGGER_ID" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "::notice::Skipping — a newer @claude comment exists (ID: $LATEST_ID). It will be handled by its own workflow run."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.freshness.outputs.skip != 'true'
         with:
           fetch-depth: 0
           ref: ${{ steps.meta.outputs.ref || github.ref }}
 
       - name: Set up Go
+        if: steps.freshness.outputs.skip != 'true'
         uses: actions/setup-go@v5
         with:
           go-version: '1.26'
 
       - name: Install dependencies
+        if: steps.freshness.outputs.skip != 'true'
         run: go mod download
 
       - name: Fetch conversation context
+        if: steps.freshness.outputs.skip != 'true'
         id: context
         env:
           GH_TOKEN: ${{ github.token }}
@@ -227,6 +257,7 @@ jobs:
           fi
 
       - uses: anthropics/claude-code-action@v1.0.55
+        if: steps.freshness.outputs.skip != 'true'
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_commit_signing: true
@@ -303,4 +334,74 @@ jobs:
             - If on Issue (new branch): `gh pr create --fill`
           claude_args: |
             --max-turns 60
+            --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch" "Task"
+
+      - name: Check for @claude comments posted during this run
+        id: new_comments
+        if: steps.freshness.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRIGGER_TIME: ${{ github.event.comment.created_at }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          NUM="${{ steps.meta.outputs.number }}"
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+            API_PATH="repos/${{ github.repository }}/pulls/$NUM/comments"
+          else
+            API_PATH="repos/${{ github.repository }}/issues/$NUM/comments"
+          fi
+          COMMENTS=$(gh api "$API_PATH" \
+            --jq "[.[] | select(.user.login == \"malud\" and (.body | contains(\"@claude\")) and .created_at > \"$TRIGGER_TIME\")] | .[].body" 2>/dev/null || echo "")
+          if [ -n "$COMMENTS" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            {
+              echo "bodies<<NEW_COMMENTS_EOF"
+              echo "$COMMENTS"
+              echo "NEW_COMMENTS_EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Claude: Process follow-up comments"
+        if: steps.new_comments.outputs.found == 'true'
+        uses: anthropics/claude-code-action@v1.0.55
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_commit_signing: true
+          show_full_output: true
+          track_progress: true
+          prompt: |
+            FOLLOW-UP @claude comments posted while the previous request was being processed:
+
+            ${{ steps.new_comments.outputs.bodies }}
+
+            CONTEXT:
+            - Type: ${{ steps.meta.outputs.is_pr == 'true' && 'Pull Request' || 'Issue' }}
+            - URL: ${{ steps.meta.outputs.url }}
+            - Title: ${{ steps.meta.outputs.title }}
+            - Number: #${{ steps.meta.outputs.number }}
+
+            ${{ steps.context.outputs.has_comments == 'true' && format('PREVIOUS COMMENTS:\n{0}', steps.context.outputs.comments) || '' }}
+
+            ${{ steps.context.outputs.has_reviews == 'true' && format('CODE REVIEW COMMENTS:\n{0}', steps.context.outputs.reviews) || '' }}
+
+            ---
+
+            Process these follow-up requests. The previous @claude request has already been handled.
+
+            YOU ARE AN ORCHESTRATOR. Delegate exploration to subagents to keep context focused.
+
+            CRITICAL RULES:
+            1. NEVER give up on fixable errors - test failures MUST be fixed
+            2. A pre-commit hook enforces `go fmt` and `go vet` - if commit is blocked, fix the issues
+
+            STEP 0 - CHECKOUT CORRECT BRANCH (if code changes needed):
+            BEFORE making ANY edits, ensure you're on the correct branch:
+            - If on a PR: `gh pr checkout ${{ steps.meta.outputs.number }}`
+            - If on an Issue: `git checkout -b feat/issue-${{ steps.meta.outputs.number }}-description`
+
+            Follow the same workflow steps as the primary request handler.
+          claude_args: |
+            --max-turns 30
             --allowedTools "Bash(*)" "Edit" "Write" "Read" "Glob" "Grep" "Skill" "WebFetch" "Task"
