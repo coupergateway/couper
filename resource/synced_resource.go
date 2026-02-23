@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/coupergateway/couper/config/reader"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/eval/buffer"
@@ -28,6 +30,7 @@ type dataRequest struct {
 // It's used for JWKS (JSON), SAML metadata (XML), OIDC configuration (JSON), and other synced data.
 // The sync goroutine exits when the provided context is cancelled.
 type SyncedResource struct {
+	log           *logrus.Entry
 	maxStale      time.Duration
 	roundTripName string
 	transport     http.RoundTripper
@@ -43,10 +46,11 @@ type SyncedResource struct {
 
 func NewSyncedResource(
 	ctx context.Context, file, fileContext, uri string, transport http.RoundTripper, roundTripName string,
-	ttl time.Duration, maxStale time.Duration, unmarshaller ResourceUnmarshaller) (*SyncedResource, error) {
+	ttl time.Duration, maxStale time.Duration, unmarshaller ResourceUnmarshaller, log *logrus.Entry) (*SyncedResource, error) {
 	sr := &SyncedResource{
 		ctx:           ctx,
 		dataRequest:   make(chan chan *dataRequest, 10),
+		log:           log,
 		maxStale:      maxStale,
 		roundTripName: roundTripName,
 		transport:     transport,
@@ -87,6 +91,10 @@ func (s *SyncedResource) sync() {
 	// Retry initial fetch with exponential backoff
 	err := s.fetchWithRetry(3)
 	if err != nil {
+		if s.log != nil {
+			s.log.WithField("url", s.uri).WithField("type", s.roundTripName).
+				Warn("initial resource fetch failed, will keep retrying")
+		}
 		expired = time.After(0)
 	}
 
@@ -111,6 +119,10 @@ func (s *SyncedResource) sync() {
 				obj: s.data,
 			}
 		case <-invalidated:
+			if s.log != nil {
+				s.log.WithField("url", s.uri).WithField("type", s.roundTripName).
+					Warn("cached resource invalidated after max_stale expired")
+			}
 			s.data = nil
 		}
 	}

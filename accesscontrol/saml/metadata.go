@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/russellhaering/gosaml2/types"
+	"github.com/sirupsen/logrus"
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/resource"
@@ -44,7 +45,7 @@ type SyncedMetadata struct {
 }
 
 // NewSyncedMetadata creates a MetadataProvider that fetches and caches metadata from a URL.
-func NewSyncedMetadata(ctx context.Context, uri string, ttl string, maxStale string, transport http.RoundTripper) (*SyncedMetadata, error) {
+func NewSyncedMetadata(ctx context.Context, uri string, ttl string, maxStale string, transport http.RoundTripper, log *logrus.Entry) (*SyncedMetadata, error) {
 	timetolive, err := config.ParseDuration("metadata_ttl", ttl, time.Hour)
 	if err != nil {
 		return nil, err
@@ -55,7 +56,7 @@ func NewSyncedMetadata(ctx context.Context, uri string, ttl string, maxStale str
 	}
 
 	sm := &SyncedMetadata{}
-	sm.syncedResource, err = resource.NewSyncedResource(ctx, "", "idp_metadata_url", uri, transport, "saml_metadata", timetolive, maxStaleTime, sm)
+	sm.syncedResource, err = resource.NewSyncedResource(ctx, "", "idp_metadata_url", uri, transport, "saml_metadata", timetolive, maxStaleTime, sm, log)
 	return sm, err
 }
 

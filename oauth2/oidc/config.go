@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/coupergateway/couper/accesscontrol/jwk"
 	"github.com/coupergateway/couper/backend"
 	"github.com/coupergateway/couper/config"
@@ -42,6 +44,7 @@ type Config struct {
 	*config.OIDC
 	backends       map[string]http.RoundTripper
 	context        context.Context
+	log            *logrus.Entry
 	syncedResource *resource.SyncedResource
 	jwks           *jwk.JWKS
 	jwksCheckSum   [32]byte
@@ -50,7 +53,7 @@ type Config struct {
 }
 
 // NewConfig creates a new configuration for an OIDC client
-func NewConfig(ctx context.Context, oidc *config.OIDC, backends map[string]http.RoundTripper) (*Config, error) {
+func NewConfig(ctx context.Context, oidc *config.OIDC, backends map[string]http.RoundTripper, log *logrus.Entry) (*Config, error) {
 	ttl, err := config.ParseDuration("configuration_ttl", oidc.ConfigurationTTL, defaultTTL)
 	if err != nil {
 		return nil, err
@@ -64,10 +67,11 @@ func NewConfig(ctx context.Context, oidc *config.OIDC, backends map[string]http.
 		OIDC:     oidc,
 		backends: backends,
 		context:  ctx,
+		log:      log,
 	}
 
 	conf.syncedResource, err = resource.NewSyncedResource(ctx, "", "",
-		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, maxStale, conf)
+		oidc.ConfigurationURL, backends["configuration_backend"], oidc.Name, ttl, maxStale, conf, log)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +196,7 @@ func (c *Config) Unmarshal(raw []byte) (interface{}, error) {
 
 	ctx, cancel := context.WithCancel(c.context)
 
-	newJWKS, err := jwk.NewJWKS(ctx, jsonData.JwksURI, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend)
+	newJWKS, err := jwk.NewJWKS(ctx, jsonData.JwksURI, c.OIDC.JWKsTTL, c.OIDC.JWKsMaxStale, jwksBackend, c.log)
 	if err != nil { // do not replace possible working jwks on err
 		cancel()
 		return jsonData, err

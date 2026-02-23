@@ -41,7 +41,7 @@ func Test_JWKS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			_, err := jwk.NewJWKS(context.TODO(), tt.url, "", "", backend)
+			_, err := jwk.NewJWKS(context.TODO(), tt.url, "", "", backend, nil)
 			if err == nil && tt.error != "" {
 				subT.Errorf("Missing error:\n\tWant: %v\n\tGot:  %v", tt.error, nil)
 			}
@@ -64,7 +64,7 @@ func Test_JWKS_Load(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			jwks, err := jwk.NewJWKS(context.TODO(), "file:"+tt.file, "", "", nil)
+			jwks, err := jwk.NewJWKS(context.TODO(), "file:"+tt.file, "", "", nil, nil)
 			helper.Must(err)
 			_, err = jwks.Data()
 			if err != nil && tt.expParsed {
@@ -93,7 +93,7 @@ func Test_JWKS_GetSigKeyForToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := jwk.NewJWKS(context.TODO(), "file:"+tt.file, "", "", nil)
+			jwks, err := jwk.NewJWKS(context.TODO(), "file:"+tt.file, "", "", nil, nil)
 			helper.Must(err)
 			_, err = jwks.Data()
 			helper.Must(err)
@@ -145,7 +145,7 @@ func Test_JWKS_GetKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			helper := test.New(subT)
-			jwks, err := jwk.NewJWKS(context.TODO(), "file:"+tt.file, "", "", nil)
+			jwks, err := jwk.NewJWKS(context.TODO(), "file:"+tt.file, "", "", nil, nil)
 			helper.Must(err)
 			_, err = jwks.Data()
 			helper.Must(err)
@@ -176,7 +176,7 @@ func Test_JWKS_LoadSynced(t *testing.T) {
 	}))
 	defer jwksOrigin.Close()
 
-	jwks, err := jwk.NewJWKS(context.TODO(), jwksOrigin.URL, "10s", "", http.DefaultTransport)
+	jwks, err := jwk.NewJWKS(context.TODO(), jwksOrigin.URL, "10s", "", http.DefaultTransport, nil)
 	helper.Must(err)
 
 	wg := sync.WaitGroup{}

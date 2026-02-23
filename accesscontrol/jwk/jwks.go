@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sirupsen/logrus"
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/resource"
@@ -31,7 +32,7 @@ type JWKS struct {
 	syncedResource *resource.SyncedResource
 }
 
-func NewJWKS(ctx context.Context, uri string, ttl string, maxStale string, transport http.RoundTripper) (*JWKS, error) {
+func NewJWKS(ctx context.Context, uri string, ttl string, maxStale string, transport http.RoundTripper, log *logrus.Entry) (*JWKS, error) {
 	timetolive, err := config.ParseDuration("jwks_ttl", ttl, time.Hour)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func NewJWKS(ctx context.Context, uri string, ttl string, maxStale string, trans
 	}
 
 	jwks := &JWKS{}
-	jwks.syncedResource, err = resource.NewSyncedResource(ctx, file, "jwks_url", uri, transport, "jwks", timetolive, maxStaleTime, jwks)
+	jwks.syncedResource, err = resource.NewSyncedResource(ctx, file, "jwks_url", uri, transport, "jwks", timetolive, maxStaleTime, jwks, log)
 	return jwks, err
 }
 

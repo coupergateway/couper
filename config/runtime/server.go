@@ -508,7 +508,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				}
 			}
 
-			oidcConfig, err := oidc.NewConfig(conf.Context, oidcConf, backends)
+			oidcConfig, err := oidc.NewConfig(conf.Context, oidcConf, backends, log)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -622,7 +622,7 @@ func configureSAMLProviders(conf *config.Couper, confCtx *hcl.EvalContext, log *
 					return nil, confErr.With(berr)
 				}
 				provider, err = saml.NewSyncedMetadata(conf.Context, samlConf.IdpMetadataURL,
-					samlConf.MetadataTTL, samlConf.MetadataMaxStale, backend)
+					samlConf.MetadataTTL, samlConf.MetadataMaxStale, backend, log)
 			} else {
 				// File-based static metadata
 				provider, err = saml.NewStaticMetadata(samlConf.MetadataBytes)
@@ -690,7 +690,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 		return nil, err
 	}
 
-	return jwk.NewJWKS(conf.Context, jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
+	return jwk.NewJWKS(conf.Context, jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend, log)
 }
 
 func configureIntrospector(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*ac.Introspector, error) {

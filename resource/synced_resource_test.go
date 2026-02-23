@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	logrustest "github.com/sirupsen/logrus/hooks/test"
+
 	"github.com/coupergateway/couper/internal/test"
 	"github.com/coupergateway/couper/resource"
 )
@@ -44,7 +46,7 @@ func Test_LoadSynced(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	syncedResource, err := resource.NewSyncedResource(context.TODO(), "", "", origin.URL, http.DefaultTransport, "test", time.Second*2, time.Hour, &unmarshaller{})
+	syncedResource, err := resource.NewSyncedResource(context.TODO(), "", "", origin.URL, http.DefaultTransport, "test", time.Second*2, time.Hour, &unmarshaller{}, nil)
 	helper.Must(err)
 
 	expectJSONValue := func(expectedValue int, shouldFail bool) {
@@ -100,7 +102,7 @@ func Test_SyncedResource_ContextCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	sr, err := resource.NewSyncedResource(ctx, "", "", origin.URL, http.DefaultTransport, "test", time.Hour, time.Hour, &unmarshaller{})
+	sr, err := resource.NewSyncedResource(ctx, "", "", origin.URL, http.DefaultTransport, "test", time.Hour, time.Hour, &unmarshaller{}, nil)
 	helper.Must(err)
 
 	// Should work before cancellation
@@ -143,7 +145,7 @@ func Test_SyncedResource_InitialFetchRetry(t *testing.T) {
 	}))
 	defer origin.Close()
 
-	sr, err := resource.NewSyncedResource(context.Background(), "", "", origin.URL, http.DefaultTransport, "test", time.Hour, time.Hour, &unmarshaller{})
+	sr, err := resource.NewSyncedResource(context.Background(), "", "", origin.URL, http.DefaultTransport, "test", time.Hour, time.Hour, &unmarshaller{}, nil)
 	helper.Must(err)
 
 	// Despite initial failures, retry should succeed
@@ -157,5 +159,63 @@ func Test_SyncedResource_InitialFetchRetry(t *testing.T) {
 	// Should have retried (3 requests total for initial fetch)
 	if requestCount < 3 {
 		t.Fatalf("expected at least 3 requests due to retry, got %d", requestCount)
+	}
+}
+
+func Test_SyncedResource_MaxStaleInvalidation(t *testing.T) {
+	helper := test.New(t)
+
+	requestCount := 0
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		// First request succeeds, all subsequent fail
+		if requestCount > 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"foo": 1}`))
+	}))
+	defer origin.Close()
+
+	log, hook := logrustest.NewNullLogger()
+	logEntry := log.WithField("test", true)
+
+	// Short TTL (200ms) and short max_stale (500ms)
+	sr, err := resource.NewSyncedResource(context.Background(), "", "", origin.URL, http.DefaultTransport, "test_type",
+		200*time.Millisecond, 500*time.Millisecond, &unmarshaller{}, logEntry)
+	helper.Must(err)
+
+	// Initial fetch should succeed
+	obj, err := sr.Data()
+	helper.Must(err)
+	if obj.(*data).Foo != 1 {
+		t.Fatalf("expected foo=1, got %v", obj)
+	}
+
+	// Wait for TTL to expire + fetch failures + max_stale to expire
+	// TTL=200ms, then retries fail, max_stale=500ms from first failure
+	time.Sleep(1500 * time.Millisecond)
+
+	// After max_stale expires, data should be nil
+	obj, err = sr.Data()
+	if obj != nil {
+		t.Fatalf("expected nil data after max_stale expiry, got: %v", obj)
+	}
+
+	// Check that the invalidation warning was logged
+	found := false
+	for _, entry := range hook.AllEntries() {
+		if entry.Message == "cached resource invalidated after max_stale expired" {
+			found = true
+			if entry.Data["type"] != "test_type" {
+				t.Errorf("expected type=test_type, got %v", entry.Data["type"])
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("expected 'cached resource invalidated after max_stale expired' warning log")
 	}
 }
