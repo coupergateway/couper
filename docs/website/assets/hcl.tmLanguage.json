@@ -209,7 +209,7 @@
     "variable": {
       "patterns": [
         {
-          "match": "\\b(couper|env|request|backend_requests?|backend_responses?)\\b",
+          "match": "\\b(couper|env|request|backends?|backend_requests?|backend_responses?|beta_token_response)\\b",
           "captures": {
             "0": { "name": "variable.language.hcl" }
           }

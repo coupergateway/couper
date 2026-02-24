@@ -5,3 +5,12 @@
 
 {{ $tw := resources.Get "css/tailwind.css" | css.PostCSS }}
 <link rel="stylesheet" href="{{ $tw.RelPermalink }}">
+
+{{/* Extract Couper-specific syntax patterns from the TextMate grammar */}}
+{{ $grammar := resources.Get "hcl.tmLanguage.json" | transform.Unmarshal }}
+{{ $varPattern := index (index $grammar.repository.variable.patterns 0) "match" }}
+<script>
+window.__couper_syntax = {
+  varPattern: {{ $varPattern | jsonify | safeJS }}
+};
+</script>

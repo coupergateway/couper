@@ -829,3 +829,23 @@ button.ais-SearchBox-reset path {
 .dark .chroma .gs { font-weight: bold; }
 .dark .chroma .gu { color: #6c7086; }
 
+/* ==========================================================================
+   Couper-Specific Syntax Highlighting (post-processor enhanced)
+   ========================================================================== */
+
+/* Built-in variables: couper, env, request, backend_requests, etc. */
+.chroma .couper-var { color: #d20f39; } /* Catppuccin Latte Red */
+.dark .chroma .couper-var { color: #f38ba8; } /* Catppuccin Mocha Red */
+
+/* Function names: upper(), merge(), base64_encode(), etc. */
+.chroma .couper-fn { color: #1e66f5; } /* Catppuccin Latte Blue */
+.dark .chroma .couper-fn { color: #89b4fa; } /* Catppuccin Mocha Blue */
+
+/* Dot-access properties: .headers, .status, .origin, etc. */
+.chroma .couper-prop { color: #7287fd; } /* Catppuccin Latte Lavender */
+.dark .chroma .couper-prop { color: #b4befe; } /* Catppuccin Mocha Lavender */
+
+/* Template interpolation delimiters: ${ and } */
+.chroma .couper-interp { color: #179299; } /* Catppuccin Latte Teal */
+.dark .chroma .couper-interp { color: #94e2d5; } /* Catppuccin Mocha Teal */
+

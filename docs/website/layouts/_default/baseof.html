@@ -131,6 +131,68 @@
     </script>
 
     <script>
+    // Couper-specific HCL syntax post-processor
+    // Enhances Chroma's output with Couper variable, function, and property highlighting
+    document.addEventListener('DOMContentLoaded', function() {
+        var s = window.__couper_syntax;
+        if (!s) return;
+        // Exact match regex for span text (strip \b word boundaries, anchor with ^...$)
+        var varRe = new RegExp('^' + s.varPattern.replace(/\\b/g, '') + '$');
+        // Unanchored regex for matching variables inside template interpolation
+        var varInline = new RegExp(s.varPattern.replace(/\\b/g, ''));
+        document.querySelectorAll('.highlight code').forEach(function(code) {
+            var spans = code.querySelectorAll('span');
+            for (var i = 0; i < spans.length; i++) {
+                var sp = spans[i];
+                if (sp.children.length > 0) continue;
+                var t = sp.textContent;
+
+                if (varRe.test(t)) {
+                    // Only mark as variable if followed by . (property access = expression context)
+                    // This avoids coloring block type declarations like: backend "name" {
+                    var nxEl = sp.nextElementSibling;
+                    if (nxEl && nxEl.textContent === '.') {
+                        sp.classList.add('couper-var');
+                    }
+                } else {
+                    // Function call: any identifier followed by (
+                    var nx = sp.nextSibling;
+                    while (nx && nx.nodeType === 3 && nx.textContent.trim() === '') nx = nx.nextSibling;
+                    if (nx && (nx.textContent || '').charAt(0) === '(') {
+                        sp.classList.add('couper-fn');
+                    }
+                    // Property: preceded by dot after a couper-var or couper-prop
+                    var prev = sp.previousElementSibling;
+                    if (prev && prev.textContent === '.') {
+                        var pp = prev.previousElementSibling;
+                        if (pp && (pp.classList.contains('couper-var') || pp.classList.contains('couper-prop'))) {
+                            sp.classList.add('couper-prop');
+                        }
+                    }
+                }
+            }
+
+            // Second pass: enhance template interpolation inside string and name spans
+            code.querySelectorAll('span.s2, span.s, span.s1, span.sh, span.n, span.k').forEach(function(sp) {
+                if (sp.children.length > 0 || sp.innerHTML.indexOf('${') === -1) return;
+                sp.innerHTML = sp.innerHTML.replace(/\$\{(~?)([\w.-]+)(~?)\}/g, function(m, tl, expr, tr) {
+                    var parts = expr.split('.');
+                    var result = parts.map(function(part, idx) {
+                        if (idx === 0 && varInline.test(part)) {
+                            return '<span class="couper-var">' + part + '</span>';
+                        } else if (idx > 0 && parts[0].match(varInline)) {
+                            return '<span class="couper-prop">' + part + '</span>';
+                        }
+                        return part;
+                    }).join('.');
+                    return '<span class="couper-interp">${' + tl + '</span>' + result + '<span class="couper-interp">' + tr + '}</span>';
+                });
+            });
+        });
+    });
+    </script>
+
+    <script>
     // Algolia Search Configuration
     const ALGOLIA_APP_ID = 'MSIN2HU7WH';
     const ALGOLIA_SEARCH_KEY = '5551c3e4dfb61914988abf95fd9b762f'; // Search-only API key
