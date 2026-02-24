@@ -96,6 +96,10 @@ func (h *helper) configureACBackends() error {
 		acs = append(acs, ac)
 	}
 
+	for _, ac := range h.config.Definitions.SAML {
+		acs = append(acs, ac)
+	}
+
 	for _, ac := range acs {
 		if err := ac.Prepare(func(attr string, attrVal string, b config.Body) (*hclsyntax.Body, error) {
 			return PrepareBackend(h, attr, attrVal, b) // wrap helper
@@ -169,12 +173,14 @@ func (h *helper) configureJWTSigningProfile() *errors.Error {
 
 func (h *helper) configureSAML() *errors.Error {
 	for _, saml := range h.config.Definitions.SAML {
-		metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
-		if err != nil {
-			return errors.Configuration.Label(saml.Name).With(err)
+		// Only read file for file-based metadata; URL-based is handled at runtime
+		if saml.IdpMetadataFile != "" {
+			metadata, err := reader.ReadFromFile("saml2 idp_metadata_file", saml.IdpMetadataFile)
+			if err != nil {
+				return errors.Configuration.Label(saml.Name).With(err)
+			}
+			saml.MetadataBytes = metadata
 		}
-
-		saml.MetadataBytes = metadata
 	}
 
 	return nil

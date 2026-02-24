@@ -80,6 +80,7 @@ func registerHTTPHandler(b *Backend) {
 	})
 	b.mux.HandleFunc("/health", health)
 	b.mux.HandleFunc("/jwks.json", jwks)
+	b.mux.HandleFunc("/saml/metadata", samlMetadata)
 	b.mux.HandleFunc("/pdf", pdf)
 	b.mux.HandleFunc("/redirect", redirect)
 	b.mux.HandleFunc("/reflect", reflect)
@@ -244,14 +245,45 @@ func jwks(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
+	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
-		file.Close()
 		return
 	}
 
 	http.ServeContent(rw, req, "/jwks.json", info.ModTime(), file)
+}
+
+func samlMetadata(rw http.ResponseWriter, req *http.Request) {
+	destruct := req.Header.Get("Self-Destruct")
+	if destruct != "" {
+		seconds, _ := strconv.ParseInt(destruct, 10, 64)
+		if time.Now().After(time.Unix(seconds, 0)) {
+			rw.WriteHeader(http.StatusInternalServerError)
+			rw.Write([]byte(`<error>IdP unavailable</error>`))
+			return
+		}
+	}
+
+	_, currFile, _, _ := runtime.Caller(0)
+	rootDir := http.Dir(path.Join(path.Dir(currFile), "testdata"))
+
+	file, err := rootDir.Open("idp-metadata.xml")
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/xml")
+	http.ServeContent(rw, req, "/idp-metadata.xml", info.ModTime(), file)
 }
 
 func oidc(rw http.ResponseWriter, req *http.Request) {

@@ -28,6 +28,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Reject path traversal sequences (`..`, `%2e%2e`) in `path` and `path_prefix` attributes ([#920](https://github.com/coupergateway/couper/pull/920))
   * Remove rate limiter key value from error messages to prevent information leakage ([#920](https://github.com/coupergateway/couper/pull/920))
   * Use constant-time comparison for username in `basic_auth` ([#920](https://github.com/coupergateway/couper/pull/920))
+  * SAML IdP metadata auto-update: [`idp_metadata_url`](https://docs.couper.io/configuration/block/saml) attribute to fetch IdP metadata from a URL with automatic refresh via `metadata_ttl` and `metadata_max_stale` attributes ([#912](https://github.com/coupergateway/couper/pull/912))
 
 * **Dependencies**
   * build with go 1.26 ([#926](https://github.com/coupergateway/couper/pull/926))

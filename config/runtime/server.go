@@ -19,6 +19,7 @@ import (
 
 	ac "github.com/coupergateway/couper/accesscontrol"
 	"github.com/coupergateway/couper/accesscontrol/jwk"
+	"github.com/coupergateway/couper/accesscontrol/saml"
 	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/configload/collect"
@@ -29,6 +30,7 @@ import (
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/eval/lib"
 	"github.com/coupergateway/couper/handler"
 	"github.com/coupergateway/couper/handler/middleware"
 	"github.com/coupergateway/couper/oauth2"
@@ -90,11 +92,18 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 	if ocErr != nil {
 		return nil, ocErr
 	}
+
+	samlProviders, spErr := configureSAMLProviders(conf, confCtx, log, memStore)
+	if spErr != nil {
+		return nil, spErr
+	}
+
 	conf.Context = evalContext.
 		WithMemStore(memStore).
-		WithOidcConfig(oidcConfigs)
+		WithOidcConfig(oidcConfigs).
+		WithSAMLProviders(samlProviders)
 
-	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs)
+	accessControls, acErr := configureAccessControls(conf, confCtx, log, memStore, oidcConfigs, samlProviders)
 	if acErr != nil {
 		return nil, acErr
 	}
@@ -499,7 +508,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 				}
 			}
 
-			oidcConfig, err := oidc.NewConfig(conf.Context, oidcConf, backends)
+			oidcConfig, err := oidc.NewConfig(conf.Context, oidcConf, backends, log)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
@@ -512,7 +521,7 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 }
 
 func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,
-	memStore *cache.MemoryStore, oidcConfigs oidc.Configs) (ACDefinitions, error) {
+	memStore *cache.MemoryStore, oidcConfigs oidc.Configs, samlProviders map[string]lib.SAMLConfigWithProvider) (ACDefinitions, error) {
 
 	accessControls := make(ACDefinitions)
 
@@ -549,14 +558,15 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			accessControls.Add(rlConf.Name, rateLimiter, rlConf.ErrorHandler)
 		}
 
-		for _, saml := range conf.Definitions.SAML {
-			confErr := errors.Configuration.Label(saml.Name)
-			s, err := ac.NewSAML2ACS(saml.MetadataBytes, saml.Name, saml.SpAcsURL, saml.SpEntityID, saml.ArrayAttributes)
+		for _, samlConf := range conf.Definitions.SAML {
+			confErr := errors.Configuration.Label(samlConf.Name)
+			provider := samlProviders[samlConf.Name]
+			s, err := ac.NewSAML2ACS(provider.Provider, samlConf.Name, samlConf.SpAcsURL, samlConf.SpEntityID, samlConf.ArrayAttributes)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
 
-			accessControls.Add(saml.Name, s, saml.ErrorHandler)
+			accessControls.Add(samlConf.Name, s, samlConf.ErrorHandler)
 		}
 
 		for _, oauth2Conf := range conf.Definitions.OAuth2AC {
@@ -591,6 +601,44 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	}
 
 	return accessControls, nil
+}
+
+func configureSAMLProviders(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,
+	memStore *cache.MemoryStore) (map[string]lib.SAMLConfigWithProvider, error) {
+
+	providers := make(map[string]lib.SAMLConfigWithProvider)
+
+	if conf.Definitions != nil {
+		for _, samlConf := range conf.Definitions.SAML {
+			confErr := errors.Configuration.Label(samlConf.Name)
+
+			var provider saml.MetadataProvider
+			var err error
+
+			if samlConf.IdpMetadataURL != "" {
+				// URL-based metadata with dynamic refresh
+				backend, berr := NewBackend(confCtx, samlConf.Backend, log, conf, memStore)
+				if berr != nil {
+					return nil, confErr.With(berr)
+				}
+				provider, err = saml.NewSyncedMetadata(conf.Context, samlConf.IdpMetadataURL,
+					samlConf.MetadataTTL, samlConf.MetadataMaxStale, backend, log)
+			} else {
+				// File-based static metadata
+				provider, err = saml.NewStaticMetadata(samlConf.MetadataBytes)
+			}
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			providers[samlConf.Name] = lib.SAMLConfigWithProvider{
+				Config:   samlConf,
+				Provider: provider,
+			}
+		}
+	}
+
+	return providers, nil
 }
 
 func newJWT(jwtConf *config.JWT, conf *config.Couper, confCtx *hcl.EvalContext,
@@ -642,7 +690,7 @@ func configureJWKS(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logru
 		return nil, err
 	}
 
-	return jwk.NewJWKS(conf.Context, jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend)
+	return jwk.NewJWKS(conf.Context, jwtConf.JWKsURL, jwtConf.JWKsTTL, jwtConf.JWKsMaxStale, backend, log)
 }
 
 func configureIntrospector(jwtConf *config.JWT, confContext *hcl.EvalContext, log *logrus.Entry, conf *config.Couper, memStore *cache.MemoryStore) (*ac.Introspector, error) {
