@@ -6,7 +6,6 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 
 * **Added**
   * [`beta_rate_limiter` access control](https://docs.couper.io/configuration/block/rate_limiter) for fixed/sliding window rate limiting ([#881](https://github.com/coupergateway/couper/pull/881))
-<<<<<<< HEAD
   * [`beta_introspection` block](https://docs.couper.io/configuration/block/introspection) in [`jwt` block](https://docs.couper.io/configuration/block/jwt) to facilitate token introspection in order to detect revoked tokens ([#649](https://github.com/avenga/couper/pull/649))
   * `startup_delay` attribute for [`job` block](https://docs.couper.io/configuration/block/job) to delay the first job execution after startup ([#836](https://github.com/coupergateway/couper/issues/836))
   * [OpenTelemetry tracing documentation](https://docs.couper.io/observation/tracing) with configuration reference for [`beta_traces`](https://docs.couper.io/configuration/block/settings), trace propagation settings, and CLI flags ([#672](https://github.com/coupergateway/couper/issues/672))
