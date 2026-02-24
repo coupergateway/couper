@@ -33,7 +33,7 @@ body {
 }
 
 .dark .sidebar-nav {
-    border-right-color: #313244;
+    border-right-color: rgba(255, 255, 255, 0.06);
 }
 
 /* Dark mode overrides for elements using .dark class (not Tailwind dark: variant) */
@@ -63,7 +63,7 @@ body {
 }
 
 .dark .site-footer {
-    border-top-color: #313244;
+    border-top-color: rgba(255, 255, 255, 0.06);
     color: #6c7086;
 }
 
@@ -118,13 +118,17 @@ body {
 
 /* Dark mode color overrides - Catppuccin Mocha theme */
 .dark body {
-    background-color: #1e1e2e; /* Catppuccin Base */
+    background-color: #11111b;
+    background-image: radial-gradient(125% 125% at 50% 90%, #11111b 40%, #162040 100%);
+    background-attachment: fixed;
     color: #cdd6f4; /* Catppuccin Text */
 }
 
 .dark .headerShadow {
-    background-color: #181825; /* Catppuccin Mantle */
-    box-shadow: rgb(0 0 0 / 50%) 0 5px 10px 0;
+    background-color: rgba(17, 17, 27, 0.85); /* Crust with transparency */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .dark header h1 {
