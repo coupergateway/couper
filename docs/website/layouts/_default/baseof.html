@@ -19,13 +19,27 @@
     {{ partial "head.html" . }}
 </head>
 <body class="antialiasing text-slate-700">
+    <div id="search-backdrop" class="search-backdrop"></div>
+    <div id="search-results" class="search-results-overlay"></div>
     {{ partial "header.html" . }}
+    <script>
+    // Sync --header-height CSS variable with actual header size
+    (function() {
+        function sync() {
+            var h = document.querySelector('header');
+            if (h) document.documentElement.style.setProperty('--header-height', h.offsetHeight + 'px');
+        }
+        sync();
+        window.addEventListener('resize', sync);
+    })();
+    </script>
 
-    <div class="flex justify-between min-h-screen">
-        {{ block "main" . }}{{ end }}
+    <div class="content-wrapper">
+        <div class="content-columns">
+            {{ block "main" . }}{{ end }}
+        </div>
+        {{ partial "footer.html" . }}
     </div>
-
-    {{ partial "footer.html" . }}
 
     <script>
     // Dark Mode Toggle with System Preference Detection
@@ -333,11 +347,27 @@
 
         search.start();
 
+        // Toggle search backdrop when results appear/disappear
+        const backdrop = document.getElementById('search-backdrop');
+        const resultsEl = document.getElementById('search-results');
+        if (backdrop && resultsEl) {
+            new MutationObserver(() => {
+                backdrop.classList.toggle('active', resultsEl.innerHTML.trim() !== '');
+            }).observe(resultsEl, { childList: true, subtree: true });
+
+            // Clicking the backdrop clears search
+            backdrop.addEventListener('click', () => {
+                const input = document.querySelector('.ais-SearchBox-input');
+                if (input) input.value = '';
+                resultsEl.innerHTML = '';
+            });
+        }
+
         // Clear results on blur
         document.addEventListener('click', (e) => {
             const searchBox = document.querySelector('#searchbox');
             const searchResults = document.querySelector('#search-results');
-            if (searchBox && !searchBox.contains(e.target) && searchResults) {
+            if (searchBox && !searchBox.contains(e.target) && searchResults && !e.target.closest('#search-backdrop')) {
                 setTimeout(() => {
                     const input = document.querySelector('.ais-SearchBox-input');
                     if (input) input.value = '';

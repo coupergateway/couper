@@ -1,4 +1,4 @@
-<nav class="w-1/5 min-w-[180px] grow-0 p-4 pt-6 sticky top-[56px] h-[calc(100vh-56px)] overflow-y-auto">
+<nav class="pagetoc-nav p-4 pt-6">
     {{ $toc := .TableOfContents }}
     {{ if and $toc (findRE "<li>" $toc 1) }}
     <h2 class="text-sm font-semibold text-amber-500 uppercase tracking-wide mb-3">On this Page</h2>
