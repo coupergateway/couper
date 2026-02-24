@@ -8,8 +8,7 @@ title = 'Couper Documentation'
         codeFences = true
         guessSyntax = false
         lineNos = false
-        noClasses = true
-        style = "monokai"
+        noClasses = false
     [markup.tableOfContents]
         startLevel = 2
         endLevel = 4

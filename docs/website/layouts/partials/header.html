@@ -1,19 +1,19 @@
-<header class="flex justify-between items-center p-4 headerShadow">
-    <div class="flex items-center gap-4 w-2/5">
+<header class="sticky top-0 z-50 flex justify-between items-center px-6 py-3 headerShadow bg-white">
+    <div class="flex items-center gap-3 shrink-0">
         {{ partial "logo.html" . }}
-        <h1 class="text-2xl font-medium">Couper Documentation</h1>
-        <div class="rounded-md bg-lime-500 px-2 py-1 text-sm">edge</div>
+        <h1 class="text-xl font-semibold whitespace-nowrap">Couper Documentation</h1>
+        <div class="rounded-full bg-lime-500 px-2.5 py-0.5 text-xs font-medium text-white">edge</div>
     </div>
-    <div class="flex justify-center w-full">
+    <div class="flex justify-center flex-1 mx-8">
         {{ partial "searchbar.html" . }}
     </div>
-    <div class="flex items-center justify-end gap-4 w-1/5">
-        <button id="dark-mode-toggle" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Toggle dark mode">
+    <div class="flex items-center gap-3 shrink-0">
+        <button id="dark-mode-toggle" class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-300 hover:bg-slate-100 transition-colors text-sm font-medium dark-toggle-btn" aria-label="Toggle dark mode">
             {{ partial "darkmode-toggle.html" . }}
+            <span class="theme-label">Dark theme</span>
         </button>
-        <a href="https://github.com/coupergateway/couper" target="_blank" class="flex items-center">
+        <a href="https://github.com/coupergateway/couper" target="_blank" class="flex items-center p-2 rounded-lg hover:bg-slate-100 transition-colors github-link">
             {{ partial "github-icon.html" . }}
         </a>
     </div>
 </header>
-
