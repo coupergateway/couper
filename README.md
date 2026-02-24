@@ -13,6 +13,7 @@
 
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/coupergateway/couper).
   * or via [homebrew](https://brew.sh/): `brew tap coupergateway/couper && brew install couper`
+  * or via Go: `go install github.com/coupergateway/couper@latest`
   * or via [devcontainer feature](https://github.com/coupergateway/features):
     ```json
     "features": {
