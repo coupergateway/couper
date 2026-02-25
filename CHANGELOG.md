@@ -11,6 +11,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `startup_delay` attribute for [`job` block](https://docs.couper.io/configuration/block/job) to delay the first job execution after startup ([#836](https://github.com/coupergateway/couper/issues/836))
   * [OpenTelemetry tracing documentation](https://docs.couper.io/observation/tracing) with configuration reference for [`beta_traces`](https://docs.couper.io/configuration/block/settings), trace propagation settings, and CLI flags ([#672](https://github.com/coupergateway/couper/issues/672))
   * Access control metrics: `couper_access_control_total`, `couper_access_control_duration_seconds`, `couper_access_control_rate_limited_total`, and `couper_access_control_rate_limiter_active_keys`; Grafana dashboard updated with Access Control row ([#924](https://github.com/coupergateway/couper/pull/924))
+  * [Documentation website](https://docs.couper.io) dark theme support and improved styling for readability
+  * [Devcontainer feature](https://github.com/coupergateway/features) to install Couper in development containers (`ghcr.io/coupergateway/features/couper`)
+  * Couper documentation available as [Context7 MCP](https://context7.com) library for LLM-assisted development
 
 * **Changed**
   * [`beta_rate_limit` block](https://docs.couper.io/configuration/block/throttle) in [`backend` block](https://docs.couper.io/configuration/block/backend) has left beta and is renamed to `throttle`; the old name is deprecated and will be removed in version 1.15 ([#914](https://github.com/coupergateway/couper/issues/914))

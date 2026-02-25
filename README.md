@@ -13,6 +13,12 @@
 
 * The quickest way to start is to use our [Docker image](https://hub.docker.com/r/coupergateway/couper).
   * or via [homebrew](https://brew.sh/): `brew tap coupergateway/couper && brew install couper`
+  * or via [devcontainer feature](https://github.com/coupergateway/features):
+    ```json
+    "features": {
+        "ghcr.io/coupergateway/features/couper": {}
+    }
+    ```
 * The [documentation](https://docs.couper.io/) gives an introduction to Couper.
 * Check out the [example repository](https://github.com/coupergateway/couper-examples) to learn about Couper's features in detail.
 * Use-cases can be found on [couper.io](https://couper.io).
