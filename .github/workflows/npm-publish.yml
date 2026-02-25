@@ -43,4 +43,4 @@ jobs:
           token: ${{ secrets.NPM_TOKEN }}
       - name: 'test published package'
         run: |
-          cd $(mktemp -d) && npm install $PACKAGE_NAME && npx couper version
+          cd $(mktemp -d) && npm install ${PACKAGE_NAME}@${PACKAGE_VERSION#v} && npx couper version
