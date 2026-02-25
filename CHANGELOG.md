@@ -14,6 +14,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * [Documentation website](https://docs.couper.io) dark theme support and improved styling for readability
   * [Devcontainer feature](https://github.com/coupergateway/features) to install Couper in development containers (`ghcr.io/coupergateway/features/couper`)
   * Couper documentation available as [Context7 MCP](https://context7.com) library for LLM-assisted development
+  * SAML IdP metadata auto-update: [`idp_metadata_url`](https://docs.couper.io/configuration/block/saml) attribute to fetch IdP metadata from a URL with automatic refresh via `metadata_ttl` and `metadata_max_stale` attributes ([#912](https://github.com/coupergateway/couper/pull/912))
 
 * **Changed**
   * [`beta_rate_limit` block](https://docs.couper.io/configuration/block/throttle) in [`backend` block](https://docs.couper.io/configuration/block/backend) has left beta and is renamed to `throttle`; the old name is deprecated and will be removed in version 1.15 ([#914](https://github.com/coupergateway/couper/issues/914))
@@ -32,7 +33,6 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * Reject path traversal sequences (`..`, `%2e%2e`) in `path` and `path_prefix` attributes ([#920](https://github.com/coupergateway/couper/pull/920))
   * Remove rate limiter key value from error messages to prevent information leakage ([#920](https://github.com/coupergateway/couper/pull/920))
   * Use constant-time comparison for username in `basic_auth` ([#920](https://github.com/coupergateway/couper/pull/920))
-  * SAML IdP metadata auto-update: [`idp_metadata_url`](https://docs.couper.io/configuration/block/saml) attribute to fetch IdP metadata from a URL with automatic refresh via `metadata_ttl` and `metadata_max_stale` attributes ([#912](https://github.com/coupergateway/couper/pull/912))
 
 * **Dependencies**
   * build with go 1.26 ([#926](https://github.com/coupergateway/couper/pull/926))
