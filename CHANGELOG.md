@@ -11,9 +11,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `startup_delay` attribute for [`job` block](https://docs.couper.io/configuration/block/job) to delay the first job execution after startup ([#836](https://github.com/coupergateway/couper/issues/836))
   * [OpenTelemetry tracing documentation](https://docs.couper.io/observation/tracing) with configuration reference for [`beta_traces`](https://docs.couper.io/configuration/block/settings), trace propagation settings, and CLI flags ([#672](https://github.com/coupergateway/couper/issues/672))
   * Access control metrics: `couper_access_control_total`, `couper_access_control_duration_seconds`, `couper_access_control_rate_limited_total`, and `couper_access_control_rate_limiter_active_keys`; Grafana dashboard updated with Access Control row ([#924](https://github.com/coupergateway/couper/pull/924))
-  * [Documentation website](https://docs.couper.io) dark theme support and improved styling for readability
-  * [Devcontainer feature](https://github.com/coupergateway/features) to install Couper in development containers (`ghcr.io/coupergateway/features/couper`)
-  * Couper documentation available as [Context7 MCP](https://context7.com) library for LLM-assisted development
+  * [Documentation website](https://docs.couper.io) dark theme support and improved styling for readability ([#931](https://github.com/coupergateway/couper/issues/931))
+  * [Devcontainer feature](https://github.com/coupergateway/features) to install Couper in development containers (`ghcr.io/coupergateway/features/couper`) ([#931](https://github.com/coupergateway/couper/issues/931))
+  * Couper documentation available as [Context7 MCP](https://context7.com) library for LLM-assisted development ([#931](https://github.com/coupergateway/couper/issues/931))
   * SAML IdP metadata auto-update: [`idp_metadata_url`](https://docs.couper.io/configuration/block/saml) attribute to fetch IdP metadata from a URL with automatic refresh via `metadata_ttl` and `metadata_max_stale` attributes ([#912](https://github.com/coupergateway/couper/pull/912))
 
 * **Changed**
