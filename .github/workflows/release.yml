@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@v4
       - name: 'compute source tarball checksum'
         run: |
-          curl -sL "https://github.com/coupergateway/couper/archive/refs/tags/${{ github.ref_name }}.tar.gz" -o source.tar.gz
+          curl -fsSL "https://github.com/coupergateway/couper/archive/refs/tags/${{ github.ref_name }}.tar.gz" -o source.tar.gz
           echo "SOURCE_SHA256=$(sha256sum source.tar.gz | cut -d ' ' -f1)" >> $GITHUB_ENV
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       - name: 'prepare template'
