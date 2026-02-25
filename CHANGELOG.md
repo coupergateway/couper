@@ -1,8 +1,12 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.13.2...master)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.0...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
+
+---
+
+## [1.14.0](https://github.com/coupergateway/couper/releases/tag/v1.14.0)
 
 * **Added**
   * `argon2i` and `argon2id` password hash support for [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth) `htpasswd_file` ([#866](https://github.com/coupergateway/couper/issues/866))
@@ -37,8 +41,6 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Dependencies**
   * build with go 1.26 ([#926](https://github.com/coupergateway/couper/pull/926))
   * hcl 2.23.0 and go-cty 1.16.2 ([#816](https://github.com/coupergateway/couper/pull/816))
-
----
 
 ## [1.13.2](https://github.com/coupergateway/couper/releases/tag/v1.13.2)
 
