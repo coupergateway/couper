@@ -32,6 +32,27 @@ body {
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
 }
 
+/* Version badge in header */
+.version-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.3rem;
+    background-color: #f0f9ff;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+.dark .version-badge {
+    background-color: rgba(166, 227, 161, 0.1);
+    color: #a6e3a1; /* Catppuccin Green */
+    border-color: rgba(166, 227, 161, 0.25);
+}
+
 /* Content wrapper — contains columns + footer so sticky sidebars work all the way down */
 .content-wrapper {
     min-height: calc(100vh - var(--header-height, 56px));
@@ -248,10 +269,60 @@ body {
     padding: 0;
 }
 
+.prose blockquote {
+    background-color: #f0f9ff;
+    border-left: 3px solid #7dd3fc;
+    color: #334155;
+    padding: 0.75rem 1rem;
+    border-radius: 0 0.375rem 0.375rem 0;
+    margin: 1.25em 0;
+}
+
+.prose blockquote p {
+    margin: 0;
+}
+
 .dark .prose blockquote {
     background-color: #313244; /* Catppuccin Surface0 */
     border-left-color: #cba6f7; /* Catppuccin Mauve */
-    color: #cdd6f4; /* Catppuccin Text */
+    color: #bac2de; /* Catppuccin Subtext1 */
+}
+
+/* Note blockquote with lightbulb icon */
+.prose blockquote.note-blockquote {
+    padding-left: 2.5rem;
+    position: relative;
+    border-left-color: #f59e0b;
+    background-color: #fffbeb;
+}
+
+.prose blockquote.note-blockquote::before {
+    content: "";
+    position: absolute;
+    left: 0.7rem;
+    top: 0.8rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b45309' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3Cpath d='M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.prose blockquote.note-blockquote strong {
+    color: #92400e;
+}
+
+.dark .prose blockquote.note-blockquote {
+    border-left-color: #f9e2af; /* Catppuccin Yellow */
+    background-color: rgba(249, 226, 175, 0.07);
+}
+
+.dark .prose blockquote.note-blockquote::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f9e2af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3Cpath d='M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z'/%3E%3C/svg%3E");
+}
+
+.dark .prose blockquote.note-blockquote strong {
+    color: #f9e2af; /* Catppuccin Yellow */
 }
 
 .dark .prose table thead {

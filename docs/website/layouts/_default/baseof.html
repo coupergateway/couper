@@ -207,6 +207,18 @@
     </script>
 
     <script>
+    // Enhance "Note:" blockquotes with icon class
+    document.querySelectorAll('.prose blockquote').forEach(function(bq) {
+        var p = bq.querySelector('p');
+        if (p && p.textContent.trimStart().indexOf('Note:') === 0) {
+            bq.classList.add('note-blockquote');
+            // Wrap "Note:" in a <strong> for styling
+            p.innerHTML = p.innerHTML.replace(/^(\s*)Note:/, '$1<strong>Note:</strong>');
+        }
+    });
+    </script>
+
+    <script>
     // Algolia Search Configuration
     const ALGOLIA_APP_ID = 'MSIN2HU7WH';
     const ALGOLIA_SEARCH_KEY = '5551c3e4dfb61914988abf95fd9b762f'; // Search-only API key
