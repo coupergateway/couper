@@ -3,47 +3,28 @@ class Couper < Formula
     homepage "https://couper.io/"
     license "MIT"
     version "{{ GITHUB_REF_NAME }}"
+    url "https://github.com/coupergateway/couper/archive/refs/tags/{{ GITHUB_REF_NAME }}.tar.gz"
+    sha256 "{{ SOURCE_SHA256 }}"
     head "https://github.com/coupergateway/couper.git", branch: "main"
 
-    on_macos do
-      if Hardware::CPU.arm?
-        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-macos-arm64.zip"
-        sha256 "{{ MACOS_ARM64_SHA256 }}"
+    depends_on "go" => :build
 
-        def install
-          bin.install "couper"
+    def install
+      build_time_str =
+        if ENV["SOURCE_DATE_EPOCH"]
+          Time.at(ENV["SOURCE_DATE_EPOCH"].to_i).utc.strftime("%F")
+        else
+          Time.now.utc.strftime("%F")
         end
-      end
-      if Hardware::CPU.intel?
-        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-macos-amd64.zip"
-        sha256 "{{ MACOS_AMD64_SHA256 }}"
-
-        def install
-          bin.install "couper"
-        end
-      end
-    end
-
-    on_linux do
-      if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-linux-arm64.tar.gz"
-        sha256 "{{ LINUX_ARM64_SHA256 }}"
-
-        def install
-          bin.install "couper"
-        end
-      end
-      if Hardware::CPU.intel?
-        url "https://github.com/coupergateway/couper/releases/download/{{ GITHUB_REF_NAME }}/couper-{{ GITHUB_REF_NAME }}-linux-amd64.tar.gz"
-        sha256 "{{ LINUX_AMD64_SHA256 }}"
-
-        def install
-          bin.install "couper"
-        end
-      end
+      ldflags = %W[
+        -X github.com/coupergateway/couper/utils.VersionName=#{version}
+        -X github.com/coupergateway/couper/utils.BuildName={{ SHORT_SHA }}
+        -X github.com/coupergateway/couper/utils.BuildDate=#{build_time_str}
+      ]
+      system "go", "build", *std_go_args(ldflags:)
     end
 
     test do
-      system "#{bin}/couper version"
+      system bin/"couper", "version"
     end
   end
