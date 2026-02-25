@@ -91,6 +91,16 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 				pwdOrig: []byte(password),
 				pwdType: pwdType,
 			}
+		case pwdTypeArgon2id, pwdTypeArgon2i:
+			prefix := pwdPrefixArgon2id
+			if pwdType == pwdTypeArgon2i {
+				prefix = pwdPrefixArgon2i
+			}
+			p, pErr := parseArgon2(password, prefix)
+			if pErr != nil {
+				return nil, fmt.Errorf("parse error: malformed password for user: %s: %w", username, pErr)
+			}
+			ba.htFile[username] = p
 		default:
 			return nil, fmt.Errorf("parse error: algorithm not supported")
 		}

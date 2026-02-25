@@ -21,9 +21,61 @@ by `htpasswd_file` otherwise.
 
 The `user` is accessible via `request.context.<label>.user` variable for successfully authenticated requests.
 
+## Example
+
+### Using inline credentials
+
+```hcl
+server {
+  api {
+    endpoint "/private" {
+      access_control = ["myauth"]
+      proxy {
+        backend = "my_backend"
+      }
+    }
+  }
+}
+
+definitions {
+  basic_auth "myauth" {
+    user     = "john"
+    password = "s3cr3t"
+  }
+}
+```
+
+### Using an htpasswd file
+
+```hcl
+definitions {
+  basic_auth "myauth" {
+    htpasswd_file = "htpasswd"
+  }
+}
+```
+
+The htpasswd file uses [Apache's htpasswd](https://httpd.apache.org/docs/current/programs/htpasswd.html) format:
+
+```
+john:$2y$05$/uonQYUtwm...
+jane:$argon2id$v=19$m=65536,t=3,p=4$salt$hash
+```
+
 ### Attribute `htpasswd_file`
 
-Couper uses [Apache's httpasswd](https://httpd.apache.org/docs/current/programs/htpasswd.html) file format. `apr1`, `md5` and `bcrypt` password encryption are supported. The file is loaded once at startup. Restart Couper after you have changed it.
+Couper supports the following password hash algorithms:
+
+| Algorithm  | htpasswd prefix | Recommended |
+|:-----------|:----------------|:------------|
+| `argon2id` | `$argon2id$`    | yes         |
+| `argon2i`  | `$argon2i$`     |             |
+| `bcrypt`   | `$2y$`          |             |
+| `md5`      | `$apr1$`        |             |
+
+When generating your own password hashes, **`argon2id` is the recommended choice** as it provides a balanced approach to resisting both side-channel and GPU-based attacks (see [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)).
+
+The file is loaded once at startup. Restart Couper after you have changed it.
 
 {{< attributes >}}
 [
