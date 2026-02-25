@@ -58,11 +58,12 @@ body {
     min-height: calc(100vh - var(--header-height, 56px));
 }
 
-/* Three-column layout — prevent flex stretch so sticky sidebars work */
+/* Three-column grid layout */
 .content-columns {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 17rem 1fr 15rem;
+    column-gap: 3rem;
+    align-items: start;
 }
 
 /* Sidebar styling */
@@ -77,9 +78,6 @@ body {
 
 /* Table of Contents (right sidebar) */
 .pagetoc-nav {
-    width: 20%;
-    min-width: 180px;
-    flex-grow: 0;
     position: sticky;
     top: var(--header-height, 56px);
     height: calc(100vh - var(--header-height, 56px));
@@ -820,7 +818,7 @@ button.ais-SearchBox-reset path {
 .toc a {
     color: #475569;
     text-decoration: none;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     line-height: 1.5;
     display: block;
     padding: 0.25rem 0.5rem;
@@ -835,7 +833,7 @@ button.ais-SearchBox-reset path {
 }
 
 .toc code {
-    font-size: 0.8em;
+    font-size: 0.9em;
     font-weight: 600;
     background-color: #e0e7ff;
     color: #0284c7;

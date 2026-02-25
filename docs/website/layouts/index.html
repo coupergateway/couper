@@ -1,7 +1,10 @@
 {{ define "main" }}
     {{ partial "sidenav.html" . }}
 
-    <main class="grow px-8 py-6 w-4/5 max-w-4xl prose prose-slate prose-lg prose-code:bg-sky-100 prose-code:text-sky-900 prose-code:p-1 prose-code:rounded-md prose-code:text-sm prose-blockquote:bg-purple-100 prose-blockquote:rounded-md prose-a:text-sky-600 hover:prose-a:text-amber-500">
+    <main class="px-8 py-6 min-w-0 prose prose-slate prose-lg prose-code:bg-sky-100 prose-code:text-sky-900 prose-code:p-1 prose-code:rounded-md prose-code:text-sm prose-blockquote:bg-purple-100 prose-blockquote:rounded-md prose-a:text-sky-600 hover:prose-a:text-amber-500">
         {{ .Content }}
     </main>
+
+    {{/* Empty spacer to match the pagetoc column of content pages */}}
+    <div class="pagetoc-nav" aria-hidden="true"></div>
 {{ end }}
