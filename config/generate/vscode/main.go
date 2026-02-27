@@ -424,13 +424,22 @@ func getBlockDescription(blockName string) string {
 func getAttributeType(field reflect.StructField) interface{} {
 	// Check type tag first
 	if typeTag := field.Tag.Get("type"); typeTag != "" {
-		// Handle "string or object" style types
+		// Determine separator
+		var parts []string
 		if strings.Contains(typeTag, " or ") {
-			parts := strings.Split(typeTag, " or ")
+			parts = strings.Split(typeTag, " or ")
+		} else if strings.Contains(typeTag, ", ") {
+			parts = strings.Split(typeTag, ", ")
+		}
+
+		if len(parts) > 1 {
 			var types []string
 			for _, p := range parts {
 				p = strings.TrimSpace(p)
-				p = strings.Trim(p, "()")
+				// Remove parenthesized hints like "(string)" from "object (string)"
+				if idx := strings.Index(p, " ("); idx != -1 {
+					p = p[:idx]
+				}
 				types = append(types, p)
 			}
 			return types

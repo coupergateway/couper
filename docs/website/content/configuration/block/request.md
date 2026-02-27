@@ -51,7 +51,7 @@ The `request` block creates and executes a request to a backend service.
     "default": "",
     "description": "JSON request body, implicitly sets `Content-Type: application/json` header field.",
     "name": "json_body",
-    "type": "string"
+    "type": "null, bool, number, string, object, tuple"
   },
   {
     "default": "\"GET\"",

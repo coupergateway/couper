@@ -44,7 +44,7 @@ func (r Request) Inline() interface{} {
 		ExpectedStatus []int                `hcl:"expected_status,optional" docs:"If defined, the response status code will be verified against this list of codes. If the status code is not included in this list an [{unexpected_status} error](../error-handling#endpoint-error-types) will be thrown which can be handled with an [{error_handler}](../error-handling#endpoint-related-error_handler)."`
 		FormBody       string               `hcl:"form_body,optional" docs:"Form request body, implicitly sets {Content-Type: application/x-www-form-urlencoded} header field."`
 		Headers        map[string]string    `hcl:"headers,optional" docs:"Same as {set_request_headers} in [Modifiers - Request Header](../modifiers#request-header)."`
-		JSONBody       string               `hcl:"json_body,optional" docs:"JSON request body, implicitly sets {Content-Type: application/json} header field."`
+		JSONBody       string               `hcl:"json_body,optional" docs:"JSON request body, implicitly sets {Content-Type: application/json} header field." type:"null, bool, number, string, object, tuple"`
 		Method         string               `hcl:"method,optional" docs:"The request method." default:"GET"`
 		QueryParams    map[string]cty.Value `hcl:"query_params,optional" docs:"Key/value pairs to set query parameters for this request."`
 		URL            string               `hcl:"url,optional" docs:"URL of the resource to request. May be relative to an origin specified in a referenced or nested {backend} block."`
