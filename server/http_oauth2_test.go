@@ -1700,7 +1700,7 @@ func TestOAuth2_Locking(t *testing.T) {
 		body := []byte(`{
 				"access_token": "` + token + n + `",
 				"token_type": "bearer",
-				"expires_in": 1.5
+				"expires_in": 3
 			}`)
 
 		// Slow down token request
@@ -1793,7 +1793,7 @@ func TestOAuth2_Locking(t *testing.T) {
 
 	t.Run("Lock is effective", func(subT *testing.T) {
 		// Wait until token has expired.
-		time.Sleep(2 * time.Second)
+		time.Sleep(4 * time.Second)
 
 		// Fetch new token.
 		go func() {
@@ -1829,7 +1829,7 @@ func TestOAuth2_Locking(t *testing.T) {
 
 	t.Run("Mem store expiry", func(subT *testing.T) {
 		// Wait again until token has expired.
-		time.Sleep(2 * time.Second)
+		time.Sleep(4 * time.Second)
 		h := test.New(subT)
 		// Request fresh token and store in memstore
 		res, err := client.Do(req)
@@ -1862,7 +1862,7 @@ func TestOAuth2_Locking(t *testing.T) {
 		}
 
 		// Wait until token has expired. Next request accesses the OAuth server again.
-		time.Sleep(2 * time.Second)
+		time.Sleep(4 * time.Second)
 		res, err = newClient().Do(req)
 		h.Must(err)
 		if res.StatusCode != http.StatusBadGateway {
