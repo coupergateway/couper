@@ -29,12 +29,13 @@ type Schema struct {
 
 // Block represents an HCL block definition
 type Block struct {
-	Parents       []string `json:"parents,omitempty"`
-	Description   string   `json:"description,omitempty"`
-	Labels        []string `json:"labels,omitempty"`
-	Labelled      *bool    `json:"labelled,omitempty"`
-	LabelOptional bool     `json:"labelOptional,omitempty"`
-	Docs          string   `json:"docs,omitempty"`
+	Parents         []string            `json:"parents,omitempty"`
+	Description     string              `json:"description,omitempty"`
+	Labels          []string            `json:"labels,omitempty"`
+	Labelled        *bool               `json:"labelled,omitempty"`
+	LabelOptional   bool                `json:"labelOptional,omitempty"`
+	LabelsForParent map[string][]string `json:"labelsForParent,omitempty"`
+	Docs            string              `json:"docs,omitempty"`
 }
 
 // Attribute represents an HCL attribute definition
@@ -332,42 +333,68 @@ func extractVariables(schema *Schema) {
 	}
 }
 
-// ErrorHandlerLabels stores the valid error labels per parent block
-var ErrorHandlerLabels = make(map[string][]string)
+// errorFamilyToParentBlocks maps error family prefixes to their HCL parent block names.
+var errorFamilyToParentBlocks = map[string][]string{
+	"basic_auth":        {"basic_auth"},
+	"jwt":               {"jwt"},
+	"oauth2":            {"beta_oauth2", "oidc"},
+	"saml2":             {"saml"},
+	"beta_rate_limiter":  {"rate_limiter"},
+}
 
 func extractErrorHandlerLabels(schema *Schema) {
-	// Extract error types from errors.Definitions
+	labelsForParent := make(map[string][]string)
+
 	for _, def := range errors.Definitions {
 		kinds := def.Kinds()
 		if len(kinds) == 0 {
 			continue
 		}
 
-		// The first kind is the most specific
-		specificKind := kinds[0]
+		allKinds := kinds
 
-		// Add to each context that can handle this error
-		contexts := def.Contexts
-		if len(contexts) == 0 {
-			// Default contexts for errors without explicit context
-			contexts = []string{"api", "endpoint"}
+		// 1. Errors with explicit Contexts go to those parent blocks (api/endpoint)
+		if len(def.Contexts) > 0 {
+			for _, ctx := range def.Contexts {
+				for _, kind := range allKinds {
+					labelsForParent[ctx] = appendUnique(labelsForParent[ctx], kind)
+				}
+			}
 		}
 
-		for _, ctx := range contexts {
-			ErrorHandlerLabels[ctx] = appendUnique(ErrorHandlerLabels[ctx], specificKind)
-		}
-
-		// Also add parent kinds
-		for _, kind := range kinds[1:] {
-			for _, ctx := range contexts {
-				ErrorHandlerLabels[ctx] = appendUnique(ErrorHandlerLabels[ctx], kind)
+		// 2. Map AC sub-errors to their specific AC parent blocks
+		if len(kinds) >= 2 {
+			// kinds are most-specific first; last is "access_control"
+			// The family is the direct child of access_control
+			family := kinds[len(kinds)-2]
+			if parentBlocks, ok := errorFamilyToParentBlocks[family]; ok {
+				for _, parent := range parentBlocks {
+					for _, kind := range allKinds {
+						labelsForParent[parent] = appendUnique(labelsForParent[parent], kind)
+					}
+				}
 			}
 		}
 	}
 
+	// 3. Add "access_control" super-type to api, endpoint, and all AC parent blocks
+	acParents := []string{"api", "endpoint"}
+	for _, parents := range errorFamilyToParentBlocks {
+		acParents = append(acParents, parents...)
+	}
+	for _, parent := range acParents {
+		labelsForParent[parent] = appendUnique(labelsForParent[parent], "access_control")
+	}
+
 	// Sort labels for consistent output
-	for ctx := range ErrorHandlerLabels {
-		sort.Strings(ErrorHandlerLabels[ctx])
+	for ctx := range labelsForParent {
+		sort.Strings(labelsForParent[ctx])
+	}
+
+	// Set on the error_handler block
+	if block, ok := schema.Blocks["error_handler"]; ok {
+		block.LabelOptional = true
+		block.LabelsForParent = labelsForParent
 	}
 }
 
