@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
+	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/internal/seetie"
 )
@@ -32,7 +33,7 @@ func NewMCPRoundTripper(backend http.RoundTripper, ctx *hclsyntax.Body, logger *
 }
 
 func (m *MCPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Read the request body
+	// Read the request body; preserve nil for empty/missing bodies
 	var reqBody []byte
 	if req.Body != nil {
 		var err error
@@ -48,29 +49,35 @@ func (m *MCPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if rpcReq == nil {
 		// Not a valid JSON-RPC request — pass through transparently
 		m.logger.Debug("mcp: non-JSON-RPC request, passing through")
-		req.Body = io.NopCloser(bytes.NewReader(reqBody))
+		m.restoreBody(req, reqBody)
 		return m.backend.RoundTrip(req)
 	}
 
 	// Build tool filter from HCL context (evaluated per-request for JWT claims etc.)
 	filter := m.buildFilter(req)
 
-	// Handle tools/call — block if tool is not allowed
-	if rpcReq.Method == "tools/call" {
+	// Handle tools/call — fail closed if tool name cannot be determined
+	if rpcReq.Method == "tools/call" && filter.HasRules() {
 		var params ToolCallParams
-		if err := json.Unmarshal(rpcReq.Params, &params); err == nil {
-			if !filter.IsAllowed(params.Name) {
-				m.logger.WithField("tool", params.Name).Info("mcp: tool call denied")
-				body := NewMethodNotFoundError(rpcReq.ID, params.Name)
-				return newJSONResponse(http.StatusOK, body), nil
-			}
-
-			m.logger.WithField("tool", params.Name).Debug("mcp: tool call allowed")
+		if err := json.Unmarshal(rpcReq.Params, &params); err != nil || params.Name == "" {
+			m.logger.Info("mcp: tool call denied, unable to determine tool name")
+			body := NewMethodNotFoundError(rpcReq.ID, "")
+			return newJSONResponse(http.StatusOK, body),
+				errors.BetaMcpToolBlocked.Messagef("tool name could not be determined")
 		}
+
+		if !filter.IsAllowed(params.Name) {
+			m.logger.WithField("tool", params.Name).Info("mcp: tool call denied")
+			body := NewMethodNotFoundError(rpcReq.ID, params.Name)
+			return newJSONResponse(http.StatusOK, body),
+				errors.BetaMcpToolBlocked.Messagef("tool %q not allowed by gateway policy", params.Name)
+		}
+
+		m.logger.WithField("tool", params.Name).Debug("mcp: tool call allowed")
 	}
 
 	// Forward to backend
-	req.Body = io.NopCloser(bytes.NewReader(reqBody))
+	m.restoreBody(req, reqBody)
 	resp, err := m.backend.RoundTrip(req)
 	if err != nil {
 		return nil, err
@@ -82,6 +89,15 @@ func (m *MCPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+// restoreBody sets req.Body back from the buffered bytes, preserving nil for empty bodies.
+func (m *MCPRoundTripper) restoreBody(req *http.Request, body []byte) {
+	if len(body) == 0 {
+		req.Body = nil
+		return
+	}
+	req.Body = io.NopCloser(bytes.NewReader(body))
 }
 
 func (m *MCPRoundTripper) buildFilter(req *http.Request) *ToolFilter {
@@ -106,7 +122,7 @@ func (m *MCPRoundTripper) buildFilter(req *http.Request) *ToolFilter {
 }
 
 func (m *MCPRoundTripper) filterToolsListResponse(resp *http.Response, filter *ToolFilter) (*http.Response, error) {
-	if len(filter.Allowed) == 0 && len(filter.Blocked) == 0 {
+	if !filter.HasRules() {
 		return resp, nil
 	}
 

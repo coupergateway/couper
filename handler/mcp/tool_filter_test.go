@@ -71,6 +71,30 @@ func TestToolFilter_FilterTools(t *testing.T) {
 	}
 }
 
+func TestToolFilter_InvalidGlobPattern_FailsClosed(t *testing.T) {
+	filter := ToolFilter{Allowed: []string{"[invalid"}}
+	if filter.IsAllowed("anything") {
+		t.Error("invalid allowed pattern should fail closed (deny)")
+	}
+
+	filter2 := ToolFilter{Blocked: []string{"[invalid"}}
+	if filter2.IsAllowed("anything") {
+		t.Error("invalid blocked pattern should fail closed (deny)")
+	}
+}
+
+func TestToolFilter_HasRules(t *testing.T) {
+	if (&ToolFilter{}).HasRules() {
+		t.Error("empty filter should have no rules")
+	}
+	if !(&ToolFilter{Allowed: []string{"a"}}).HasRules() {
+		t.Error("filter with allowed should have rules")
+	}
+	if !(&ToolFilter{Blocked: []string{"b"}}).HasRules() {
+		t.Error("filter with blocked should have rules")
+	}
+}
+
 func TestToolFilter_FilterTools_Empty(t *testing.T) {
 	tools := []Tool{{Name: "a"}, {Name: "b"}}
 	filter := ToolFilter{}

@@ -105,7 +105,7 @@ func TestMCPProxy_ToolsCallBlocked(t *testing.T) {
 	shutdown, hook := newCouper("testdata/integration/mcp/01_couper.hcl", helper)
 	defer shutdown()
 
-	// tools/call for a blocked tool — should return JSON-RPC error without calling backend
+	// tools/call for a blocked tool — should return 403 with beta_mcp_tool_blocked error
 	body := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"delete_file","arguments":{}}}`
 	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/mcp", strings.NewReader(body))
 	helper.Must(err)
@@ -115,30 +115,11 @@ func TestMCPProxy_ToolsCallBlocked(t *testing.T) {
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", res.StatusCode)
+	if res.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", res.StatusCode)
 	}
 
-	respBody, err := io.ReadAll(res.Body)
-	helper.Must(err)
-	res.Body.Close()
-
-	var rpcResp struct {
-		Error *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	helper.Must(json.Unmarshal(respBody, &rpcResp))
-
-	if rpcResp.Error == nil {
-		t.Fatal("expected JSON-RPC error for blocked tool")
-	}
-	if rpcResp.Error.Code != -32601 {
-		t.Errorf("expected error code -32601, got %d", rpcResp.Error.Code)
-	}
-
-	// Verify log: Info entry for denied tool call with tool name
+	// Verify log: error entry with beta_mcp_tool_blocked error type
 	var foundDeniedLog bool
 	for _, e := range hook.AllEntries() {
 		if e.Message == "mcp: tool call denied" {
@@ -154,6 +135,18 @@ func TestMCPProxy_ToolsCallBlocked(t *testing.T) {
 	}
 	if !foundDeniedLog {
 		t.Error("expected 'mcp: tool call denied' log entry")
+	}
+
+	// Verify error_type in access log
+	var foundErrorType bool
+	for _, e := range hook.AllEntries() {
+		if et, ok := e.Data["error_type"].(string); ok && et == "beta_mcp_tool_blocked" {
+			foundErrorType = true
+			break
+		}
+	}
+	if !foundErrorType {
+		t.Error("expected error_type=beta_mcp_tool_blocked in log")
 	}
 }
 
@@ -333,18 +326,27 @@ func TestMCPProxy_BlockOnly(t *testing.T) {
 func TestMCPProxy_NonJSONRPC_Passthrough(t *testing.T) {
 	helper := test.New(t)
 
-	shutdown, _ := newCouper("testdata/integration/mcp/01_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/integration/mcp/01_couper.hcl", helper)
 	defer shutdown()
 
-	// Non-JSON-RPC request should pass through to backend
-	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/mcp", nil)
+	// Non-JSON-RPC POST with plain text body should pass through to backend
+	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/mcp", strings.NewReader("not json"))
 	helper.Must(err)
+	req.Header.Set("Content-Type", "text/plain")
 
 	client := newClient()
 	res, err := client.Do(req)
 	helper.Must(err)
 
-	if res.StatusCode == 0 {
-		t.Error("expected a response from backend")
+	// Backend /mcp handler returns 400 for non-JSON — confirms the request reached the backend
+	if res.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400 from backend for non-JSON body, got %d", res.StatusCode)
+	}
+
+	// Verify no MCP filtering or denial logs
+	for _, e := range hook.AllEntries() {
+		if e.Message == "mcp: tool call denied" || e.Message == "mcp: filtered tools/list response" {
+			t.Errorf("unexpected MCP log entry for non-JSON-RPC request: %q", e.Message)
+		}
 	}
 }

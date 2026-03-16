@@ -8,10 +8,16 @@ type ToolFilter struct {
 	Blocked []string
 }
 
+// HasRules returns true if any filter patterns are configured.
+func (f *ToolFilter) HasRules() bool {
+	return len(f.Allowed) > 0 || len(f.Blocked) > 0
+}
+
 // IsAllowed checks if a tool name passes the filter.
 // If no filter patterns are set, all tools are allowed.
+// Invalid glob patterns fail closed (deny).
 func (f *ToolFilter) IsAllowed(toolName string) bool {
-	if len(f.Allowed) == 0 && len(f.Blocked) == 0 {
+	if !f.HasRules() {
 		return true
 	}
 
@@ -19,7 +25,12 @@ func (f *ToolFilter) IsAllowed(toolName string) bool {
 	if len(f.Allowed) > 0 {
 		allowed = false
 		for _, pattern := range f.Allowed {
-			if matched, _ := path.Match(pattern, toolName); matched {
+			matched, err := path.Match(pattern, toolName)
+			if err != nil {
+				// Invalid pattern — fail closed
+				return false
+			}
+			if matched {
 				allowed = true
 				break
 			}
@@ -31,7 +42,12 @@ func (f *ToolFilter) IsAllowed(toolName string) bool {
 	}
 
 	for _, pattern := range f.Blocked {
-		if matched, _ := path.Match(pattern, toolName); matched {
+		matched, err := path.Match(pattern, toolName)
+		if err != nil {
+			// Invalid pattern — fail closed
+			return false
+		}
+		if matched {
 			return false
 		}
 	}
@@ -41,7 +57,7 @@ func (f *ToolFilter) IsAllowed(toolName string) bool {
 
 // FilterTools filters a slice of tools, returning only allowed ones.
 func (f *ToolFilter) FilterTools(tools []Tool) []Tool {
-	if len(f.Allowed) == 0 && len(f.Blocked) == 0 {
+	if !f.HasRules() {
 		return tools
 	}
 

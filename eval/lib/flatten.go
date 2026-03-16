@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"fmt"
+
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )
@@ -23,7 +25,7 @@ func newFlattenFunction() function.Function {
 			}
 
 			if !val.CanIterateElements() {
-				return cty.EmptyTupleVal, nil
+				return cty.NilVal, fmt.Errorf("flatten requires a list or tuple, got %s", val.Type().FriendlyName())
 			}
 
 			var result []cty.Value

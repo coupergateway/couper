@@ -123,7 +123,7 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 			}
 
 			if proxyRequestLabelRequired {
-				if err = uniqueLabelName("proxy and request", unique, mcpConfig.Name, &subject); err != nil {
+				if err = uniqueLabelName("proxy, beta_mcp_proxy and request", unique, mcpConfig.Name, &subject); err != nil {
 					return err
 				}
 			}

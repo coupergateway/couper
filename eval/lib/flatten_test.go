@@ -80,3 +80,10 @@ func TestFlattenFunc_Null(t *testing.T) {
 		t.Errorf("expected empty tuple for null input, got length %d", result.LengthInt())
 	}
 }
+
+func TestFlattenFunc_NonIterable(t *testing.T) {
+	_, err := FlattenFunc.Call([]cty.Value{cty.StringVal("not a list")})
+	if err == nil {
+		t.Fatal("expected error for non-iterable input")
+	}
+}
