@@ -14,6 +14,7 @@ import (
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/mcp"
 	"github.com/coupergateway/couper/handler/producer"
 )
 
@@ -139,6 +140,26 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 		allProducers[proxyConf.Name] = p
 		blockBodies = append(blockBodies, proxyConf.Backend, proxyBody)
+	}
+
+	for _, mcpConf := range endpointConf.MCPProxies {
+		backend, berr := NewBackend(confCtx, mcpConf.Backend, log, conf, memStore)
+		if berr != nil {
+			return nil, berr
+		}
+
+		mcpBody := mcpConf.HCLBody()
+		mcpRT := mcp.NewMCPRoundTripper(backend, mcpBody, log)
+		proxyHandler := handler.NewProxy(mcpRT, mcpBody, false, log)
+
+		p := &producer.Proxy{
+			Content:   mcpBody,
+			Name:      mcpConf.Name,
+			RoundTrip: proxyHandler,
+		}
+
+		allProducers[mcpConf.Name] = p
+		blockBodies = append(blockBodies, mcpConf.Backend, mcpBody)
 	}
 
 	for _, requestConf := range endpointConf.Requests {

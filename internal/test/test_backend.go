@@ -87,6 +87,9 @@ func registerHTTPHandler(b *Backend) {
 	b.mux.HandleFunc("/reflectDelay", reflectDelay)
 	b.mux.HandleFunc("/small", small)
 	b.mux.HandleFunc("/ws", echo)
+	b.mux.HandleFunc("/mcp", mcpHandler)
+	b.mux.HandleFunc("/mcp-block-only", mcpHandler)
+	b.mux.HandleFunc("/mcp-passthrough", mcpHandler)
 }
 
 func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Request) {
@@ -327,5 +330,64 @@ func reflectDelay(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		time.Sleep(time.Millisecond * 100) // related to backend flush writer default interval
+	}
+}
+
+func mcpHandler(rw http.ResponseWriter, req *http.Request) {
+	body, _ := io.ReadAll(req.Body)
+
+	var rpcReq struct {
+		JSONRPC string          `json:"jsonrpc"`
+		ID      json.RawMessage `json:"id"`
+		Method  string          `json:"method"`
+	}
+
+	if err := json.Unmarshal(body, &rpcReq); err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+
+	switch rpcReq.Method {
+	case "tools/list":
+		resp := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      rpcReq.ID,
+			"result": map[string]interface{}{
+				"tools": []map[string]interface{}{
+					{"name": "get_weather", "description": "Get weather forecast"},
+					{"name": "read_file", "description": "Read a file"},
+					{"name": "read_secret", "description": "Read secret data"},
+					{"name": "delete_file", "description": "Delete a file"},
+					{"name": "exec_command", "description": "Execute a command"},
+					{"name": "search_code", "description": "Search code"},
+				},
+			},
+		}
+		b, _ := json.Marshal(resp)
+		rw.Write(b)
+
+	case "tools/call":
+		resp := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      rpcReq.ID,
+			"result": map[string]interface{}{
+				"content": []map[string]interface{}{
+					{"type": "text", "text": "tool call result"},
+				},
+			},
+		}
+		b, _ := json.Marshal(resp)
+		rw.Write(b)
+
+	default:
+		resp := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      rpcReq.ID,
+			"result":  map[string]interface{}{},
+		}
+		b, _ := json.Marshal(resp)
+		rw.Write(b)
 	}
 }
