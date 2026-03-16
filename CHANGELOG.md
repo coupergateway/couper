@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+* **Added**
+  * [`beta_mcp_proxy` block](https://docs.couper.io/configuration/block/mcp_proxy) for proxying MCP (Model Context Protocol) servers with tool-level filtering; supports `allowed_tools`/`blocked_tools` glob patterns, runtime-evaluated expressions (e.g. JWT claims), and a new `flatten()` HCL function ([#935](https://github.com/coupergateway/couper/pull/935))
+
 ---
 
 ## [1.14.0](https://github.com/coupergateway/couper/releases/tag/v1.14.0)
