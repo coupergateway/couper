@@ -135,7 +135,12 @@ func (r *OAuthRewriter) RewriteAuthorizationServerMetadata(upstreamBody []byte) 
 		raw["registration_endpoint"] = regEndpointJSON
 	}
 
-	// authorization_endpoint is deliberately NOT rewritten.
+	// Rewrite authorization_endpoint so the proxy can intercept and rewrite
+	// the resource parameter before redirecting to the upstream.
+	if _, hasAuth := raw["authorization_endpoint"]; hasAuth {
+		authEndpointJSON, _ := json.Marshal(r.proxyBase + "/authorize")
+		raw["authorization_endpoint"] = authEndpointJSON
+	}
 
 	return json.Marshal(raw)
 }

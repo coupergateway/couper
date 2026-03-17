@@ -467,10 +467,10 @@ func TestMCPProxy_OAuthAuthorizationServer(t *testing.T) {
 		t.Errorf("registration_endpoint should end with /mcp/register, got %q", regEP)
 	}
 
-	// authorization_endpoint MUST stay pointing at upstream (browser redirect)
+	// authorization_endpoint should point to proxy (which redirects to upstream)
 	authEP, _ := metadata["authorization_endpoint"].(string)
-	if !strings.Contains(authEP, "/authorize") {
-		t.Errorf("authorization_endpoint should point to upstream, got %q", authEP)
+	if !strings.HasSuffix(authEP, "/mcp/authorize") {
+		t.Errorf("authorization_endpoint should end with /mcp/authorize, got %q", authEP)
 	}
 }
 

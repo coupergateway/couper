@@ -81,6 +81,8 @@ func (h *OAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.proxyOAuthEndpoint(w, r, "/token")
 	case p == "/register" || strings.HasSuffix(p, "/register"):
 		h.proxyOAuthEndpoint(w, r, "/register")
+	case p == "/authorize" || strings.HasSuffix(p, "/authorize"):
+		h.redirectAuthorize(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -136,6 +138,32 @@ func (h *OAuthHandler) serveAuthorizationServerMetadata(w http.ResponseWriter, r
 	}
 
 	h.writeJSONResponse(w, statusCode, contentType, rewritten)
+}
+
+// redirectAuthorize rewrites the resource query parameter and redirects the
+// browser to the upstream authorization endpoint. This ensures Miro (or any
+// upstream) sees its own origin as the resource, not the proxy URL.
+func (h *OAuthHandler) redirectAuthorize(w http.ResponseWriter, r *http.Request) {
+	rw, err := h.rewriterFromRequest(r)
+	if err != nil {
+		h.logger.WithError(err).Error("mcp oauth: create rewriter failed")
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Build upstream authorize URL, rewriting the resource parameter.
+	upstreamURL := h.upstreamOrigin + "/authorize"
+	q := r.URL.Query()
+
+	// Rewrite resource param from proxy URL to upstream origin.
+	if res := q.Get("resource"); res == rw.ProxyBase() {
+		q.Set("resource", h.upstreamOrigin+"/")
+	}
+
+	upstreamURL += "?" + q.Encode()
+
+	h.logger.WithField("upstream", upstreamURL).Debug("mcp oauth: redirecting authorize")
+	http.Redirect(w, r, upstreamURL, http.StatusFound)
 }
 
 func (h *OAuthHandler) proxyOAuthEndpoint(w http.ResponseWriter, r *http.Request, upstreamPath string) {
@@ -276,6 +304,7 @@ var OAuthPaths = []string{
 	"/.well-known/oauth-authorization-server/**",
 	"/token",
 	"/register",
+	"/authorize",
 }
 
 // IsOAuthPath reports whether path is one of the paths served by OAuthHandler.

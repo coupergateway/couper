@@ -101,8 +101,11 @@ When the upstream MCP server requires OAuth authentication (e.g. [MCP OAuth per 
 |:-----|:--------|
 | `/.well-known/oauth-protected-resource` | Serves rewritten protected resource metadata |
 | `/.well-known/oauth-authorization-server` | Serves rewritten authorization server metadata |
-| `/token` | Proxies token requests to upstream |
-| `/register` | Proxies dynamic client registration to upstream |
+| `<endpoint>/token` | Proxies token requests to upstream, rewrites `resource` param |
+| `<endpoint>/register` | Proxies dynamic client registration to upstream |
+| `<endpoint>/authorize` | Redirects browser to upstream with rewritten `resource` param |
+
+The `<endpoint>` prefix matches the endpoint pattern where `beta_mcp_proxy` is configured (e.g. `/mcp/token` for an endpoint at `/mcp`).
 
 ### How it works
 
@@ -113,13 +116,14 @@ MCP Client ──► Couper (proxy) ──► Upstream MCP Server
     │  2. GET /.well-known/oauth-protected-resource
     │     ← resource rewritten to proxy URL │
     │  3. GET /.well-known/oauth-authorization-server
-    │     ← token/register endpoints        │
-    │       rewritten to proxy URLs         │
-    │     ← authorization_endpoint stays    │
-    │       pointing at upstream (browser)  │
-    │  4. POST /register → forwarded        │
-    │  5. Browser → upstream /authorize     │
-    │  6. POST /token → resource param      │
+    │     ← all endpoints rewritten to      │
+    │       proxy URLs                      │
+    │  4. POST /mcp/register → forwarded    │
+    │  5. Browser → /mcp/authorize          │
+    │     → 302 redirect to upstream with   │
+    │       resource rewritten to upstream   │
+    │       origin                          │
+    │  6. POST /mcp/token → resource param  │
     │     rewritten to upstream origin      │
     │  7. POST /mcp + Bearer token → OK     │
 ```
@@ -127,10 +131,26 @@ MCP Client ──► Couper (proxy) ──► Upstream MCP Server
 The key challenge with proxying MCP OAuth is that tokens are bound to the `resource` value used during issuance. Couper solves this by:
 
 1. **Advertising the proxy URL** as the `resource` in discovery metadata — so MCP clients accept the proxy as the resource server
-2. **Rewriting the `resource` parameter** in `/token` and `/register` requests back to the upstream origin — so the upstream issues tokens bound to its own origin
-3. **Keeping `authorization_endpoint`** pointing directly at the upstream — browser redirects cannot be proxied through the API gateway
+2. **Intercepting the authorize redirect** — rewrites the `resource` parameter to the upstream origin before redirecting the browser, so the upstream binds the token to its own origin
+3. **Rewriting the `resource` parameter** in `/token` and `/register` requests back to the upstream origin — so all OAuth requests consistently reference the upstream
 
 This happens transparently. No additional configuration is needed beyond the `beta_mcp_proxy` block.
+
+### Backend path mapping
+
+The endpoint pattern (e.g. `/mcp`) is the local path where clients connect. The upstream MCP server may serve at a different path. Use the backend `path` attribute to map between them:
+
+```hcl
+# Client connects to /mcp, upstream serves at /
+definitions {
+  backend "mcp-server" {
+    origin = "https://mcp.example.com"
+    path   = "/"
+  }
+}
+```
+
+Without `path`, Couper forwards the request path as-is (e.g. `/mcp` → `https://mcp.example.com/mcp`).
 
 ### Forwarding the Authorization header
 
@@ -167,11 +187,12 @@ server {
 definitions {
   backend "mcp-server" {
     origin = "https://mcp.example.com"
+    path   = "/"
   }
 }
 ```
 
-The OAuth discovery and token endpoints are registered automatically. MCP clients connecting to `http://your-gateway/mcp` will complete the OAuth flow transparently through the proxy.
+The OAuth discovery, authorize, token, and register endpoints are registered automatically. MCP clients connecting to `http://your-gateway/mcp` will complete the OAuth flow transparently through the proxy.
 
 ### Non-OAuth MCP servers
 

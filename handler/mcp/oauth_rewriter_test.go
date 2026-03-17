@@ -140,8 +140,9 @@ func TestRewriteAuthorizationServerMetadata_RewritesIssuerAndEndpoints(t *testin
 	checkStringField("token_endpoint", "https://gateway.example.com/token")
 	checkStringField("registration_endpoint", "https://gateway.example.com/register")
 
-	// authorization_endpoint MUST NOT be rewritten — browser redirects go directly to upstream.
-	checkStringField("authorization_endpoint", "https://mcp.example.com/oauth/authorize")
+	// authorization_endpoint is rewritten to proxy so the proxy can intercept
+	// and rewrite the resource parameter before redirecting to upstream.
+	checkStringField("authorization_endpoint", "https://gateway.example.com/authorize")
 
 	// Unknown fields must be preserved.
 	if _, ok := out["scopes_supported"]; !ok {
