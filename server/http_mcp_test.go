@@ -74,7 +74,7 @@ func TestMCPProxy_ToolsListFiltered(t *testing.T) {
 	// Verify log: Info entry for filtered tools/list with removed tool names
 	var foundFilteredLog bool
 	for _, e := range hook.AllEntries() {
-		if e.Message == "mcp: filtered tools/list response" {
+		if e.Message == "filtered tools/list response" {
 			foundFilteredLog = true
 			if e.Level != logrus.InfoLevel {
 				t.Errorf("expected info level, got %v", e.Level)
@@ -122,7 +122,7 @@ func TestMCPProxy_ToolsCallBlocked(t *testing.T) {
 	// Verify log: error entry with beta_mcp_tool_blocked error type
 	var foundDeniedLog bool
 	for _, e := range hook.AllEntries() {
-		if e.Message == "mcp: tool call denied" {
+		if e.Message == "tool call denied" {
 			foundDeniedLog = true
 			if e.Level != logrus.InfoLevel {
 				t.Errorf("expected info level, got %v", e.Level)
@@ -189,7 +189,7 @@ func TestMCPProxy_ToolsCallAllowed(t *testing.T) {
 
 	// Verify log: no denied entry, no filtered entry for this call
 	for _, e := range hook.AllEntries() {
-		if e.Message == "mcp: tool call denied" {
+		if e.Message == "tool call denied" {
 			t.Error("unexpected 'mcp: tool call denied' log entry for allowed tool")
 		}
 	}
@@ -234,7 +234,7 @@ func TestMCPProxy_Passthrough(t *testing.T) {
 
 	// Verify log: no filtered entry in passthrough mode
 	for _, e := range hook.AllEntries() {
-		if e.Message == "mcp: filtered tools/list response" {
+		if e.Message == "filtered tools/list response" {
 			t.Error("unexpected 'mcp: filtered tools/list response' in passthrough mode")
 		}
 	}
@@ -300,7 +300,7 @@ func TestMCPProxy_BlockOnly(t *testing.T) {
 	// Verify log: Info entry with removed tools
 	var foundFilteredLog bool
 	for _, e := range hook.AllEntries() {
-		if e.Message == "mcp: filtered tools/list response" {
+		if e.Message == "filtered tools/list response" {
 			foundFilteredLog = true
 			if total, ok := e.Data["total"].(int); !ok || total != 6 {
 				t.Errorf("expected total=6, got %v", e.Data["total"])
@@ -345,7 +345,7 @@ func TestMCPProxy_NonJSONRPC_Passthrough(t *testing.T) {
 
 	// Verify no MCP filtering or denial logs
 	for _, e := range hook.AllEntries() {
-		if e.Message == "mcp: tool call denied" || e.Message == "mcp: filtered tools/list response" {
+		if e.Message == "tool call denied" || e.Message == "filtered tools/list response" {
 			t.Errorf("unexpected MCP log entry for non-JSON-RPC request: %q", e.Message)
 		}
 	}

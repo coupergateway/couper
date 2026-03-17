@@ -31,7 +31,7 @@ func NewMCPRoundTripper(backend http.RoundTripper, ctx *hclsyntax.Body, logger *
 	return &MCPRoundTripper{
 		backend: backend,
 		context: ctx,
-		logger:  logger,
+		logger:  logger.WithField("type", "couper_mcp_proxy"),
 	}
 }
 
@@ -51,9 +51,22 @@ func (m *MCPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	rpcReq := ParseRequest(reqBody)
 	if rpcReq == nil {
 		// Not a valid JSON-RPC request — pass through transparently
-		m.logger.Debug("mcp: non-JSON-RPC request, passing through")
+		m.logger.Debug("non-JSON-RPC request, passing through")
 		m.restoreBody(req, reqBody)
 		return m.backend.RoundTrip(req)
+	}
+
+	// Log every JSON-RPC method for observability.
+	logFields := logrus.Fields{"method": rpcReq.Method}
+
+	// Extract tool name for tools/call requests.
+	var toolName string
+	if rpcReq.Method == "tools/call" {
+		var params ToolCallParams
+		if err := json.Unmarshal(rpcReq.Params, &params); err == nil && params.Name != "" {
+			toolName = params.Name
+			logFields["tool"] = toolName
+		}
 	}
 
 	// Build tool filter from HCL context (evaluated per-request for JWT claims etc.)
@@ -61,23 +74,25 @@ func (m *MCPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Handle tools/call — fail closed if tool name cannot be determined
 	if rpcReq.Method == "tools/call" && filter.HasRules() {
-		var params ToolCallParams
-		if err := json.Unmarshal(rpcReq.Params, &params); err != nil || params.Name == "" {
-			m.logger.Info("mcp: tool call denied, unable to determine tool name")
+		if toolName == "" {
+			m.logger.WithFields(logFields).Info("tool call denied, unable to determine tool name")
 			body := NewMethodNotFoundError(rpcReq.ID, "")
 			return newJSONResponse(http.StatusOK, body),
 				errors.BetaMcpToolBlocked.Messagef("tool name could not be determined")
 		}
 
-		if !filter.IsAllowed(params.Name) {
-			m.logger.WithField("tool", params.Name).Info("mcp: tool call denied")
-			body := NewMethodNotFoundError(rpcReq.ID, params.Name)
+		if !filter.IsAllowed(toolName) {
+			logFields["status"] = "denied"
+			m.logger.WithFields(logFields).Info("tool call denied")
+			body := NewMethodNotFoundError(rpcReq.ID, toolName)
 			return newJSONResponse(http.StatusOK, body),
-				errors.BetaMcpToolBlocked.Messagef("tool %q not allowed by gateway policy", params.Name)
+				errors.BetaMcpToolBlocked.Messagef("tool %q not allowed by gateway policy", toolName)
 		}
 
-		m.logger.WithField("tool", params.Name).Debug("mcp: tool call allowed")
+		logFields["status"] = "allowed"
 	}
+
+	m.logger.WithFields(logFields).Info("request")
 
 	// Restore Bearer token that Proxy strips from the headerBlacklist.
 	if req.Header.Get("Authorization") == "" {
@@ -175,13 +190,13 @@ func (m *MCPRoundTripper) filterToolsListResponse(resp *http.Response, filter *T
 			"total":   totalTools,
 			"exposed": len(result.Tools),
 			"removed": strings.Join(removedTools, ", "),
-		}).Info("mcp: filtered tools/list response")
+		}).Info("filtered tools/list response")
 	}
 
 	m.logger.WithFields(logrus.Fields{
 		"total":   totalTools,
 		"exposed": len(result.Tools),
-	}).Debug("mcp: tools/list filtered")
+	}).Debug("tools/list filtered")
 
 	newResult, err := json.Marshal(result)
 	if err != nil {
@@ -230,43 +245,43 @@ func ListAvailableTools(parentCtx context.Context, origin string, logger *logrus
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, origin, bytes.NewReader(toolsListReq))
 	if err != nil {
-		logger.WithError(err).Debug("mcp: startup tools/list: failed to create request")
+		logger.WithError(err).Debug("startup tools/list: failed to create request")
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		logger.WithError(err).Debug("mcp: startup tools/list: request failed")
+		logger.WithError(err).Debug("startup tools/list: request failed")
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.WithField("status", resp.StatusCode).Debug("mcp: startup tools/list: unexpected status")
+		logger.WithField("status", resp.StatusCode).Debug("startup tools/list: unexpected status")
 		return
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.WithError(err).Debug("mcp: startup tools/list: failed to read response")
+		logger.WithError(err).Debug("startup tools/list: failed to read response")
 		return
 	}
 
 	var rpcResp Response
 	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
-		logger.WithError(err).Debug("mcp: startup tools/list: invalid JSON-RPC response")
+		logger.WithError(err).Debug("startup tools/list: invalid JSON-RPC response")
 		return
 	}
 
 	if rpcResp.Error != nil {
-		logger.WithField("error", string(rpcResp.Error.Data)).Debug("mcp: startup tools/list: backend returned error")
+		logger.WithField("error", string(rpcResp.Error.Data)).Debug("startup tools/list: backend returned error")
 		return
 	}
 
 	var result ToolsListResult
 	if err := json.Unmarshal(rpcResp.Result, &result); err != nil {
-		logger.WithError(err).Debug("mcp: startup tools/list: failed to parse tools result")
+		logger.WithError(err).Debug("startup tools/list: failed to parse tools result")
 		return
 	}
 
@@ -275,5 +290,5 @@ func ListAvailableTools(parentCtx context.Context, origin string, logger *logrus
 		fields[tool.Name] = tool.Description
 	}
 
-	logger.WithFields(fields).Debug("mcp: available tools")
+	logger.WithFields(fields).Debug("available tools")
 }
