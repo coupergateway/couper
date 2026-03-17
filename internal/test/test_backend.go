@@ -90,6 +90,10 @@ func registerHTTPHandler(b *Backend) {
 	b.mux.HandleFunc("/mcp", mcpHandler)
 	b.mux.HandleFunc("/mcp-block-only", mcpHandler)
 	b.mux.HandleFunc("/mcp-passthrough", mcpHandler)
+	b.mux.HandleFunc("/.well-known/oauth-protected-resource", mcpOAuthProtectedResource)
+	b.mux.HandleFunc("/.well-known/oauth-authorization-server", mcpOAuthAuthorizationServer)
+	b.mux.HandleFunc("/token", mcpOAuthToken)
+	b.mux.HandleFunc("/register", mcpOAuthRegister)
 }
 
 func createAnythingHandler(status int) func(rw http.ResponseWriter, req *http.Request) {
@@ -390,4 +394,64 @@ func mcpHandler(rw http.ResponseWriter, req *http.Request) {
 		b, _ := json.Marshal(resp)
 		rw.Write(b)
 	}
+}
+
+func mcpOAuthProtectedResource(rw http.ResponseWriter, req *http.Request) {
+	origin := "https://" + req.Host
+	rw.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(rw).Encode(map[string]interface{}{
+		"resource":                 origin + "/",
+		"authorization_servers":    []string{origin + "/"},
+		"scopes_supported":         []string{"read", "write"},
+		"bearer_methods_supported": []string{"header"},
+	})
+}
+
+func mcpOAuthAuthorizationServer(rw http.ResponseWriter, req *http.Request) {
+	origin := "https://" + req.Host
+	rw.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(rw).Encode(map[string]interface{}{
+		"issuer":                 origin + "/",
+		"authorization_endpoint": origin + "/authorize",
+		"token_endpoint":         origin + "/token",
+		"registration_endpoint":  origin + "/register",
+		"scopes_supported":       []string{"read", "write"},
+	})
+}
+
+func mcpOAuthToken(rw http.ResponseWriter, req *http.Request) {
+	// Echo back the resource parameter so tests can verify rewriting.
+	body, _ := io.ReadAll(req.Body)
+	req.Body.Close()
+
+	resource := req.URL.Query().Get("resource")
+	if resource == "" {
+		values, _ := url.ParseQuery(string(body))
+		resource = values.Get("resource")
+	}
+	if resource == "" {
+		// Try JSON body
+		var jsonBody map[string]interface{}
+		if json.Unmarshal(body, &jsonBody) == nil {
+			if r, ok := jsonBody["resource"].(string); ok {
+				resource = r
+			}
+		}
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(rw).Encode(map[string]interface{}{
+		"access_token": "test-token-123",
+		"token_type":   "bearer",
+		"resource":     resource,
+	})
+}
+
+func mcpOAuthRegister(rw http.ResponseWriter, req *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	json.NewEncoder(rw).Encode(map[string]interface{}{
+		"client_id":     "test-client-id",
+		"client_secret": "test-client-secret",
+	})
 }

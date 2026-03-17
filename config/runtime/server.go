@@ -32,6 +32,7 @@ import (
 	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/eval/lib"
 	"github.com/coupergateway/couper/handler"
+	"github.com/coupergateway/couper/handler/mcp"
 	"github.com/coupergateway/couper/handler/middleware"
 	"github.com/coupergateway/couper/oauth2"
 	"github.com/coupergateway/couper/oauth2/oidc"
@@ -435,6 +436,34 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			err = setRoutesFromHosts(serverConfiguration, portsHosts, pattern, endpointHandlers[endpointConf], kind)
 			if err != nil {
 				return nil, err
+			}
+		}
+
+		// Auto-register OAuth endpoints for each beta_mcp_proxy on this server.
+		for endpointConf, parentAPI := range endpointsMap {
+			if len(endpointConf.MCPProxies) == 0 {
+				continue
+			}
+
+			basePath := serverOptions.SrvBasePath
+			if parentAPI != nil {
+				basePath = serverOptions.APIBasePaths[parentAPI]
+			}
+
+			for _, mcpConf := range endpointConf.MCPProxies {
+				origin, diags := eval.ValueFromBodyAttribute(confCtx, mcpConf.Backend, "origin")
+				if diags != nil {
+					continue
+				}
+
+				oauthHandler := mcp.NewOAuthHandler(origin.AsString(), endpointConf.Pattern, log)
+
+				for _, oauthPath := range mcp.OAuthPaths {
+					pattern := utils.JoinOpenAPIPath(basePath, oauthPath)
+					if err := setRoutesFromHosts(serverConfiguration, portsHosts, pattern, oauthHandler, endpoint); err != nil {
+						log.WithField("path", pattern).Debug("mcp oauth: route already registered, skipping")
+					}
+				}
 			}
 		}
 	}

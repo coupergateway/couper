@@ -350,3 +350,193 @@ func TestMCPProxy_NonJSONRPC_Passthrough(t *testing.T) {
 		}
 	}
 }
+
+// ── MCP OAuth proxy tests ───────────────────────────────────────────────────
+
+func TestMCPProxy_OAuthProtectedResource(t *testing.T) {
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/integration/mcp/02_couper.hcl", helper)
+	defer shutdown()
+
+	client := newClient()
+
+	// The auto-registered OAuth endpoint should rewrite the resource field
+	// to match the proxy URL and authorization_servers to the proxy origin.
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/.well-known/oauth-protected-resource", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.StatusCode)
+	}
+
+	respBody, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	var metadata map[string]interface{}
+	helper.Must(json.Unmarshal(respBody, &metadata))
+
+	// resource should be rewritten to the proxy URL (scheme://host + mcpEndpoint)
+	resource, ok := metadata["resource"].(string)
+	if !ok {
+		t.Fatal("missing resource field")
+	}
+	if resource != "http://back.end:8080/mcp" {
+		t.Errorf("resource = %q, want %q", resource, "http://back.end:8080/mcp")
+	}
+
+	// authorization_servers should point to proxy origin
+	authServers, ok := metadata["authorization_servers"].([]interface{})
+	if !ok || len(authServers) == 0 {
+		t.Fatal("missing authorization_servers")
+	}
+	if authServers[0] != "http://back.end:8080/mcp" {
+		t.Errorf("authorization_servers[0] = %q, want %q", authServers[0], "http://back.end:8080/mcp")
+	}
+}
+
+func TestMCPProxy_OAuthProtectedResourceWithMCPSuffix(t *testing.T) {
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/integration/mcp/02_couper.hcl", helper)
+	defer shutdown()
+
+	client := newClient()
+
+	// MCP clients also try /.well-known/oauth-protected-resource/mcp
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/.well-known/oauth-protected-resource/mcp", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.StatusCode)
+	}
+
+	respBody, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	var metadata map[string]interface{}
+	helper.Must(json.Unmarshal(respBody, &metadata))
+
+	resource, _ := metadata["resource"].(string)
+	if resource != "http://back.end:8080/mcp" {
+		t.Errorf("resource = %q, want %q", resource, "http://back.end:8080/mcp")
+	}
+}
+
+func TestMCPProxy_OAuthAuthorizationServer(t *testing.T) {
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/integration/mcp/02_couper.hcl", helper)
+	defer shutdown()
+
+	client := newClient()
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/.well-known/oauth-authorization-server", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.StatusCode)
+	}
+
+	respBody, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	var metadata map[string]interface{}
+	helper.Must(json.Unmarshal(respBody, &metadata))
+
+	// issuer, token_endpoint, registration_endpoint should be rewritten to proxy
+	if issuer, _ := metadata["issuer"].(string); issuer != "http://back.end:8080/mcp" {
+		t.Errorf("issuer = %q, want %q", issuer, "http://back.end:8080/mcp")
+	}
+	if tokenEP, _ := metadata["token_endpoint"].(string); tokenEP != "http://back.end:8080/mcp/token" {
+		t.Errorf("token_endpoint = %q, want %q", tokenEP, "http://back.end:8080/mcp/token")
+	}
+	if regEP, _ := metadata["registration_endpoint"].(string); regEP != "http://back.end:8080/mcp/register" {
+		t.Errorf("registration_endpoint = %q, want %q", regEP, "http://back.end:8080/mcp/register")
+	}
+
+	// authorization_endpoint MUST stay pointing at upstream (browser redirect)
+	authEP, _ := metadata["authorization_endpoint"].(string)
+	if !strings.Contains(authEP, "/authorize") {
+		t.Errorf("authorization_endpoint should point to upstream, got %q", authEP)
+	}
+}
+
+func TestMCPProxy_OAuthTokenResourceRewrite(t *testing.T) {
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/integration/mcp/02_couper.hcl", helper)
+	defer shutdown()
+
+	client := newClient()
+
+	// POST /token with resource=proxy should be rewritten to resource=upstream
+	body := "grant_type=authorization_code&code=test&resource=http%3A%2F%2Fback.end%3A8080%2Fmcp"
+	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/token", strings.NewReader(body))
+	helper.Must(err)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	respBody, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", res.StatusCode, string(respBody))
+	}
+
+	// The test backend echoes the resource param it received
+	var tokenResp map[string]interface{}
+	helper.Must(json.Unmarshal(respBody, &tokenResp))
+
+	resource, _ := tokenResp["resource"].(string)
+	if !strings.Contains(resource, testBackend.Addr()) {
+		t.Errorf("resource should be rewritten to upstream origin, got %q (expected to contain %q)", resource, testBackend.Addr())
+	}
+}
+
+func TestMCPProxy_OAuthRegister(t *testing.T) {
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/integration/mcp/02_couper.hcl", helper)
+	defer shutdown()
+
+	client := newClient()
+
+	body := `{"client_name":"test","redirect_uris":["http://localhost/callback"]}`
+	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/register", strings.NewReader(body))
+	helper.Must(err)
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+
+	respBody, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	res.Body.Close()
+
+	var regResp map[string]interface{}
+	helper.Must(json.Unmarshal(respBody, &regResp))
+
+	if _, ok := regResp["client_id"]; !ok {
+		t.Error("expected client_id in response")
+	}
+}

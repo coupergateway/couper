@@ -93,6 +93,90 @@ beta_mcp_proxy {
 }
 ```
 
+## OAuth Authentication
+
+When the upstream MCP server requires OAuth authentication (e.g. [MCP OAuth per RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728)), Couper automatically handles the OAuth discovery and token flow. The following endpoints are registered alongside the MCP proxy endpoint:
+
+| Path | Purpose |
+|:-----|:--------|
+| `/.well-known/oauth-protected-resource` | Serves rewritten protected resource metadata |
+| `/.well-known/oauth-authorization-server` | Serves rewritten authorization server metadata |
+| `/token` | Proxies token requests to upstream |
+| `/register` | Proxies dynamic client registration to upstream |
+
+### How it works
+
+```
+MCP Client ──► Couper (proxy) ──► Upstream MCP Server
+    │                                      │
+    │  1. POST /mcp → 401                  │
+    │  2. GET /.well-known/oauth-protected-resource
+    │     ← resource rewritten to proxy URL │
+    │  3. GET /.well-known/oauth-authorization-server
+    │     ← token/register endpoints        │
+    │       rewritten to proxy URLs         │
+    │     ← authorization_endpoint stays    │
+    │       pointing at upstream (browser)  │
+    │  4. POST /register → forwarded        │
+    │  5. Browser → upstream /authorize     │
+    │  6. POST /token → resource param      │
+    │     rewritten to upstream origin      │
+    │  7. POST /mcp + Bearer token → OK     │
+```
+
+The key challenge with proxying MCP OAuth is that tokens are bound to the `resource` value used during issuance. Couper solves this by:
+
+1. **Advertising the proxy URL** as the `resource` in discovery metadata — so MCP clients accept the proxy as the resource server
+2. **Rewriting the `resource` parameter** in `/token` and `/register` requests back to the upstream origin — so the upstream issues tokens bound to its own origin
+3. **Keeping `authorization_endpoint`** pointing directly at the upstream — browser redirects cannot be proxied through the API gateway
+
+This happens transparently. No additional configuration is needed beyond the `beta_mcp_proxy` block.
+
+### Forwarding the Authorization header
+
+Couper strips `Authorization` headers from proxy requests by default. To forward Bearer tokens to the upstream MCP server, use `set_request_headers`:
+
+```hcl
+beta_mcp_proxy {
+  backend = "mcp-server"
+  set_request_headers = {
+    authorization = request.headers.authorization
+  }
+}
+```
+
+This works for any authentication scheme (Bearer, Basic, etc.).
+
+### Example: OAuth-protected MCP server
+
+```hcl
+server {
+  api {
+    endpoint "/mcp" {
+      beta_mcp_proxy {
+        backend = "mcp-server"
+        allowed_tools = ["get_weather", "search_*"]
+        set_request_headers = {
+          authorization = request.headers.authorization
+        }
+      }
+    }
+  }
+}
+
+definitions {
+  backend "mcp-server" {
+    origin = "https://mcp.example.com"
+  }
+}
+```
+
+The OAuth discovery and token endpoints are registered automatically. MCP clients connecting to `http://your-gateway/mcp` will complete the OAuth flow transparently through the proxy.
+
+### Non-OAuth MCP servers
+
+If the upstream MCP server does not use OAuth, the auto-registered OAuth endpoints are harmless — they return an error only if explicitly called. Basic auth, API keys, and other authentication methods work normally via `set_request_headers`.
+
 {{< attributes >}}
 [
   {

@@ -12,6 +12,7 @@ import (
 	"github.com/coupergateway/couper/config/runtime/server"
 	"github.com/coupergateway/couper/config/sequence"
 	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/eval/buffer"
 	"github.com/coupergateway/couper/handler"
 	"github.com/coupergateway/couper/handler/mcp"
@@ -150,7 +151,14 @@ func NewEndpointOptions(confCtx *hcl.EvalContext, endpointConf *config.Endpoint,
 
 		mcpBody := mcpConf.HCLBody()
 		mcpRT := mcp.NewMCPRoundTripper(backend, mcpBody, log)
-		proxyHandler := handler.NewProxy(mcpRT, mcpBody, false, log)
+		// Wrap with BearerTokenRoundTripper to capture the Authorization header
+		// before Proxy's headerBlacklist strips it. MCPRoundTripper restores it.
+		proxyHandler := mcp.NewBearerTokenRoundTripper(handler.NewProxy(mcpRT, mcpBody, false, log))
+
+		// Best-effort startup check: list available tools from the MCP backend.
+		if origin, diags := eval.ValueFromBodyAttribute(confCtx, mcpConf.Backend, "origin"); diags == nil {
+			go mcp.ListAvailableTools(conf.Context, origin.AsString(), log)
+		}
 
 		p := &producer.Proxy{
 			Content:   mcpBody,

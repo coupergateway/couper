@@ -2,15 +2,18 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
+	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/internal/seetie"
@@ -74,6 +77,13 @@ func (m *MCPRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 
 		m.logger.WithField("tool", params.Name).Debug("mcp: tool call allowed")
+	}
+
+	// Restore Bearer token that Proxy strips from the headerBlacklist.
+	if req.Header.Get("Authorization") == "" {
+		if tok, ok := req.Context().Value(request.MCPBearerToken).(string); ok && tok != "" {
+			req.Header.Set("Authorization", tok)
+		}
 	}
 
 	// Forward to backend
@@ -203,4 +213,67 @@ func newJSONResponse(statusCode int, body []byte) *http.Response {
 		Body:          io.NopCloser(bytes.NewReader(body)),
 		ContentLength: int64(len(body)),
 	}
+}
+
+// ListAvailableTools makes a direct tools/list JSON-RPC call to the given
+// origin URL and logs all available tools at debug level. This is a best-effort
+// startup check that bypasses any allow/deny filtering.
+func ListAvailableTools(parentCtx context.Context, origin string, logger *logrus.Entry) {
+	ctx, cancel := context.WithTimeout(parentCtx, 10*time.Second)
+	defer cancel()
+
+	toolsListReq, _ := json.Marshal(Request{
+		JSONRPC: "2.0",
+		ID:      json.RawMessage("0"),
+		Method:  "tools/list",
+	})
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, origin, bytes.NewReader(toolsListReq))
+	if err != nil {
+		logger.WithError(err).Debug("mcp: startup tools/list: failed to create request")
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		logger.WithError(err).Debug("mcp: startup tools/list: request failed")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logger.WithField("status", resp.StatusCode).Debug("mcp: startup tools/list: unexpected status")
+		return
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.WithError(err).Debug("mcp: startup tools/list: failed to read response")
+		return
+	}
+
+	var rpcResp Response
+	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
+		logger.WithError(err).Debug("mcp: startup tools/list: invalid JSON-RPC response")
+		return
+	}
+
+	if rpcResp.Error != nil {
+		logger.WithField("error", string(rpcResp.Error.Data)).Debug("mcp: startup tools/list: backend returned error")
+		return
+	}
+
+	var result ToolsListResult
+	if err := json.Unmarshal(rpcResp.Result, &result); err != nil {
+		logger.WithError(err).Debug("mcp: startup tools/list: failed to parse tools result")
+		return
+	}
+
+	fields := logrus.Fields{"count": len(result.Tools)}
+	for _, tool := range result.Tools {
+		fields[tool.Name] = tool.Description
+	}
+
+	logger.WithFields(fields).Debug("mcp: available tools")
 }
