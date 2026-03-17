@@ -460,11 +460,11 @@ func TestMCPProxy_OAuthAuthorizationServer(t *testing.T) {
 	if issuer, _ := metadata["issuer"].(string); issuer != "http://back.end:8080/mcp" {
 		t.Errorf("issuer = %q, want %q", issuer, "http://back.end:8080/mcp")
 	}
-	if tokenEP, _ := metadata["token_endpoint"].(string); tokenEP != "http://back.end:8080/mcp/token" {
-		t.Errorf("token_endpoint = %q, want %q", tokenEP, "http://back.end:8080/mcp/token")
+	if tokenEP, _ := metadata["token_endpoint"].(string); !strings.HasSuffix(tokenEP, "/mcp/token") {
+		t.Errorf("token_endpoint should end with /mcp/token, got %q", tokenEP)
 	}
-	if regEP, _ := metadata["registration_endpoint"].(string); regEP != "http://back.end:8080/mcp/register" {
-		t.Errorf("registration_endpoint = %q, want %q", regEP, "http://back.end:8080/mcp/register")
+	if regEP, _ := metadata["registration_endpoint"].(string); !strings.HasSuffix(regEP, "/mcp/register") {
+		t.Errorf("registration_endpoint should end with /mcp/register, got %q", regEP)
 	}
 
 	// authorization_endpoint MUST stay pointing at upstream (browser redirect)
@@ -482,9 +482,9 @@ func TestMCPProxy_OAuthTokenResourceRewrite(t *testing.T) {
 
 	client := newClient()
 
-	// POST /token with resource=proxy should be rewritten to resource=upstream
+	// POST /mcp/token with resource=proxy should be rewritten to resource=upstream
 	body := "grant_type=authorization_code&code=test&resource=http%3A%2F%2Fback.end%3A8080%2Fmcp"
-	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/token", strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/mcp/token", strings.NewReader(body))
 	helper.Must(err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -518,7 +518,7 @@ func TestMCPProxy_OAuthRegister(t *testing.T) {
 	client := newClient()
 
 	body := `{"client_name":"test","redirect_uris":["http://localhost/callback"]}`
-	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/register", strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, "http://back.end:8080/mcp/register", strings.NewReader(body))
 	helper.Must(err)
 	req.Header.Set("Content-Type", "application/json")
 

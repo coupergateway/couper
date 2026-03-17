@@ -459,7 +459,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				oauthHandler := mcp.NewOAuthHandler(origin.AsString(), endpointConf.Pattern, log)
 
 				for _, oauthPath := range mcp.OAuthPaths {
-					pattern := utils.JoinOpenAPIPath(basePath, oauthPath)
+					// Well-known paths stay at root; token/register are scoped under the MCP endpoint
+					var pattern string
+					if strings.HasPrefix(oauthPath, "/.well-known/") {
+						pattern = utils.JoinOpenAPIPath(basePath, oauthPath)
+					} else {
+						pattern = utils.JoinOpenAPIPath(basePath, endpointConf.Pattern, oauthPath)
+					}
 					if err := setRoutesFromHosts(serverConfiguration, portsHosts, pattern, oauthHandler, endpoint); err != nil {
 						log.WithField("path", pattern).Debug("mcp oauth: route already registered, skipping")
 					}

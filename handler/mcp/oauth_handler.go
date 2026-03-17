@@ -77,9 +77,9 @@ func (h *OAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case p == "/.well-known/oauth-authorization-server" ||
 		strings.HasPrefix(p, "/.well-known/oauth-authorization-server/"):
 		h.serveAuthorizationServerMetadata(w, r)
-	case p == "/token":
+	case p == "/token" || strings.HasSuffix(p, "/token"):
 		h.proxyOAuthEndpoint(w, r, "/token")
-	case p == "/register":
+	case p == "/register" || strings.HasSuffix(p, "/register"):
 		h.proxyOAuthEndpoint(w, r, "/register")
 	default:
 		http.NotFound(w, r)
