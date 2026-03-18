@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/client_model v0.6.2
 	github.com/rs/xid v1.6.0
 	github.com/russellhaering/gosaml2 v0.10.0
-	github.com/russellhaering/goxmldsig v1.5.0
+	github.com/russellhaering/goxmldsig v1.6.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/zclconf/go-cty v1.16.2
 	go.opentelemetry.io/otel v1.40.0
