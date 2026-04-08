@@ -1,10 +1,17 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.0...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.1...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
+
+## [1.14.1](https://github.com/coupergateway/couper/releases/tag/v1.14.1)
+
+* **Dependencies**
+  * build with [go 1.26.2](https://go.dev/doc/devel/release#go1.26.2) — security fixes for `crypto/tls`, `crypto/x509`, `html/template`, `archive/tar`, and `os` packages ([#940](https://github.com/coupergateway/couper/issues/940))
+  * `google.golang.org/grpc` 1.79.3 — security fix for authorization bypass via malformed `:path` headers ([#940](https://github.com/coupergateway/couper/issues/940))
+  * `gosaml2` 0.11.0 and `goxmldsig` 1.6.0 ([#939](https://github.com/coupergateway/couper/pull/939))
 
 ## [1.14.0](https://github.com/coupergateway/couper/releases/tag/v1.14.0)
 
