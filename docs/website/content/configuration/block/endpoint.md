@@ -176,6 +176,10 @@ required_permission = default(request.path_params.p, "not_set")
 {{< blocks >}}
 [
   {
+    "description": "Configures an [MCP proxy](/configuration/block/beta_mcp_proxy) for filtering MCP tools (zero or more).",
+    "name": "beta_mcp_proxy"
+  },
+  {
     "description": "Configures an [error handler](/configuration/block/error_handler) (zero or more).",
     "name": "error_handler"
   },

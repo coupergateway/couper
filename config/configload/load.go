@@ -31,6 +31,7 @@ const (
 	job                          = "job"
 	nameLabel                    = "name"
 	oauth2                       = "oauth2"
+	betaMCPProxy                 = "beta_mcp_proxy"
 	proxy                        = "proxy"
 	request                      = "request"
 	server                       = "server"

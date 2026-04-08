@@ -55,14 +55,14 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 			}
 		}
 
-		if checkPathPattern && len(ep.Proxies)+len(ep.Requests) == 0 && ep.Response == nil {
+		if checkPathPattern && len(ep.Proxies)+len(ep.MCPProxies)+len(ep.Requests) == 0 && ep.Response == nil {
 			r := endpointBody.SrcRange
 			return newDiagErr(&r,
 				"endpoint: missing 'default' proxy or request block, or a response definition",
 			)
 		}
 
-		proxyRequestLabelRequired := len(ep.Proxies)+len(ep.Requests) > 1
+		proxyRequestLabelRequired := len(ep.Proxies)+len(ep.MCPProxies)+len(ep.Requests) > 1
 
 		names := map[string]*hclsyntax.Body{}
 		unique := map[string]struct{}{}
@@ -105,6 +105,30 @@ func refineEndpoints(helper *helper, endpoints config.Endpoints, checkPathPatter
 			}
 
 			proxyConfig.Backend, err = PrepareBackend(helper, "", "", proxyConfig)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, mcpConfig := range ep.MCPProxies {
+			if mcpConfig.Name == "" {
+				mcpConfig.Name = config.DefaultNameLabel
+			}
+
+			names[mcpConfig.Name] = mcpConfig.HCLBody()
+
+			subject = mcpConfig.HCLBody().SrcRange
+			if err = validLabel(mcpConfig.Name, &subject); err != nil {
+				return err
+			}
+
+			if proxyRequestLabelRequired {
+				if err = uniqueLabelName("proxy, beta_mcp_proxy and request", unique, mcpConfig.Name, &subject); err != nil {
+					return err
+				}
+			}
+
+			mcpConfig.Backend, err = PrepareBackend(helper, "", "", mcpConfig)
 			if err != nil {
 				return err
 			}
