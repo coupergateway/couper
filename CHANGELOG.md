@@ -1,10 +1,22 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.1...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.2...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
+
+## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)
+
+* **Security**
+  * `go.opentelemetry.io/otel` 1.43.0 — fix multi-value `baggage` header DoS amplification ([GHSA-mh2q-q3fh-2475](https://github.com/advisories/GHSA-mh2q-q3fh-2475)) ([#957](https://github.com/coupergateway/couper/pull/957))
+  * `go.opentelemetry.io/otel/sdk` 1.43.0 — fix PATH hijacking via BSD `kenv` not using absolute path ([GHSA-hfvc-g4fc-pqhx](https://github.com/advisories/GHSA-hfvc-g4fc-pqhx)) and arbitrary code execution via PATH hijacking ([GHSA-9h8m-3fm2-qjrq](https://github.com/advisories/GHSA-9h8m-3fm2-qjrq)) ([#956](https://github.com/coupergateway/couper/pull/956))
+
+* **Dependencies**
+  * `go.opentelemetry.io/otel` and `otel/sdk`, `otel/metric`, `otel/trace`, `otel/exporters/otlp/otlptrace*`, `otel/exporters/otlp/otlpmetric/otlpmetricgrpc` 1.39.0/1.38.0 → 1.43.0 ([#956](https://github.com/coupergateway/couper/pull/956))
+  * `go.opentelemetry.io/otel/exporters/prometheus` 0.60.0 → 0.64.0 ([#955](https://github.com/coupergateway/couper/pull/955))
+  * `google.golang.org/grpc` 1.79.3 → 1.80.0, transitive ([#956](https://github.com/coupergateway/couper/pull/956))
+  * `golang.org/x/net` 0.48.0 → 0.52.0, `golang.org/x/crypto` 0.46.0 → 0.49.0, transitive ([#956](https://github.com/coupergateway/couper/pull/956))
 
 ## [1.14.1](https://github.com/coupergateway/couper/releases/tag/v1.14.1)
 
