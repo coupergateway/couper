@@ -25,6 +25,7 @@ const (
 	LogCustomUpstreamError
 	LogDebugLevel
 	LogEntry
+	MCPBearerToken
 	OpenAPI
 	PathParams
 	RequiredPermission

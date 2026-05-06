@@ -33,6 +33,8 @@ var Definitions = []*Error{
 	Backend.Kind("beta_backend_token_request"),
 	Backend.Kind("backend_unhealthy"),
 
+	Backend.Kind("beta_mcp_tool_blocked").Status(http.StatusForbidden),
+
 	Endpoint,
 	Endpoint.Kind("sequence"),
 	Endpoint.Kind("unexpected_status"),
