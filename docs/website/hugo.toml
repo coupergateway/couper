@@ -1,6 +1,10 @@
 baseURL = 'https://docs.couper.io/'
-languageCode = 'en-us'
+defaultContentLanguage = 'en'
 title = 'Couper Documentation'
+
+[languages]
+  [languages.en]
+    locale = 'en-us'
 
 
 [markup]

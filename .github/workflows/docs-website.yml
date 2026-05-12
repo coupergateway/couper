@@ -13,7 +13,7 @@ jobs:
       docs_website_changed: ${{ steps.diff.outputs.docs_website_changed }}
     steps:
       - name: Check out code (2 commits)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -40,30 +40,28 @@ jobs:
     if: github.event_name != 'push' || needs.changes.outputs.docs_website_changed == 'true'
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Go 1.x
-        uses: actions/setup-go@v5.0.0
+        uses: actions/setup-go@v6
         with:
           go-version: '1.26.2'
         id: go
       - run: go version
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 'lts/Iron'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        uses: pnpm/action-setup@v6
 
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v3
+        uses: peaceiris/actions-hugo@v3.2.1
         with:
-          hugo-version: 'latest'
+          hugo-version: '0.161.1'
           extended: true
 
       - name: install algolia-client
@@ -84,7 +82,7 @@ jobs:
           hugo --minify
 
       - name: create artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: |
@@ -100,12 +98,12 @@ jobs:
       - docs
     if: needs.docs.result == 'success' && (github.event_name != 'push' || needs.changes.outputs.docs_website_changed == 'true')
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: dist
           path: 'dist'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_COUPER_API_TOKEN }}
           path: 'website'

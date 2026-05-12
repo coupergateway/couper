@@ -2,9 +2,9 @@
 title: 'Blocks'
 weight: 4
 slug: 'block'
-_build:
-  render: false
-  list: true
+build:
+  render: 'never'
+  list: 'always'
 ---
 
 # Configuration Blocks
