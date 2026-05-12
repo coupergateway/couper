@@ -9,17 +9,22 @@ slug: 'basic_auth'
 |:-------------|:------------------------------------------------------|:---------|
 | `basic_auth` | [Definitions Block](/configuration/block/definitions) | required |
 
-The  `basic_auth` block lets you configure basic auth for your gateway. Like all
+The `basic_auth` block lets you configure HTTP basic auth for your gateway. Like all
 [access control](/configuration/access-control) types, the `basic_auth` block is defined in the
 [`definitions` block](/configuration/block/definitions) and can be referenced in all configuration
 blocks by its required _label_.
+
+Basic Auth is intended for simple access control situations where a static list
+of users is sufficient. This could be to protect a staging environment, or to
+expose a dedicated API to a single internal client, such as a neighboring
+microservice.
+
+The `user` is accessible via `request.context.<label>.user` variable for successfully authenticated requests.
 
 If both `user`/`password` and `htpasswd_file` are configured, the incoming
 credentials from the `Authorization` request HTTP header field are checked against
 `user`/`password` if the user matches, and against the data in the file referenced
 by `htpasswd_file` otherwise.
-
-The `user` is accessible via `request.context.<label>.user` variable for successfully authenticated requests.
 
 ## Example
 
@@ -64,6 +69,8 @@ jane:$argon2id$v=19$m=65536,t=3,p=4$salt$hash
 
 ### Attribute `htpasswd_file`
 
+The file is loaded once at startup. Restart Couper after you have changed it.
+
 Couper supports the following password hash algorithms:
 
 | Algorithm  | htpasswd prefix | Recommended |
@@ -73,9 +80,16 @@ Couper supports the following password hash algorithms:
 | `bcrypt`   | `$2y$`          |             |
 | `md5`      | `$apr1$`        |             |
 
+### Choosing Argon2 parameters for security and performance
+
 When generating your own password hashes, **`argon2id` is the recommended choice** as it provides a balanced approach to resisting both side-channel and GPU-based attacks (see [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)).
 
-The file is loaded once at startup. Restart Couper after you have changed it.
+The argon2 hash encodes the parameters used to derive it: `m` (memory in KiB), `t` (iterations) and `p` (parallelism). Couper re-runs the key derivation with these parameters on every authenticated request, so the choice has both security and runtime cost implications.
+
+OWASP currently recommends for `argon2id`: `m=19456` (≈19 MiB), `t=2`, `p=1`.
+
+_Memory cost is per request_. Couper allocates `m` KiB on every basic auth verification. With large values of `m` and concurrent requests, the Go heap grows accordingly — e.g. `m=524288` (512 MiB) and 4 parallel auths can require 2 GiB of resident memory before the runtime reclaims it. Pick `m` so that `m × expected_concurrent_auths` comfortably fits into the memory budget of the Couper process; otherwise an attacker can turn the auth endpoint into a memory-exhaustion vector.
+
 
 {{< attributes >}}
 [
