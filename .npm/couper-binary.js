@@ -1,5 +1,5 @@
 const { existsSync, mkdirSync, unlinkSync, chmodSync, copyFileSync } = require("fs")
-const axios = require("axios")
+const https = require("https")
 const crypto = require("crypto")
 const unzip = require("unzip-stream")
 const { join } = require("path")
@@ -7,7 +7,6 @@ const { spawnSync, spawn } = require("child_process")
 
 const osMap = {
 	"Linux":  "linux",
-	"Darwin": "macos",
 	"Windows_NT": "windows"
 }
 
@@ -16,18 +15,55 @@ const archMap = {
 	"arm64": "arm64"
 }
 
+function download(url) {
+	return new Promise((resolve, reject) => {
+		https.get(url, (res) => {
+			if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+				return download(res.headers.location).then(resolve, reject)
+			}
+			if (res.statusCode !== 200) {
+				return reject(new Error(`Download failed: HTTP ${res.statusCode} for ${url}`))
+			}
+			resolve(res)
+		}).on("error", reject)
+	})
+}
+
+function downloadText(url) {
+	return download(url).then((res) => {
+		return new Promise((resolve, reject) => {
+			let data = ""
+			res.on("data", (chunk) => data += chunk)
+			res.on("end", () => resolve(data))
+			res.on("error", reject)
+		})
+	})
+}
+
 function getPlatform() {
 	const os = require('os')
-	const type = osMap[os.type()]
+	const type = os.type()
 	const arch = archMap[os.arch()]
 
-	if (!type || !arch) {
-		throw `Sorry, ${this.name} is not available for your platform: ${os.type()}/${os.arch()}`
+	if (type === "Darwin") {
+		console.error(
+			"Couper is not available via npm on macOS.\n" +
+			"Install via Homebrew:  brew install coupergateway/couper/couper\n" +
+			"Or build from source:  go install github.com/coupergateway/couper@latest"
+		)
+		process.exit(1)
 	}
-	const binary  = type === "windows" ? "couper.exe" : "couper"
-	const archive = type === "linux"   ? "tar.gz" : "zip"
 
-	return {os: type, arch: arch, binary: binary, archive: archive}
+	const mapped = osMap[type]
+	if (!mapped || !arch) {
+		console.error(`Sorry, couper is not available for your platform: ${type}/${os.arch()}`)
+		process.exit(1)
+	}
+
+	const binary  = mapped === "windows" ? "couper.exe" : "couper"
+	const archive = mapped === "linux"   ? "tar.gz" : "zip"
+
+	return {os: mapped, arch: arch, binary: binary, archive: archive}
 }
 
 class CouperBinary {
@@ -36,7 +72,6 @@ class CouperBinary {
 		const { version } = require("./package.json")
 		this.name = "couper"
 		this.platform = getPlatform()
-		// require from package.json fails for older node versions!
 		this.url = "https://github.com/coupergateway/couper/releases/download/" +
 				   `v${version}/${this.name}-v${version}-` +
 				   `${this.platform.os}-${this.platform.arch}.${this.platform.archive}`
@@ -64,12 +99,9 @@ class CouperBinary {
 		}).bind(this))
 
 		console.log(`Downloading release from ${this.url}...`)
-		return axios({
-			url: this.url,
-			responseType: "stream"
-		})
+		return download(this.url)
 		.then(response => {
-			response.data.pipe(hash)
+			response.pipe(hash)
 			if (this.platform.archive === "tar.gz") {
 				const which = spawnSync('tar', ['--version'])
 				if (which.error) {
@@ -77,7 +109,7 @@ class CouperBinary {
 					process.exit(1)
 				}
 				const tarProcess = spawn('tar', ['xzf', '-', '-C', this.targetDirectory])
-				response.data.pipe(tarProcess.stdin)
+				response.pipe(tarProcess.stdin)
 				return new Promise((resolve, reject) => {
 					tarProcess.on('close', (code) => {
 						if (code !== 0) reject(new Error(`tar extraction failed with exit code ${code}`))
@@ -86,10 +118,9 @@ class CouperBinary {
 					tarProcess.on('error', reject)
 				})
 			} else if (this.platform.archive === "zip") {
-				return response.data.pipe(unzip.Extract({path: this.targetDirectory}))
+				return response.pipe(unzip.Extract({path: this.targetDirectory}))
 			}
 			else {
-				// FIXME handle plain files, too?
 				throw new Error("Invalid archive format: " + this.platform.archive)
 			}
 		})
@@ -102,12 +133,9 @@ class CouperBinary {
 	verify(hash) {
 		console.log(`Verifying checksum...`)
 		const url = this.url + ".sha256"
-		return axios({
-			url: url,
-			responseType: "text"
-		})
-		.then(response => {
-			const checksum = response.data.trim()
+		return downloadText(url)
+		.then(data => {
+			const checksum = data.trim()
 			if (hash.read() !== checksum) {
 				unlinkSync(this.binary)
 				throw new Error("Bad checksum!")

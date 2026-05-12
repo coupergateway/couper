@@ -1,4 +1,4 @@
-<nav class="w-1/5 min-w-[220px] grow-0 p-4 pt-6 sidebar-nav">
+<nav class="p-4 pt-6 sidebar-nav">
     {{ $currentPage := . }}
 
     {{/* Get all sections and sort them */}}
@@ -6,6 +6,10 @@
         {{ $sectionTitle := .Title }}
         {{/* Check if any page in this section (or subsections) is the current page */}}
         {{ $isActiveSection := false }}
+        {{/* Expand "Getting Started" by default on the homepage */}}
+        {{ if and (eq $sectionTitle "Getting Started") (eq $currentPage.RelPermalink "/") }}
+            {{ $isActiveSection = true }}
+        {{ end }}
         {{ range .Pages }}
             {{ if eq $currentPage.RelPermalink .RelPermalink }}
                 {{ $isActiveSection = true }}

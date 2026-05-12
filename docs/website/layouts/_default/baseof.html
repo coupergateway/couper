@@ -155,6 +155,20 @@
         // Unanchored regex for matching variables inside template interpolation
         var varInline = new RegExp(s.varPattern.replace(/\\b/g, ''));
         document.querySelectorAll('.highlight code').forEach(function(code) {
+            // Fix // comments misclassified as errors by Chroma's HCL lexer
+            code.querySelectorAll('span.err').forEach(function(sp) {
+                if (sp.textContent.trim().indexOf('//') === 0) {
+                    sp.classList.remove('err');
+                    sp.classList.add('c1');
+                    // Restyle remaining siblings on the same line as comment
+                    var node = sp.nextSibling;
+                    while (node && !(node.nodeType === 3 && node.textContent.indexOf('\n') !== -1)) {
+                        if (node.nodeType === 1) node.classList.add('c1');
+                        node = node.nextSibling;
+                    }
+                }
+            });
+
             var spans = code.querySelectorAll('span');
             for (var i = 0; i < spans.length; i++) {
                 var sp = spans[i];
