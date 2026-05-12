@@ -3,7 +3,7 @@
 <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/instantsearch.js@4"></script>
 
-{{ $tw := resources.Get "css/tailwind.css" | css.PostCSS }}
+{{ $tw := resources.Get "css/tailwind.css" | css.TailwindCSS (dict "minify" hugo.IsProduction) }}
 <link rel="stylesheet" href="{{ $tw.RelPermalink }}">
 
 {{/* Extract Couper-specific syntax patterns from the TextMate grammar */}}
