@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'wait for tests'
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         with:
           ref: ${{ github.ref }}
           check-name: 'go test & build'
@@ -33,7 +33,7 @@ jobs:
         goarch: [amd64, arm64]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set outputs
         id: vars
@@ -63,7 +63,7 @@ jobs:
       - build-all
     steps:
       - name: 'checkout'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: 'compute source tarball checksum'
         run: |
           curl -fsSL "https://github.com/coupergateway/couper/archive/refs/tags/${{ github.ref_name }}.tar.gz" -o source.tar.gz
