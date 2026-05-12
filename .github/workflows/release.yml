@@ -75,15 +75,27 @@ jobs:
           chmod +x tg
           ./tg -i ${GITHUB_WORKSPACE}/.github/workflows/couper.rb
       - name: 'publish formula'
-        uses: dmnemec/copy_file_to_another_repo_action@v1.1.1
         env:
-          API_TOKEN_GITHUB: ${{ secrets.GH_COUPER_API_TOKEN }}
-        with:
-          source_file: '${{ github.workspace }}/.github/workflows/couper.rb'
-          destination_repo: 'coupergateway/homebrew-couper'
-          destination_folder: './'
-          destination_branch: 'main'
-          destination_branch_create: 'release.${{ github.ref_name }}'
-          user_email: 'couperbot@gmail.com'
-          user_name: 'couper-bot'
-          commit_message: 'Update formula to ${{ github.ref_name }} release'
+          GH_TOKEN: ${{ secrets.GH_COUPER_API_TOKEN }}
+          BRANCH: 'release.${{ github.ref_name }}'
+          COMMIT_MSG: 'Update formula to ${{ github.ref_name }} release'
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          git clone --depth=1 --branch=main \
+            "https://x-access-token:${GH_TOKEN}@github.com/coupergateway/homebrew-couper.git" "$workdir"
+          cd "$workdir"
+          git config user.name 'couper-bot'
+          git config user.email 'couperbot@gmail.com'
+          git switch -c "$BRANCH"
+          cp "${GITHUB_WORKSPACE}/.github/workflows/couper.rb" ./couper.rb
+          git add couper.rb
+          git commit -m "$COMMIT_MSG"
+          git push --force-with-lease origin "$BRANCH"
+          gh pr view "$BRANCH" --repo coupergateway/homebrew-couper >/dev/null 2>&1 || \
+            gh pr create \
+              --repo coupergateway/homebrew-couper \
+              --base main \
+              --head "$BRANCH" \
+              --title "$COMMIT_MSG" \
+              --body "Automated formula update for ${{ github.ref_name }}."
