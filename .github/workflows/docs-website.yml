@@ -57,6 +57,8 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
+        with:
+          package_json_file: docs/website/package.json
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3.2.1
