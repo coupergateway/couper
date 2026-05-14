@@ -2,9 +2,14 @@ package accesscontrol
 
 import (
 	"encoding/base64"
+	"sync"
+	"sync/atomic"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/argon2"
+
+	"github.com/coupergateway/couper/cache"
 )
 
 func Test_Apr1MD5(t *testing.T) {
@@ -36,7 +41,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeApr1,
 	}
 
-	if !validateAccessData("john", pass, data) {
+	if !validateAccessData("john", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -49,11 +54,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeBcrypt,
 	}
 
-	if !validateAccessData("jane", pass, data) {
+	if !validateAccessData("jane", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
-	if validateAccessData("foo", "bar", data) {
+	if validateAccessData("foo", "bar", data, nil) {
 		t.Error("Unexpected validation success")
 	}
 
@@ -66,7 +71,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeMD5,
 	}
 
-	if !validateAccessData("jock", pass, data) {
+	if !validateAccessData("jock", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -75,7 +80,7 @@ func Test_ValidateAccessData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to decode argon2 salt: %v", err)
 	}
-	argon2Hash := argon2.IDKey([]byte(pass), argon2Salt, 3, 65536, 4, 32)
+	argon2Hash := argon2.IDKey([]byte(pass), argon2Salt, 3, 65536, 2, 32)
 
 	data["jack"] = pwd{
 		pwdOrig:       argon2Hash,
@@ -83,21 +88,21 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:       pwdTypeArgon2id,
 		argon2Time:    3,
 		argon2Memory:  65536,
-		argon2Threads: 4,
+		argon2Threads: 2,
 		argon2KeyLen:  32,
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jack", pass, data) {
+	if !validateAccessData("jack", pass, data, nil) {
 		t.Error("Unexpected validation failure for argon2id")
 	}
 
-	if validateAccessData("jack", "wrong-pass", data) {
+	if validateAccessData("jack", "wrong-pass", data, nil) {
 		t.Error("Unexpected validation success for argon2id with wrong password")
 	}
 
 	// argon2i: generate a known hash for "my-pass"
-	argon2iHash := argon2.Key([]byte(pass), argon2Salt, 3, 65536, 4, 32)
+	argon2iHash := argon2.Key([]byte(pass), argon2Salt, 3, 65536, 2, 32)
 
 	data["jim"] = pwd{
 		pwdOrig:       argon2iHash,
@@ -105,16 +110,164 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:       pwdTypeArgon2i,
 		argon2Time:    3,
 		argon2Memory:  65536,
-		argon2Threads: 4,
+		argon2Threads: 2,
 		argon2KeyLen:  32,
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jim", pass, data) {
+	if !validateAccessData("jim", pass, data, nil) {
 		t.Error("Unexpected validation failure for argon2i")
 	}
 
-	if validateAccessData("jim", "wrong-pass", data) {
+	if validateAccessData("jim", "wrong-pass", data, nil) {
 		t.Error("Unexpected validation success for argon2i with wrong password")
+	}
+}
+
+// Test_ValidateArgon2_Cache asserts that a successful verification is
+// cached: after the first call, mutating the stored hash must not
+// change the result of the second call (which is served from the
+// cache). Wrong-password attempts are not cached, so mutating the
+// stored hash between two failing calls flips the second to success.
+func Test_ValidateArgon2_Cache(t *testing.T) {
+	pass := "my-pass"
+	wrong := "wrong-pass"
+	salt, _ := base64.RawStdEncoding.DecodeString("wATvbKx1Yd01DEZk1zpXww")
+	hashPass := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
+	hashWrong := argon2.IDKey([]byte(wrong), salt, 3, 65536, 2, 32)
+
+	build := func(stored []byte) htData {
+		return htData{
+			"jack": pwd{
+				pwdOrig:       stored,
+				pwdPrefix:     "$argon2id$",
+				pwdType:       pwdTypeArgon2id,
+				argon2Time:    3,
+				argon2Memory:  65536,
+				argon2Threads: 2,
+				argon2KeyLen:  32,
+				argon2Salt:    salt,
+			},
+		}
+	}
+
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+	store := cache.New(logrus.NewEntry(logrus.New()), quitCh)
+	v := newArgon2Verifier("test", store)
+
+	// Positive case: first call caches success; second call uses a
+	// stored hash that would not match if re-derived, but the cache
+	// short-circuits the comparison.
+	if !validateAccessData("jack", pass, build(hashPass), v) {
+		t.Fatal("expected first validation to succeed")
+	}
+	if !validateAccessData("jack", pass, build(hashWrong), v) {
+		t.Fatal("expected cached positive result; cache did not serve the hit")
+	}
+
+	// Negative case: first call must not be cached. Replacing the
+	// stored hash with one that matches the attempted password
+	// produces a fresh derivation on the second call.
+	if validateAccessData("jack", wrong, build(hashPass), v) {
+		t.Fatal("expected first wrong-pass attempt to fail")
+	}
+	if !validateAccessData("jack", wrong, build(hashWrong), v) {
+		t.Fatal("negative result must not be cached; second call should re-derive and succeed")
+	}
+}
+
+// Test_ValidateArgon2_CacheNamespacing asserts that two basic_auth
+// instances sharing the same MemoryStore do not collide on the cache
+// key, so a successful verification in one instance cannot satisfy
+// auth in another with a different stored hash.
+func Test_ValidateArgon2_CacheNamespacing(t *testing.T) {
+	pass := "my-pass"
+	salt, _ := base64.RawStdEncoding.DecodeString("wATvbKx1Yd01DEZk1zpXww")
+	hashA := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
+	hashB := argon2.IDKey([]byte("other-pass"), salt, 3, 65536, 2, 32)
+	build := func(stored []byte) htData {
+		return htData{
+			"admin": pwd{
+				pwdOrig:       stored,
+				pwdPrefix:     "$argon2id$",
+				pwdType:       pwdTypeArgon2id,
+				argon2Time:    3,
+				argon2Memory:  65536,
+				argon2Threads: 2,
+				argon2KeyLen:  32,
+				argon2Salt:    salt,
+			},
+		}
+	}
+
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+	store := cache.New(logrus.NewEntry(logrus.New()), quitCh)
+
+	vA := newArgon2Verifier("blockA", store)
+	vB := newArgon2Verifier("blockB", store)
+
+	// blockA: admin/my-pass matches hashA → caches positive.
+	if !validateAccessData("admin", pass, build(hashA), vA) {
+		t.Fatal("expected blockA verification to succeed")
+	}
+	// blockB: admin/my-pass would only match hashA, but blockB's stored
+	// hash is hashB. A bypass would return true here; correct behavior
+	// is to derive fresh and return false.
+	if validateAccessData("admin", pass, build(hashB), vB) {
+		t.Fatal("blockA cache entry must not satisfy blockB auth")
+	}
+}
+
+// Test_ValidateArgon2_Singleflight asserts that N concurrent identical
+// argon2 verifications collapse into a single underlying derivation.
+func Test_ValidateArgon2_Singleflight(t *testing.T) {
+	pass := "my-pass"
+	salt, _ := base64.RawStdEncoding.DecodeString("wATvbKx1Yd01DEZk1zpXww")
+	hash := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
+	stored := pwd{
+		pwdOrig:       hash,
+		pwdPrefix:     "$argon2id$",
+		pwdType:       pwdTypeArgon2id,
+		argon2Time:    3,
+		argon2Memory:  65536,
+		argon2Threads: 2,
+		argon2KeyLen:  32,
+		argon2Salt:    salt,
+	}
+
+	v := newArgon2Verifier("test", nil)
+
+	// Wrap singleflight.Do so we can count underlying derivations
+	// without changing production code. The actual derivation cost
+	// (~10ms) is long enough that 50 goroutines launched in a tight
+	// loop will all queue behind the first.
+	var derivations atomic.Int64
+	var wg sync.WaitGroup
+	const concurrency = 50
+
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			key := v.key("jack", pass)
+			result, _, _ := v.sf.Do(key, func() (any, error) {
+				derivations.Add(1)
+				return runArgon2(pass, stored), nil
+			})
+			if !result.(bool) {
+				t.Errorf("expected validation to succeed")
+			}
+		}()
+	}
+	wg.Wait()
+
+	// singleflight makes a best-effort collapse: under heavy
+	// scheduling the first call may have already returned before some
+	// goroutines call Do, producing a second batch. Tolerate a few but
+	// catch the no-singleflight case (every goroutine derives).
+	if got := derivations.Load(); got >= concurrency/2 {
+		t.Errorf("singleflight failed to collapse: %d derivations for %d concurrent calls", got, concurrency)
 	}
 }

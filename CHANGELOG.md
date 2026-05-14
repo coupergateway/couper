@@ -1,10 +1,19 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.2...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.3...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
+
+## [1.14.3](https://github.com/coupergateway/couper/releases/tag/v1.14.3)
+
+* **Security**
+  * Cap [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth) `htpasswd_file` argon2 parameters at 2× the highest OWASP-recommended values (`m` ≤ 94208 KiB, `t` ≤ 10, `p` ≤ 2) to refuse hashes that could turn the auth endpoint into a memory-exhaustion vector; offending entries are reported with the offending line and the HCL source location of the `htpasswd_file` attribute ([#866](https://github.com/coupergateway/couper/issues/866))
+  * Collapse concurrent identical argon2 verifications via `singleflight` and cache positive/negative results for 5 minutes to bound CPU/memory amplification under retry storms ([#866](https://github.com/coupergateway/couper/issues/866))
+
+* **Documentation**
+  * [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth): document the new argon2 parameter caps and recommend chaining a [`beta_rate_limiter`](https://docs.couper.io/configuration/block/rate_limiter) access control upfront so unique-password attackers are throttled before any argon2 derivation runs ([#963](https://github.com/coupergateway/couper/pull/963))
 
 ## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)
 

@@ -35,12 +35,15 @@ func Test_NewBasicAuth(t *testing.T) {
 		{"name", "john", "pass", "testdata/htpasswd", "", false},
 		{"name", "user", "pass", "file", "open file: no such file or directory", true},
 		{"name", "user", "pass", "testdata/htpasswd_err_invalid", "parse error: invalid line: 1", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_too_long", "parse error: line length exceeded: 255", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `parse error: malformed password for user: foo`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_multi", `multiple user: foo`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "parse error: algorithm not supported", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_too_long", "parse error: line length exceeded: 255 (line 1)", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `parse error: malformed password for user "foo" (line 1)`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_multi", `multiple user: foo (line 2)`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "parse error: algorithm not supported (line 1)", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_argon2_memory", `parse error: malformed password for user "jack" (line 1): invalid argon2 parameter m: 94209 KiB exceeds cap of 94208 KiB`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_argon2_time", `parse error: malformed password for user "jack" (line 1): invalid argon2 parameter t: 11 exceeds cap of 10`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_argon2_threads", `parse error: malformed password for user "jack" (line 1): invalid argon2 parameter p: 3 exceeds cap of 2`, true},
 	} {
-		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file)
+		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file, nil)
 		if tc.shouldFail && ba != nil {
 			t.Error("Expected no successful basic auth creation")
 		}
@@ -56,7 +59,7 @@ func Test_NewBasicAuth(t *testing.T) {
 }
 
 func Test_BasicAuth_Validate(t *testing.T) {
-	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd")
+	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", nil)
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -96,19 +99,19 @@ func Test_BasicAuth_Validate(t *testing.T) {
 func Test_BasicAuth_ValidateCases(t *testing.T) {
 	req := &http.Request{Header: make(http.Header)}
 
-	ba1, err := ac.NewBasicAuth("name", "", "pass", "")
+	ba1, err := ac.NewBasicAuth("name", "", "pass", "", nil)
 	if err != nil || ba1 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba2, err := ac.NewBasicAuth("name", "user", "", "")
+	ba2, err := ac.NewBasicAuth("name", "user", "", "", nil)
 	if err != nil || ba2 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba3, err := ac.NewBasicAuth("name", "", "", "")
+	ba3, err := ac.NewBasicAuth("name", "", "", "", nil)
 	if err != nil || ba3 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd")
+	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd", nil)
 	if err != nil || ba4 == nil {
 		t.Fatal("Expected a basic auth object")
 	}

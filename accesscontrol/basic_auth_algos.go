@@ -3,15 +3,59 @@ package accesscontrol
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/sync/singleflight"
+
+	"github.com/coupergateway/couper/cache"
 )
+
+// argon2CacheTTL bounds the time a positive verification result is
+// cached. Five minutes — long enough to absorb repeat retries by a
+// legitimate high-RPS client, short enough that a password rotation
+// in the htpasswd file takes effect quickly (the file is re-read on
+// configuration reload).
+//
+// Only successful verifications are cached. Caching negatives would
+// turn the cache itself into a memory-DoS vector: an attacker spraying
+// unique wrong passwords would create one entry per attempt within the
+// TTL. Wrong passwords are bounded externally by the rate_limiter
+// access control we recommend pairing with basic_auth.
+const argon2CacheTTL int64 = 300
+
+// argon2Verifier collapses concurrent identical argon2 evaluations
+// (singleflight) and caches their result with a short TTL. A nil
+// receiver runs the derivation directly without dedup or cache —
+// useful for unit tests that build htData by hand.
+type argon2Verifier struct {
+	name  string // basic_auth label, namespaces the shared cache
+	sf    *singleflight.Group
+	cache *cache.MemoryStore
+}
+
+func newArgon2Verifier(name string, memStore *cache.MemoryStore) *argon2Verifier {
+	return &argon2Verifier{
+		name:  name,
+		sf:    &singleflight.Group{},
+		cache: memStore,
+	}
+}
+
+// key builds a cache key scoped to this basic_auth instance so a
+// successful verification in one block cannot satisfy auth in another
+// block that happens to share a username with a different stored hash.
+func (v *argon2Verifier) key(user, plainPass string) string {
+	sum := sha256.Sum256([]byte(plainPass))
+	return "ba:" + v.name + ":" + user + ":" + hex.EncodeToString(sum[:])
+}
 
 const (
 	pwdPrefixApr1     = "$apr1$"
@@ -37,6 +81,17 @@ const (
 	aprCharacters    = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	aprMd5DigestSize = 16
 	aprMuddleRounds  = 1000
+)
+
+// Caps for argon2 parameters parsed from htpasswd entries. Bound at
+// 2x the highest OWASP-recommended values to refuse hashes that could
+// be turned into a memory-exhaustion vector against the gateway.
+// OWASP Password Storage Cheat Sheet trade-off table maxima: m=46 MiB,
+// t=5, p=1.
+const (
+	argon2MaxMemory  uint32 = 94208 // KiB, 2x OWASP 46 MiB
+	argon2MaxTime    uint32 = 10    // 2x OWASP 5
+	argon2MaxThreads uint8  = 2     // 2x OWASP 1
 )
 
 var pwdPrefixes = map[string]int{
@@ -74,7 +129,7 @@ func getPwdType(pass string) int {
 	return pwdTypeUnknown
 }
 
-func validateAccessData(plainUser, plainPass string, data htData) bool {
+func validateAccessData(plainUser, plainPass string, data htData, verifier *argon2Verifier) bool {
 	for user, pass := range data {
 		if user == plainUser {
 			switch pass.pwdType {
@@ -89,7 +144,7 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 					return true
 				}
 			case pwdTypeArgon2id, pwdTypeArgon2i:
-				if validateArgon2(plainPass, pass) {
+				if verifier.validateArgon2(plainUser, plainPass, pass) {
 					return true
 				}
 			}
@@ -99,7 +154,32 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 	return false
 }
 
-func validateArgon2(plainPass string, p pwd) bool {
+// validateArgon2 derives the argon2 key for plainPass and compares it
+// against the stored hash. Repeated identical attempts within the TTL
+// are served from the cache; concurrent identical attempts collapse
+// into a single derivation via singleflight. A nil receiver bypasses
+// both and runs the derivation directly.
+func (v *argon2Verifier) validateArgon2(plainUser, plainPass string, p pwd) bool {
+	if v == nil {
+		return runArgon2(plainPass, p)
+	}
+	key := v.key(plainUser, plainPass)
+	if v.cache != nil {
+		if cached := v.cache.Get(key); cached != nil {
+			return cached.(bool)
+		}
+	}
+	result, _, _ := v.sf.Do(key, func() (any, error) {
+		return runArgon2(plainPass, p), nil
+	})
+	ok := result.(bool)
+	if ok && v.cache != nil {
+		v.cache.Set(key, ok, argon2CacheTTL)
+	}
+	return ok
+}
+
+func runArgon2(plainPass string, p pwd) bool {
 	var key []byte
 	switch p.pwdType {
 	case pwdTypeArgon2id:
@@ -148,6 +228,9 @@ func parseArgon2(password, prefix string) (pwd, error) {
 	if parseErr != nil {
 		return pwd{}, fmt.Errorf("invalid argon2 parameter m: %w", parseErr)
 	}
+	if uint32(memory) > argon2MaxMemory {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter m: %d KiB exceeds cap of %d KiB", memory, argon2MaxMemory)
+	}
 
 	if v, ok := params["t"]; ok {
 		time, parseErr = strconv.ParseUint(v, 10, 32)
@@ -156,6 +239,9 @@ func parseArgon2(password, prefix string) (pwd, error) {
 	}
 	if parseErr != nil {
 		return pwd{}, fmt.Errorf("invalid argon2 parameter t: %w", parseErr)
+	}
+	if uint32(time) > argon2MaxTime {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter t: %d exceeds cap of %d", time, argon2MaxTime)
 	}
 
 	if v, ok := params["p"]; ok {
@@ -168,6 +254,9 @@ func parseArgon2(password, prefix string) (pwd, error) {
 	}
 	if threads < 1 {
 		return pwd{}, fmt.Errorf("invalid argon2 parallelism: must be >= 1")
+	}
+	if uint8(threads) > argon2MaxThreads {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter p: %d exceeds cap of %d", threads, argon2MaxThreads)
 	}
 
 	// parts[2] = base64-encoded salt
