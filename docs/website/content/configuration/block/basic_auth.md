@@ -64,7 +64,7 @@ The htpasswd file uses [Apache's htpasswd](https://httpd.apache.org/docs/current
 
 ```
 john:$2y$05$/uonQYUtwm...
-jane:$argon2id$v=19$m=65536,t=3,p=4$salt$hash
+jane:$argon2id$v=19$m=65536,t=3,p=2$salt$hash
 ```
 
 ### Attribute `htpasswd_file`
@@ -88,7 +88,47 @@ The argon2 hash encodes the parameters used to derive it: `m` (memory in KiB), `
 
 OWASP currently recommends for `argon2id`: `m=19456` (≈19 MiB), `t=2`, `p=1`.
 
-_Memory cost is per request_. Couper allocates `m` KiB on every basic auth verification. With large values of `m` and concurrent requests, the Go heap grows accordingly — e.g. `m=524288` (512 MiB) and 4 parallel auths can require 2 GiB of resident memory before the runtime reclaims it. Pick `m` so that `m × expected_concurrent_auths` comfortably fits into the memory budget of the Couper process; otherwise an attacker can turn the auth endpoint into a memory-exhaustion vector.
+_Memory cost is per request_. Couper allocates `m` KiB on every basic auth verification, which is why parameter choice matters for the gateway's resident memory under load. Couper caps the parameters encoded in the htpasswd file at twice the highest OWASP-recommended values and refuses to start otherwise:
+
+| Parameter   | Cap         | OWASP highest |
+|:------------|:------------|:--------------|
+| `m` (KiB)   | `94208`     | `47104`       |
+| `t`         | `10`        | `5`           |
+| `p`         | `2`         | `1`           |
+
+To bound amplification under retry storms, Couper collapses concurrent identical verifications into a single argon2 evaluation and caches both positive and negative results for five minutes per `(user, password)` pair. A single unique attempt still pays the full derivation cost — see "Pair with a rate limiter" below.
+
+### Pair with a rate limiter
+
+Argon2 is intentionally expensive. Even with the parameter cap and the in-process result cache, an attacker who cycles through unique wrong passwords pays no cache cost and forces Couper through one full derivation per attempt. Place a [`beta_rate_limiter`](/configuration/block/rate_limiter) access control _before_ the basic auth in the endpoint's `access_control` list so abusive callers are rejected before any argon2 work runs:
+
+```hcl
+server {
+  api {
+    endpoint "/private" {
+      access_control = ["ip_rate", "myauth"]
+      proxy {
+        backend = "my_backend"
+      }
+    }
+  }
+}
+
+definitions {
+  beta_rate_limiter "ip_rate" {
+    period        = "60s"
+    per_period    = 10
+    period_window = "sliding"
+    key           = request.remote_ip
+  }
+
+  basic_auth "myauth" {
+    htpasswd_file = "htpasswd"
+  }
+}
+```
+
+Access controls run in the order listed: the rate limiter rejects the request first, so basic auth is invoked only for callers within the budget.
 
 
 {{< attributes >}}
