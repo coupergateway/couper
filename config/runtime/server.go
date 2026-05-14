@@ -530,6 +530,13 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			confErr := errors.Configuration.Label(baConf.Name)
 			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
 			if err != nil {
+				if subject := basicAuthErrSubject(baConf); subject != nil {
+					return nil, hcl.Diagnostics{&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  fmt.Sprintf("basic_auth %q: %s", baConf.Name, err.Error()),
+						Subject:  subject,
+					}}
+				}
 				return nil, confErr.With(err)
 			}
 
@@ -601,6 +608,22 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	}
 
 	return accessControls, nil
+}
+
+// basicAuthErrSubject returns the HCL source range that best identifies
+// the cause of a basic_auth construction error, preferring the
+// htpasswd_file attribute over the surrounding block.
+func basicAuthErrSubject(baConf *config.BasicAuth) *hcl.Range {
+	body := baConf.HCLBody()
+	if body == nil {
+		return nil
+	}
+	if attr, ok := body.Attributes["htpasswd_file"]; ok && attr != nil {
+		r := attr.SrcRange
+		return &r
+	}
+	r := body.SrcRange
+	return &r
 }
 
 func configureSAMLProviders(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,

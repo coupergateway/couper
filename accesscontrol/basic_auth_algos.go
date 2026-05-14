@@ -39,6 +39,17 @@ const (
 	aprMuddleRounds  = 1000
 )
 
+// Caps for argon2 parameters parsed from htpasswd entries. Bound at
+// 2x the highest OWASP-recommended values to refuse hashes that could
+// be turned into a memory-exhaustion vector against the gateway.
+// OWASP Password Storage Cheat Sheet trade-off table maxima: m=46 MiB,
+// t=5, p=1.
+const (
+	argon2MaxMemory  uint32 = 94208 // KiB, 2x OWASP 46 MiB
+	argon2MaxTime    uint32 = 10    // 2x OWASP 5
+	argon2MaxThreads uint8  = 2     // 2x OWASP 1
+)
+
 var pwdPrefixes = map[string]int{
 	pwdPrefixApr1:     pwdTypeApr1,
 	pwdPrefixBcrypt2a: pwdTypeBcrypt,
@@ -148,6 +159,9 @@ func parseArgon2(password, prefix string) (pwd, error) {
 	if parseErr != nil {
 		return pwd{}, fmt.Errorf("invalid argon2 parameter m: %w", parseErr)
 	}
+	if uint32(memory) > argon2MaxMemory {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter m: %d KiB exceeds cap of %d KiB", memory, argon2MaxMemory)
+	}
 
 	if v, ok := params["t"]; ok {
 		time, parseErr = strconv.ParseUint(v, 10, 32)
@@ -156,6 +170,9 @@ func parseArgon2(password, prefix string) (pwd, error) {
 	}
 	if parseErr != nil {
 		return pwd{}, fmt.Errorf("invalid argon2 parameter t: %w", parseErr)
+	}
+	if uint32(time) > argon2MaxTime {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter t: %d exceeds cap of %d", time, argon2MaxTime)
 	}
 
 	if v, ok := params["p"]; ok {
@@ -168,6 +185,9 @@ func parseArgon2(password, prefix string) (pwd, error) {
 	}
 	if threads < 1 {
 		return pwd{}, fmt.Errorf("invalid argon2 parallelism: must be >= 1")
+	}
+	if uint8(threads) > argon2MaxThreads {
+		return pwd{}, fmt.Errorf("invalid argon2 parameter p: %d exceeds cap of %d", threads, argon2MaxThreads)
 	}
 
 	// parts[2] = base64-encoded salt

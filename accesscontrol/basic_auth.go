@@ -52,7 +52,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 		}
 
 		if len(line) > 255 {
-			return nil, fmt.Errorf("parse error: line length exceeded: 255")
+			return nil, fmt.Errorf("parse error: line length exceeded: 255 (line %d)", lineNr)
 		}
 
 		up := strings.SplitN(line, ":", 2)
@@ -63,7 +63,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 		username, password := up[0], up[1]
 
 		if _, ok := ba.htFile[username]; ok {
-			return nil, fmt.Errorf("multiple user: %s", username)
+			return nil, fmt.Errorf("multiple user: %s (line %d)", username, lineNr)
 		}
 
 		switch pwdType := getPwdType(password); pwdType {
@@ -77,7 +77,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 
 			parts := strings.Split(strings.TrimPrefix(password, prefix), "$")
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("parse error: malformed password for user: %s", username)
+				return nil, fmt.Errorf("parse error: malformed password for user %q (line %d)", username, lineNr)
 			}
 
 			ba.htFile[username] = pwd{
@@ -98,11 +98,11 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 			}
 			p, pErr := parseArgon2(password, prefix)
 			if pErr != nil {
-				return nil, fmt.Errorf("parse error: malformed password for user: %s: %w", username, pErr)
+				return nil, fmt.Errorf("parse error: malformed password for user %q (line %d): %w", username, lineNr, pErr)
 			}
 			ba.htFile[username] = p
 		default:
-			return nil, fmt.Errorf("parse error: algorithm not supported")
+			return nil, fmt.Errorf("parse error: algorithm not supported (line %d)", lineNr)
 		}
 	}
 

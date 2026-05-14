@@ -75,7 +75,7 @@ func Test_ValidateAccessData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to decode argon2 salt: %v", err)
 	}
-	argon2Hash := argon2.IDKey([]byte(pass), argon2Salt, 3, 65536, 4, 32)
+	argon2Hash := argon2.IDKey([]byte(pass), argon2Salt, 3, 65536, 2, 32)
 
 	data["jack"] = pwd{
 		pwdOrig:       argon2Hash,
@@ -83,7 +83,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:       pwdTypeArgon2id,
 		argon2Time:    3,
 		argon2Memory:  65536,
-		argon2Threads: 4,
+		argon2Threads: 2,
 		argon2KeyLen:  32,
 		argon2Salt:    argon2Salt,
 	}
@@ -97,7 +97,7 @@ func Test_ValidateAccessData(t *testing.T) {
 	}
 
 	// argon2i: generate a known hash for "my-pass"
-	argon2iHash := argon2.Key([]byte(pass), argon2Salt, 3, 65536, 4, 32)
+	argon2iHash := argon2.Key([]byte(pass), argon2Salt, 3, 65536, 2, 32)
 
 	data["jim"] = pwd{
 		pwdOrig:       argon2iHash,
@@ -105,7 +105,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:       pwdTypeArgon2i,
 		argon2Time:    3,
 		argon2Memory:  65536,
-		argon2Threads: 4,
+		argon2Threads: 2,
 		argon2KeyLen:  32,
 		argon2Salt:    argon2Salt,
 	}
