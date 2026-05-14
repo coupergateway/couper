@@ -3,15 +3,34 @@ package accesscontrol
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/sync/singleflight"
 )
+
+// argon2Verifier collapses concurrent identical argon2 evaluations and
+// (in a follow-up commit) caches their result. A nil receiver runs the
+// derivation directly — used by unit tests that build htData by hand.
+type argon2Verifier struct {
+	sf *singleflight.Group
+}
+
+func newArgon2Verifier() *argon2Verifier {
+	return &argon2Verifier{sf: &singleflight.Group{}}
+}
+
+func argon2VerifierKey(user, plainPass string) string {
+	sum := sha256.Sum256([]byte(plainPass))
+	return "ba:" + user + ":" + hex.EncodeToString(sum[:])
+}
 
 const (
 	pwdPrefixApr1     = "$apr1$"
@@ -85,7 +104,7 @@ func getPwdType(pass string) int {
 	return pwdTypeUnknown
 }
 
-func validateAccessData(plainUser, plainPass string, data htData) bool {
+func validateAccessData(plainUser, plainPass string, data htData, verifier *argon2Verifier) bool {
 	for user, pass := range data {
 		if user == plainUser {
 			switch pass.pwdType {
@@ -100,7 +119,7 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 					return true
 				}
 			case pwdTypeArgon2id, pwdTypeArgon2i:
-				if validateArgon2(plainPass, pass) {
+				if verifier.validateArgon2(plainUser, plainPass, pass) {
 					return true
 				}
 			}
@@ -110,7 +129,22 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 	return false
 }
 
-func validateArgon2(plainPass string, p pwd) bool {
+// validateArgon2 derives the argon2 key for plainPass and compares it
+// against the stored hash. Concurrent identical attempts are collapsed
+// into a single derivation via singleflight; a nil receiver bypasses
+// that and runs the derivation directly.
+func (v *argon2Verifier) validateArgon2(plainUser, plainPass string, p pwd) bool {
+	if v == nil {
+		return runArgon2(plainPass, p)
+	}
+	key := argon2VerifierKey(plainUser, plainPass)
+	result, _, _ := v.sf.Do(key, func() (any, error) {
+		return runArgon2(plainPass, p), nil
+	})
+	return result.(bool)
+}
+
+func runArgon2(plainPass string, p pwd) bool {
 	var key []byte
 	switch p.pwdType {
 	case pwdTypeArgon2id:

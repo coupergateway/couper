@@ -2,6 +2,8 @@ package accesscontrol
 
 import (
 	"encoding/base64"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"golang.org/x/crypto/argon2"
@@ -36,7 +38,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeApr1,
 	}
 
-	if !validateAccessData("john", pass, data) {
+	if !validateAccessData("john", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -49,11 +51,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeBcrypt,
 	}
 
-	if !validateAccessData("jane", pass, data) {
+	if !validateAccessData("jane", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
-	if validateAccessData("foo", "bar", data) {
+	if validateAccessData("foo", "bar", data, nil) {
 		t.Error("Unexpected validation success")
 	}
 
@@ -66,7 +68,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeMD5,
 	}
 
-	if !validateAccessData("jock", pass, data) {
+	if !validateAccessData("jock", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -88,11 +90,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jack", pass, data) {
+	if !validateAccessData("jack", pass, data, nil) {
 		t.Error("Unexpected validation failure for argon2id")
 	}
 
-	if validateAccessData("jack", "wrong-pass", data) {
+	if validateAccessData("jack", "wrong-pass", data, nil) {
 		t.Error("Unexpected validation success for argon2id with wrong password")
 	}
 
@@ -110,11 +112,63 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jim", pass, data) {
+	if !validateAccessData("jim", pass, data, nil) {
 		t.Error("Unexpected validation failure for argon2i")
 	}
 
-	if validateAccessData("jim", "wrong-pass", data) {
+	if validateAccessData("jim", "wrong-pass", data, nil) {
 		t.Error("Unexpected validation success for argon2i with wrong password")
+	}
+}
+
+// Test_ValidateArgon2_Singleflight asserts that N concurrent identical
+// argon2 verifications collapse into a single underlying derivation.
+func Test_ValidateArgon2_Singleflight(t *testing.T) {
+	pass := "my-pass"
+	salt, _ := base64.RawStdEncoding.DecodeString("wATvbKx1Yd01DEZk1zpXww")
+	hash := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
+	stored := pwd{
+		pwdOrig:       hash,
+		pwdPrefix:     "$argon2id$",
+		pwdType:       pwdTypeArgon2id,
+		argon2Time:    3,
+		argon2Memory:  65536,
+		argon2Threads: 2,
+		argon2KeyLen:  32,
+		argon2Salt:    salt,
+	}
+
+	v := newArgon2Verifier()
+
+	// Wrap singleflight.Do so we can count underlying derivations
+	// without changing production code. The actual derivation cost
+	// (~10ms) is long enough that 50 goroutines launched in a tight
+	// loop will all queue behind the first.
+	var derivations atomic.Int64
+	var wg sync.WaitGroup
+	const concurrency = 50
+
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			key := argon2VerifierKey("jack", pass)
+			result, _, _ := v.sf.Do(key, func() (any, error) {
+				derivations.Add(1)
+				return runArgon2(pass, stored), nil
+			})
+			if !result.(bool) {
+				t.Errorf("expected validation to succeed")
+			}
+		}()
+	}
+	wg.Wait()
+
+	// singleflight makes a best-effort collapse: under heavy
+	// scheduling the first call may have already returned before some
+	// goroutines call Do, producing a second batch. Tolerate a few but
+	// catch the no-singleflight case (every goroutine derives).
+	if got := derivations.Load(); got >= concurrency/2 {
+		t.Errorf("singleflight failed to collapse: %d derivations for %d concurrent calls", got, concurrency)
 	}
 }

@@ -17,19 +17,21 @@ var _ AccessControl = &BasicAuth{}
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
-	htFile htData
-	name   string
-	user   string
-	pass   string
+	htFile   htData
+	name     string
+	user     string
+	pass     string
+	verifier *argon2Verifier
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
 func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 	ba := &BasicAuth{
-		htFile: make(htData),
-		name:   name,
-		user:   user,
-		pass:   pass,
+		htFile:   make(htData),
+		name:     name,
+		user:     user,
+		pass:     pass,
+		verifier: newArgon2Verifier(),
 	}
 
 	if file == "" {
@@ -139,7 +141,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	}
 
 	if len(ba.htFile) > 0 {
-		if validateAccessData(user, pass, ba.htFile) {
+		if validateAccessData(user, pass, ba.htFile, ba.verifier) {
 			return ba.withUsername(req, user)
 		}
 		return errors.BasicAuth.Message("file: credential mismatch")
