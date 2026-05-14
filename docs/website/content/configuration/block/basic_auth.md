@@ -69,7 +69,7 @@ jane:$argon2id$v=19$m=65536,t=3,p=2$salt$hash
 
 ### Attribute `htpasswd_file`
 
-The file is loaded once at startup. Restart Couper after you have changed it.
+The file is loaded at startup and on configuration reload. When Couper is run with the `-watch` flag, changes to the `htpasswd_file` path are detected automatically and trigger a reload; otherwise restart Couper after changing it.
 
 Couper supports the following password hash algorithms:
 
