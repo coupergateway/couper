@@ -5,8 +5,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/argon2"
+
+	"github.com/coupergateway/couper/cache"
 )
 
 func Test_Apr1MD5(t *testing.T) {
@@ -121,6 +125,68 @@ func Test_ValidateAccessData(t *testing.T) {
 	}
 }
 
+// Test_ValidateArgon2_Cache asserts that a cached argon2 verification
+// result is served without re-running the (expensive) key derivation.
+func Test_ValidateArgon2_Cache(t *testing.T) {
+	pass := "my-pass"
+	salt, _ := base64.RawStdEncoding.DecodeString("wATvbKx1Yd01DEZk1zpXww")
+	hash := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
+	data := htData{
+		"jack": pwd{
+			pwdOrig:       hash,
+			pwdPrefix:     "$argon2id$",
+			pwdType:       pwdTypeArgon2id,
+			argon2Time:    3,
+			argon2Memory:  65536,
+			argon2Threads: 2,
+			argon2KeyLen:  32,
+			argon2Salt:    salt,
+		},
+	}
+
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+	store := cache.New(logrus.NewEntry(logrus.New()), quitCh)
+	v := newArgon2Verifier(store)
+
+	start := time.Now()
+	if !validateAccessData("jack", pass, data, v) {
+		t.Fatal("expected first validation to succeed")
+	}
+	first := time.Since(start)
+
+	start = time.Now()
+	if !validateAccessData("jack", pass, data, v) {
+		t.Fatal("expected cached validation to succeed")
+	}
+	cached := time.Since(start)
+
+	// The cache hit should be at least an order of magnitude faster
+	// than the actual argon2 derivation. m=64 MiB, t=3 takes tens of
+	// ms; a map lookup takes microseconds.
+	if cached*10 > first {
+		t.Errorf("cache hit not materially faster: first=%v cached=%v", first, cached)
+	}
+
+	// Negative result is also cached so a wrong-password retry is
+	// served cheaply.
+	start = time.Now()
+	if validateAccessData("jack", "wrong-pass", data, v) {
+		t.Fatal("expected validation with wrong password to fail")
+	}
+	firstWrong := time.Since(start)
+
+	start = time.Now()
+	if validateAccessData("jack", "wrong-pass", data, v) {
+		t.Fatal("expected cached validation with wrong password to fail")
+	}
+	cachedWrong := time.Since(start)
+
+	if cachedWrong*10 > firstWrong {
+		t.Errorf("negative cache hit not materially faster: first=%v cached=%v", firstWrong, cachedWrong)
+	}
+}
+
 // Test_ValidateArgon2_Singleflight asserts that N concurrent identical
 // argon2 verifications collapse into a single underlying derivation.
 func Test_ValidateArgon2_Singleflight(t *testing.T) {
@@ -138,7 +204,7 @@ func Test_ValidateArgon2_Singleflight(t *testing.T) {
 		argon2Salt:    salt,
 	}
 
-	v := newArgon2Verifier()
+	v := newArgon2Verifier(nil)
 
 	// Wrap singleflight.Do so we can count underlying derivations
 	// without changing production code. The actual derivation cost

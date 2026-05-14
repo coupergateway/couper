@@ -14,17 +14,32 @@ import (
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/coupergateway/couper/cache"
 )
 
-// argon2Verifier collapses concurrent identical argon2 evaluations and
-// (in a follow-up commit) caches their result. A nil receiver runs the
-// derivation directly — used by unit tests that build htData by hand.
+// argon2CacheTTL bounds the time a verification result is cached. Five
+// minutes — long enough to absorb repeat retries by the same client,
+// short enough that a password rotated in the htpasswd file takes
+// effect quickly (the file is re-read on configuration reload, but the
+// cache is per-BasicAuth instance and survives until the new instance
+// replaces it).
+const argon2CacheTTL int64 = 300
+
+// argon2Verifier collapses concurrent identical argon2 evaluations
+// (singleflight) and caches their result with a short TTL. A nil
+// receiver runs the derivation directly without dedup or cache —
+// useful for unit tests that build htData by hand.
 type argon2Verifier struct {
-	sf *singleflight.Group
+	sf    *singleflight.Group
+	cache *cache.MemoryStore
 }
 
-func newArgon2Verifier() *argon2Verifier {
-	return &argon2Verifier{sf: &singleflight.Group{}}
+func newArgon2Verifier(memStore *cache.MemoryStore) *argon2Verifier {
+	return &argon2Verifier{
+		sf:    &singleflight.Group{},
+		cache: memStore,
+	}
 }
 
 func argon2VerifierKey(user, plainPass string) string {
@@ -130,18 +145,28 @@ func validateAccessData(plainUser, plainPass string, data htData, verifier *argo
 }
 
 // validateArgon2 derives the argon2 key for plainPass and compares it
-// against the stored hash. Concurrent identical attempts are collapsed
-// into a single derivation via singleflight; a nil receiver bypasses
-// that and runs the derivation directly.
+// against the stored hash. Repeated identical attempts within the TTL
+// are served from the cache; concurrent identical attempts collapse
+// into a single derivation via singleflight. A nil receiver bypasses
+// both and runs the derivation directly.
 func (v *argon2Verifier) validateArgon2(plainUser, plainPass string, p pwd) bool {
 	if v == nil {
 		return runArgon2(plainPass, p)
 	}
 	key := argon2VerifierKey(plainUser, plainPass)
+	if v.cache != nil {
+		if cached := v.cache.Get(key); cached != nil {
+			return cached.(bool)
+		}
+	}
 	result, _, _ := v.sf.Do(key, func() (any, error) {
 		return runArgon2(plainPass, p), nil
 	})
-	return result.(bool)
+	ok := result.(bool)
+	if v.cache != nil {
+		v.cache.Set(key, ok, argon2CacheTTL)
+	}
+	return ok
 }
 
 func runArgon2(plainPass string, p pwd) bool {

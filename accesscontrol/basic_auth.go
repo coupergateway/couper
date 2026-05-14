@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 )
@@ -24,14 +25,15 @@ type BasicAuth struct {
 	verifier *argon2Verifier
 }
 
-// NewBasicAuth creates a new AC-BasicAuth object
-func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
+// NewBasicAuth creates a new AC-BasicAuth object. memStore (may be nil)
+// backs the argon2 verification-result cache.
+func NewBasicAuth(name, user, pass, file string, memStore *cache.MemoryStore) (*BasicAuth, error) {
 	ba := &BasicAuth{
 		htFile:   make(htData),
 		name:     name,
 		user:     user,
 		pass:     pass,
-		verifier: newArgon2Verifier(),
+		verifier: newArgon2Verifier(memStore),
 	}
 
 	if file == "" {
