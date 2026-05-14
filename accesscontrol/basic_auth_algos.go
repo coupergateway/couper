@@ -31,20 +31,25 @@ const argon2CacheTTL int64 = 300
 // receiver runs the derivation directly without dedup or cache —
 // useful for unit tests that build htData by hand.
 type argon2Verifier struct {
+	name  string // basic_auth label, namespaces the shared cache
 	sf    *singleflight.Group
 	cache *cache.MemoryStore
 }
 
-func newArgon2Verifier(memStore *cache.MemoryStore) *argon2Verifier {
+func newArgon2Verifier(name string, memStore *cache.MemoryStore) *argon2Verifier {
 	return &argon2Verifier{
+		name:  name,
 		sf:    &singleflight.Group{},
 		cache: memStore,
 	}
 }
 
-func argon2VerifierKey(user, plainPass string) string {
+// key builds a cache key scoped to this basic_auth instance so a
+// successful verification in one block cannot satisfy auth in another
+// block that happens to share a username with a different stored hash.
+func (v *argon2Verifier) key(user, plainPass string) string {
 	sum := sha256.Sum256([]byte(plainPass))
-	return "ba:" + user + ":" + hex.EncodeToString(sum[:])
+	return "ba:" + v.name + ":" + user + ":" + hex.EncodeToString(sum[:])
 }
 
 const (
@@ -153,7 +158,7 @@ func (v *argon2Verifier) validateArgon2(plainUser, plainPass string, p pwd) bool
 	if v == nil {
 		return runArgon2(plainPass, p)
 	}
-	key := argon2VerifierKey(plainUser, plainPass)
+	key := v.key(plainUser, plainPass)
 	if v.cache != nil {
 		if cached := v.cache.Get(key); cached != nil {
 			return cached.(bool)

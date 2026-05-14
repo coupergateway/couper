@@ -147,7 +147,7 @@ func Test_ValidateArgon2_Cache(t *testing.T) {
 	quitCh := make(chan struct{})
 	defer close(quitCh)
 	store := cache.New(logrus.NewEntry(logrus.New()), quitCh)
-	v := newArgon2Verifier(store)
+	v := newArgon2Verifier("test", store)
 
 	start := time.Now()
 	if !validateAccessData("jack", pass, data, v) {
@@ -187,6 +187,49 @@ func Test_ValidateArgon2_Cache(t *testing.T) {
 	}
 }
 
+// Test_ValidateArgon2_CacheNamespacing asserts that two basic_auth
+// instances sharing the same MemoryStore do not collide on the cache
+// key, so a successful verification in one instance cannot satisfy
+// auth in another with a different stored hash.
+func Test_ValidateArgon2_CacheNamespacing(t *testing.T) {
+	pass := "my-pass"
+	salt, _ := base64.RawStdEncoding.DecodeString("wATvbKx1Yd01DEZk1zpXww")
+	hashA := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
+	hashB := argon2.IDKey([]byte("other-pass"), salt, 3, 65536, 2, 32)
+	build := func(stored []byte) htData {
+		return htData{
+			"admin": pwd{
+				pwdOrig:       stored,
+				pwdPrefix:     "$argon2id$",
+				pwdType:       pwdTypeArgon2id,
+				argon2Time:    3,
+				argon2Memory:  65536,
+				argon2Threads: 2,
+				argon2KeyLen:  32,
+				argon2Salt:    salt,
+			},
+		}
+	}
+
+	quitCh := make(chan struct{})
+	defer close(quitCh)
+	store := cache.New(logrus.NewEntry(logrus.New()), quitCh)
+
+	vA := newArgon2Verifier("blockA", store)
+	vB := newArgon2Verifier("blockB", store)
+
+	// blockA: admin/my-pass matches hashA → caches positive.
+	if !validateAccessData("admin", pass, build(hashA), vA) {
+		t.Fatal("expected blockA verification to succeed")
+	}
+	// blockB: admin/my-pass would only match hashA, but blockB's stored
+	// hash is hashB. A bypass would return true here; correct behavior
+	// is to derive fresh and return false.
+	if validateAccessData("admin", pass, build(hashB), vB) {
+		t.Fatal("blockA cache entry must not satisfy blockB auth")
+	}
+}
+
 // Test_ValidateArgon2_Singleflight asserts that N concurrent identical
 // argon2 verifications collapse into a single underlying derivation.
 func Test_ValidateArgon2_Singleflight(t *testing.T) {
@@ -204,7 +247,7 @@ func Test_ValidateArgon2_Singleflight(t *testing.T) {
 		argon2Salt:    salt,
 	}
 
-	v := newArgon2Verifier(nil)
+	v := newArgon2Verifier("test", nil)
 
 	// Wrap singleflight.Do so we can count underlying derivations
 	// without changing production code. The actual derivation cost
@@ -218,7 +261,7 @@ func Test_ValidateArgon2_Singleflight(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		go func() {
 			defer wg.Done()
-			key := argon2VerifierKey("jack", pass)
+			key := v.key("jack", pass)
 			result, _, _ := v.sf.Do(key, func() (any, error) {
 				derivations.Add(1)
 				return runArgon2(pass, stored), nil

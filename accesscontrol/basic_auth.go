@@ -33,7 +33,7 @@ func NewBasicAuth(name, user, pass, file string, memStore *cache.MemoryStore) (*
 		name:     name,
 		user:     user,
 		pass:     pass,
-		verifier: newArgon2Verifier(memStore),
+		verifier: newArgon2Verifier(name, memStore),
 	}
 
 	if file == "" {
