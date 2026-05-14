@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/argon2"
@@ -125,23 +124,31 @@ func Test_ValidateAccessData(t *testing.T) {
 	}
 }
 
-// Test_ValidateArgon2_Cache asserts that a cached argon2 verification
-// result is served without re-running the (expensive) key derivation.
+// Test_ValidateArgon2_Cache asserts that a successful verification is
+// cached: after the first call, mutating the stored hash must not
+// change the result of the second call (which is served from the
+// cache). Wrong-password attempts are not cached, so mutating the
+// stored hash between two failing calls flips the second to success.
 func Test_ValidateArgon2_Cache(t *testing.T) {
 	pass := "my-pass"
+	wrong := "wrong-pass"
 	salt, _ := base64.RawStdEncoding.DecodeString("wATvbKx1Yd01DEZk1zpXww")
-	hash := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
-	data := htData{
-		"jack": pwd{
-			pwdOrig:       hash,
-			pwdPrefix:     "$argon2id$",
-			pwdType:       pwdTypeArgon2id,
-			argon2Time:    3,
-			argon2Memory:  65536,
-			argon2Threads: 2,
-			argon2KeyLen:  32,
-			argon2Salt:    salt,
-		},
+	hashPass := argon2.IDKey([]byte(pass), salt, 3, 65536, 2, 32)
+	hashWrong := argon2.IDKey([]byte(wrong), salt, 3, 65536, 2, 32)
+
+	build := func(stored []byte) htData {
+		return htData{
+			"jack": pwd{
+				pwdOrig:       stored,
+				pwdPrefix:     "$argon2id$",
+				pwdType:       pwdTypeArgon2id,
+				argon2Time:    3,
+				argon2Memory:  65536,
+				argon2Threads: 2,
+				argon2KeyLen:  32,
+				argon2Salt:    salt,
+			},
+		}
 	}
 
 	quitCh := make(chan struct{})
@@ -149,41 +156,24 @@ func Test_ValidateArgon2_Cache(t *testing.T) {
 	store := cache.New(logrus.NewEntry(logrus.New()), quitCh)
 	v := newArgon2Verifier("test", store)
 
-	start := time.Now()
-	if !validateAccessData("jack", pass, data, v) {
+	// Positive case: first call caches success; second call uses a
+	// stored hash that would not match if re-derived, but the cache
+	// short-circuits the comparison.
+	if !validateAccessData("jack", pass, build(hashPass), v) {
 		t.Fatal("expected first validation to succeed")
 	}
-	first := time.Since(start)
-
-	start = time.Now()
-	if !validateAccessData("jack", pass, data, v) {
-		t.Fatal("expected cached validation to succeed")
-	}
-	cached := time.Since(start)
-
-	// The cache hit should be at least an order of magnitude faster
-	// than the actual argon2 derivation. m=64 MiB, t=3 takes tens of
-	// ms; a map lookup takes microseconds.
-	if cached*10 > first {
-		t.Errorf("cache hit not materially faster: first=%v cached=%v", first, cached)
+	if !validateAccessData("jack", pass, build(hashWrong), v) {
+		t.Fatal("expected cached positive result; cache did not serve the hit")
 	}
 
-	// Negative result is also cached so a wrong-password retry is
-	// served cheaply.
-	start = time.Now()
-	if validateAccessData("jack", "wrong-pass", data, v) {
-		t.Fatal("expected validation with wrong password to fail")
+	// Negative case: first call must not be cached. Replacing the
+	// stored hash with one that matches the attempted password
+	// produces a fresh derivation on the second call.
+	if validateAccessData("jack", wrong, build(hashPass), v) {
+		t.Fatal("expected first wrong-pass attempt to fail")
 	}
-	firstWrong := time.Since(start)
-
-	start = time.Now()
-	if validateAccessData("jack", "wrong-pass", data, v) {
-		t.Fatal("expected cached validation with wrong password to fail")
-	}
-	cachedWrong := time.Since(start)
-
-	if cachedWrong*10 > firstWrong {
-		t.Errorf("negative cache hit not materially faster: first=%v cached=%v", firstWrong, cachedWrong)
+	if !validateAccessData("jack", wrong, build(hashWrong), v) {
+		t.Fatal("negative result must not be cached; second call should re-derive and succeed")
 	}
 }
 

@@ -18,12 +18,17 @@ import (
 	"github.com/coupergateway/couper/cache"
 )
 
-// argon2CacheTTL bounds the time a verification result is cached. Five
-// minutes — long enough to absorb repeat retries by the same client,
-// short enough that a password rotated in the htpasswd file takes
-// effect quickly (the file is re-read on configuration reload, but the
-// cache is per-BasicAuth instance and survives until the new instance
-// replaces it).
+// argon2CacheTTL bounds the time a positive verification result is
+// cached. Five minutes — long enough to absorb repeat retries by a
+// legitimate high-RPS client, short enough that a password rotation
+// in the htpasswd file takes effect quickly (the file is re-read on
+// configuration reload).
+//
+// Only successful verifications are cached. Caching negatives would
+// turn the cache itself into a memory-DoS vector: an attacker spraying
+// unique wrong passwords would create one entry per attempt within the
+// TTL. Wrong passwords are bounded externally by the rate_limiter
+// access control we recommend pairing with basic_auth.
 const argon2CacheTTL int64 = 300
 
 // argon2Verifier collapses concurrent identical argon2 evaluations
@@ -168,7 +173,7 @@ func (v *argon2Verifier) validateArgon2(plainUser, plainPass string, p pwd) bool
 		return runArgon2(plainPass, p), nil
 	})
 	ok := result.(bool)
-	if v.cache != nil {
+	if ok && v.cache != nil {
 		v.cache.Set(key, ok, argon2CacheTTL)
 	}
 	return ok
