@@ -67,7 +67,7 @@ jobs:
             echo "has_comments=false" >> $GITHUB_OUTPUT
           fi
 
-      - uses: anthropics/claude-code-action@v1.0.55
+      - uses: anthropics/claude-code-action@v1.0.74
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_commit_signing: true
@@ -256,7 +256,7 @@ jobs:
             echo "has_reviews=false" >> $GITHUB_OUTPUT
           fi
 
-      - uses: anthropics/claude-code-action@v1.0.55
+      - uses: anthropics/claude-code-action@v1.0.74
         if: steps.freshness.outputs.skip != 'true'
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -365,7 +365,7 @@ jobs:
 
       - name: "Claude: Process follow-up comments"
         if: steps.new_comments.outputs.found == 'true'
-        uses: anthropics/claude-code-action@v1.0.55
+        uses: anthropics/claude-code-action@v1.0.74
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_commit_signing: true
