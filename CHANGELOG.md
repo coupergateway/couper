@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+* **Fixed**
+  * Forward HTTP/2 backend response trailers (e.g. gRPC `grpc-status`) to the client instead of dropping them ([#968](https://github.com/coupergateway/couper/issues/968))
+
 ---
 
 ## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)
