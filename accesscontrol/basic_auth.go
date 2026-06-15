@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
@@ -26,8 +28,10 @@ type BasicAuth struct {
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object. memStore (may be nil)
-// backs the argon2 verification-result cache.
-func NewBasicAuth(name, user, pass, file string, memStore *cache.MemoryStore) (*BasicAuth, error) {
+// backs the argon2 verification-result cache. logger (may be nil)
+// receives startup warnings about htpasswd entries that load but carry
+// out-of-range argon2 parameters.
+func NewBasicAuth(name, user, pass, file string, memStore *cache.MemoryStore, logger *logrus.Entry) (*BasicAuth, error) {
 	ba := &BasicAuth{
 		htFile:   make(htData),
 		name:     name,
@@ -100,9 +104,14 @@ func NewBasicAuth(name, user, pass, file string, memStore *cache.MemoryStore) (*
 			if pwdType == pwdTypeArgon2i {
 				prefix = pwdPrefixArgon2i
 			}
-			p, pErr := parseArgon2(password, prefix)
+			p, warnings, pErr := parseArgon2(password, prefix)
 			if pErr != nil {
 				return nil, fmt.Errorf("parse error: malformed password for user %q (line %d): %w", username, lineNr, pErr)
+			}
+			if logger != nil {
+				for _, w := range warnings {
+					logger.Warnf("basic_auth %q: user %q (line %d): %s; lower the parameter or chain a beta_rate_limiter before this access control to bound argon2 resource use", name, username, lineNr, w)
+				}
 			}
 			ba.htFile[username] = p
 		default:

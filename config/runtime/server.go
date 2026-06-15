@@ -528,7 +528,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	if conf.Definitions != nil {
 		for _, baConf := range conf.Definitions.BasicAuth {
 			confErr := errors.Configuration.Label(baConf.Name)
-			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File, memStore)
+			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File, memStore, log)
 			if err != nil {
 				if subject := basicAuthErrSubject(baConf); subject != nil {
 					return nil, hcl.Diagnostics{&hcl.Diagnostic{

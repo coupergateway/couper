@@ -4,7 +4,11 @@ import (
 	b64 "encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
 	couperErr "github.com/coupergateway/couper/errors"
@@ -39,11 +43,9 @@ func Test_NewBasicAuth(t *testing.T) {
 		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `parse error: malformed password for user "foo" (line 1)`, true},
 		{"name", "user", "pass", "testdata/htpasswd_err_multi", `multiple user: foo (line 2)`, true},
 		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "parse error: algorithm not supported (line 1)", true},
-		{"name", "user", "pass", "testdata/htpasswd_err_argon2_memory", `parse error: malformed password for user "jack" (line 1): invalid argon2 parameter m: 94209 KiB exceeds cap of 94208 KiB`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_argon2_time", `parse error: malformed password for user "jack" (line 1): invalid argon2 parameter t: 11 exceeds cap of 10`, true},
-		{"name", "user", "pass", "testdata/htpasswd_err_argon2_threads", `parse error: malformed password for user "jack" (line 1): invalid argon2 parameter p: 3 exceeds cap of 2`, true},
+		{"name", "user", "pass", "testdata/htpasswd_err_argon2_time_zero", `parse error: malformed password for user "jack" (line 1): invalid argon2 parameter t: must be >= 1`, true},
 	} {
-		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file, nil)
+		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file, nil, nil)
 		if tc.shouldFail && ba != nil {
 			t.Error("Expected no successful basic auth creation")
 		}
@@ -58,8 +60,48 @@ func Test_NewBasicAuth(t *testing.T) {
 	}
 }
 
+// Test_NewBasicAuth_Argon2OverCapWarns asserts that htpasswd entries
+// whose argon2 parameters exceed the recommended maxima still load
+// (so an upgrade cannot break a running deployment) and that each
+// over-cap parameter produces a startup warning.
+func Test_NewBasicAuth_Argon2OverCapWarns(t *testing.T) {
+	logger, hook := logrustest.NewNullLogger()
+	logger.SetLevel(logrus.WarnLevel)
+
+	ba, err := ac.NewBasicAuth("ac-name", "", "", "testdata/htpasswd_argon2_over_cap", nil, logrus.NewEntry(logger))
+	if err != nil {
+		t.Fatalf("expected over-cap entries to load with a warning, got error: %v", err)
+	}
+	if ba == nil {
+		t.Fatal("expected a basic auth object")
+	}
+
+	var warnings []string
+	for _, e := range hook.AllEntries() {
+		if e.Level == logrus.WarnLevel {
+			warnings = append(warnings, e.Message)
+		}
+	}
+	if len(warnings) != 3 {
+		t.Fatalf("expected 3 warnings (m, t, p), got %d: %v", len(warnings), warnings)
+	}
+
+	for _, param := range []string{"m=", "t=", "p="} {
+		found := false
+		for _, w := range warnings {
+			if strings.Contains(w, param) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected a warning naming the %q parameter, got: %v", param, warnings)
+		}
+	}
+}
+
 func Test_BasicAuth_Validate(t *testing.T) {
-	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", nil)
+	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", nil, nil)
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -99,19 +141,19 @@ func Test_BasicAuth_Validate(t *testing.T) {
 func Test_BasicAuth_ValidateCases(t *testing.T) {
 	req := &http.Request{Header: make(http.Header)}
 
-	ba1, err := ac.NewBasicAuth("name", "", "pass", "", nil)
+	ba1, err := ac.NewBasicAuth("name", "", "pass", "", nil, nil)
 	if err != nil || ba1 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba2, err := ac.NewBasicAuth("name", "user", "", "", nil)
+	ba2, err := ac.NewBasicAuth("name", "user", "", "", nil, nil)
 	if err != nil || ba2 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba3, err := ac.NewBasicAuth("name", "", "", "", nil)
+	ba3, err := ac.NewBasicAuth("name", "", "", "", nil, nil)
 	if err != nil || ba3 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd", nil)
+	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd", nil, nil)
 	if err != nil || ba4 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
