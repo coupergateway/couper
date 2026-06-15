@@ -98,14 +98,11 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	transport.RemoveConnectionHeaders(req.Header)
 
-	// Remove hop-by-hop headers to the backend. Especially
-	// important is "Connection" because we want a persistent
-	// connection, regardless of what the client sent to us.
-	for _, h := range transport.HopHeaders {
-		req.Header.Del(h)
-	}
-
-	// TODO: trailer header here
+	// Remove hop-by-hop headers to the backend. Especially important is
+	// "Connection" because we want a persistent connection, regardless of what
+	// the client sent to us. RemoveHopHeaders keeps "Te: trailers" so HTTP/1.1
+	// backends may send response trailers.
+	transport.RemoveHopHeaders(req.Header)
 
 	// After stripping all the hop-by-hop connection headers above, add back any
 	// necessary for protocol upgrades, such as for websockets.
