@@ -88,15 +88,17 @@ The argon2 hash encodes the parameters used to derive it: `m` (memory in KiB), `
 
 OWASP currently recommends for `argon2id`: `m=19456` (≈19 MiB), `t=2`, `p=1`.
 
-_Memory cost is per request_. Couper allocates `m` KiB on every basic auth verification, which is why parameter choice matters for the gateway's resident memory under load. Couper caps the parameters encoded in the htpasswd file at twice the highest OWASP-recommended values and refuses to start otherwise:
+_Memory cost is per request_. Couper allocates `m` KiB on every basic auth verification, which is why parameter choice matters for the gateway's resident memory under load. Couper treats twice the highest OWASP-recommended values as a recommended maximum:
 
-| Parameter   | Cap         | OWASP highest |
-|:------------|:------------|:--------------|
-| `m` (KiB)   | `94208`     | `47104`       |
-| `t`         | `10`        | `5`           |
-| `p`         | `2`         | `1`           |
+| Parameter   | Recommended max | OWASP highest |
+|:------------|:----------------|:--------------|
+| `m` (KiB)   | `94208`         | `47104`       |
+| `t`         | `10`            | `5`           |
+| `p`         | `2`             | `1`           |
 
-To bound amplification under retry storms, Couper collapses concurrent identical verifications into a single argon2 evaluation and caches both positive and negative results for five minutes per `(user, password)` pair. A single unique attempt still pays the full derivation cost — see "Pair with a rate limiter" below.
+Entries above these still load — so upgrading Couper cannot break a deployment whose htpasswd file predates this guidance — but Couper logs a startup warning naming the offending line. Lower the parameter to bound per-request cost, or pair the access control with a rate limiter (see below). Entries that could never authenticate (`t` or `p` below `1`, or a malformed hash) are still rejected at startup.
+
+To bound amplification under retry storms, Couper collapses concurrent identical verifications into a single argon2 evaluation and caches _successful_ verifications for five minutes per `(user, password)` pair. Failed verifications are intentionally not cached — caching them would let an attacker spraying unique wrong passwords grow the cache — so a single unique attempt always pays the full derivation cost. See "Pair with a rate limiter" below.
 
 ### Pair with a rate limiter
 
@@ -129,6 +131,8 @@ definitions {
 ```
 
 Access controls run in the order listed: the rate limiter rejects the request first, so basic auth is invoked only for callers within the budget.
+
+Order matters across levels, too. Access controls attached at the `server` or `api` level run _before_ those on the `endpoint`. If basic auth is attached at an outer level and the rate limiter only on the endpoint, the argon2 derivation runs before the limiter can reject — defeating the protection. Keep the rate limiter ahead of basic auth in the effective order: list it first in the same `access_control` list (as above), or attach it at the same or an outer level.
 
 
 {{< attributes >}}
