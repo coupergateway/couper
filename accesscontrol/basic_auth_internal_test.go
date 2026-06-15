@@ -237,13 +237,19 @@ func Test_ValidateArgon2_Singleflight(t *testing.T) {
 		argon2Salt:    salt,
 	}
 
+	// No cache, so every call reaches singleflight; the derive seam
+	// counts how many derivations the production validateArgon2 path
+	// actually triggers. The derivation cost (~10ms) is long enough
+	// that 50 goroutines launched in a tight loop queue behind the
+	// first.
 	v := newArgon2Verifier("test", nil)
-
-	// Wrap singleflight.Do so we can count underlying derivations
-	// without changing production code. The actual derivation cost
-	// (~10ms) is long enough that 50 goroutines launched in a tight
-	// loop will all queue behind the first.
 	var derivations atomic.Int64
+	base := v.derive
+	v.derive = func(plainPass string, p pwd) bool {
+		derivations.Add(1)
+		return base(plainPass, p)
+	}
+
 	var wg sync.WaitGroup
 	const concurrency = 50
 
@@ -251,12 +257,7 @@ func Test_ValidateArgon2_Singleflight(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		go func() {
 			defer wg.Done()
-			key := v.key("jack", pass)
-			result, _, _ := v.sf.Do(key, func() (any, error) {
-				derivations.Add(1)
-				return runArgon2(pass, stored), nil
-			})
-			if !result.(bool) {
+			if !v.validateArgon2("jack", pass, stored) {
 				t.Errorf("expected validation to succeed")
 			}
 		}()

@@ -36,16 +36,18 @@ const argon2CacheTTL int64 = 300
 // receiver runs the derivation directly without dedup or cache —
 // useful for unit tests that build htData by hand.
 type argon2Verifier struct {
-	name  string // basic_auth label, namespaces the shared cache
-	sf    *singleflight.Group
-	cache *cache.MemoryStore
+	name   string // basic_auth label, namespaces the shared cache
+	sf     *singleflight.Group
+	cache  *cache.MemoryStore
+	derive func(plainPass string, p pwd) bool // seam: tests count derivations
 }
 
 func newArgon2Verifier(name string, memStore *cache.MemoryStore) *argon2Verifier {
 	return &argon2Verifier{
-		name:  name,
-		sf:    &singleflight.Group{},
-		cache: memStore,
+		name:   name,
+		sf:     &singleflight.Group{},
+		cache:  memStore,
+		derive: runArgon2,
 	}
 }
 
@@ -166,14 +168,14 @@ func (v *argon2Verifier) validateArgon2(plainUser, plainPass string, p pwd) bool
 	}
 	key := v.key(plainUser, plainPass)
 	if v.cache != nil {
-		if cached := v.cache.Get(key); cached != nil {
-			return cached.(bool)
+		if cached, ok := v.cache.Get(key).(bool); ok {
+			return cached
 		}
 	}
 	result, _, _ := v.sf.Do(key, func() (any, error) {
-		return runArgon2(plainPass, p), nil
+		return v.derive(plainPass, p), nil
 	})
-	ok := result.(bool)
+	ok, _ := result.(bool)
 	if ok && v.cache != nil {
 		v.cache.Set(key, ok, argon2CacheTTL)
 	}
