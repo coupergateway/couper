@@ -25,7 +25,7 @@ func TestAccessControl_ServeHTTP(t *testing.T) {
 	}
 
 	newBasicAuth := func(user, pass string) *ac.BasicAuth {
-		ba, err := ac.NewBasicAuth("ba-test", user, pass, "")
+		ba, err := ac.NewBasicAuth("ba-test", user, pass, "", nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

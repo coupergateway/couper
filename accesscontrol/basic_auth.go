@@ -9,6 +9,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
+	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 )
@@ -17,19 +20,24 @@ var _ AccessControl = &BasicAuth{}
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
-	htFile htData
-	name   string
-	user   string
-	pass   string
+	htFile   htData
+	name     string
+	user     string
+	pass     string
+	verifier *argon2Verifier
 }
 
-// NewBasicAuth creates a new AC-BasicAuth object
-func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
+// NewBasicAuth creates a new AC-BasicAuth object. memStore (may be nil)
+// backs the argon2 verification-result cache. logger (may be nil)
+// receives startup warnings about htpasswd entries that load but carry
+// out-of-range argon2 parameters.
+func NewBasicAuth(name, user, pass, file string, memStore *cache.MemoryStore, logger *logrus.Entry) (*BasicAuth, error) {
 	ba := &BasicAuth{
-		htFile: make(htData),
-		name:   name,
-		user:   user,
-		pass:   pass,
+		htFile:   make(htData),
+		name:     name,
+		user:     user,
+		pass:     pass,
+		verifier: newArgon2Verifier(name, memStore),
 	}
 
 	if file == "" {
@@ -52,7 +60,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 		}
 
 		if len(line) > 255 {
-			return nil, fmt.Errorf("parse error: line length exceeded: 255")
+			return nil, fmt.Errorf("parse error: line length exceeded: 255 (line %d)", lineNr)
 		}
 
 		up := strings.SplitN(line, ":", 2)
@@ -63,7 +71,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 		username, password := up[0], up[1]
 
 		if _, ok := ba.htFile[username]; ok {
-			return nil, fmt.Errorf("multiple user: %s", username)
+			return nil, fmt.Errorf("multiple user: %s (line %d)", username, lineNr)
 		}
 
 		switch pwdType := getPwdType(password); pwdType {
@@ -77,7 +85,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 
 			parts := strings.Split(strings.TrimPrefix(password, prefix), "$")
 			if len(parts) != 2 {
-				return nil, fmt.Errorf("parse error: malformed password for user: %s", username)
+				return nil, fmt.Errorf("parse error: malformed password for user %q (line %d)", username, lineNr)
 			}
 
 			ba.htFile[username] = pwd{
@@ -96,13 +104,18 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 			if pwdType == pwdTypeArgon2i {
 				prefix = pwdPrefixArgon2i
 			}
-			p, pErr := parseArgon2(password, prefix)
+			p, warnings, pErr := parseArgon2(password, prefix)
 			if pErr != nil {
-				return nil, fmt.Errorf("parse error: malformed password for user: %s: %w", username, pErr)
+				return nil, fmt.Errorf("parse error: malformed password for user %q (line %d): %w", username, lineNr, pErr)
+			}
+			if logger != nil {
+				for _, w := range warnings {
+					logger.Warnf("basic_auth %q: user %q (line %d): %s; lower the parameter or chain a beta_rate_limiter before this access control to bound argon2 resource use", name, username, lineNr, w)
+				}
 			}
 			ba.htFile[username] = p
 		default:
-			return nil, fmt.Errorf("parse error: algorithm not supported")
+			return nil, fmt.Errorf("parse error: algorithm not supported (line %d)", lineNr)
 		}
 	}
 
@@ -139,7 +152,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	}
 
 	if len(ba.htFile) > 0 {
-		if validateAccessData(user, pass, ba.htFile) {
+		if validateAccessData(user, pass, ba.htFile, ba.verifier) {
 			return ba.withUsername(req, user)
 		}
 		return errors.BasicAuth.Message("file: credential mismatch")
