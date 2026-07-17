@@ -59,6 +59,11 @@ The response status code of the authorization service determines the decision:
 | `403`     | Denied with error type `authz_external_insufficient_permissions`, default response status `403`. |
 | any other | Denied with error type `authz_external`, default response status `401`.                    |
 
+If the `200` response carries a JSON object body (`Content-Type: application/json`), that
+object becomes accessible as the [`request.context.<label>` variable](/configuration/variables#context) —
+the place for validated claims, the resolved identity or granted permissions. A malformed
+JSON body denies the request, as downstream permission checks may rely on this data.
+
 The error types can be handled with [`error_handler` blocks](/configuration/error-handling),
 for example to send a `WWW-Authenticate` challenge pointing OAuth 2.0 clients to the
 protected resource metadata (RFC 9728).
