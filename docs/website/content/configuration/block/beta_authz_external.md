@@ -50,9 +50,13 @@ With `include_tls = true` the TLS connection information of the client request i
 }
 ```
 
-Couper calls the authorization service on the hot path of every protected request. For a
-low-latency setup configure a `backend` with `http2 = true`: callouts are then multiplexed
-over a single persistent HTTP/2 connection to the (typically local) authorization service.
+Couper calls the authorization service on the hot path of every protected request, so the
+connection to it should be persistent. This is the recommended setup: a (typically local)
+authorization service behind a `backend` with `http2 = true` — callouts are then multiplexed
+over a single persistent HTTP/2 connection instead of paying a round trip per request.
+HTTP/2 is negotiated via TLS (ALPN), so the authorization service must be reachable via
+`https` — without `http2` Couper still reuses connections (HTTP/1.1 keep-alive), just
+without multiplexing.
 
 ```hcl
 definitions {
@@ -64,6 +68,10 @@ definitions {
   }
 }
 ```
+
+Couper does not cache authorization decisions: whether a decision may be reused is only
+known to the authorization service, which can cache internally whenever its decision
+allows it.
 
 The response status code of the authorization service determines the decision:
 

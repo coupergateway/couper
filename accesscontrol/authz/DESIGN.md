@@ -58,13 +58,21 @@ Register error types for the new access control (compare `beta_mcp_tool_blocked`
 The 401/403 distinction is load-bearing for OAuth resources: `invalid_token` tells
 the client to (re)acquire a token; `insufficient_scope` tells it not to bother.
 
-### 4. Opt-in decision caching
+### 4. Callout latency — persistent HTTP/2, no gateway-side decision caching
 
 MCP (and JSON-RPC in general) funnels every operation through one `POST` endpoint, so
-a synchronous callout per request doubles request latency on the hottest path. Offer
-an opt-in TTL cache in the existing `cache.MemoryStore` keyed on a hash of the
-presented credential (never the raw value), analogous to the backend `oauth2` token
-cache in `handler/transport/oauth2_req_auth.go`.
+a synchronous callout per request doubles request latency on the hottest path.
+
+Decided against an opt-in decision cache in the gateway: a decision is a function of
+whatever the service looked at (credential, path, method, TLS state), which the gateway
+cannot know — the same reason Envoy's `ext_authz` never shipped result caching. The
+authorization service caches internally where its decision allows it.
+
+Instead the callout cost is reduced Envoy-style via connection reuse: a `backend` with
+`http2 = true` multiplexes all callouts over one persistent HTTP/2 (TLS/ALPN) connection
+to the — typically local — authorization service; without it, HTTP/1.1 keep-alive still
+avoids per-request connection setup. Cleartext h2c is not supported by the backend
+transport.
 
 ### 5. Keep request-body forwarding out of the initial scope
 
