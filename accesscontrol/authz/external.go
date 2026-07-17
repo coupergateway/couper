@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"io"
+	"mime"
 	"net/http"
 	"time"
 
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
+	"github.com/coupergateway/couper/eval/buffer"
 )
 
 const roundTripName = "authz_external"
@@ -113,7 +116,10 @@ func (e *External) Validate(req *http.Request) error {
 	outreq.Header.Set("Content-Type", "application/json")
 	eval.SetBody(outreq, body)
 
-	ctx, cancel := context.WithCancel(context.WithValue(req.Context(), request.RoundTripName, roundTripName))
+	outCtx := context.WithValue(req.Context(), request.RoundTripName, roundTripName)
+	// keep the response body readable with a non default roundtrip name
+	outCtx = context.WithValue(outCtx, request.BufferOptions, buffer.Option(buffer.Response))
+	ctx, cancel := context.WithCancel(outCtx)
 	defer cancel()
 
 	res, err := e.transport.RoundTrip(outreq.WithContext(ctx))
@@ -124,7 +130,7 @@ func (e *External) Validate(req *http.Request) error {
 
 	switch res.StatusCode {
 	case http.StatusOK:
-		return nil
+		return e.storeContext(req, res)
 	case http.StatusUnauthorized:
 		return errors.AuthzExternalInvalidCredentials.Label(e.name).Message("invalid credentials")
 	case http.StatusForbidden:
@@ -132,4 +138,37 @@ func (e *External) Validate(req *http.Request) error {
 	default:
 		return errors.AuthzExternal.Label(e.name).Messagef("unexpected authorization service response status: %d", res.StatusCode)
 	}
+}
+
+// storeContext exposes a JSON object response body as request.context.<label>.
+// A malformed body denies the request: silently dropping data which
+// downstream permission checks may rely on would fail open.
+func (e *External) storeContext(req *http.Request, res *http.Response) error {
+	mediaType, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
+	if mediaType != "application/json" {
+		return nil
+	}
+
+	raw, err := io.ReadAll(res.Body)
+	if err != nil {
+		return errors.AuthzExternal.Label(e.name).With(err)
+	}
+	if len(raw) == 0 {
+		return nil
+	}
+
+	var data map[string]interface{}
+	if err = json.Unmarshal(raw, &data); err != nil {
+		return errors.AuthzExternal.Label(e.name).Message("unexpected authorization service response body").With(err)
+	}
+
+	ctx := req.Context()
+	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
+	if !ok {
+		acMap = make(map[string]interface{})
+	}
+	acMap[e.name] = data
+	*req = *req.WithContext(context.WithValue(ctx, request.AccessControls, acMap))
+
+	return nil
 }

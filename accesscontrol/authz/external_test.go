@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/coupergateway/couper/accesscontrol/authz"
+	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 )
 
@@ -115,6 +116,100 @@ func TestExternal_Validate_CalloutRequest(t *testing.T) {
 	if headers == nil || headers["Authorization"] == nil {
 		t.Errorf("expected serialized authorization header, got: %v", clientRequest["headers"])
 	}
+}
+
+func TestExternal_Validate_ContextPropagation(t *testing.T) {
+	respondBody := func(contentType, body string) roundTripperFunc {
+		return func(_ *http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			if contentType != "" {
+				rec.Header().Set("Content-Type", contentType)
+			}
+			rec.WriteHeader(http.StatusOK)
+			_, _ = rec.WriteString(body)
+			return rec.Result(), nil
+		}
+	}
+
+	contextData := func(req *http.Request) map[string]interface{} {
+		acMap, _ := req.Context().Value(request.AccessControls).(map[string]interface{})
+		data, _ := acMap["test_ac"].(map[string]interface{})
+		return data
+	}
+
+	t.Run("json object response lands in access control context", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
+			respondBody("application/json", `{"sub":"clark.kent","roles":["reporter"]}`))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		data := contextData(req)
+		if data == nil {
+			t.Fatal("missing access control context data")
+		}
+		if data["sub"] != "clark.kent" {
+			t.Errorf("unexpected sub: %v", data["sub"])
+		}
+		roles, _ := data["roles"].([]interface{})
+		if len(roles) != 1 || roles[0] != "reporter" {
+			t.Errorf("unexpected roles: %v", data["roles"])
+		}
+	})
+
+	t.Run("invalid json fails closed", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
+			respondBody("application/json", `{"sub":`))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		err := external.Validate(req)
+
+		cErr, ok := err.(*errors.Error)
+		if !ok {
+			t.Fatalf("expected *errors.Error, got: %T", err)
+		}
+		if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "authz_external" {
+			t.Errorf("expected error kind authz_external, got: %v", kinds)
+		}
+	})
+
+	t.Run("non-object json fails closed", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
+			respondBody("application/json", `[1,2]`))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err := external.Validate(req); err == nil {
+			t.Error("expected an error for a non-object json response")
+		}
+	})
+
+	t.Run("empty body stores nothing", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
+			respondBody("application/json", ""))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+		if data := contextData(req); data != nil {
+			t.Errorf("expected no context data, got: %v", data)
+		}
+	})
+
+	t.Run("non-json content type stores nothing", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
+			respondBody("text/plain", "OK"))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+		if data := contextData(req); data != nil {
+			t.Errorf("expected no context data, got: %v", data)
+		}
+	})
 }
 
 func TestExternal_Validate_IncludeTLS(t *testing.T) {
