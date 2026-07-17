@@ -1,48 +1,80 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	hclbody "github.com/coupergateway/couper/config/body"
+	"github.com/coupergateway/couper/config/meta"
 )
 
-type OpenFGAEntity struct {
-	Namespace string         `hcl:"namespace" docs:"The namespace of the entity."`
-	Name      hcl.Expression `hcl:"name" docs:"The name or identifier of the entity."`
-}
+var (
+	_ BackendReference      = &AuthZExternal{}
+	_ BackendInitialization = &AuthZExternal{}
+	_ Body                  = &AuthZExternal{}
+	_ Inline                = &AuthZExternal{}
+)
 
-type OpenFGAEntityRelation struct {
-	Name hcl.Expression `hcl:"name" docs:"The name of the relation."`
-}
-
-type AuthZOpenFGA struct {
-	User     *OpenFGAEntity         `hcl:"user,block" docs:"The user entity."`
-	Relation *OpenFGAEntityRelation `hcl:"relation,block" docs:"The relation name."`
-	Object   *OpenFGAEntity         `hcl:"object,block" docs:"The object entity."`
-	StoreID  string                 `hcl:"store_id" docs:"The store ID to use for authorization against the OpenFGA server."`
-	ModelID  string                 `hcl:"model_id,optional" docs:"The model ID to use for authorization against the OpenFGA store. If omitted, the latest store model is used."`
-	Remain   hcl.Body               `hcl:",remain"`
-}
-
+// AuthZExternal represents the beta_authz_external block.
 type AuthZExternal struct {
-	BackendName string        `hcl:"backend" docs:"References a default [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for authZ requests. Mutually exclusive with {backend} block."`
-	URL         string        `hcl:"url,optional" docs:"The URL to call for authorization."`
-	IncludeTLS  bool          `hcl:"include_tls,optional" docs:"Include TLS information in the authorization request."`
-	Name        string        `hcl:"name,label" docs:"The name of the authorization."`
-	OpenFGA     *AuthZOpenFGA `hcl:"openfga,block" docs:"Configure an [OpenFGA](/configuration/block/authz_external/openfga) authorization."`
-	Remain      hcl.Body      `hcl:",remain"`
+	ErrorHandlerSetter
+	BackendName string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with {backend} block."`
+	IncludeTLS  bool     `hcl:"include_tls,optional" docs:"Include TLS connection information of the client request in the authorization request." default:"false"`
+	Name        string   `hcl:"name,label"`
+	URL         string   `hcl:"url,optional" docs:"URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested {backend} block."`
+	Remain      hcl.Body `hcl:",remain"`
 
 	// Internally used
 	Backend *hclsyntax.Body
 }
 
 func (a *AuthZExternal) Prepare(backendFunc PrepareBackendFunc) (err error) {
-	if a.URL != "" {
-		a.Backend, err = backendFunc(a.BackendName, a.Name, a)
+	if err = a.check(); err != nil {
 		return err
+	}
+	a.Backend, err = backendFunc("url", a.URL, a)
+	return err
+}
+
+// check ensures a callout destination exists: a url or a backend providing an origin.
+func (a *AuthZExternal) check() error {
+	if a.URL == "" && a.BackendName == "" && len(hclbody.BlocksOfType(a.HCLBody(), "backend")) == 0 {
+		return fmt.Errorf("url attribute or backend required")
 	}
 	return nil
 }
 
+// Reference implements the <BackendReference> interface.
+func (a *AuthZExternal) Reference() string {
+	return a.BackendName
+}
+
+// HCLBody implements the <Body> interface.
 func (a *AuthZExternal) HCLBody() *hclsyntax.Body {
 	return a.Remain.(*hclsyntax.Body)
+}
+
+// Inline implements the <Inline> interface.
+func (a *AuthZExternal) Inline() interface{} {
+	type Inline struct {
+		meta.LogFieldsAttribute
+		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the authorization callout (zero or one). Mutually exclusive with {backend} attribute."`
+	}
+
+	return &Inline{}
+}
+
+// Schema implements the <Inline> interface.
+func (a *AuthZExternal) Schema(inline bool) *hcl.BodySchema {
+	if !inline {
+		schema, _ := gohcl.ImpliedBodySchema(a)
+		return schema
+	}
+
+	schema, _ := gohcl.ImpliedBodySchema(a.Inline())
+
+	return meta.MergeSchemas(schema, meta.LogFieldsAttributeSchema)
 }
