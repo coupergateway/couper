@@ -3773,6 +3773,10 @@ func TestJWKsMaxStale(t *testing.T) {
 
 	req.Header = http.Header{"Authorization": []string{"Bearer " + rsaToken}}
 
+	// Phases run against absolute deadlines so slow execution (e.g. coverage
+	// runs) cannot drift a phase out of its window.
+	start := time.Now()
+
 	// A) JWKS backend is healthy → request succeeds
 	res, err := client.Do(req)
 	helper.Must(err)
@@ -3781,12 +3785,14 @@ func TestJWKsMaxStale(t *testing.T) {
 		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
-	// Switch backend to failing mode
+	// Switch backend to failing mode: a 200 for A proves the initial fetch was
+	// healthy, so failing only now cannot race the startup fetch.
 	jwksFailing.Store(true)
 
-	time.Sleep(4 * time.Second)
-	// B) TTL 3s expired, within max_stale 2s window → stale JWKS still usable
-
+	// B) TTL 3s expired, refresh failed, stale JWKS still usable. Failed refresh
+	// retries (backoff 1s, 2s, ...) re-arm the max_stale invalidation, so the
+	// stale data lives until at least first-failure+3s (>= start+6s).
+	time.Sleep(time.Until(start.Add(4 * time.Second)))
 	res, err = client.Do(req)
 	helper.Must(err)
 	if res.StatusCode != http.StatusOK {
@@ -3794,8 +3800,10 @@ func TestJWKsMaxStale(t *testing.T) {
 		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, message)
 	}
 
-	time.Sleep(2 * time.Second)
-	// C) Past max_stale window → 401
+	// C) Past max_stale window → 401. Because retries re-arm the invalidation,
+	// the stale data is guaranteed gone by first-failure+5s only.
+	time.Sleep(time.Until(start.Add(10 * time.Second)))
+	hook.Reset() // the asserted message must belong to the following request
 	res, err = client.Do(req)
 	helper.Must(err)
 
