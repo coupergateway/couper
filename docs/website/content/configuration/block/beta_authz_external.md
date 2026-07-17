@@ -1,3 +1,9 @@
+---
+title: 'External Authorization (Beta)'
+slug: 'beta_authz_external'
+description: 'The beta_authz_external block lets you delegate the authorization decision for client requests to an external service.'
+---
+
 # External Authorization (Beta)
 
 | Block name            | Context                                                | Label            |
