@@ -190,6 +190,55 @@ func TestAuthzExternal_HTTP2Callout(t *testing.T) {
 	}
 }
 
+func TestAuthzExternal_PermissionsClaim(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/authz_external/06_couper.hcl", helper)
+	defer shutdown()
+
+	for _, tc := range []struct {
+		name          string
+		authorization string
+		expStatus     int
+		expErrorType  string
+	}{
+		{"granted permission", "Bearer reader", http.StatusNoContent, ""},
+		{"missing permission", "Bearer nobody", http.StatusForbidden, "insufficient_permissions"},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+			helper.Must(err)
+			req.Header.Set("Authorization", tc.authorization)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+			_, _ = io.Copy(io.Discard, res.Body)
+			_ = res.Body.Close()
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("expected status %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			if tc.expErrorType == "" {
+				return
+			}
+
+			var loggedType string
+			for _, entry := range hook.AllEntries() {
+				if errorType, ok := entry.Data["error_type"].(string); ok && entry.Data["port"] == "8080" {
+					loggedType = errorType
+				}
+			}
+			if loggedType != tc.expErrorType {
+				st.Errorf("expected logged error_type %q, got: %q", tc.expErrorType, loggedType)
+			}
+		})
+	}
+}
+
 func TestAuthzExternal_ErrorHandler(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
