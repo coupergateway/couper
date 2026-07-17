@@ -50,6 +50,21 @@ With `include_tls = true` the TLS connection information of the client request i
 }
 ```
 
+Couper calls the authorization service on the hot path of every protected request. For a
+low-latency setup configure a `backend` with `http2 = true`: callouts are then multiplexed
+over a single persistent HTTP/2 connection to the (typically local) authorization service.
+
+```hcl
+definitions {
+  beta_authz_external "authz" {
+    backend {
+      origin = "https://localhost:4000"
+      http2  = true
+    }
+  }
+}
+```
+
 The response status code of the authorization service determines the decision:
 
 | Status    | Result                                                                                    |
