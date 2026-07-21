@@ -59,10 +59,33 @@ The response status code of the authorization service determines the decision:
 | `403`     | Denied with error type `authz_external_insufficient_permissions`, default response status `403`. |
 | any other | Denied with error type `authz_external`, default response status `401`.                    |
 
-If the `200` response carries a JSON object body (`Content-Type: application/json`), that
-object becomes accessible as the [`request.context.<label>` variable](/configuration/variables#context) —
-the place for validated claims, the resolved identity or granted permissions. A malformed
-JSON body denies the request, as downstream permission checks may rely on this data.
+The `200` response is exposed as the [`request.context.<label>` variable](/configuration/variables#context):
+the properties of a JSON object body (`Content-Type: application/json`) — the place for validated
+claims, the resolved identity or granted permissions — plus the response headers under
+`request.context.<label>.headers` (lower-cased names, first value, like `request.headers`).
+A malformed JSON body denies the request, as downstream permission checks may rely on this data.
+A body property literally named `headers` is shadowed by the response headers.
+
+An upstream backend can trust a resolved identity or a re-signed internal token (created with
+[`jwt_sign()`](/configuration/functions)) the authorization service returns as a header, by
+copying it onto the request with `set_request_headers` — which overwrites any client-provided
+value:
+
+```hcl
+api {
+  endpoint "/**" {
+    access_control = ["authz"]
+
+    proxy {
+      backend = "protected_api"
+
+      set_request_headers = {
+        x-resolved-identity = request.context.authz.headers["x-resolved-identity"]
+      }
+    }
+  }
+}
+```
 
 The error types can be handled with [`error_handler` blocks](/configuration/error-handling),
 for example to send a `WWW-Authenticate` challenge pointing OAuth 2.0 clients to the
