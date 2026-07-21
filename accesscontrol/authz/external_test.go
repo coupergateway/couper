@@ -239,7 +239,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 }
 
-func TestExternal_Validate_PermissionsClaim(t *testing.T) {
+func TestExternal_Validate_PermissionsProperty(t *testing.T) {
 	respondJSON := func(body string) roundTripperFunc {
 		return func(_ *http.Request) (*http.Response, error) {
 			rec := httptest.NewRecorder()

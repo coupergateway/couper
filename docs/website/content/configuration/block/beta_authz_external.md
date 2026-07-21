@@ -111,7 +111,7 @@ api {
 ```
 
 
-With `permissions_claim` the authorization service can grant [permissions](/configuration/error-handling#permissions-related-error_handler)
+With `permissions_property` the authorization service can grant [permissions](/configuration/error-handling#permissions-related-error_handler)
 evaluated by `required_permission` in [`api`](/configuration/block/api) or [`endpoint`](/configuration/block/endpoint)
 blocks: the named response body property — a space-separated string or a list of strings, like the
 [`jwt` block's](/configuration/block/jwt) `permissions_claim` — is added to `request.context.granted_permissions`.
@@ -120,7 +120,7 @@ blocks: the named response body property — a space-separated string or a list 
 definitions {
   beta_authz_external "authz" {
     url               = "https://authz.example.com/check"
-    permissions_claim = "granted_permissions"
+    permissions_property = "granted_permissions"
   }
 }
 ```
@@ -166,7 +166,7 @@ definitions {
   {
     "default": "",
     "description": "Name of the response body property containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions.",
-    "name": "permissions_claim",
+    "name": "permissions_property",
     "type": "string"
   },
   {

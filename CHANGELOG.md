@@ -7,7 +7,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Added**
   * `beta_authz_external` access control: delegate the authorization decision to an external service via an HTTP callout, with distinct `authz_external_invalid_credentials` (401) and `authz_external_insufficient_permissions` (403) error types and opt-in TLS connection metadata (`include_tls`) ([#873](https://github.com/coupergateway/couper/issues/873))
   * expose a `beta_authz_external` callout's JSON object response body and its response headers (`request.context.<label>` / `request.context.<label>.headers`); inject a resolved identity upstream with `set_request_headers` ([#873](https://github.com/coupergateway/couper/issues/873))
-  * `permissions_claim` attribute for `beta_authz_external`: grant permissions for `required_permission` checks from a response body property of the authorization service ([#873](https://github.com/coupergateway/couper/issues/873))
+  * `permissions_property` attribute for `beta_authz_external`: grant permissions for `required_permission` checks from a response body property of the authorization service ([#873](https://github.com/coupergateway/couper/issues/873))
 
 ---
 

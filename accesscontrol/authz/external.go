@@ -25,7 +25,7 @@ const roundTripName = "authz_external"
 type External struct {
 	includeTLS       bool
 	name             string
-	permissionsClaim string
+	permissionsProperty string
 	transport        http.RoundTripper
 	url              string
 }
@@ -58,14 +58,14 @@ type authContext struct {
 	MetadataTLS   *metadataTLS  `json:"metadata_tls,omitempty"`
 }
 
-func NewExternal(name, calloutURL string, includeTLS bool, permissionsClaim string, transport http.RoundTripper) *External {
+func NewExternal(name, calloutURL string, includeTLS bool, permissionsProperty string, transport http.RoundTripper) *External {
 	if calloutURL == "" { // destination origin is provided by the backend configuration
 		calloutURL = "/"
 	}
 	return &External{
 		includeTLS:       includeTLS,
 		name:             name,
-		permissionsClaim: permissionsClaim,
+		permissionsProperty: permissionsProperty,
 		transport:        transport,
 		url:              calloutURL,
 	}
@@ -204,20 +204,20 @@ func withResponseHeaders(data map[string]interface{}, header http.Header) map[st
 
 // grantPermissions appends the permissions from the configured response body
 // property to the request's granted permissions with the same value semantics
-// as the jwt permissions_claim: a space-separated string or a list of strings.
+// as the jwt block's permissions_claim: a space-separated string or a list of strings.
 func (e *External) grantPermissions(req *http.Request, data map[string]interface{}) error {
-	if e.permissionsClaim == "" {
+	if e.permissionsProperty == "" {
 		return nil
 	}
 
-	value, exists := data[e.permissionsClaim]
+	value, exists := data[e.permissionsProperty]
 	if !exists {
 		return nil
 	}
 
 	invalidErr := func() error {
 		return errors.AuthzExternal.Label(e.name).
-			Messagef("invalid %s permissions value: %#v", e.permissionsClaim, value)
+			Messagef("invalid %s permissions value: %#v", e.permissionsProperty, value)
 	}
 
 	var permissions []string
