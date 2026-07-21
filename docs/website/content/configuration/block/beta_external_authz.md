@@ -54,9 +54,11 @@ Couper calls the authorization service on the hot path of every protected reques
 connection to it should be persistent. This is the recommended setup: a (typically local)
 authorization service behind a `backend` with `http2 = true` — callouts are then multiplexed
 over a single persistent HTTP/2 connection instead of paying a round trip per request.
-HTTP/2 is negotiated via TLS (ALPN), so the authorization service must be reachable via
-`https` — without `http2` Couper still reuses connections (HTTP/1.1 keep-alive), just
-without multiplexing.
+HTTP/2 is negotiated via TLS (ALPN), so `http2` applies to `https` origins. For a trusted
+cleartext (`http`) authorization service, `http2_prior_knowledge = true` establishes the
+same multiplexed HTTP/2 connection without TLS (h2c) — the service must speak HTTP/2.
+Without either, Couper still reuses connections (HTTP/1.1 keep-alive), just without
+multiplexing.
 
 ```hcl
 definitions {

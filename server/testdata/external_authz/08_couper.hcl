@@ -17,14 +17,8 @@ server "protected" {
 definitions {
   beta_external_authz "authz" {
     backend {
-      origin = "{{.origin}}"
-      http2  = true
-
-      tls {
-        server_ca_certificate = <<-EOC
-{{ .ca }}
-EOC
-      }
+      origin                = "{{.origin}}"
+      http2_prior_knowledge = true
     }
   }
 }

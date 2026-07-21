@@ -19,7 +19,8 @@ type Backend struct {
 	DisableCertValidation  bool        `hcl:"disable_certificate_validation,optional" docs:"Disables the peer certificate validation. Must not be used in backend refinement."`
 	DisableConnectionReuse bool        `hcl:"disable_connection_reuse,optional" docs:"Disables reusage of connections to the origin. Must not be used in backend refinement."`
 	Health                 *Health     `hcl:"beta_health,block" docs:"Configures a [health check](/configuration/block/health) (zero or one)."`
-	HTTP2                  bool        `hcl:"http2,optional" docs:"Enables the HTTP2 support. Must not be used in backend refinement."`
+	HTTP2                  bool        `hcl:"http2,optional" docs:"Enables the HTTP2 support. HTTP2 is negotiated during the TLS handshake (ALPN), so it applies to {https} origins only. Must not be used in backend refinement."`
+	HTTP2PriorKnowledge    bool        `hcl:"http2_prior_knowledge,optional" docs:"Uses cleartext HTTP2 (h2c) with prior knowledge for {http} origins — the origin must speak HTTP2. Must not be used in backend refinement."`
 	MaxConnections         int         `hcl:"max_connections,optional" docs:"The maximum number of concurrent connections in any state (_active_ or _idle_) to the origin. Must not be used in backend refinement." default:"0"`
 	Name                   string      `hcl:"name,label_optional"`
 	OpenAPI                *OpenAPI    `hcl:"openapi,block" docs:"Configures [OpenAPI validation](/configuration/block/openapi) (zero or one)."`

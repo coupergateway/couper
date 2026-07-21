@@ -79,8 +79,14 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
   },
   {
     "default": "false",
-    "description": "Enables the HTTP2 support. Must not be used in backend refinement.",
+    "description": "Enables the HTTP2 support. HTTP2 is negotiated during the TLS handshake (ALPN), so it applies to `https` origins only. Must not be used in backend refinement.",
     "name": "http2",
+    "type": "bool"
+  },
+  {
+    "default": "false",
+    "description": "Uses cleartext HTTP2 (h2c) with prior knowledge for `http` origins — the origin must speak HTTP2. Must not be used in backend refinement.",
+    "name": "http2_prior_knowledge",
     "type": "bool"
   },
   {
