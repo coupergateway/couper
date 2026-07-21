@@ -150,6 +150,11 @@ func (u *UpstreamLog) RoundTrip(req *http.Request) (*http.Response, error) {
 			"headers": filterHeader(u.config.ResponseHeaders, beresp.Header),
 			"status":  beresp.StatusCode,
 		}
+		// The request "proto" field carries the scheme; the negotiated protocol
+		// version (HTTP/1.1 vs HTTP/2.0) is otherwise invisible in the logs.
+		if beresp.Proto != "" {
+			responseFields["proto"] = beresp.Proto
+		}
 		fields["response"] = responseFields
 	}
 
