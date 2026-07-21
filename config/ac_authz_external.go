@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	hclbody "github.com/coupergateway/couper/config/body"
 	"github.com/coupergateway/couper/config/meta"
@@ -66,6 +67,44 @@ func (a *AuthZExternal) Inline() interface{} {
 	}
 
 	return &Inline{}
+}
+
+// DefaultErrorHandlers forwards the authorization service's WWW-Authenticate challenge
+// on denied credentials so clients can bootstrap authentication (e.g. OAuth protected
+// resource metadata discovery); a user-defined handler for the kind replaces it.
+func (a *AuthZExternal) DefaultErrorHandlers() []*ErrorHandler {
+	challenge := &hclsyntax.ScopeTraversalExpr{
+		Traversal: hcl.Traversal{
+			hcl.TraverseRoot{Name: "request"},
+			hcl.TraverseAttr{Name: "context"},
+			hcl.TraverseAttr{Name: a.Name},
+			hcl.TraverseAttr{Name: "www_authenticate"},
+		},
+	}
+	headers := &hclsyntax.ObjectConsExpr{
+		Items: []hclsyntax.ObjectConsItem{
+			{
+				KeyExpr: &hclsyntax.ObjectConsKeyExpr{
+					Wrapped: &hclsyntax.LiteralValueExpr{Val: cty.StringVal("Www-Authenticate")},
+				},
+				ValueExpr: challenge,
+			},
+		},
+	}
+	return []*ErrorHandler{
+		{
+			Kinds: []string{"authz_external_invalid_credentials"},
+			Remain: &hclsyntax.Body{
+				Attributes: hclsyntax.Attributes{
+					"set_response_headers": {
+						Name:     "set_response_headers",
+						Expr:     headers,
+						SrcRange: hcl.Range{Filename: "default_authz_external_error_handler"},
+					},
+				},
+			},
+		},
+	}
 }
 
 // Schema implements the <Inline> interface.

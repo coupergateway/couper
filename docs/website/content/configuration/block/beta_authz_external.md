@@ -125,9 +125,12 @@ definitions {
 }
 ```
 
-The error types can be handled with [`error_handler` blocks](/configuration/error-handling),
-for example to send a `WWW-Authenticate` challenge pointing OAuth 2.0 clients to the
-protected resource metadata (RFC 9728).
+On a `401` response the authorization service's `WWW-Authenticate` challenge — for example an
+RFC 9728 `resource_metadata` pointer for OAuth 2.0 clients — is forwarded to the client by a
+default `error_handler`, and its value is available to custom handlers as
+`request.context.<label>.www_authenticate`. Defining an
+[`error_handler` block](/configuration/error-handling) for
+`authz_external_invalid_credentials` replaces the default:
 
 ```hcl
 definitions {

@@ -239,6 +239,34 @@ func TestAuthzExternal_PermissionsClaim(t *testing.T) {
 	}
 }
 
+func TestAuthzExternal_ChallengeForwarding(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/authz_external/07_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	_, _ = io.Copy(io.Discard, res.Body)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status %d, got: %d", http.StatusUnauthorized, res.StatusCode)
+	}
+
+	// No error_handler configured: the authorization service's challenge is
+	// forwarded by the default handler.
+	expChallenge := `Bearer resource_metadata="http://protected.example/.well-known/oauth-protected-resource/protected"`
+	if challenge := res.Header.Get("Www-Authenticate"); challenge != expChallenge {
+		t.Errorf("expected forwarded challenge %q, got: %q", expChallenge, challenge)
+	}
+}
+
 func TestAuthzExternal_ErrorHandler(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)

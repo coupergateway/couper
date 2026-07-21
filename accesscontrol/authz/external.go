@@ -142,6 +142,11 @@ func (e *External) Validate(req *http.Request) error {
 		e.storeContext(req, withResponseHeaders(data, res.Header))
 		return e.grantPermissions(req, data)
 	case http.StatusUnauthorized:
+		// The service's challenge tells the client how to authenticate (e.g. an RFC 9728
+		// resource_metadata pointer); expose it so the default error handler forwards it.
+		if challenge := res.Header.Get("WWW-Authenticate"); challenge != "" {
+			e.storeContext(req, map[string]interface{}{"www_authenticate": challenge})
+		}
 		return errors.AuthzExternalInvalidCredentials.Label(e.name).Message("invalid credentials")
 	case http.StatusForbidden:
 		return errors.AuthzExternalInsufficientPermissions.Label(e.name).Message("insufficient permissions")
