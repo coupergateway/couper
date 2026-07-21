@@ -18,7 +18,7 @@ import (
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
-const roundTripName = "authz_external"
+const roundTripName = "external_authz"
 
 // External authorization calls out to a service which decides whether the
 // client request is allowed: 200 allows, 401 and 403 map to distinct error types.
@@ -109,12 +109,12 @@ func (e *External) Validate(req *http.Request) error {
 
 	body, err := json.Marshal(authCtx)
 	if err != nil {
-		return errors.AuthzExternal.Label(e.name).With(err)
+		return errors.ExternalAuthz.Label(e.name).With(err)
 	}
 
 	outreq, err := http.NewRequest(http.MethodPost, e.url, nil)
 	if err != nil {
-		return errors.AuthzExternal.Label(e.name).With(err)
+		return errors.ExternalAuthz.Label(e.name).With(err)
 	}
 
 	outreq.Header.Set("Accept", "application/json")
@@ -129,7 +129,7 @@ func (e *External) Validate(req *http.Request) error {
 
 	res, err := e.transport.RoundTrip(outreq.WithContext(ctx))
 	if err != nil {
-		return errors.AuthzExternal.Label(e.name).With(err)
+		return errors.ExternalAuthz.Label(e.name).With(err)
 	}
 	defer res.Body.Close()
 
@@ -147,11 +147,11 @@ func (e *External) Validate(req *http.Request) error {
 		if challenge := res.Header.Get("WWW-Authenticate"); challenge != "" {
 			e.storeContext(req, map[string]interface{}{"www_authenticate": challenge})
 		}
-		return errors.AuthzExternalInvalidCredentials.Label(e.name).Message("invalid credentials")
+		return errors.ExternalAuthzInvalidCredentials.Label(e.name).Message("invalid credentials")
 	case http.StatusForbidden:
-		return errors.AuthzExternalInsufficientPermissions.Label(e.name).Message("insufficient permissions")
+		return errors.ExternalAuthzInsufficientPermissions.Label(e.name).Message("insufficient permissions")
 	default:
-		return errors.AuthzExternal.Label(e.name).Messagef("unexpected authorization service response status: %d", res.StatusCode)
+		return errors.ExternalAuthz.Label(e.name).Messagef("unexpected authorization service response status: %d", res.StatusCode)
 	}
 }
 
@@ -166,7 +166,7 @@ func (e *External) parseResponseBody(res *http.Response) (map[string]interface{}
 
 	raw, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.AuthzExternal.Label(e.name).With(err)
+		return nil, errors.ExternalAuthz.Label(e.name).With(err)
 	}
 	if len(raw) == 0 {
 		return nil, nil
@@ -174,7 +174,7 @@ func (e *External) parseResponseBody(res *http.Response) (map[string]interface{}
 
 	var data map[string]interface{}
 	if err = json.Unmarshal(raw, &data); err != nil {
-		return nil, errors.AuthzExternal.Label(e.name).Message("unexpected authorization service response body").With(err)
+		return nil, errors.ExternalAuthz.Label(e.name).Message("unexpected authorization service response body").With(err)
 	}
 
 	return data, nil
@@ -220,12 +220,12 @@ func (e *External) grantPermissions(req *http.Request, data map[string]interface
 		// A configured permissions property expresses a contract with the authorization
 		// service; its absence on an allow is a broken service, not an empty grant —
 		// failing loudly beats a puzzling 403 at required_permission.
-		return errors.AuthzExternal.Label(e.name).
+		return errors.ExternalAuthz.Label(e.name).
 			Messagef("missing %s permissions property in authorization service response", e.permissionsProperty)
 	}
 
 	invalidErr := func() error {
-		return errors.AuthzExternal.Label(e.name).
+		return errors.ExternalAuthz.Label(e.name).
 			Messagef("invalid %s permissions value: %#v", e.permissionsProperty, value)
 	}
 

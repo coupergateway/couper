@@ -18,7 +18,7 @@ Detailed information is provided via log message. This way, all information can 
 ## Access control `error_handler`
 
 Access control errors in particular require special handling, e.g. sending a specific response for missing login credentials.
-For this purpose every access control definition of `basic_auth`, `beta_authz_external`, `jwt`, `oidc` or `saml2` can define one or multiple [`error_handler` blocks](/configuration/block/error_handler) with one or more defined error type labels listed below.
+For this purpose every access control definition of `basic_auth`, `beta_external_authz`, `jwt`, `oidc` or `saml2` can define one or multiple [`error_handler` blocks](/configuration/block/error_handler) with one or more defined error type labels listed below.
 
 ## Permissions related `error_handler`
 
@@ -35,14 +35,14 @@ All errors have a specific type. You can find it in the log field `error_type`. 
 
 ### Access control error types
 
-The following table documents error types that can be handled in the respective access control blocks (`basic_auth`, `beta_authz_external`, `jwt`, `saml`, `beta_oauth2`, `oidc`):
+The following table documents error types that can be handled in the respective access control blocks (`basic_auth`, `beta_external_authz`, `jwt`, `saml`, `beta_oauth2`, `oidc`):
 
 | Type (and super types)                          | Description                                                                                                                  | Default handling                                                            |
 |:------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------|
 | `access_control`                                | Access control related errors.                                                                                               | Send error template with status `403`.                                      |
-| `authz_external` (`access_control`)             | All `beta_authz_external` related errors, e.g. callout failures or unexpected authorization service response status.        | Send error template with status `401`.                                      |
-| `authz_external_invalid_credentials` (`authz_external`) | The authorization service responded with status `401`.                                                               | Send error template with status `401`.                                      |
-| `authz_external_insufficient_permissions` (`authz_external`) | The authorization service responded with status `403`.                                                           | Send error template with status `403`.                                      |
+| `external_authz` (`access_control`)             | All `beta_external_authz` related errors, e.g. callout failures or unexpected authorization service response status.        | Send error template with status `401`.                                      |
+| `external_authz_invalid_credentials` (`external_authz`) | The authorization service responded with status `401`.                                                               | Send error template with status `401`.                                      |
+| `external_authz_insufficient_permissions` (`external_authz`) | The authorization service responded with status `403`.                                                           | Send error template with status `403`.                                      |
 | `basic_auth` (`access_control`)                 | All `basic_auth` related errors, e.g. unknown user or wrong password.                                                        | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
 | `basic_auth_credentials_missing` (`basic_auth`) | Client does not provide any credentials.                                                                                     | Send error template with status `401` and `WWW-Authenticate: Basic` header. |
 | `jwt` (`access_control`)                        | All `jwt` related errors.                                                                                                    | Send error template with status `401`.                                      |

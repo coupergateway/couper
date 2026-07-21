@@ -19,19 +19,16 @@ server "authz-service" {
     endpoint "/check" {
       response {
         status = 401
+        headers = {
+          www-authenticate = "Bearer resource_metadata=\"http://protected.example/.well-known/oauth-protected-resource/protected\""
+        }
       }
     }
   }
 }
 
 definitions {
-  beta_authz_external "authz" {
+  beta_external_authz "authz" {
     url = "http://127.0.0.1:8081/check"
-
-    error_handler "authz_external_invalid_credentials" {
-      set_response_headers = {
-        www-authenticate = "Bearer resource_metadata=\"http://protected.example/.well-known/oauth-protected-resource\""
-      }
-    }
   }
 }

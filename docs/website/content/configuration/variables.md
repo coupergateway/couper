@@ -68,7 +68,7 @@ The value of `context.<name>` depends on the type of block referenced by `<name>
 
 For a [`basic_auth` block](/configuration/block/basic_auth) and successfully authenticated request the variable contains the `user` name.
 
-For a [`beta_authz_external` block](/configuration/block/beta_authz_external) the variable contains the JSON object body of the authorization service's `200` response (if any), e.g. validated claims or resolved permissions.
+For a [`beta_external_authz` block](/configuration/block/beta_external_authz) the variable contains the JSON object body of the authorization service's `200` response (if any), e.g. validated claims or resolved permissions.
 
 For a [`jwt` block](/configuration/block/jwt) the variable contains claims from the JWT used for [access control](/configuration/access-control).
 

@@ -31,7 +31,7 @@ server "authz-service" {
 }
 
 definitions {
-  beta_authz_external "authz" {
+  beta_external_authz "authz" {
     url = "http://127.0.0.1:8081/check"
   }
 }

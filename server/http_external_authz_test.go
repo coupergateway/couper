@@ -11,11 +11,11 @@ import (
 	"github.com/coupergateway/couper/internal/test"
 )
 
-func TestAuthzExternal_Callout(t *testing.T) {
+func TestExternalAuthz_Callout(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/authz_external/01_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/external_authz/01_couper.hcl", helper)
 	defer shutdown()
 
 	for _, tc := range []struct {
@@ -25,8 +25,8 @@ func TestAuthzExternal_Callout(t *testing.T) {
 		expErrorType  string
 	}{
 		{"valid credentials", "Bearer valid", http.StatusNoContent, ""},
-		{"missing credentials", "", http.StatusUnauthorized, "authz_external_invalid_credentials"},
-		{"insufficient permissions", "Bearer forbidden", http.StatusForbidden, "authz_external_insufficient_permissions"},
+		{"missing credentials", "", http.StatusUnauthorized, "external_authz_invalid_credentials"},
+		{"insufficient permissions", "Bearer forbidden", http.StatusForbidden, "external_authz_insufficient_permissions"},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()
@@ -63,11 +63,11 @@ func TestAuthzExternal_Callout(t *testing.T) {
 	}
 }
 
-func TestAuthzExternal_ContextPropagation(t *testing.T) {
+func TestExternalAuthz_ContextPropagation(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/authz_external/03_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/external_authz/03_couper.hcl", helper)
 	defer shutdown()
 	hook.Reset()
 
@@ -100,11 +100,11 @@ func TestAuthzExternal_ContextPropagation(t *testing.T) {
 	}
 }
 
-func TestAuthzExternal_ResponseHeaders(t *testing.T) {
+func TestExternalAuthz_ResponseHeaders(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/authz_external/04_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/external_authz/04_couper.hcl", helper)
 	defer shutdown()
 	hook.Reset()
 
@@ -131,7 +131,7 @@ func TestAuthzExternal_ResponseHeaders(t *testing.T) {
 	}
 }
 
-func TestAuthzExternal_HTTP2Callout(t *testing.T) {
+func TestExternalAuthz_HTTP2Callout(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
@@ -151,7 +151,7 @@ func TestAuthzExternal_HTTP2Callout(t *testing.T) {
 	authzService.StartTLS()
 	defer authzService.Close()
 
-	shutdown, hook, err := newCouperWithTemplate("testdata/authz_external/05_couper.hcl", helper,
+	shutdown, hook, err := newCouperWithTemplate("testdata/external_authz/05_couper.hcl", helper,
 		map[string]interface{}{"origin": authzService.URL})
 	helper.Must(err)
 	defer shutdown()
@@ -190,11 +190,11 @@ func TestAuthzExternal_HTTP2Callout(t *testing.T) {
 	}
 }
 
-func TestAuthzExternal_PermissionsClaim(t *testing.T) {
+func TestExternalAuthz_PermissionsClaim(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/authz_external/06_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/external_authz/06_couper.hcl", helper)
 	defer shutdown()
 
 	for _, tc := range []struct {
@@ -239,11 +239,11 @@ func TestAuthzExternal_PermissionsClaim(t *testing.T) {
 	}
 }
 
-func TestAuthzExternal_ChallengeForwarding(t *testing.T) {
+func TestExternalAuthz_ChallengeForwarding(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/authz_external/07_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/external_authz/07_couper.hcl", helper)
 	defer shutdown()
 	hook.Reset()
 
@@ -267,11 +267,11 @@ func TestAuthzExternal_ChallengeForwarding(t *testing.T) {
 	}
 }
 
-func TestAuthzExternal_ErrorHandler(t *testing.T) {
+func TestExternalAuthz_ErrorHandler(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
-	shutdown, hook := newCouper("testdata/authz_external/02_couper.hcl", helper)
+	shutdown, hook := newCouper("testdata/external_authz/02_couper.hcl", helper)
 	defer shutdown()
 	hook.Reset()
 

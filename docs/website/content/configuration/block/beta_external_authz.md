@@ -1,18 +1,18 @@
 ---
 title: 'External Authorization (Beta)'
-slug: 'beta_authz_external'
-description: 'The beta_authz_external block lets you delegate the authorization decision for client requests to an external service.'
+slug: 'beta_external_authz'
+description: 'The beta_external_authz block lets you delegate the authorization decision for client requests to an external service.'
 ---
 
 # External Authorization (Beta)
 
 | Block name            | Context                                                | Label            |
 |:----------------------|:-------------------------------------------------------|:-----------------|
-| `beta_authz_external` | [Definitions Block](/configuration/block/definitions)  | &#9888; required |
+| `beta_external_authz` | [Definitions Block](/configuration/block/definitions)  | &#9888; required |
 
-The `beta_authz_external` block lets you delegate the authorization decision for client
+The `beta_external_authz` block lets you delegate the authorization decision for client
 requests to an external service. Like all [access control](/configuration/access-control)
-types, the `beta_authz_external` block is defined in the
+types, the `beta_external_authz` block is defined in the
 [`definitions` block](/configuration/block/definitions) and can be referenced in all
 configuration blocks by its required _label_.
 
@@ -60,7 +60,7 @@ without multiplexing.
 
 ```hcl
 definitions {
-  beta_authz_external "authz" {
+  beta_external_authz "authz" {
     backend {
       origin = "https://localhost:4000"
       http2  = true
@@ -78,9 +78,9 @@ The response status code of the authorization service determines the decision:
 | Status    | Result                                                                                    |
 |:----------|:------------------------------------------------------------------------------------------|
 | `200`     | The request is allowed.                                                                     |
-| `401`     | Denied with error type `authz_external_invalid_credentials`, default response status `401`. |
-| `403`     | Denied with error type `authz_external_insufficient_permissions`, default response status `403`. |
-| any other | Denied with error type `authz_external`, default response status `401`.                    |
+| `401`     | Denied with error type `external_authz_invalid_credentials`, default response status `401`. |
+| `403`     | Denied with error type `external_authz_insufficient_permissions`, default response status `403`. |
+| any other | Denied with error type `external_authz`, default response status `401`.                    |
 
 The `200` response is exposed as the [`request.context.<label>` variable](/configuration/variables#context):
 the properties of a JSON object body (`Content-Type: application/json`) — the place for validated
@@ -118,7 +118,7 @@ blocks: the named response body property — a space-separated string or a list 
 
 ```hcl
 definitions {
-  beta_authz_external "authz" {
+  beta_external_authz "authz" {
     url               = "https://authz.example.com/check"
     permissions_property = "granted_permissions"
   }
@@ -130,14 +130,14 @@ RFC 9728 `resource_metadata` pointer for OAuth 2.0 clients — is forwarded to t
 default `error_handler`, and its value is available to custom handlers as
 `request.context.<label>.www_authenticate`. Defining an
 [`error_handler` block](/configuration/error-handling) for
-`authz_external_invalid_credentials` replaces the default:
+`external_authz_invalid_credentials` replaces the default:
 
 ```hcl
 definitions {
-  beta_authz_external "authz" {
+  beta_external_authz "authz" {
     url = "https://authz.example.com/check"
 
-    error_handler "authz_external_invalid_credentials" {
+    error_handler "external_authz_invalid_credentials" {
       set_response_headers = {
         www-authenticate = "Bearer resource_metadata=\"https://couper.example.com/.well-known/oauth-protected-resource\""
       }

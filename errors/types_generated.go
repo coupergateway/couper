@@ -3,9 +3,9 @@
 package errors
 
 var (
-	AuthzExternal                        = Definitions[1]
-	AuthzExternalInvalidCredentials      = Definitions[2]
-	AuthzExternalInsufficientPermissions = Definitions[3]
+	ExternalAuthz                        = Definitions[1]
+	ExternalAuthzInvalidCredentials      = Definitions[2]
+	ExternalAuthzInsufficientPermissions = Definitions[3]
 	BasicAuth                            = Definitions[4]
 	BasicAuthCredentialsMissing          = Definitions[5]
 	Jwt                                  = Definitions[6]
@@ -36,9 +36,9 @@ type typeDefinitions map[string]*Error
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var types = typeDefinitions{
 	"access_control":                          AccessControl,
-	"authz_external":                          AuthzExternal,
-	"authz_external_invalid_credentials":      AuthzExternalInvalidCredentials,
-	"authz_external_insufficient_permissions": AuthzExternalInsufficientPermissions,
+	"external_authz":                          ExternalAuthz,
+	"external_authz_invalid_credentials":      ExternalAuthzInvalidCredentials,
+	"external_authz_insufficient_permissions": ExternalAuthzInsufficientPermissions,
 	"basic_auth":                              BasicAuth,
 	"basic_auth_credentials_missing":          BasicAuthCredentialsMissing,
 	"jwt":                                     Jwt,
