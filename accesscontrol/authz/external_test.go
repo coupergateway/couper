@@ -297,12 +297,17 @@ func TestExternal_Validate_PermissionsProperty(t *testing.T) {
 		}
 	})
 
-	t.Run("missing property grants nothing", func(t *testing.T) {
+	t.Run("missing property denies", func(t *testing.T) {
 		external := newExternal(`{"sub":"clark.kent"}`)
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
 
-		if err := external.Validate(req); err != nil {
-			t.Fatalf("expected no error, got: %v", err)
+		err := external.Validate(req)
+		if err == nil {
+			t.Fatal("expected an error for the missing permissions property")
+		}
+		logErr, ok := err.(errors.GoError)
+		if !ok || !strings.Contains(logErr.LogError(), "missing perms permissions property") {
+			t.Errorf("unexpected error: %v", err)
 		}
 		if p := granted(req); len(p) != 0 {
 			t.Errorf("expected no granted permissions, got: %v", p)

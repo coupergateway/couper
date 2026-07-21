@@ -23,11 +23,11 @@ const roundTripName = "authz_external"
 // External authorization calls out to a service which decides whether the
 // client request is allowed: 200 allows, 401 and 403 map to distinct error types.
 type External struct {
-	includeTLS       bool
-	name             string
+	includeTLS          bool
+	name                string
 	permissionsProperty string
-	transport        http.RoundTripper
-	url              string
+	transport           http.RoundTripper
+	url                 string
 }
 
 // simplified form of http.Request for serialization
@@ -63,11 +63,11 @@ func NewExternal(name, calloutURL string, includeTLS bool, permissionsProperty s
 		calloutURL = "/"
 	}
 	return &External{
-		includeTLS:       includeTLS,
-		name:             name,
+		includeTLS:          includeTLS,
+		name:                name,
 		permissionsProperty: permissionsProperty,
-		transport:        transport,
-		url:              calloutURL,
+		transport:           transport,
+		url:                 calloutURL,
 	}
 }
 
@@ -212,7 +212,11 @@ func (e *External) grantPermissions(req *http.Request, data map[string]interface
 
 	value, exists := data[e.permissionsProperty]
 	if !exists {
-		return nil
+		// A configured permissions property expresses a contract with the authorization
+		// service; its absence on an allow is a broken service, not an empty grant —
+		// failing loudly beats a puzzling 403 at required_permission.
+		return errors.AuthzExternal.Label(e.name).
+			Messagef("missing %s permissions property in authorization service response", e.permissionsProperty)
 	}
 
 	invalidErr := func() error {
