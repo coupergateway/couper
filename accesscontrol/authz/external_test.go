@@ -159,6 +159,28 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 		}
 	})
 
+	t.Run("response headers are exposed under headers", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
+			roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+				rec := httptest.NewRecorder()
+				rec.Header().Set("Content-Type", "application/json")
+				rec.Header().Set("X-Resolved-Identity", "clark.kent")
+				rec.WriteHeader(http.StatusOK)
+				_, _ = rec.WriteString(`{"sub":"clark.kent"}`)
+				return rec.Result(), nil
+			}))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		headers, _ := contextData(req)["headers"].(map[string]interface{})
+		if headers["x-resolved-identity"] != "clark.kent" {
+			t.Errorf("expected lower-cased x-resolved-identity, got: %v", headers)
+		}
+	})
+
 	t.Run("invalid json fails closed", func(t *testing.T) {
 		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", `{"sub":`))
@@ -185,7 +207,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 		}
 	})
 
-	t.Run("empty body stores nothing", func(t *testing.T) {
+	t.Run("empty body still exposes headers", func(t *testing.T) {
 		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", ""))
 
@@ -193,12 +215,12 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 		if err := external.Validate(req); err != nil {
 			t.Fatalf("expected no error, got: %v", err)
 		}
-		if data := contextData(req); data != nil {
-			t.Errorf("expected no context data, got: %v", data)
+		if _, ok := contextData(req)["headers"]; !ok {
+			t.Error("expected headers in context data")
 		}
 	})
 
-	t.Run("non-json content type stores nothing", func(t *testing.T) {
+	t.Run("non-json response exposes headers without body properties", func(t *testing.T) {
 		external := authz.NewExternal("test_ac", "http://authz.service/check", false,
 			respondBody("text/plain", "OK"))
 
@@ -206,8 +228,12 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 		if err := external.Validate(req); err != nil {
 			t.Fatalf("expected no error, got: %v", err)
 		}
-		if data := contextData(req); data != nil {
-			t.Errorf("expected no context data, got: %v", data)
+		data := contextData(req)
+		if _, ok := data["headers"]; !ok {
+			t.Error("expected headers in context data")
+		}
+		if data["sub"] != nil {
+			t.Errorf("expected no body properties, got: %v", data)
 		}
 	})
 }

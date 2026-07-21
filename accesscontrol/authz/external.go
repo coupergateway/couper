@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/coupergateway/couper/config/request"
@@ -140,27 +141,34 @@ func (e *External) Validate(req *http.Request) error {
 	}
 }
 
-// storeContext exposes a JSON object response body as request.context.<label>.
-// A malformed body denies the request: silently dropping data which
-// downstream permission checks may rely on would fail open.
+// storeContext exposes the callout response as request.context.<label>: the properties of a
+// JSON object response body, plus the response headers under a "headers" property (lower-cased
+// names, first value, matching request.headers). Consumers inject a resolved identity or a
+// re-signed internal token upstream by reading these and writing set_request_headers, which
+// overwrites client-provided values. A malformed JSON body denies the request, as downstream
+// permission checks may rely on it. A body property literally named "headers" is shadowed by
+// the response headers.
 func (e *External) storeContext(req *http.Request, res *http.Response) error {
+	data := map[string]interface{}{}
+
 	mediaType, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
-	if mediaType != "application/json" {
-		return nil
+	if mediaType == "application/json" {
+		raw, err := io.ReadAll(res.Body)
+		if err != nil {
+			return errors.AuthzExternal.Label(e.name).With(err)
+		}
+		if len(raw) > 0 {
+			var body map[string]interface{}
+			if err = json.Unmarshal(raw, &body); err != nil {
+				return errors.AuthzExternal.Label(e.name).Message("unexpected authorization service response body").With(err)
+			}
+			for name, value := range body {
+				data[name] = value
+			}
+		}
 	}
 
-	raw, err := io.ReadAll(res.Body)
-	if err != nil {
-		return errors.AuthzExternal.Label(e.name).With(err)
-	}
-	if len(raw) == 0 {
-		return nil
-	}
-
-	var data map[string]interface{}
-	if err = json.Unmarshal(raw, &data); err != nil {
-		return errors.AuthzExternal.Label(e.name).Message("unexpected authorization service response body").With(err)
-	}
+	data["headers"] = responseHeaders(res.Header)
 
 	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
@@ -171,4 +179,18 @@ func (e *External) storeContext(req *http.Request, res *http.Response) error {
 	*req = *req.WithContext(context.WithValue(ctx, request.AccessControls, acMap))
 
 	return nil
+}
+
+// responseHeaders renders callout response headers like request.headers: lower-cased names
+// mapped to the first value.
+func responseHeaders(header http.Header) map[string]interface{} {
+	m := make(map[string]interface{}, len(header))
+	for name, values := range header {
+		value := ""
+		if len(values) > 0 {
+			value = values[0]
+		}
+		m[strings.ToLower(name)] = value
+	}
+	return m
 }

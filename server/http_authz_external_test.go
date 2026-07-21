@@ -98,6 +98,37 @@ func TestAuthzExternal_ContextPropagation(t *testing.T) {
 	}
 }
 
+func TestAuthzExternal_ResponseHeaders(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/authz_external/04_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+	helper.Must(err)
+	req.Header.Set("X-Resolved-Identity", "spoofed")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	_, _ = io.Copy(io.Discard, res.Body)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	// The callout's response header is exposed in request.context and wins over the
+	// client-provided value; a header the service did not return is empty.
+	if identity := res.Header.Get("X-Identity"); identity != "clark.kent" {
+		t.Errorf("expected resolved identity from the callout, got: %q", identity)
+	}
+	if evil := res.Header.Get("X-Evil"); evil != "" {
+		t.Errorf("expected no value for an unset callout header, got: %q", evil)
+	}
+}
+
 func TestAuthzExternal_ErrorHandler(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
