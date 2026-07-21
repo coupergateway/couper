@@ -170,6 +170,8 @@ func bufferWithBlock(name string) Option {
 	switch name {
 	case "openapi":
 		return Response
+	case "beta_mcp_proxy":
+		return Request | Response
 	}
 	return None
 }

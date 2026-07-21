@@ -39,8 +39,9 @@ func validateConfigSchema(body hcl.Body, obj interface{}) hcl.Diagnostics {
 func enhanceErrors(diags hcl.Diagnostics, obj interface{}) hcl.Diagnostics {
 	_, isEndpoint := obj.(*config.Endpoint)
 	_, isProxy := obj.(*config.Proxy)
+	_, isMCPProxy := obj.(*config.MCPProxy)
 	for _, err := range diags {
-		if err.Summary == summUnsupportedAttr && (isEndpoint || isProxy) {
+		if err.Summary == summUnsupportedAttr && (isEndpoint || isProxy || isMCPProxy) {
 			if matches := reFetchUnexpectedArg.FindStringSubmatch(err.Detail); matches != nil && matches[1] == `"path"` {
 				err.Detail = err.Detail + ` Use the "path" attribute in a backend block instead.`
 			}

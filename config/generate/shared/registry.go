@@ -29,6 +29,7 @@ var ConfigRegistry = []interface{}{
 	&config.OAuth2ReqAuth{},
 	&config.OIDC{},
 	&config.OpenAPI{},
+	&config.MCPProxy{},
 	&config.Proxy{},
 	&config.Throttle{},
 	&config.RateLimiter{},
@@ -45,11 +46,12 @@ var ConfigRegistry = []interface{}{
 	&config.Websockets{},
 }
 
-var filenameRegex = regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z0-9]+)`)
+var filenameRegex = regexp.MustCompile(`(URL|JWT|MCP|OpenAPI|[a-z0-9]+)`)
 
 // BlockNamesMap provides mappings from internal type names to HCL block names
 // Used by docs generator to match documentation file names
 var BlockNamesMap = map[string]string{
+	"mcp_proxy":       "beta_mcp_proxy",
 	"oauth2_ac":       "beta_oauth2",
 	"oauth2_req_auth": "oauth2",
 }
@@ -58,6 +60,7 @@ var BlockNamesMap = map[string]string{
 // Maps internal Go type names to their HCL block names when they differ.
 var VSCodeBlockNamesMap = map[string]string{
 	"introspection":   "beta_introspection",
+	"mcp_proxy":       "beta_mcp_proxy",
 	"oauth2_ac":       "beta_oauth2",
 	"oauth2_req_auth": "oauth2",
 	"backend_tls":     "tls",
