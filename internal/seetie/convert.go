@@ -168,14 +168,23 @@ func MapToValue(m map[string]interface{}) cty.Value {
 	return cty.ObjectVal(ctyMap)
 }
 
-func HeaderToMapValue(headers http.Header) cty.Value {
-	ctyMap := make(map[string]cty.Value)
+// HeaderToMap renders headers as lower-cased names mapped to their first value.
+func HeaderToMap(headers http.Header) map[string]interface{} {
+	m := make(map[string]interface{}, len(headers))
 	for k, v := range headers {
 		if len(v) == 0 {
-			ctyMap[strings.ToLower(k)] = cty.StringVal("")
+			m[strings.ToLower(k)] = ""
 			continue
 		}
-		ctyMap[strings.ToLower(k)] = cty.StringVal(v[0]) // TODO: ListVal??
+		m[strings.ToLower(k)] = v[0] // TODO: ListVal??
+	}
+	return m
+}
+
+func HeaderToMapValue(headers http.Header) cty.Value {
+	ctyMap := make(map[string]cty.Value)
+	for k, v := range HeaderToMap(headers) {
+		ctyMap[k] = cty.StringVal(v.(string))
 	}
 	if len(ctyMap) == 0 {
 		return cty.MapValEmpty(cty.String)
