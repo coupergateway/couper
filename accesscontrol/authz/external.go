@@ -2,7 +2,9 @@ package authz
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"mime"
@@ -45,11 +47,20 @@ type metadataTLS struct {
 	Version           string             `json:"version"`
 }
 
+// clientCertificate carries the fields an authorization service keys on for a client-facing
+// mTLS decision: the subject/issuer DN, the serial and SHA-256 fingerprint for allow lists or
+// pinning, validity, and the subject alternative names that often hold the real identity.
 type clientCertificate struct {
-	Issuer    string    `json:"issuer"`
-	NotAfter  time.Time `json:"not_after"`
-	NotBefore time.Time `json:"not_before"`
-	Subject   string    `json:"subject"`
+	DNSNames          []string  `json:"dns_names,omitempty"`
+	EmailAddresses    []string  `json:"email_addresses,omitempty"`
+	FingerprintSHA256 string    `json:"fingerprint_sha256,omitempty"`
+	IPAddresses       []string  `json:"ip_addresses,omitempty"`
+	Issuer            string    `json:"issuer"`
+	NotAfter          time.Time `json:"not_after"`
+	NotBefore         time.Time `json:"not_before"`
+	SerialNumber      string    `json:"serial_number,omitempty"`
+	Subject           string    `json:"subject"`
+	URIs              []string  `json:"uris,omitempty"`
 }
 
 // context sent to external authorization origin
@@ -84,12 +95,28 @@ func newMetadataTLS(state *tls.ConnectionState) *metadataTLS {
 
 	if len(state.PeerCertificates) > 0 {
 		cert := state.PeerCertificates[0]
-		meta.ClientCertificate = &clientCertificate{
-			Issuer:    cert.Issuer.String(),
-			NotAfter:  cert.NotAfter,
-			NotBefore: cert.NotBefore,
-			Subject:   cert.Subject.String(),
+		clientCert := &clientCertificate{
+			DNSNames:       cert.DNSNames,
+			EmailAddresses: cert.EmailAddresses,
+			Issuer:         cert.Issuer.String(),
+			NotAfter:       cert.NotAfter,
+			NotBefore:      cert.NotBefore,
+			Subject:        cert.Subject.String(),
 		}
+		if cert.SerialNumber != nil {
+			clientCert.SerialNumber = cert.SerialNumber.Text(16)
+		}
+		if len(cert.Raw) > 0 {
+			sum := sha256.Sum256(cert.Raw)
+			clientCert.FingerprintSHA256 = hex.EncodeToString(sum[:])
+		}
+		for _, uri := range cert.URIs {
+			clientCert.URIs = append(clientCert.URIs, uri.String())
+		}
+		for _, ip := range cert.IPAddresses {
+			clientCert.IPAddresses = append(clientCert.IPAddresses, ip.String())
+		}
+		meta.ClientCertificate = clientCert
 	}
 
 	return meta

@@ -2,13 +2,21 @@ package authz_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
 	"encoding/json"
 	"io"
+	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -331,6 +339,20 @@ func TestExternal_Validate_PermissionsProperty(t *testing.T) {
 	})
 }
 
+func assertJSONStrings(t *testing.T, obj map[string]interface{}, key string, want []string) {
+	t.Helper()
+	values, ok := obj[key].([]interface{})
+	if !ok || len(values) != len(want) {
+		t.Errorf("%s: expected %v, got: %v", key, want, obj[key])
+		return
+	}
+	for i, w := range want {
+		if values[i] != w {
+			t.Errorf("%s[%d]: expected %q, got: %v", key, i, w, values[i])
+		}
+	}
+}
+
 func TestExternal_Validate_IncludeTLS(t *testing.T) {
 	newTLSRequest := func() *http.Request {
 		req := httptest.NewRequest(http.MethodGet, "https://client.request/protected", nil)
@@ -391,6 +413,70 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 		if cert["issuer"] != "CN=my-ca" {
 			t.Errorf("unexpected certificate issuer: %v", cert["issuer"])
 		}
+	})
+
+	t.Run("client certificate identity fields", func(t *testing.T) {
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		spiffe, _ := url.Parse("spiffe://example.org/mcp-client")
+		template := &x509.Certificate{
+			SerialNumber:   big.NewInt(4711),
+			Subject:        pkix.Name{CommonName: "mcp-client"},
+			NotBefore:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			NotAfter:       time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC),
+			DNSNames:       []string{"client.example"},
+			EmailAddresses: []string{"mcp@example.org"},
+			IPAddresses:    []net.IP{net.ParseIP("10.0.0.7")},
+			URIs:           []*url.URL{spiffe},
+		}
+		der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cert, err := x509.ParseCertificate(der)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "https://client.request/protected", nil)
+		req.TLS = &tls.ConnectionState{
+			Version:          tls.VersionTLS13,
+			CipherSuite:      tls.TLS_AES_128_GCM_SHA256,
+			PeerCertificates: []*x509.Certificate{cert},
+		}
+
+		var calloutBody []byte
+		external := authz.NewExternal("test_ac", "http://authz.service/check", true, "", captureBody(&calloutBody))
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		var sent map[string]interface{}
+		if err := json.Unmarshal(calloutBody, &sent); err != nil {
+			t.Fatalf("callout body is no valid json: %v", err)
+		}
+		metaTLS, _ := sent["metadata_tls"].(map[string]interface{})
+		clientCert, _ := metaTLS["client_certificate"].(map[string]interface{})
+		if clientCert == nil {
+			t.Fatal("missing client_certificate object")
+		}
+
+		if clientCert["subject"] != "CN=mcp-client" {
+			t.Errorf("unexpected subject: %v", clientCert["subject"])
+		}
+		if clientCert["serial_number"] != "1267" { // 4711 in hex
+			t.Errorf("unexpected serial_number: %v", clientCert["serial_number"])
+		}
+		sum := sha256.Sum256(der)
+		if clientCert["fingerprint_sha256"] != hex.EncodeToString(sum[:]) {
+			t.Errorf("unexpected fingerprint_sha256: %v", clientCert["fingerprint_sha256"])
+		}
+		assertJSONStrings(t, clientCert, "dns_names", []string{"client.example"})
+		assertJSONStrings(t, clientCert, "email_addresses", []string{"mcp@example.org"})
+		assertJSONStrings(t, clientCert, "ip_addresses", []string{"10.0.0.7"})
+		assertJSONStrings(t, clientCert, "uris", []string{"spiffe://example.org/mcp-client"})
 	})
 
 	t.Run("enabled without tls connection", func(t *testing.T) {

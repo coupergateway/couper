@@ -1,7 +1,10 @@
 package server_test
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -196,6 +199,85 @@ func TestExternalAuthz_HTTP2Callout(t *testing.T) {
 	}
 	if calloutConns[0] != calloutConns[1] {
 		t.Errorf("expected callouts to reuse one connection, got: %v", calloutConns)
+	}
+}
+
+func TestExternalAuthz_MTLSClientCertificate(t *testing.T) {
+	helper := test.New(t)
+
+	selfSigned, err := server.NewCertificate(time.Minute, nil, nil)
+	helper.Must(err)
+
+	var mu sync.Mutex
+	var calloutBody []byte
+	authzService := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		body, _ := io.ReadAll(req.Body)
+		mu.Lock()
+		calloutBody = body
+		mu.Unlock()
+		rw.WriteHeader(http.StatusOK)
+	}))
+	defer authzService.Close()
+
+	shutdown, _, err := newCouperWithTemplate("testdata/external_authz/09_couper.hcl", helper, map[string]interface{}{
+		"origin":     authzService.URL,
+		"publicKey":  string(selfSigned.ServerCertificate.Certificate), // PEM
+		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),  // PEM
+		"clientCA":   string(selfSigned.CACertificate.Certificate),     // PEM
+	})
+	helper.Must(err)
+	defer shutdown()
+
+	pool := x509.NewCertPool()
+	pool.AddCert(selfSigned.CA.Leaf)
+	client := test.NewHTTPSClient(&tls.Config{
+		RootCAs:      pool,
+		Certificates: []tls.Certificate{*selfSigned.Client},
+	})
+
+	req, err := http.NewRequest(http.MethodGet, "https://localhost:4443/protected", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	_, _ = io.Copy(io.Discard, res.Body)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	var sent struct {
+		MetadataTLS *struct {
+			ClientCertificate *struct {
+				FingerprintSHA256 string `json:"fingerprint_sha256"`
+				SerialNumber      string `json:"serial_number"`
+				Subject           string `json:"subject"`
+			} `json:"client_certificate"`
+		} `json:"metadata_tls"`
+	}
+	helper.Must(json.Unmarshal(calloutBody, &sent))
+
+	if sent.MetadataTLS == nil || sent.MetadataTLS.ClientCertificate == nil {
+		t.Fatalf("expected client_certificate in callout metadata_tls, got: %s", calloutBody)
+	}
+
+	// The authorization service must see the exact client certificate Couper terminated,
+	// keyed on the fields an mTLS decision relies on.
+	leaf := selfSigned.Client.Leaf
+	cert := sent.MetadataTLS.ClientCertificate
+	if cert.SerialNumber != leaf.SerialNumber.Text(16) {
+		t.Errorf("expected serial_number %q, got: %q", leaf.SerialNumber.Text(16), cert.SerialNumber)
+	}
+	sum := sha256.Sum256(leaf.Raw)
+	if cert.FingerprintSHA256 != hex.EncodeToString(sum[:]) {
+		t.Errorf("expected fingerprint_sha256 %q, got: %q", hex.EncodeToString(sum[:]), cert.FingerprintSHA256)
+	}
+	if cert.Subject != leaf.Subject.String() {
+		t.Errorf("expected subject %q, got: %q", leaf.Subject.String(), cert.Subject)
 	}
 }
 
