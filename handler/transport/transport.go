@@ -17,6 +17,7 @@ import (
 	"github.com/coupergateway/couper/handler/throttle"
 	coupertls "github.com/coupergateway/couper/internal/tls"
 	"golang.org/x/net/http/httpproxy"
+	"golang.org/x/net/http2"
 )
 
 // Config represents the transport <Config> object.
@@ -25,6 +26,7 @@ type Config struct {
 	DisableCertValidation  bool
 	DisableConnectionReuse bool
 	HTTP2                  bool
+	HTTP2PriorKnowledge    bool
 	MaxConnections         int
 	NoProxyFromEnv         bool
 	Proxy                  string
@@ -49,8 +51,8 @@ type Config struct {
 	Scheme   string
 }
 
-// NewTransport creates a new <*http.Transport> object by the given <*Config>.
-func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
+// NewTransport creates the backend roundtripper for the given <*Config>.
+func NewTransport(conf *Config, log *logrus.Entry) http.RoundTripper {
 	tlsConf := coupertls.DefaultTLSConfig()
 	if len(conf.Certificate) > 0 {
 		tlsConf.RootCAs.AppendCertsFromPEM(conf.Certificate)
@@ -101,33 +103,58 @@ func NewTransport(conf *Config, log *logrus.Entry) *http.Transport {
 
 	logEntry := log.WithField("type", "couper_connection")
 
+	dial := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		address := addr
+		if proxyFunc == nil {
+			address = conf.Origin
+		} // Otherwise, proxy connect will use this dial method and addr could be a proxy one.
+
+		connectTimeout, _ := ctx.Value(request.ConnectTimeout).(time.Duration)
+		if connectTimeout > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithDeadline(ctx, time.Now().Add(connectTimeout))
+			defer cancel()
+		}
+
+		conn, cerr := d.DialContext(ctx, network, address)
+		if cerr != nil {
+			host, port, _ := net.SplitHostPort(conf.Origin)
+			if port != "80" && port != "443" {
+				host = conf.Origin
+			}
+			if os.IsTimeout(cerr) || cerr == context.DeadlineExceeded {
+				return nil, fmt.Errorf("connecting to %s '%s' failed: i/o timeout", conf.BackendName, host)
+			}
+			return nil, fmt.Errorf("connecting to %s '%s' failed: %w", conf.BackendName, conf.Origin, cerr)
+		}
+		return NewOriginConn(ctx, conn, conf, logEntry), nil
+	}
+
+	// http2.Transport cannot dial through HTTP proxies; only skip the standard
+	// transport when no proxy applies to this origin.
+	proxied := false
+	if proxyFunc != nil {
+		if proxyReq, _ := http.NewRequest(http.MethodGet, conf.Scheme+"://"+conf.Origin, nil); proxyReq != nil {
+			proxyURL, _ := proxyFunc(proxyReq)
+			proxied = proxyURL != nil
+		}
+	}
+
+	if conf.HTTP2PriorKnowledge && conf.Scheme == "http" && !proxied {
+		// Cleartext HTTP/2 (h2c) with prior knowledge: the standard transport only
+		// negotiates h2 during the TLS handshake (ALPN), so plain-http origins —
+		// e.g. trusted in-cluster authorization callouts — need the explicit opt-in.
+		return &http2.Transport{
+			AllowHTTP:          true,
+			DisableCompression: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				return dial(ctx, network, addr)
+			},
+		}
+	}
+
 	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			address := addr
-			if proxyFunc == nil {
-				address = conf.Origin
-			} // Otherwise, proxy connect will use this dial method and addr could be a proxy one.
-
-			connectTimeout, _ := ctx.Value(request.ConnectTimeout).(time.Duration)
-			if connectTimeout > 0 {
-				var cancel context.CancelFunc
-				ctx, cancel = context.WithDeadline(ctx, time.Now().Add(connectTimeout))
-				defer cancel()
-			}
-
-			conn, cerr := d.DialContext(ctx, network, address)
-			if cerr != nil {
-				host, port, _ := net.SplitHostPort(conf.Origin)
-				if port != "80" && port != "443" {
-					host = conf.Origin
-				}
-				if os.IsTimeout(cerr) || cerr == context.DeadlineExceeded {
-					return nil, fmt.Errorf("connecting to %s '%s' failed: i/o timeout", conf.BackendName, host)
-				}
-				return nil, fmt.Errorf("connecting to %s '%s' failed: %w", conf.BackendName, conf.Origin, cerr)
-			}
-			return NewOriginConn(ctx, conn, conf, logEntry), nil
-		},
+		DialContext:        dial,
 		DisableCompression: true,
 		DisableKeepAlives:  conf.DisableConnectionReuse,
 		ForceAttemptHTTP2:  conf.HTTP2,

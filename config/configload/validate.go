@@ -276,7 +276,7 @@ func verifyResponseBodyAttrs(b *hclsyntax.Body) error {
 	return nil
 }
 
-var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "max_connections"}
+var invalidAttributes = []string{"disable_certificate_validation", "disable_connection_reuse", "http2", "http2_prior_knowledge", "max_connections"}
 
 func invalidRefinement(body *hclsyntax.Body) error {
 	const message = "backend reference: refinement for %q is not permitted"

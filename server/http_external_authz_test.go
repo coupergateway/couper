@@ -1,14 +1,20 @@
 package server_test
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"github.com/coupergateway/couper/internal/test"
+	"github.com/coupergateway/couper/server"
 )
 
 func TestExternalAuthz_Callout(t *testing.T) {
@@ -147,12 +153,15 @@ func TestExternalAuthz_HTTP2Callout(t *testing.T) {
 		rw.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(rw).Encode(map[string]string{"proto": req.Proto})
 	}))
+	selfSigned, err := server.NewCertificate(time.Minute, nil, nil)
+	helper.Must(err)
+	authzService.TLS = &tls.Config{Certificates: []tls.Certificate{*selfSigned.Server}}
 	authzService.EnableHTTP2 = true
 	authzService.StartTLS()
 	defer authzService.Close()
 
 	shutdown, hook, err := newCouperWithTemplate("testdata/external_authz/05_couper.hcl", helper,
-		map[string]interface{}{"origin": authzService.URL})
+		map[string]interface{}{"origin": authzService.URL, "ca": string(selfSigned.CACertificate.Certificate)})
 	helper.Must(err)
 	defer shutdown()
 	hook.Reset()
@@ -236,6 +245,64 @@ func TestExternalAuthz_PermissionsClaim(t *testing.T) {
 				st.Errorf("expected logged error_type %q, got: %q", tc.expErrorType, loggedType)
 			}
 		})
+	}
+}
+
+func TestExternalAuthz_H2CCallout(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	var mu sync.Mutex
+	var calloutProtos, calloutConns []string
+
+	h2s := &http2.Server{}
+	authzService := httptest.NewServer(h2c.NewHandler(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		mu.Lock()
+		calloutProtos = append(calloutProtos, req.Proto)
+		calloutConns = append(calloutConns, req.RemoteAddr)
+		mu.Unlock()
+
+		rw.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(rw).Encode(map[string]string{"proto": req.Proto})
+	}), h2s))
+	defer authzService.Close()
+
+	shutdown, hook, err := newCouperWithTemplate("testdata/external_authz/08_couper.hcl", helper,
+		map[string]interface{}{"origin": authzService.URL})
+	helper.Must(err)
+	defer shutdown()
+	hook.Reset()
+
+	for range 2 {
+		req, rerr := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+		helper.Must(rerr)
+
+		res, derr := client.Do(req)
+		helper.Must(derr)
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected status %d, got: %d", http.StatusOK, res.StatusCode)
+		}
+		if proto := res.Header.Get("X-Authz-Proto"); proto != "HTTP/2.0" {
+			t.Fatalf("expected authz context proto HTTP/2.0, got: %q", proto)
+		}
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(calloutProtos) != 2 {
+		t.Fatalf("expected 2 callouts, got: %d", len(calloutProtos))
+	}
+	for _, proto := range calloutProtos {
+		if proto != "HTTP/2.0" {
+			t.Errorf("expected HTTP/2.0 cleartext callout, got: %q", proto)
+		}
+	}
+	if calloutConns[0] != calloutConns[1] {
+		t.Errorf("expected callouts to reuse one connection, got: %v", calloutConns)
 	}
 }
 

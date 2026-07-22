@@ -73,6 +73,7 @@ func newBackend(evalCtx *hcl.EvalContext, backendCtx *hclsyntax.Body, log *logru
 		DisableCertValidation:  beConf.DisableCertValidation,
 		DisableConnectionReuse: beConf.DisableConnectionReuse,
 		HTTP2:                  beConf.HTTP2,
+		HTTP2PriorKnowledge:    beConf.HTTP2PriorKnowledge,
 		NoProxyFromEnv:         conf.Settings.NoProxyFromEnv,
 		MaxConnections:         beConf.MaxConnections,
 	}
