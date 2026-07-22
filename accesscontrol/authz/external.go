@@ -7,6 +7,8 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/coupergateway/couper/config/request"
@@ -21,10 +23,11 @@ const roundTripName = "authz_external"
 // External authorization calls out to a service which decides whether the
 // client request is allowed: 200 allows, 401 and 403 map to distinct error types.
 type External struct {
-	includeTLS bool
-	name       string
-	transport  http.RoundTripper
-	url        string
+	includeTLS       bool
+	name             string
+	permissionsClaim string
+	transport        http.RoundTripper
+	url              string
 }
 
 // simplified form of http.Request for serialization
@@ -55,15 +58,16 @@ type authContext struct {
 	MetadataTLS   *metadataTLS  `json:"metadata_tls,omitempty"`
 }
 
-func NewExternal(name, calloutURL string, includeTLS bool, transport http.RoundTripper) *External {
+func NewExternal(name, calloutURL string, includeTLS bool, permissionsClaim string, transport http.RoundTripper) *External {
 	if calloutURL == "" { // destination origin is provided by the backend configuration
 		calloutURL = "/"
 	}
 	return &External{
-		includeTLS: includeTLS,
-		name:       name,
-		transport:  transport,
-		url:        calloutURL,
+		includeTLS:       includeTLS,
+		name:             name,
+		permissionsClaim: permissionsClaim,
+		transport:        transport,
+		url:              calloutURL,
 	}
 }
 
@@ -131,7 +135,12 @@ func (e *External) Validate(req *http.Request) error {
 
 	switch res.StatusCode {
 	case http.StatusOK:
-		return e.storeContext(req, res)
+		data, derr := e.parseResponseBody(res)
+		if derr != nil {
+			return derr
+		}
+		e.storeContext(req, withResponseHeaders(data, res.Header))
+		return e.grantPermissions(req, data)
 	case http.StatusUnauthorized:
 		return errors.AuthzExternalInvalidCredentials.Label(e.name).Message("invalid credentials")
 	case http.StatusForbidden:
@@ -141,34 +150,36 @@ func (e *External) Validate(req *http.Request) error {
 	}
 }
 
-// storeContext exposes the callout response as request.context.<label>: the properties of a
-// JSON object response body, plus the response headers under a "headers" property (lower-cased
-// names, first value, matching request.headers). Consumers inject a resolved identity or a
-// re-signed internal token upstream by reading these and writing set_request_headers, which
-// overwrites client-provided values. A malformed JSON body denies the request, as downstream
-// permission checks may rely on it. A body property literally named "headers" is shadowed by
-// the response headers.
-func (e *External) storeContext(req *http.Request, res *http.Response) error {
-	data := map[string]interface{}{}
-
+// parseResponseBody reads a JSON object response body. A malformed body denies
+// the request: silently dropping data which downstream permission checks may
+// rely on would fail open.
+func (e *External) parseResponseBody(res *http.Response) (map[string]interface{}, error) {
 	mediaType, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
-	if mediaType == "application/json" {
-		raw, err := io.ReadAll(res.Body)
-		if err != nil {
-			return errors.AuthzExternal.Label(e.name).With(err)
-		}
-		if len(raw) > 0 {
-			var body map[string]interface{}
-			if err = json.Unmarshal(raw, &body); err != nil {
-				return errors.AuthzExternal.Label(e.name).Message("unexpected authorization service response body").With(err)
-			}
-			for name, value := range body {
-				data[name] = value
-			}
-		}
+	if mediaType != "application/json" {
+		return nil, nil
 	}
 
-	data["headers"] = seetie.HeaderToMap(res.Header)
+	raw, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, errors.AuthzExternal.Label(e.name).With(err)
+	}
+	if len(raw) == 0 {
+		return nil, nil
+	}
+
+	var data map[string]interface{}
+	if err = json.Unmarshal(raw, &data); err != nil {
+		return nil, errors.AuthzExternal.Label(e.name).Message("unexpected authorization service response body").With(err)
+	}
+
+	return data, nil
+}
+
+// storeContext exposes the response data as request.context.<label>.
+func (e *External) storeContext(req *http.Request, data map[string]interface{}) {
+	if data == nil {
+		return
+	}
 
 	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
@@ -177,6 +188,64 @@ func (e *External) storeContext(req *http.Request, res *http.Response) error {
 	}
 	acMap[e.name] = data
 	*req = *req.WithContext(context.WithValue(ctx, request.AccessControls, acMap))
+}
+
+// withResponseHeaders adds the callout response headers to the context data under "headers"
+// (lower-cased names, first value, like request.headers), without polluting the body map used
+// for permissions. A body property literally named "headers" is shadowed.
+func withResponseHeaders(data map[string]interface{}, header http.Header) map[string]interface{} {
+	ctx := map[string]interface{}{}
+	for name, value := range data {
+		ctx[name] = value
+	}
+	ctx["headers"] = seetie.HeaderToMap(header)
+	return ctx
+}
+
+// grantPermissions appends the permissions from the configured response body
+// property to the request's granted permissions with the same value semantics
+// as the jwt permissions_claim: a space-separated string or a list of strings.
+func (e *External) grantPermissions(req *http.Request, data map[string]interface{}) error {
+	if e.permissionsClaim == "" {
+		return nil
+	}
+
+	value, exists := data[e.permissionsClaim]
+	if !exists {
+		return nil
+	}
+
+	invalidErr := func() error {
+		return errors.AuthzExternal.Label(e.name).
+			Messagef("invalid %s permissions value: %#v", e.permissionsClaim, value)
+	}
+
+	var permissions []string
+	switch v := value.(type) {
+	case string:
+		permissions = strings.Split(v, " ")
+	case []interface{}:
+		for _, entry := range v {
+			p, ok := entry.(string)
+			if !ok {
+				return invalidErr()
+			}
+			permissions = append(permissions, p)
+		}
+	default:
+		return invalidErr()
+	}
+
+	ctx := req.Context()
+	granted, _ := ctx.Value(request.GrantedPermissions).([]string)
+	for _, p := range permissions {
+		p = strings.TrimSpace(p)
+		if p == "" || slices.Contains(granted, p) {
+			continue
+		}
+		granted = append(granted, p)
+	}
+	*req = *req.WithContext(context.WithValue(ctx, request.GrantedPermissions, granted))
 
 	return nil
 }

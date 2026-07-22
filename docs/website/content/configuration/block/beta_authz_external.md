@@ -110,6 +110,21 @@ api {
 }
 ```
 
+
+With `permissions_claim` the authorization service can grant [permissions](/configuration/error-handling#permissions-related-error_handler)
+evaluated by `required_permission` in [`api`](/configuration/block/api) or [`endpoint`](/configuration/block/endpoint)
+blocks: the named response body property — a space-separated string or a list of strings, like the
+[`jwt` block's](/configuration/block/jwt) `permissions_claim` — is added to `request.context.granted_permissions`.
+
+```hcl
+definitions {
+  beta_authz_external "authz" {
+    url               = "https://authz.example.com/check"
+    permissions_claim = "granted_permissions"
+  }
+}
+```
+
 The error types can be handled with [`error_handler` blocks](/configuration/error-handling),
 for example to send a `WWW-Authenticate` challenge pointing OAuth 2.0 clients to the
 protected resource metadata (RFC 9728).
@@ -147,6 +162,12 @@ definitions {
     "description": "Include TLS connection information of the client request in the authorization request.",
     "name": "include_tls",
     "type": "bool"
+  },
+  {
+    "default": "",
+    "description": "Name of the response body property containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions.",
+    "name": "permissions_claim",
+    "type": "string"
   },
   {
     "default": "",

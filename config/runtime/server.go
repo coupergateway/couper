@@ -534,7 +534,8 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
-			authZExt := authz.NewExternal(authZExternal.Name, authZExternal.URL, authZExternal.IncludeTLS, backend)
+			authZExt := authz.NewExternal(authZExternal.Name, authZExternal.URL, authZExternal.IncludeTLS,
+				authZExternal.PermissionsClaim, backend)
 			accessControls.Add(authZExternal.Name, authZExt, authZExternal.ErrorHandler)
 		}
 
