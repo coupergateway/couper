@@ -115,11 +115,13 @@ With `permissions_property` the authorization service can grant [permissions](/c
 evaluated by `required_permission` in [`api`](/configuration/block/api) or [`endpoint`](/configuration/block/endpoint)
 blocks: the named response body property — a space-separated string or a list of strings, like the
 [`jwt` block's](/configuration/block/jwt) `permissions_claim` — is added to `request.context.granted_permissions`.
+If the configured property is absent from the `200` response, the request is denied rather than allowed
+without permissions, matching the fail-closed handling of a malformed body.
 
 ```hcl
 definitions {
   beta_external_authz "authz" {
-    url               = "https://authz.example.com/check"
+    url                  = "https://authz.example.com/check"
     permissions_property = "granted_permissions"
   }
 }
