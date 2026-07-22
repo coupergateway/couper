@@ -3876,6 +3876,22 @@ func TestSAMLMetadataMaxStale(t *testing.T) {
 		return http.ErrUseLastResponse
 	}
 
+	// Test-controlled IdP metadata backend: atomic.Bool controls failure, no wall-clock timing.
+	var metadataFailing atomic.Bool
+	metadata, err := os.ReadFile(filepath.Join(testWorkingDir, "../internal/test/testdata/idp-metadata.xml"))
+	helper.Must(err)
+
+	idpBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		if metadataFailing.Load() {
+			rw.WriteHeader(http.StatusInternalServerError)
+			rw.Write([]byte(`<error>IdP unavailable</error>`))
+			return
+		}
+		rw.Header().Set("Content-Type", "application/xml")
+		rw.Write(metadata)
+	}))
+	defer idpBackend.Close()
+
 	cfg := `
 	  server {
 	    endpoint "/" {
@@ -3889,16 +3905,13 @@ func TestSAMLMetadataMaxStale(t *testing.T) {
 	  }
 	  definitions {
 	    saml "stale" {
-	      idp_metadata_url = "${env.COUPER_TEST_BACKEND_ADDR}/saml/metadata"
+	      idp_metadata_url = "` + idpBackend.URL + `/saml/metadata"
 	      metadata_ttl = "3s"
 	      metadata_max_stale = "2s"
 	      sp_acs_url = "http://localhost:8080/saml/acs"
 	      sp_entity_id = "test-sp"
 	      backend {
-	        origin = env.COUPER_TEST_BACKEND_ADDR
-	        set_request_headers = {
-	          Self-Destruct: ` + fmt.Sprint(time.Now().Add(2*time.Second).Unix()) + `
-	        }
+	        origin = "` + idpBackend.URL + `"
 	      }
 	    }
 	  }
@@ -3911,7 +3924,11 @@ func TestSAMLMetadataMaxStale(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
 	helper.Must(err)
 
-	// A) Initial request should succeed with metadata from URL
+	// Phases run against absolute deadlines so slow execution (e.g. coverage
+	// runs) cannot drift a phase out of its window.
+	start := time.Now()
+
+	// A) IdP backend is healthy → SSO URL from fetched metadata
 	res, err := client.Do(req)
 	helper.Must(err)
 	if res.StatusCode != http.StatusFound {
@@ -3924,10 +3941,14 @@ func TestSAMLMetadataMaxStale(t *testing.T) {
 		t.Fatalf("A) expected SSO URL, got: %s", location)
 	}
 
-	time.Sleep(3 * time.Second)
-	// TTL 3s expired, backend is now failing, but should respond with stale metadata
+	// Switch backend to failing mode: a 302 for A proves the initial fetch was
+	// healthy, so failing only now cannot race the startup fetch.
+	metadataFailing.Store(true)
 
-	// B) Request within max_stale window should still succeed
+	// B) TTL 3s expired, refresh failed, stale metadata still usable. Failed
+	// refresh retries (backoff 1s, 2s, ...) re-arm the max_stale invalidation,
+	// so the stale data lives until at least first-failure+3s (>= start+6s).
+	time.Sleep(time.Until(start.Add(4 * time.Second)))
 	res, err = client.Do(req)
 	helper.Must(err)
 	if res.StatusCode != http.StatusFound {
@@ -3935,14 +3956,11 @@ func TestSAMLMetadataMaxStale(t *testing.T) {
 		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusFound, res.StatusCode, message)
 	}
 
-	time.Sleep(3 * time.Second)
-	// max_stale time (2s) also exhausted -> should fail
-
-	// C) Request after max_stale should fail
+	// C) Past max_stale window → 500. Because retries re-arm the invalidation,
+	// the stale data is guaranteed gone by first-failure+5s only.
+	time.Sleep(time.Until(start.Add(10 * time.Second)))
 	res, err = client.Do(req)
 	helper.Must(err)
-
-	time.Sleep(time.Second)
 	if res.StatusCode != http.StatusInternalServerError {
 		message := getFirstAccessLogMessage(hook)
 		t.Fatalf("C) expected status %d, got: %d (%s)", http.StatusInternalServerError, res.StatusCode, message)
