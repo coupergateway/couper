@@ -31,7 +31,9 @@ client request to the configured authorization service:
 }
 ```
 
-With `include_tls = true` the TLS connection information of the client request is added:
+With `include_tls = true` the TLS connection information of the client request is added. In a
+client-facing mTLS setup the `client_certificate` carries the fields an authorization service
+keys on — this is the full payload such a service can expect:
 
 ```json
 {
@@ -41,14 +43,25 @@ With `include_tls = true` the TLS connection information of the client request i
     "cipher_suite": "TLS_AES_128_GCM_SHA256",
     "server_name": "couper.example.com",
     "client_certificate": {
-      "subject": "CN=my-client",
+      "subject": "CN=my-client,O=Example",
       "issuer": "CN=my-ca",
+      "serial_number": "1267",
+      "fingerprint_sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       "not_before": "2026-01-01T00:00:00Z",
-      "not_after": "2027-01-01T00:00:00Z"
+      "not_after": "2027-01-01T00:00:00Z",
+      "dns_names": ["client.example"],
+      "uris": ["spiffe://example.org/mcp-client"],
+      "email_addresses": ["mcp@example.org"],
+      "ip_addresses": ["10.0.0.7"]
     }
   }
 }
 ```
+
+`serial_number` is hex-encoded and `fingerprint_sha256` is the hex SHA-256 of the DER
+certificate — use either for allow lists or pinning. The subject alternative names
+(`dns_names`, `uris`, `email_addresses`, `ip_addresses`) appear only when the certificate
+carries them and often hold the identity to authorize on, e.g. a SPIFFE ID in `uris`.
 
 Couper calls the authorization service on the hot path of every protected request, so the
 connection to it should be persistent. This is the recommended setup: a (typically local)

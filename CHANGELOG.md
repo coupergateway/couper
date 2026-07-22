@@ -11,6 +11,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * forward the authorization service's `WWW-Authenticate` challenge on `beta_external_authz` denials via a default `error_handler`; the value is available as `request.context.<label>.www_authenticate` ([#873](https://github.com/coupergateway/couper/issues/873))
   * expose a `beta_external_authz` callout's JSON object response body and its response headers (`request.context.<label>` / `request.context.<label>.headers`); inject a resolved identity upstream with `set_request_headers` ([#873](https://github.com/coupergateway/couper/issues/873))
   * `permissions_property` attribute for `beta_external_authz`: grant permissions for `required_permission` checks from a named response body property of the authorization service; a configured property missing from a `200` response denies the request ([#873](https://github.com/coupergateway/couper/issues/873))
+  * forward the client certificate identity in a `beta_external_authz` callout's `metadata_tls` (`include_tls`) — subject/issuer DN, `serial_number`, `fingerprint_sha256`, and the subject alternative names (`dns_names`, `uris`, `email_addresses`, `ip_addresses`) — for client-facing mTLS authorization decisions ([#873](https://github.com/coupergateway/couper/issues/873))
 
 ---
 
