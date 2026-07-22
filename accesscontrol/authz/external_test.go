@@ -39,9 +39,9 @@ func TestExternal_Validate_Status(t *testing.T) {
 		expKind string
 	}{
 		{"allow on 200", http.StatusOK, ""},
-		{"invalid credentials on 401", http.StatusUnauthorized, "authz_external_invalid_credentials"},
-		{"insufficient permissions on 403", http.StatusForbidden, "authz_external_insufficient_permissions"},
-		{"deny on unexpected status", http.StatusBadGateway, "authz_external"},
+		{"invalid credentials on 401", http.StatusUnauthorized, "external_authz_invalid_credentials"},
+		{"insufficient permissions on 403", http.StatusForbidden, "external_authz_insufficient_permissions"},
+		{"deny on unexpected status", http.StatusBadGateway, "external_authz"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			external := authz.NewExternal("test_ac", "http://authz.service/check", false, "", respondStatus(tc.status))
@@ -193,8 +193,8 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected *errors.Error, got: %T", err)
 		}
-		if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "authz_external" {
-			t.Errorf("expected error kind authz_external, got: %v", kinds)
+		if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "external_authz" {
+			t.Errorf("expected error kind external_authz, got: %v", kinds)
 		}
 	})
 
@@ -239,7 +239,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 }
 
-func TestExternal_Validate_PermissionsClaim(t *testing.T) {
+func TestExternal_Validate_PermissionsProperty(t *testing.T) {
 	respondJSON := func(body string) roundTripperFunc {
 		return func(_ *http.Request) (*http.Response, error) {
 			rec := httptest.NewRecorder()
@@ -297,12 +297,17 @@ func TestExternal_Validate_PermissionsClaim(t *testing.T) {
 		}
 	})
 
-	t.Run("missing property grants nothing", func(t *testing.T) {
+	t.Run("missing property denies", func(t *testing.T) {
 		external := newExternal(`{"sub":"clark.kent"}`)
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
 
-		if err := external.Validate(req); err != nil {
-			t.Fatalf("expected no error, got: %v", err)
+		err := external.Validate(req)
+		if err == nil {
+			t.Fatal("expected an error for the missing permissions property")
+		}
+		logErr, ok := err.(errors.GoError)
+		if !ok || !strings.Contains(logErr.LogError(), "missing perms permissions property") {
+			t.Errorf("unexpected error: %v", err)
 		}
 		if p := granted(req); len(p) != 0 {
 			t.Errorf("expected no granted permissions, got: %v", p)
@@ -319,8 +324,8 @@ func TestExternal_Validate_PermissionsClaim(t *testing.T) {
 			if !ok {
 				t.Fatalf("expected *errors.Error for %s, got: %T", body, err)
 			}
-			if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "authz_external" {
-				t.Errorf("expected error kind authz_external for %s, got: %v", body, kinds)
+			if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "external_authz" {
+				t.Errorf("expected error kind external_authz for %s, got: %v", body, kinds)
 			}
 		}
 	})
@@ -437,8 +442,8 @@ func TestExternal_Validate_TransportError(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected *errors.Error, got: %T", err)
 	}
-	if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "authz_external" {
-		t.Errorf("expected error kind authz_external, got: %v", kinds)
+	if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "external_authz" {
+		t.Errorf("expected error kind external_authz, got: %v", kinds)
 	}
 }
 

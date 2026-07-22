@@ -15,7 +15,7 @@ server "protected" {
 }
 
 definitions {
-  beta_authz_external "authz" {
+  beta_external_authz "authz" {
     backend {
       origin                         = "{{.origin}}"
       http2                          = true

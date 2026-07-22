@@ -86,7 +86,7 @@ func (h *helper) configureDefinedBackends() error {
 func (h *helper) configureACBackends() error {
 	var acs []config.BackendInitialization
 
-	for _, ac := range h.config.Definitions.AuthZExternal {
+	for _, ac := range h.config.Definitions.ExternalAuthZ {
 		acs = append(acs, ac)
 	}
 
@@ -473,7 +473,7 @@ func (h *helper) collectFromBlocks(authorizerBlocks hclsyntax.Blocks, name strin
 func (h *helper) getDefinedACs() map[string]struct{} {
 	definedACs := make(map[string]struct{})
 
-	for _, ac := range h.config.Definitions.AuthZExternal {
+	for _, ac := range h.config.Definitions.ExternalAuthZ {
 		definedACs[ac.Name] = struct{}{}
 	}
 

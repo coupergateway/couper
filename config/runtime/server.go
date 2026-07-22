@@ -527,7 +527,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
-		for _, authZExternal := range conf.Definitions.AuthZExternal {
+		for _, authZExternal := range conf.Definitions.ExternalAuthZ {
 			confErr := errors.Configuration.Label(authZExternal.Name)
 			backend, err := NewBackend(confCtx, authZExternal.Backend, log, conf, memStore)
 			if err != nil {
@@ -535,7 +535,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			}
 
 			authZExt := authz.NewExternal(authZExternal.Name, authZExternal.URL, authZExternal.IncludeTLS,
-				authZExternal.PermissionsClaim, backend)
+				authZExternal.PermissionsProperty, backend)
 			accessControls.Add(authZExternal.Name, authZExt, authZExternal.ErrorHandler)
 		}
 

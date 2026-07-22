@@ -1,6 +1,6 @@
 # External Authorization — Design Notes
 
-Requirements for the `authz_external` access control (#873), derived from a concrete
+Requirements for the `external_authz` access control (#873), derived from a concrete
 use case: fronting a remote MCP server (streamable HTTP) that acts as an OAuth 2.0
 protected resource (RFC 9728), where the authorization server issues bearer tokens via
 the `client_credentials` grant and clients discover it through the
@@ -18,7 +18,7 @@ expressible:
 - There is no API-key access control; opaque (non-JWT) keys cannot be validated by
   any existing block.
 
-`authz_external` solves both by moving the disjunction into the callout service: a
+`external_authz` solves both by moving the disjunction into the callout service: a
 single access control whose backend decides which credential type it received and
 whether it is valid — the same role Envoy's `ext_authz` filter plays.
 
@@ -26,12 +26,12 @@ whether it is valid — the same role Envoy's `ext_authz` filter plays.
 
 ### 1. Context propagation into `request.context.<label>.*` (prerequisite)
 
-Allow/deny alone is not enough. When `authz_external` replaces a `jwt` block (which
+Allow/deny alone is not enough. When `external_authz` replaces a `jwt` block (which
 it must, to get OR semantics), downstream HCL loses `request.context.<jwt>.claims`.
 The callout response (validated claims: subject, granted permissions, organization,
 …) must land in the evaluation context, analogous to how the `beta_oauth2` callback
 stores its token response in the access-control context map
-(`accesscontrol/oauth2.go`). Without this, `authz_external` cannot feed
+(`accesscontrol/oauth2.go`). Without this, `external_authz` cannot feed
 claim-driven features such as `required_permission`, `permissions_claim`-style
 mapping, or `beta_mcp_proxy`'s runtime-evaluated `allowed_tools` (#935).
 
@@ -49,7 +49,7 @@ Register error types for the new access control (compare `beta_mcp_tool_blocked`
 #935) and map the callout's response status instead of collapsing everything into
 "non-200 = deny":
 
-- callout `401` → `authz_external_invalid_credentials` (super type `access_control`),
+- callout `401` → `external_authz_invalid_credentials` (super type `access_control`),
   default 401 — handlers need this to emit RFC 6750 challenges, including the
   RFC 9728 `WWW-Authenticate: Bearer resource_metadata="..."` pointer that MCP
   clients use for discovery.
@@ -93,6 +93,6 @@ introducing a Couper-only context schema.
 The callout is invisible to clients — there is no redirect. With `client_credentials`
 the client obtains its token directly from the authorization server (discovered via
 the 401 challenge → protected-resource metadata → RFC 8414 AS metadata → token
-endpoint) and simply presents the bearer to the gateway; `authz_external` then runs
+endpoint) and simply presents the bearer to the gateway; `external_authz` then runs
 as a synchronous sidecar check. The same holds for `authorization_code` — the flow a
 client uses to obtain the credential is orthogonal to how the gateway authorizes it.

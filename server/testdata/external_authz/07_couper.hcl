@@ -18,14 +18,17 @@ server "authz-service" {
   api {
     endpoint "/check" {
       response {
-        status = lookup(request.json_body.client_request.headers, "Authorization", [""])[0] == "Bearer valid" ? 200 : (lookup(request.json_body.client_request.headers, "Authorization", [""])[0] == "" ? 401 : 403)
+        status = 401
+        headers = {
+          www-authenticate = "Bearer resource_metadata=\"http://protected.example/.well-known/oauth-protected-resource/protected\""
+        }
       }
     }
   }
 }
 
 definitions {
-  beta_authz_external "authz" {
+  beta_external_authz "authz" {
     url = "http://127.0.0.1:8081/check"
   }
 }

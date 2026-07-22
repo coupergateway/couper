@@ -53,16 +53,20 @@ func (i ListItem) Label() string {
 }
 
 func (i ListItem) Validate(req *http.Request) error {
-	if err := i.control.Validate(req); err != nil {
+	err := i.control.Validate(req)
+
+	// Refresh the eval context on failures too: access controls may store data for
+	// their error handlers (e.g. request.context.<label>) during a denied validation.
+	evalCtx := eval.ContextFromRequest(req)
+	*req = *req.WithContext(evalCtx.WithClientRequest(req))
+
+	if err != nil {
 		var e *couperErrors.Error
 		if errors.As(err, &e) {
 			return e.Label(i.label)
 		}
 		return couperErrors.AccessControl.Label(i.label).Kind(i.kind).With(err)
 	}
-
-	evalCtx := eval.ContextFromRequest(req)
-	*req = *req.WithContext(evalCtx.WithClientRequest(req))
 
 	return nil
 }
