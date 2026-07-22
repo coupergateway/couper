@@ -1,9 +1,10 @@
 package accesscontrol
 
 import (
+	"errors"
 	"net/http"
 
-	"github.com/coupergateway/couper/errors"
+	couperErrors "github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 )
 
@@ -24,7 +25,7 @@ func NewItem(nameLabel string, control AccessControl, errHandler http.Handler) *
 	return &ListItem{
 		control:           control,
 		controlErrHandler: errHandler,
-		kind:              errors.TypeToSnake(control),
+		kind:              couperErrors.TypeToSnake(control),
 		label:             nameLabel,
 	}
 }
@@ -53,10 +54,11 @@ func (i ListItem) Label() string {
 
 func (i ListItem) Validate(req *http.Request) error {
 	if err := i.control.Validate(req); err != nil {
-		if e, ok := err.(*errors.Error); ok {
+		var e *couperErrors.Error
+		if errors.As(err, &e) {
 			return e.Label(i.label)
 		}
-		return errors.AccessControl.Label(i.label).Kind(i.kind).With(err)
+		return couperErrors.AccessControl.Label(i.label).Kind(i.kind).With(err)
 	}
 
 	evalCtx := eval.ContextFromRequest(req)

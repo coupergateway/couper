@@ -26,6 +26,10 @@ Use the `definitions` block to define configurations you want to reuse.
     "name": "basic_auth"
   },
   {
+    "description": "Configure an [external authorization access control](/configuration/block/beta_authz_external) (zero or more).",
+    "name": "beta_authz_external"
+  },
+  {
     "description": "Configure an [OAuth2 access control](/configuration/block/beta_oauth2) (zero or more).",
     "name": "beta_oauth2"
   },

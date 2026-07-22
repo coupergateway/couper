@@ -4,6 +4,9 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
+* **Added**
+  * `beta_authz_external` access control: delegate the authorization decision to an external service via an HTTP callout, with distinct `authz_external_invalid_credentials` (401) and `authz_external_insufficient_permissions` (403) error types and opt-in TLS connection metadata (`include_tls`) ([#873](https://github.com/coupergateway/couper/issues/873))
+
 ---
 
 ## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)

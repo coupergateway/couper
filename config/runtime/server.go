@@ -18,6 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
+	"github.com/coupergateway/couper/accesscontrol/authz"
 	"github.com/coupergateway/couper/accesscontrol/jwk"
 	"github.com/coupergateway/couper/accesscontrol/saml"
 	"github.com/coupergateway/couper/cache"
@@ -371,13 +372,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 					protectedHandler = epHandler
 				} else {
 					permissionsControl := ac.NewPermissionsControl(requiredPermissionExpr)
-					permissionsErrorHandler, _, err := newErrorHandler(confCtx, conf, &protectedOptions{
+					permissionsErrorHandler, _, permErr := newErrorHandler(confCtx, conf, &protectedOptions{
 						epOpts:   epOpts,
 						memStore: memStore,
 						srvOpts:  serverOptions,
 					}, log, errorHandlerDefinitions, "api", "endpoint") // sequence of ref is important: api, endpoint (endpoint error_handler overrides api error_handler)
-					if err != nil {
-						return nil, err
+					if permErr != nil {
+						return nil, permErr
 					}
 
 					protectedHandler = middleware.NewErrorHandler(permissionsControl.Validate, permissionsErrorHandler)(epHandler)
@@ -526,6 +527,17 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
+		for _, authZExternal := range conf.Definitions.AuthZExternal {
+			confErr := errors.Configuration.Label(authZExternal.Name)
+			backend, err := NewBackend(confCtx, authZExternal.Backend, log, conf, memStore)
+			if err != nil {
+				return nil, confErr.With(err)
+			}
+
+			authZExt := authz.NewExternal(authZExternal.Name, authZExternal.URL, authZExternal.IncludeTLS, backend)
+			accessControls.Add(authZExternal.Name, authZExt, authZExternal.ErrorHandler)
+		}
+
 		for _, baConf := range conf.Definitions.BasicAuth {
 			confErr := errors.Configuration.Label(baConf.Name)
 			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)

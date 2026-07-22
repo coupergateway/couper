@@ -11,6 +11,7 @@ import (
 // ConfigRegistry contains all config struct types that should be processed
 var ConfigRegistry = []interface{}{
 	&config.API{},
+	&config.AuthZExternal{},
 	&config.Backend{},
 	&config.BackendTLS{},
 	&config.BasicAuth{},
@@ -50,6 +51,7 @@ var filenameRegex = regexp.MustCompile(`(URL|JWT|OpenAPI|[a-z0-9]+)`)
 // BlockNamesMap provides mappings from internal type names to HCL block names
 // Used by docs generator to match documentation file names
 var BlockNamesMap = map[string]string{
+	"auth_zexternal":  "beta_authz_external",
 	"oauth2_ac":       "beta_oauth2",
 	"oauth2_req_auth": "oauth2",
 }
@@ -57,6 +59,7 @@ var BlockNamesMap = map[string]string{
 // VSCodeBlockNamesMap provides mappings for VS Code schema (HCL block names).
 // Maps internal Go type names to their HCL block names when they differ.
 var VSCodeBlockNamesMap = map[string]string{
+	"auth_zexternal":  "beta_authz_external",
 	"introspection":   "beta_introspection",
 	"oauth2_ac":       "beta_oauth2",
 	"oauth2_req_auth": "oauth2",
