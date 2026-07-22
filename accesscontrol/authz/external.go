@@ -7,13 +7,13 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/internal/seetie"
 )
 
 const roundTripName = "authz_external"
@@ -168,7 +168,7 @@ func (e *External) storeContext(req *http.Request, res *http.Response) error {
 		}
 	}
 
-	data["headers"] = responseHeaders(res.Header)
+	data["headers"] = seetie.HeaderToMap(res.Header)
 
 	ctx := req.Context()
 	acMap, ok := ctx.Value(request.AccessControls).(map[string]interface{})
@@ -179,18 +179,4 @@ func (e *External) storeContext(req *http.Request, res *http.Response) error {
 	*req = *req.WithContext(context.WithValue(ctx, request.AccessControls, acMap))
 
 	return nil
-}
-
-// responseHeaders renders callout response headers like request.headers: lower-cased names
-// mapped to the first value.
-func responseHeaders(header http.Header) map[string]interface{} {
-	m := make(map[string]interface{}, len(header))
-	for name, values := range header {
-		value := ""
-		if len(values) > 0 {
-			value = values[0]
-		}
-		m[strings.ToLower(name)] = value
-	}
-	return m
 }
