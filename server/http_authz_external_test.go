@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -57,6 +58,43 @@ func TestAuthzExternal_Callout(t *testing.T) {
 				st.Errorf("expected logged error_type %q, got: %q", tc.expErrorType, loggedType)
 			}
 		})
+	}
+}
+
+func TestAuthzExternal_ContextPropagation(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/authz_external/03_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	if sub := res.Header.Get("X-Authz-Sub"); sub != "clark.kent" {
+		t.Errorf("expected authz context sub header, got: %q", sub)
+	}
+
+	var body map[string]interface{}
+	helper.Must(json.Unmarshal(resBytes, &body))
+
+	if body["sub"] != "clark.kent" {
+		t.Errorf("unexpected sub: %v", body["sub"])
+	}
+	roles, _ := body["roles"].([]interface{})
+	if len(roles) != 2 || roles[0] != "reporter" || roles[1] != "hero" {
+		t.Errorf("unexpected roles: %v", body["roles"])
 	}
 }
 
