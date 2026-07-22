@@ -221,9 +221,9 @@ func TestExternalAuthz_MTLSClientCertificate(t *testing.T) {
 
 	shutdown, _, err := newCouperWithTemplate("testdata/external_authz/09_couper.hcl", helper, map[string]interface{}{
 		"origin":     authzService.URL,
-		"publicKey":  string(selfSigned.ServerCertificate.Certificate), // PEM
-		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),  // PEM
-		"clientCA":   string(selfSigned.CACertificate.Certificate),     // PEM
+		"publicKey":  string(selfSigned.ServerCertificate.Certificate),             // PEM
+		"privateKey": string(selfSigned.ServerCertificate.PrivateKey),              // PEM
+		"clientCA":   string(selfSigned.ClientIntermediateCertificate.Certificate), // PEM (signs the client leaf)
 	})
 	helper.Must(err)
 	defer shutdown()
