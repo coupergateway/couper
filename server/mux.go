@@ -138,6 +138,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 
 		if !matches {
 			if fileHandler != nil {
+				*req = *req.WithContext(withRoutePattern(ctx, fileMatch))
 				return fileHandler
 			}
 
@@ -171,9 +172,10 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	return routeMatch.Handler
 }
 
-// withRoutePattern adds the route as the operator configured it. Gorilla registers a
-// wildcard route as a prefix and drops the trailing slash variant of a path, so this
-// function makes the pattern again. Policies apply to the pattern, not to the request path.
+// withRoutePattern adds the registered route pattern, base path included. Couper registers
+// a wildcard route without its "/**" suffix and adds a trailing slash variant of each path,
+// so this function restores the configured pattern. Policies apply to the pattern, not to
+// the request path.
 func withRoutePattern(ctx context.Context, routeMatch *gmux.RouteMatch) context.Context {
 	if routeMatch == nil || routeMatch.Route == nil {
 		return ctx
@@ -254,14 +256,14 @@ func mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailing
 	if strings.HasSuffix(path, wildcardSearch) {
 		path = path[:len(path)-len(wildcardSearch)]
 		if len(path) == 0 {
-			root.PathPrefix("/").Name("**").Handler(handler)
+			root.PathPrefix("/").Name(wildcardRouteName).Handler(handler)
 			return
 		}
-		root.Path(path).Name("**").Handler(handler) // register /path ...
+		root.Path(path).Name(wildcardRouteName).Handler(handler) // register /path ...
 		if !strings.HasSuffix(path, "/") {
 			path = path + "/" // ... and /path/**
 		}
-		root.PathPrefix(path).Name("**").Handler(handler)
+		root.PathPrefix(path).Name(wildcardRouteName).Handler(handler)
 		return
 	}
 

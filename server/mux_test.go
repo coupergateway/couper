@@ -210,6 +210,7 @@ func TestMux_FindHandler_RoutePatternContext(t *testing.T) {
 
 	testOptions := &runtime.MuxOptions{
 		EndpointRoutes: map[string]http.Handler{
+			"/":                    noContent,
 			"/without":             noContent,
 			"/with/{my}/parameter": noContent,
 			"/prefix/**":           noContent,
@@ -228,6 +229,7 @@ func TestMux_FindHandler_RoutePatternContext(t *testing.T) {
 		path    string
 		expPath string
 	}{
+		{"endpoint root", "/", "/"},
 		{"endpoint", "/without", "/without"},
 		{"endpoint, trailing slash", "/without/", "/without"},
 		{"endpoint /w path param", "/with/my123/parameter", "/with/{my}/parameter"},
@@ -235,6 +237,7 @@ func TestMux_FindHandler_RoutePatternContext(t *testing.T) {
 		{"endpoint wildcard, deep", "/prefix/deep/path", "/prefix/**"},
 		{"spa wildcard", "/app/some/route", "/app/**"},
 		{"files wildcard", "/public/robots.txt", "/public/**"},
+		{"files wildcard, missing file", "/public/missing.txt", "/public/**"},
 		{"no route", "/nothing/here", ""},
 	}
 
