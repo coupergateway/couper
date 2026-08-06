@@ -860,6 +860,10 @@ func TestExternal_Validate_CalloutURL(t *testing.T) {
 		{"origin with a root path", "https://pdp.example.com/", "https://pdp.example.com/access/v1/evaluation"},
 		{"an explicit path is kept", "https://pdp.example.com/check", "https://pdp.example.com/check"},
 		{"a relative path is kept", "/check", "/check"},
+		{"origin with a query", "https://pdp.example.com?tenant=a",
+			"https://pdp.example.com/access/v1/evaluation?tenant=a"},
+		{"explicit path with a query", "https://pdp.example.com/check?tenant=a",
+			"https://pdp.example.com/check?tenant=a"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var calloutURL string

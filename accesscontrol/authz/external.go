@@ -44,8 +44,8 @@ func NewExternal(conf *config.ExternalAuthZ, transport http.RoundTripper) *Exter
 	}
 }
 
-// calloutURL adds the default AuthZEN access evaluation path to a configured URL without a
-// path of its own, so an origin alone is enough to reach a conformant decision point.
+// calloutURL adds the default AuthZEN access evaluation path to a configured URL with an
+// empty or root path, so an origin alone is enough to reach a conformant decision point.
 func calloutURL(configured string) string {
 	if configured == "" { // the backend configuration provides the origin
 		return authzenEvaluationPath

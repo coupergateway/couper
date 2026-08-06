@@ -342,7 +342,7 @@ definitions {
   },
   {
     "default": "\"/access/v1/evaluation\"",
-    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block. Without a path, the AuthZEN access evaluation endpoint `/access/v1/evaluation` is used.",
+    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block. Without a path, or with only the root path `/`, the AuthZEN access evaluation endpoint `/access/v1/evaluation` is used.",
     "name": "url",
     "type": "string"
   }
