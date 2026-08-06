@@ -68,7 +68,7 @@ func NewExternal(ctx context.Context, conf *config.ExternalAuthZ, transport http
 		return nil, err
 	}
 
-	external.discovery, err = newDiscovery(ctx, conf.Name, conf.ConfigurationURL, batched, ttl, maxStale, transport, log)
+	external.discovery, err = newDiscovery(ctx, conf.ConfigurationURL, batched, ttl, maxStale, transport, log)
 	if err != nil {
 		return nil, err
 	}

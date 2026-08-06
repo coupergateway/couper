@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
@@ -125,6 +126,14 @@ func TestExternal_Discovery(t *testing.T) {
 			"not on the origin",
 		},
 		{
+			"a protocol-relative endpoint is rejected",
+			func(origin string) string {
+				return `{"policy_decision_point": "` + origin +
+					`", "access_evaluation_endpoint": "//evil.example/evaluate"}`
+			},
+			"not on the origin",
+		},
+		{
 			"a missing evaluation endpoint is rejected",
 			func(origin string) string {
 				return `{"policy_decision_point": "` + origin + `"}`
@@ -158,13 +167,67 @@ func TestExternal_Discovery(t *testing.T) {
 		})
 	}
 
-	t.Run("a configuration url without the well-known path is a configuration error", func(t *testing.T) {
-		_, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
-			ConfigurationURL: "https://pdp.example.com/metadata",
-			Name:             "test_ac",
+	t.Run("invalid configuration urls are configuration errors", func(t *testing.T) {
+		for _, confURL := range []string{
+			"https://pdp.example.com/metadata",
+			"https://pdp.example.com/.well-known/authzen-configuration-backup",
+			"/.well-known/authzen-configuration", // relative: no origin to check against
+		} {
+			_, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+				ConfigurationURL: confURL,
+				Name:             "test_ac",
+			})
+			if err == nil {
+				t.Errorf("expected an error for %q", confURL)
+			}
+		}
+	})
+
+	t.Run("a stale document serves callouts while the refresh fails", func(t *testing.T) {
+		var mu sync.Mutex
+		served := false
+
+		mux := http.NewServeMux()
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		mux.HandleFunc(wellKnownPath, func(rw http.ResponseWriter, _ *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			if served {
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			served = true
+			rw.Header().Set("Content-Type", "application/json")
+			_, _ = rw.Write([]byte(`{"policy_decision_point": "` + server.URL +
+				`", "access_evaluation_endpoint": "` + server.URL + `/evaluate"}`))
 		})
-		if err == nil {
-			t.Fatal("expected an error")
+		mux.HandleFunc("/evaluate", func(rw http.ResponseWriter, _ *http.Request) {
+			rw.Header().Set("Content-Type", "application/json")
+			_, _ = rw.Write([]byte(`{"decision": true}`))
+		})
+
+		external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+			ConfigurationMaxStale: "1h",
+			ConfigurationTTL:      "50ms",
+			ConfigurationURL:      server.URL + wellKnownPath,
+			Name:                  "test_ac",
+		})
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err = external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		time.Sleep(500 * time.Millisecond) // let the refresh fail at least once
+
+		req = httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err = external.Validate(req); err != nil {
+			t.Fatalf("expected the stale document to serve the callout, got: %v", err)
 		}
 	})
 }
