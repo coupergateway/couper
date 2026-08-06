@@ -381,6 +381,23 @@ func TestExternal_Validate_ConfiguredEntities(t *testing.T) {
 		}
 	})
 
+	t.Run("a non-object value fails closed", func(t *testing.T) {
+		for _, src := range []string{
+			`subject = "foo"`,
+			`subject = 42`,
+			`resource = true`,
+			`action = ["a"]`,
+			`context = []`,
+		} {
+			external := newExternal(src, respondAllow())
+
+			req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+			if err := external.Validate(req); err == nil {
+				t.Errorf("expected an error for %s", src)
+			}
+		}
+	})
+
 	t.Run("an incomplete entity fails closed", func(t *testing.T) {
 		for _, src := range []string{
 			`subject = { type = "identity", id = "" }`,
@@ -507,7 +524,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("a missing decision is exposed as false", func(t *testing.T) {
-		external := authz.NewExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
 			respondBody("application/json", `{"context":{"reason":"broken"}}`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -520,7 +537,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("the decision shadows a response context property of the same name", func(t *testing.T) {
-		external := authz.NewExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
 			respondBody("application/json", `{"context":{"decision":true}}`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)

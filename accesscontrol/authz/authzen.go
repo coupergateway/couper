@@ -131,6 +131,11 @@ func configuredObject(hclCtx *hcl.EvalContext, body *hclsyntax.Body, name string
 		return nil, true, err
 	}
 
+	// seetie.ValueToMap panics on other known types.
+	if t := value.Type(); value.IsKnown() && !value.IsNull() && !t.IsObjectType() && !t.IsMapType() {
+		return nil, true, fmt.Errorf("%s must be an object", name)
+	}
+
 	return seetie.ValueToMap(value), true, nil
 }
 
