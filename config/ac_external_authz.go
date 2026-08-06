@@ -23,6 +23,7 @@ var (
 type ExternalAuthZ struct {
 	ErrorHandlerSetter
 	BackendName         string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with {backend} block."`
+	EvaluatePermissions []string `hcl:"evaluate_permissions,optional" docs:"Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. Mutually exclusive with {permissions_property}."`
 	IncludeTLS          bool     `hcl:"include_tls,optional" docs:"Include TLS connection information of the client request in the authorization request." default:"false"`
 	Name                string   `hcl:"name,label"`
 	PermissionsProperty string   `hcl:"permissions_property,optional" docs:"Name of the property in the response {context} containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions."`
@@ -45,6 +46,11 @@ func (a *ExternalAuthZ) Prepare(backendFunc PrepareBackendFunc) (err error) {
 func (a *ExternalAuthZ) check() error {
 	if a.URL == "" && a.BackendName == "" && len(hclbody.BlocksOfType(a.HCLBody(), "backend")) == 0 {
 		return fmt.Errorf("url attribute or backend required")
+	}
+	// Both fill the granted permissions, but from different callouts; combining them would
+	// need a second round trip on the hot path.
+	if a.PermissionsProperty != "" && len(a.EvaluatePermissions) > 0 {
+		return fmt.Errorf("permissions_property and evaluate_permissions are mutually exclusive")
 	}
 	return nil
 }

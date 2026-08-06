@@ -415,6 +415,86 @@ func TestExternal_Validate_ConfiguredEntities(t *testing.T) {
 	})
 }
 
+func TestExternal_Validate_BatchPermissions(t *testing.T) {
+	newBatchExternal := func(transport http.RoundTripper) *authz.External {
+		return newConfiguredExternal(&config.ExternalAuthZ{
+			EvaluatePermissions: []string{"can_read", "can_write"},
+			Name:                "test_ac",
+			URL:                 "http://authz.service",
+		}, transport)
+	}
+
+	t.Run("one callout asks about the request and every permission", func(t *testing.T) {
+		transport, calloutReq, calloutBody := captureCallout(respondJSONBody(http.StatusOK,
+			`{"evaluations": [{"decision": true}, {"decision": true}, {"decision": false}]}`))
+		external := newBatchExternal(transport)
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/todos/42", nil)
+		req = req.WithContext(context.WithValue(req.Context(), request.RoutePattern, "/todos/{id}"))
+
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		if u := (*calloutReq).URL.String(); u != "http://authz.service/access/v1/evaluations" {
+			t.Errorf("unexpected callout url: %s", u)
+		}
+
+		sent := decodeCallout(t, *calloutBody)
+		if semantic := objectAt(t, sent, "options")["evaluations_semantic"]; semantic != "execute_all" {
+			t.Errorf("unexpected evaluations semantic: %v", semantic)
+		}
+		// subject, resource and context are the shared defaults of every entry
+		if id := objectAt(t, sent, "resource")["id"]; id != "/todos/{id}" {
+			t.Errorf("unexpected shared resource: %v", id)
+		}
+
+		evaluations, _ := sent["evaluations"].([]interface{})
+		if len(evaluations) != 3 {
+			t.Fatalf("expected 3 evaluations, got: %v", sent["evaluations"])
+		}
+		for i, want := range []string{http.MethodGet, "can_read", "can_write"} {
+			entry, _ := evaluations[i].(map[string]interface{})
+			if name := objectAt(t, entry, "action")["name"]; name != want {
+				t.Errorf("evaluation %d: expected action %q, got: %v", i, want, name)
+			}
+		}
+
+		granted, _ := req.Context().Value(request.GrantedPermissions).([]string)
+		if len(granted) != 1 || granted[0] != "can_read" {
+			t.Errorf("unexpected granted permissions: %v", granted)
+		}
+	})
+
+	t.Run("the first evaluation answers the client request", func(t *testing.T) {
+		external := newBatchExternal(respondJSONBody(http.StatusOK,
+			`{"evaluations": [{"decision": false}, {"decision": true}, {"decision": true}]}`))
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+
+		err := external.Validate(req)
+		cErr, ok := err.(*errors.Error)
+		if !ok {
+			t.Fatalf("expected *errors.Error, got: %T", err)
+		}
+		if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "external_authz_insufficient_permissions" {
+			t.Errorf("unexpected error kinds: %v", kinds)
+		}
+		if granted, _ := req.Context().Value(request.GrantedPermissions).([]string); len(granted) != 0 {
+			t.Errorf("expected no granted permissions on a denial, got: %v", granted)
+		}
+	})
+
+	t.Run("an incomplete evaluations array fails closed", func(t *testing.T) {
+		external := newBatchExternal(respondJSONBody(http.StatusOK,
+			`{"evaluations": [{"decision": true}, {"decision": true}]}`))
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+
+		if err := external.Validate(req); err == nil {
+			t.Fatal("expected an error for an incomplete evaluations array")
+		}
+	})
+}
+
 func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	respondBody := func(contentType, body string) roundTripperFunc {
 		return func(_ *http.Request) (*http.Response, error) {
