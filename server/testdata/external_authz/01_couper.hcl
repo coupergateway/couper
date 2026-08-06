@@ -18,7 +18,7 @@ server "authz-service" {
   api {
     endpoint "/check" {
       response {
-        status = lookup(request.json_body.client_request.headers, "Authorization", [""])[0] == "Bearer valid" ? 200 : (lookup(request.json_body.client_request.headers, "Authorization", [""])[0] == "" ? 401 : 403)
+        status = request.json_body.subject.id == "valid" ? 200 : (request.json_body.subject.type == "anonymous" ? 401 : 403)
       }
     }
   }

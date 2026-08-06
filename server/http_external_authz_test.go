@@ -251,24 +251,26 @@ func TestExternalAuthz_MTLSClientCertificate(t *testing.T) {
 	defer mu.Unlock()
 
 	var sent struct {
-		MetadataTLS *struct {
-			ClientCertificate *struct {
-				FingerprintSHA256 string `json:"fingerprint_sha256"`
-				SerialNumber      string `json:"serial_number"`
-				Subject           string `json:"subject"`
-			} `json:"client_certificate"`
-		} `json:"metadata_tls"`
+		Context struct {
+			TLS *struct {
+				ClientCertificate *struct {
+					FingerprintSHA256 string `json:"fingerprint_sha256"`
+					SerialNumber      string `json:"serial_number"`
+					Subject           string `json:"subject"`
+				} `json:"client_certificate"`
+			} `json:"tls"`
+		} `json:"context"`
 	}
 	helper.Must(json.Unmarshal(calloutBody, &sent))
 
-	if sent.MetadataTLS == nil || sent.MetadataTLS.ClientCertificate == nil {
-		t.Fatalf("expected client_certificate in callout metadata_tls, got: %s", calloutBody)
+	if sent.Context.TLS == nil || sent.Context.TLS.ClientCertificate == nil {
+		t.Fatalf("expected client_certificate in callout context.tls, got: %s", calloutBody)
 	}
 
 	// The authorization service must see the exact client certificate Couper terminated,
 	// keyed on the fields an mTLS decision relies on.
 	leaf := selfSigned.Client.Leaf
-	cert := sent.MetadataTLS.ClientCertificate
+	cert := sent.Context.TLS.ClientCertificate
 	if cert.SerialNumber != leaf.SerialNumber.Text(16) {
 		t.Errorf("expected serial_number %q, got: %q", leaf.SerialNumber.Text(16), cert.SerialNumber)
 	}

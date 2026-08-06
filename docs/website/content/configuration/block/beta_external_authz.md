@@ -16,43 +16,82 @@ types, the `beta_external_authz` block is defined in the
 [`definitions` block](/configuration/block/definitions) and can be referenced in all
 configuration blocks by its required _label_.
 
-For every protected request Couper sends a `POST` request with a JSON body describing the
-client request to the configured authorization service:
+For every protected request Couper sends a `POST` request to the configured authorization
+service. The body is an access evaluation request of the
+[OpenID AuthZEN Authorization API 1.0](https://openid.net/specs/authorization-api-1_0.html).
+Couper is the policy enforcement point (PEP), the authorization service is the policy decision
+point (PDP):
 
 ```json
 {
-  "client_request": {
-    "method": "GET",
-    "url": "https://couper.example.com/protected",
+  "subject": {
+    "type": "JWT",
+    "id": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+  },
+  "action": {
+    "name": "GET"
+  },
+  "resource": {
+    "type": "route",
+    "id": "/todos/{todoId}",
+    "properties": {
+      "uri": "https://couper.example.com/todos/42?full=1",
+      "scheme": "https",
+      "hostname": "couper.example.com",
+      "path": "/todos/42",
+      "route": "/todos/{todoId}",
+      "params": { "todoId": "42" },
+      "query": { "full": ["1"] },
+      "ip": "10.0.0.7"
+    }
+  },
+  "context": {
     "headers": {
-      "Authorization": ["Bearer ..."]
+      "authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
     }
   }
 }
 ```
 
-With `include_tls = true` the TLS connection information of the client request is added. In a
+The `subject` names the credential, not a validated principal. Couper does not validate the
+credential, the authorization service does. For a request with a bearer token the type is `JWT`
+and the `id` is the raw token. For a request without a bearer token the type is `anonymous`. Its
+credential, an API key for example, is still in `context.headers`, where the authorization
+service reads it.
+
+The `resource` names the matched route, because a policy applies to the route and not to a
+single request path. The `id` keeps the placeholders of the route, for example `/todos/{todoId}`.
+If no route matched, for example in front of a [`files` block](/configuration/block/files), the
+type is `uri` and the `id` is the request path.
+
+`context.headers` holds all request headers with lower-case names and the first value of each
+header, like the [`request.headers` variable](/configuration/variables#request).
+
+With `include_tls = true` Couper adds the TLS connection state of the client request to
+`context.tls`. This state is a fact about the request, not a statement about the principal: the
+certificate can belong to a mesh sidecar while a bearer token identifies the caller. In a
 client-facing mTLS setup the `client_certificate` carries the fields an authorization service
-keys on — this is the full payload such a service can expect:
+keys on — this is the full object such a service can expect:
 
 ```json
 {
-  "client_request": { "...": "..." },
-  "metadata_tls": {
-    "version": "TLS 1.3",
-    "cipher_suite": "TLS_AES_128_GCM_SHA256",
-    "server_name": "couper.example.com",
-    "client_certificate": {
-      "subject": "CN=my-client,O=Example",
-      "issuer": "CN=my-ca",
-      "serial_number": "1267",
-      "fingerprint_sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-      "not_before": "2026-01-01T00:00:00Z",
-      "not_after": "2027-01-01T00:00:00Z",
-      "dns_names": ["client.example"],
-      "uris": ["spiffe://example.org/mcp-client"],
-      "email_addresses": ["mcp@example.org"],
-      "ip_addresses": ["10.0.0.7"]
+  "context": {
+    "tls": {
+      "version": "TLS 1.3",
+      "cipher_suite": "TLS_AES_128_GCM_SHA256",
+      "server_name": "couper.example.com",
+      "client_certificate": {
+        "subject": "CN=my-client,O=Example",
+        "issuer": "CN=my-ca",
+        "serial_number": "1267",
+        "fingerprint_sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "not_before": "2026-01-01T00:00:00Z",
+        "not_after": "2027-01-01T00:00:00Z",
+        "dns_names": ["client.example"],
+        "uris": ["spiffe://example.org/mcp-client"],
+        "email_addresses": ["mcp@example.org"],
+        "ip_addresses": ["10.0.0.7"]
+      }
     }
   }
 }

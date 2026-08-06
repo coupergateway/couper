@@ -20,7 +20,7 @@ server "authz-service" {
     endpoint "/check" {
       response {
         json_body = {
-          granted_permissions = lookup(request.json_body.client_request.headers, "Authorization", [""])[0] == "Bearer reader" ? ["can_read", "can_list"] : ["can_list"]
+          granted_permissions = request.json_body.subject.id == "reader" ? ["can_read", "can_list"] : ["can_list"]
         }
       }
     }
