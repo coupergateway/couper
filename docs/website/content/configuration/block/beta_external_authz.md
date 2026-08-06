@@ -258,7 +258,7 @@ definitions {
   },
   {
     "default": "",
-    "description": "Name of the response body property containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions.",
+    "description": "Name of the property in the response `context` containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions.",
     "name": "permissions_property",
     "type": "string"
   },
