@@ -156,9 +156,10 @@ func evaluationContext(evaluation evaluationResponse, header http.Header) map[st
 		ctx[name] = value
 	}
 
-	if evaluation.Decision != nil {
-		ctx["decision"] = *evaluation.Decision
-	}
+	// A missing decision denies, so false is the truthful value. An unconditional set also
+	// keeps the shadow guarantee and lets an error handler read the member without an
+	// evaluation error.
+	ctx["decision"] = evaluation.Decision != nil && *evaluation.Decision
 	ctx["headers"] = seetie.HeaderToMap(header)
 
 	return ctx

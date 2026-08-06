@@ -393,6 +393,32 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 		}
 	})
 
+	t.Run("a missing decision is exposed as false", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false, "",
+			respondBody("application/json", `{"context":{"reason":"broken"}}`))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err := external.Validate(req); err == nil {
+			t.Fatal("expected an error for a response without a decision")
+		}
+		if data := contextData(req); data["decision"] != false {
+			t.Errorf("expected decision false in context data, got: %v", data["decision"])
+		}
+	})
+
+	t.Run("the decision shadows a response context property of the same name", func(t *testing.T) {
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false, "",
+			respondBody("application/json", `{"context":{"decision":true}}`))
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err := external.Validate(req); err == nil {
+			t.Fatal("expected an error for a response without a decision")
+		}
+		if data := contextData(req); data["decision"] != false {
+			t.Errorf("expected the context property shadowed with false, got: %v", data["decision"])
+		}
+	})
+
 	t.Run("empty body fails closed but exposes headers", func(t *testing.T) {
 		external := authz.NewExternal("test_ac", "http://authz.service/check", false, "",
 			respondBody("application/json", ""))
