@@ -10,6 +10,7 @@ import (
 	"github.com/coupergateway/couper/config/runtime"
 	rs "github.com/coupergateway/couper/config/runtime/server"
 	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/handler"
 	"github.com/coupergateway/couper/server"
 )
 
@@ -189,5 +190,90 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 				subT.Errorf("Wildcard context: %q, want: %q", wildcardCtx, tt.expWildcard)
 			}
 		})
+	}
+}
+
+func TestMux_FindHandler_RoutePatternContext(t *testing.T) {
+	noContent := http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.WriteHeader(http.StatusNoContent)
+	})
+
+	serverOptions, _ := rs.NewServerOptions(nil, nil)
+	serverOptions.FilesBasePaths = []string{"/public"}
+	serverOptions.SPABasePaths = []string{"/app"}
+
+	fileHandler, err := handler.NewFile("testdata/file_serving/htdocs", "/public/",
+		func(string) bool { return false }, errors.DefaultHTML, serverOptions, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testOptions := &runtime.MuxOptions{
+		EndpointRoutes: map[string]http.Handler{
+			"/without":             noContent,
+			"/with/{my}/parameter": noContent,
+			"/prefix/**":           noContent,
+		},
+		FileRoutes: map[string]http.Handler{
+			"/public/**": fileHandler,
+		},
+		SPARoutes: map[string]http.Handler{
+			"/app/**": noContent,
+		},
+		ServerOptions: serverOptions,
+	}
+
+	tests := []struct {
+		name    string
+		path    string
+		expPath string
+	}{
+		{"endpoint", "/without", "/without"},
+		{"endpoint, trailing slash", "/without/", "/without"},
+		{"endpoint /w path param", "/with/my123/parameter", "/with/{my}/parameter"},
+		{"endpoint wildcard, exact", "/prefix", "/prefix/**"},
+		{"endpoint wildcard, deep", "/prefix/deep/path", "/prefix/**"},
+		{"spa wildcard", "/app/some/route", "/app/**"},
+		{"files wildcard", "/public/robots.txt", "/public/**"},
+		{"no route", "/nothing/here", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			mux := server.NewMux(testOptions)
+			mux.RegisterConfigured()
+
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			mux.FindHandler(req)
+
+			pattern, _ := req.Context().Value(request.RoutePattern).(string)
+			if pattern != tt.expPath {
+				subT.Errorf("Route pattern context: %q, want: %q", pattern, tt.expPath)
+			}
+		})
+	}
+}
+
+func TestMux_FindHandler_RoutePatternContext_RootWildcard(t *testing.T) {
+	serverOptions, _ := rs.NewServerOptions(nil, nil)
+
+	testOptions := &runtime.MuxOptions{
+		EndpointRoutes: map[string]http.Handler{
+			"/**": http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+				rw.WriteHeader(http.StatusNoContent)
+			}),
+		},
+		ServerOptions: serverOptions,
+	}
+
+	mux := server.NewMux(testOptions)
+	mux.RegisterConfigured()
+
+	req := httptest.NewRequest(http.MethodGet, "/any/path", nil)
+	mux.FindHandler(req)
+
+	pattern, _ := req.Context().Value(request.RoutePattern).(string)
+	if pattern != "/**" {
+		t.Errorf("Route pattern context: %q, want: %q", pattern, "/**")
 	}
 }
