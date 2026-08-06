@@ -849,19 +849,48 @@ func TestExternal_Validate_TransportError(t *testing.T) {
 	}
 }
 
-func TestExternal_Validate_EmptyURL(t *testing.T) {
-	var calloutURL string
-	external := newTestExternal("test_ac", "", false, "", roundTripperFunc(
-		func(req *http.Request) (*http.Response, error) {
-			calloutURL = req.URL.String()
-			return respondAllow()(req)
-		}))
+func TestExternal_Validate_CalloutURL(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		configured string
+		expURL     string
+	}{
+		{"no url uses the backend origin", "", "/access/v1/evaluation"},
+		{"origin only", "https://pdp.example.com", "https://pdp.example.com/access/v1/evaluation"},
+		{"origin with a root path", "https://pdp.example.com/", "https://pdp.example.com/access/v1/evaluation"},
+		{"an explicit path is kept", "https://pdp.example.com/check", "https://pdp.example.com/check"},
+		{"a relative path is kept", "/check", "/check"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calloutURL string
+			external := newTestExternal("test_ac", tc.configured, false, "", roundTripperFunc(
+				func(req *http.Request) (*http.Response, error) {
+					calloutURL = req.URL.String()
+					return respondAllow()(req)
+				}))
+
+			req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+			if err := external.Validate(req); err != nil {
+				t.Fatalf("expected no error, got: %v", err)
+			}
+			if calloutURL != tc.expURL {
+				t.Errorf("expected callout url %q, got: %q", tc.expURL, calloutURL)
+			}
+		})
+	}
+}
+
+func TestExternal_Validate_RequestIDCorrelation(t *testing.T) {
+	transport, calloutReq, _ := captureCallout(respondAllow())
+	external := newTestExternal("test_ac", "http://authz.service/check", false, "", transport)
 
 	req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+	req = req.WithContext(context.WithValue(req.Context(), request.UID, "couper-uid-1"))
+
 	if err := external.Validate(req); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if calloutURL != "/" {
-		t.Errorf("expected callout path %q for backend-provided origin, got: %q", "/", calloutURL)
+	if id := (*calloutReq).Header.Get("X-Request-ID"); id != "couper-uid-1" {
+		t.Errorf("expected the couper request id, got: %q", id)
 	}
 }

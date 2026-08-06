@@ -71,8 +71,8 @@ authorization service caches internally where its decision allows it.
 Instead the callout cost is reduced Envoy-style via connection reuse: a `backend` with
 `http2 = true` multiplexes all callouts over one persistent HTTP/2 (TLS/ALPN) connection
 to the — typically local — authorization service; without it, HTTP/1.1 keep-alive still
-avoids per-request connection setup. Cleartext h2c is not supported by the backend
-transport.
+avoids per-request connection setup. For a trusted cleartext origin `http2_prior_knowledge`
+gives the same multiplexing without TLS (h2c).
 
 ### 5. Keep request-body forwarding out of the initial scope
 
@@ -81,12 +81,37 @@ Body-level decisions (e.g. per-tool filtering of JSON-RPC calls) are owned by
 context header/route-only keeps it small and cacheable; body forwarding can be added
 later behind an explicit opt-in with a size cap.
 
-### 6. Consider Envoy `ext_authz` wire compatibility
+### 6. Wire format: OpenID AuthZEN Authorization API 1.0
 
-HTTP and gRPC callouts are both planned. Implementing (or optionally supporting)
-Envoy's `CheckRequest`/`CheckResponse` contract would make existing authorizers
-(OpenFGA, OPA/plugins, oathkeeper-style services) usable without adapters, instead of
-introducing a Couper-only context schema.
+Resolved. The callout speaks the AuthZEN Authorization API 1.0 (Final, 2026-01-11): Couper is
+the policy enforcement point, the authorization service is the policy decision point. This
+replaces the Couper-only context schema this document first sketched, and it makes existing
+authorizers (Topaz/Aserto, Axiomatics, SGNL, Cerbos, OPA) usable without adapters. Couper joins
+the interop peer group of Envoy, Kong, Tyk, Zuplo and the AWS API Gateway. Envoy's
+`CheckRequest`/`CheckResponse` is no longer worth a second encoder.
+
+Two consequences deserve a note, because they invert what §3 assumed:
+
+- **A deny is in-band.** AuthZEN answers `200` with `{"decision": false}`. An error status of
+  the decision point is a fault between it and Couper, not a statement about the client — a
+  `401` says that *Couper* failed to authenticate to the decision point. Couper therefore
+  copies nothing from a non-`200` response; forwarding that challenge would mislead the client.
+- **The 401/403 split needs a convention.** The spec leaves the response `context` free-form.
+  Couper reads one property of it, `www_authenticate`, and answers `401` with that challenge
+  when it is present. Every other deny is a `403`. A decision point that sends only
+  `{"decision": false}` therefore works without Couper-specific configuration. This convention
+  is Couper's own and the documentation says so.
+
+### 7. Authentication belongs to the decision point
+
+AuthZEN assumes that the enforcement point already resolved a subject; requirement §1 assumes
+the opposite, because the whole point is to let the callout decide which credential type it
+received. Couper resolves this in favour of the decision point: it validates nothing and sends
+the raw bearer token as `subject.id` with the type `JWT` — the fallback the AuthZEN gateway
+profile defines for exactly this case. A request without a bearer token is `anonymous`; its
+credential travels in `context.headers`, where the decision point reads it. A deployment that
+does authenticate at the gateway configures `subject` explicitly and gets the interop-standard
+`identity`/`sub` shape.
 
 ## Client-flow note
 

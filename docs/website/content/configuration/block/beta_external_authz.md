@@ -149,6 +149,13 @@ certificate — use either for allow lists or pinning. The subject alternative n
 (`dns_names`, `uris`, `email_addresses`, `ip_addresses`) appear only when the certificate
 carries them and often hold the identity to authorize on, e.g. a SPIFFE ID in `uris`.
 
+## Reaching the authorization service
+
+The default path is the AuthZEN access evaluation endpoint `/access/v1/evaluation`, so an
+origin is enough to reach a conformant service. A `url` with a path of its own is used as
+configured. Couper sends its request id as `X-Request-ID`, which a decision point echoes to
+tie its log to the [Couper log](/observation/logging).
+
 Couper calls the authorization service on the hot path of every protected request, so the
 connection to it should be persistent. This is the recommended setup: a (typically local)
 authorization service behind a `backend` with `http2 = true` — callouts are then multiplexed
@@ -163,7 +170,7 @@ multiplexing.
 definitions {
   beta_external_authz "authz" {
     backend {
-      origin = "https://localhost:4000"
+      origin = "https://localhost:4000" # callout to /access/v1/evaluation
       http2  = true
     }
   }
@@ -334,8 +341,8 @@ definitions {
     "type": "object"
   },
   {
-    "default": "",
-    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block.",
+    "default": "\"/access/v1/evaluation\"",
+    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block. Without a path, the AuthZEN access evaluation endpoint `/access/v1/evaluation` is used.",
     "name": "url",
     "type": "string"
   }

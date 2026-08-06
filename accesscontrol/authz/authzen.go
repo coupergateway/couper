@@ -14,6 +14,9 @@ import (
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
+// authzenEvaluationPath is the default path of the AuthZEN access evaluation endpoint.
+const authzenEvaluationPath = "/access/v1/evaluation"
+
 // Entity types of the AuthZEN API gateway mapping.
 const (
 	subjectTypeAnonymous = "anonymous"
