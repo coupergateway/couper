@@ -23,13 +23,16 @@ var (
 // ExternalAuthZ represents the beta_external_authz block.
 type ExternalAuthZ struct {
 	ErrorHandlerSetter
-	BackendName         string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with {backend} block."`
-	EvaluatePermissions []string `hcl:"evaluate_permissions,optional" docs:"Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. Mutually exclusive with {permissions_property}."`
-	IncludeTLS          bool     `hcl:"include_tls,optional" docs:"Include TLS connection information of the client request in the authorization request." default:"false"`
-	Name                string   `hcl:"name,label"`
-	PermissionsProperty string   `hcl:"permissions_property,optional" docs:"Name of the property in the response {context} containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions."`
-	URL                 string   `hcl:"url,optional" docs:"URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested {backend} block. Without a path, or with only the root path {/}, the AuthZEN access evaluation endpoint {/access/v1/evaluation} is used — or {/access/v1/evaluations} with {evaluate_permissions}. An explicit path must point to the matching endpoint." default:"/access/v1/evaluation"`
-	Remain              hcl.Body `hcl:",remain"`
+	BackendName           string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with {backend} block."`
+	ConfigurationMaxStale string   `hcl:"configuration_max_stale,optional" docs:"Time after the expiration of the AuthZEN configuration document during which Couper keeps using it. A zero value means no stale use." type:"duration" default:"1h"`
+	ConfigurationTTL      string   `hcl:"configuration_ttl,optional" docs:"Time to cache the AuthZEN configuration document." type:"duration" default:"1h"`
+	ConfigurationURL      string   `hcl:"configuration_url,optional" docs:"URL of the AuthZEN configuration document ({/.well-known/authzen-configuration}) of the authorization service. Couper reads the callout endpoint from it. Mutually exclusive with {url}."`
+	EvaluatePermissions   []string `hcl:"evaluate_permissions,optional" docs:"Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. Mutually exclusive with {permissions_property}."`
+	IncludeTLS            bool     `hcl:"include_tls,optional" docs:"Include TLS connection information of the client request in the authorization request." default:"false"`
+	Name                  string   `hcl:"name,label"`
+	PermissionsProperty   string   `hcl:"permissions_property,optional" docs:"Name of the property in the response {context} containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions."`
+	URL                   string   `hcl:"url,optional" docs:"URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested {backend} block. Without a path, or with only the root path {/}, the AuthZEN access evaluation endpoint {/access/v1/evaluation} is used — or {/access/v1/evaluations} with {evaluate_permissions}. An explicit path must point to the matching endpoint." default:"/access/v1/evaluation"`
+	Remain                hcl.Body `hcl:",remain"`
 
 	// Internally used
 	Backend *hclsyntax.Body
@@ -39,13 +42,23 @@ func (a *ExternalAuthZ) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if err = a.check(); err != nil {
 		return err
 	}
+	// Discovery and the callout share one backend, because the discovered endpoint has to
+	// stay on the origin of the configuration document anyway.
+	if a.ConfigurationURL != "" {
+		a.Backend, err = backendFunc("configuration_url", a.ConfigurationURL, a)
+		return err
+	}
 	a.Backend, err = backendFunc("url", a.URL, a)
 	return err
 }
 
 // check ensures a callout destination exists: a url or a backend providing an origin.
 func (a *ExternalAuthZ) check() error {
-	if a.URL == "" && a.BackendName == "" && len(hclbody.BlocksOfType(a.HCLBody(), "backend")) == 0 {
+	if a.URL != "" && a.ConfigurationURL != "" {
+		return fmt.Errorf("url and configuration_url are mutually exclusive")
+	}
+	if a.URL == "" && a.ConfigurationURL == "" && a.BackendName == "" &&
+		len(hclbody.BlocksOfType(a.HCLBody(), "backend")) == 0 {
 		return fmt.Errorf("url attribute or backend required")
 	}
 	for _, permission := range a.EvaluatePermissions {

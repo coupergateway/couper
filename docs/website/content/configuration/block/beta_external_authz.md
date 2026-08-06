@@ -156,6 +156,30 @@ origin is enough to reach a conformant service. A `url` with a path of its own i
 configured. Couper sends its request id as `X-Request-ID`, which a decision point echoes to
 tie its log to the [Couper log](/observation/logging).
 
+With `configuration_url` Couper reads the endpoint from the AuthZEN configuration document of
+the authorization service instead. `configuration_url` and `url` are mutually exclusive.
+
+```hcl
+definitions {
+  beta_external_authz "authz" {
+    configuration_url = "https://pdp.example.com/.well-known/authzen-configuration"
+    configuration_ttl = "10m"
+  }
+}
+```
+
+Couper takes `access_evaluation_endpoint` from the document, or
+`access_evaluations_endpoint` with `evaluate_permissions`. It caches the document for
+`configuration_ttl` and keeps a stale copy for `configuration_max_stale` while the service is
+unreachable.
+
+Two checks protect the callout. The document must claim the `policy_decision_point` Couper
+asked, which is `configuration_url` without the well-known suffix — this is how the
+specification prevents a mix-up between decision points. And the endpoint must stay on the
+origin of the document: a `backend` pins scheme and host, so an endpoint on a foreign origin
+would send the credentials of the client to the configured host instead. Couper denies the
+request in both cases.
+
 Couper calls the authorization service on the hot path of every protected request, so the
 connection to it should be persistent. This is the recommended setup: a (typically local)
 authorization service behind a `backend` with `http2 = true` — callouts are then multiplexed
@@ -327,6 +351,24 @@ definitions {
     "default": "",
     "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with `backend` block.",
     "name": "backend",
+    "type": "string"
+  },
+  {
+    "default": "\"1h\"",
+    "description": "Time after the expiration of the AuthZEN configuration document during which Couper keeps using it. A zero value means no stale use.",
+    "name": "configuration_max_stale",
+    "type": "duration"
+  },
+  {
+    "default": "\"1h\"",
+    "description": "Time to cache the AuthZEN configuration document.",
+    "name": "configuration_ttl",
+    "type": "duration"
+  },
+  {
+    "default": "",
+    "description": "URL of the AuthZEN configuration document (`/.well-known/authzen-configuration`) of the authorization service. Couper reads the callout endpoint from it. Mutually exclusive with `url`.",
+    "name": "configuration_url",
     "type": "string"
   },
   {

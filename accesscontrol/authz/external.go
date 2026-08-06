@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/sirupsen/logrus"
 
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
@@ -26,6 +27,7 @@ const roundTripName = "external_authz"
 // client request is allowed. The decision is in the response body, not in its status code.
 type External struct {
 	body                *hclsyntax.Body
+	discovery           *discovery
 	evaluatePermissions []string
 	includeTLS          bool
 	name                string
@@ -34,13 +36,16 @@ type External struct {
 	url                 string
 }
 
-func NewExternal(conf *config.ExternalAuthZ, transport http.RoundTripper) *External {
+func NewExternal(ctx context.Context, conf *config.ExternalAuthZ, transport http.RoundTripper,
+	log *logrus.Entry) (*External, error) {
+
+	batched := len(conf.EvaluatePermissions) > 0
 	defaultPath := authzenEvaluationPath
-	if len(conf.EvaluatePermissions) > 0 {
+	if batched {
 		defaultPath = authzenEvaluationsPath
 	}
 
-	return &External{
+	external := &External{
 		body:                conf.HCLBody(),
 		evaluatePermissions: conf.EvaluatePermissions,
 		includeTLS:          conf.IncludeTLS,
@@ -49,6 +54,35 @@ func NewExternal(conf *config.ExternalAuthZ, transport http.RoundTripper) *Exter
 		transport:           transport,
 		url:                 calloutURL(conf.URL, defaultPath),
 	}
+
+	if conf.ConfigurationURL == "" {
+		return external, nil
+	}
+
+	ttl, err := config.ParseDuration("configuration_ttl", conf.ConfigurationTTL, defaultConfigurationTTL)
+	if err != nil {
+		return nil, err
+	}
+	maxStale, err := config.ParseDuration("configuration_max_stale", conf.ConfigurationMaxStale, defaultConfigurationTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	external.discovery, err = newDiscovery(ctx, conf.Name, conf.ConfigurationURL, batched, ttl, maxStale, transport, log)
+	if err != nil {
+		return nil, err
+	}
+
+	return external, nil
+}
+
+// calloutEndpoint returns the configured URL, or the one the decision point advertises.
+func (e *External) calloutEndpoint() (string, error) {
+	if e.discovery == nil {
+		return e.url, nil
+	}
+
+	return e.discovery.endpoint()
 }
 
 // calloutURL adds the default AuthZEN access evaluation path to a configured URL with an
@@ -79,7 +113,12 @@ func (e *External) Validate(req *http.Request) error {
 		payload = newBatchEvaluationRequest(evalReq, e.evaluatePermissions)
 	}
 
-	res, err := e.callout(req, payload)
+	endpoint, err := e.calloutEndpoint()
+	if err != nil {
+		return errors.ExternalAuthz.Label(e.name).With(err)
+	}
+
+	res, err := e.callout(req, endpoint, payload)
 	if err != nil {
 		return err
 	}
@@ -104,13 +143,13 @@ func (e *External) batched() bool {
 	return len(e.evaluatePermissions) > 0
 }
 
-func (e *External) callout(req *http.Request, payload interface{}) (*http.Response, error) {
+func (e *External) callout(req *http.Request, endpoint string, payload interface{}) (*http.Response, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errors.ExternalAuthz.Label(e.name).With(err)
 	}
 
-	outreq, err := http.NewRequest(http.MethodPost, e.url, nil)
+	outreq, err := http.NewRequest(http.MethodPost, endpoint, nil)
 	if err != nil {
 		return nil, errors.ExternalAuthz.Label(e.name).With(err)
 	}
