@@ -19,7 +19,7 @@ import (
 const roundTripName = "external_authz"
 
 // External authorization calls out to a policy decision point which decides whether the
-// client request is allowed: 200 allows, 401 and 403 map to distinct error types.
+// client request is allowed. The decision is in the response body, not in its status code.
 type External struct {
 	includeTLS          bool
 	name                string
@@ -68,51 +68,68 @@ func (e *External) Validate(req *http.Request) error {
 	}
 	defer res.Body.Close()
 
-	switch res.StatusCode {
-	case http.StatusOK:
-		data, derr := e.parseResponseBody(res)
-		if derr != nil {
-			return derr
-		}
-		e.storeContext(req, withResponseHeaders(data, res.Header))
-		return e.grantPermissions(req, data)
-	case http.StatusUnauthorized:
-		// The service's challenge tells the client how to authenticate (e.g. an RFC 9728
-		// resource_metadata pointer); expose it so the default error handler forwards it.
-		if challenge := res.Header.Get("WWW-Authenticate"); challenge != "" {
-			e.storeContext(req, map[string]interface{}{"www_authenticate": challenge})
-		}
-		return errors.ExternalAuthzInvalidCredentials.Label(e.name).Message("invalid credentials")
-	case http.StatusForbidden:
-		return errors.ExternalAuthzInsufficientPermissions.Label(e.name).Message("insufficient permissions")
-	default:
-		return errors.ExternalAuthz.Label(e.name).Messagef("unexpected authorization service response status: %d", res.StatusCode)
+	// An error status reports a problem between Couper and the decision point, not a denied
+	// client. Couper must copy nothing from such a response: a 401 says that Couper failed to
+	// authenticate to the decision point, and its challenge would mislead the client.
+	if res.StatusCode != http.StatusOK {
+		return errors.ExternalAuthz.Label(e.name).
+			Messagef("unexpected authorization service response status: %d", res.StatusCode)
 	}
+
+	evaluation, derr := e.parseResponseBody(res)
+	if derr != nil {
+		return derr
+	}
+
+	e.storeContext(req, evaluationContext(evaluation, res.Header))
+
+	if evaluation.Decision == nil {
+		return errors.ExternalAuthz.Label(e.name).Message("missing decision in authorization service response")
+	}
+
+	if !*evaluation.Decision {
+		return e.deny(evaluation.Context)
+	}
+
+	return e.grantPermissions(req, evaluation.Context)
 }
 
-// parseResponseBody reads a JSON object response body. A malformed body denies
-// the request: silently dropping data which downstream permission checks may
-// rely on would fail open.
-func (e *External) parseResponseBody(res *http.Response) (map[string]interface{}, error) {
+// deny maps a decision of false onto an error type. A challenge in the response context
+// means invalid credentials: it tells the client how to authenticate, for example with an
+// RFC 9728 resource_metadata pointer. Without a challenge the denial is an authorization
+// decision, and new credentials would not help the client.
+func (e *External) deny(evalContext map[string]interface{}) error {
+	if challenge, _ := evalContext[wwwAuthenticateProperty].(string); challenge != "" {
+		return errors.ExternalAuthzInvalidCredentials.Label(e.name).Message("invalid credentials")
+	}
+
+	return errors.ExternalAuthzInsufficientPermissions.Label(e.name).Message("insufficient permissions")
+}
+
+// parseResponseBody reads the access evaluation response. A malformed body denies the
+// request: to drop data that a permission check relies on would fail open.
+func (e *External) parseResponseBody(res *http.Response) (evaluationResponse, error) {
+	var evaluation evaluationResponse
+
 	mediaType, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
 	if mediaType != "application/json" {
-		return nil, nil
+		return evaluation, nil
 	}
 
 	raw, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, errors.ExternalAuthz.Label(e.name).With(err)
+		return evaluation, errors.ExternalAuthz.Label(e.name).With(err)
 	}
 	if len(raw) == 0 {
-		return nil, nil
+		return evaluation, nil
 	}
 
-	var data map[string]interface{}
-	if err = json.Unmarshal(raw, &data); err != nil {
-		return nil, errors.ExternalAuthz.Label(e.name).Message("unexpected authorization service response body").With(err)
+	if err = json.Unmarshal(raw, &evaluation); err != nil {
+		return evaluation, errors.ExternalAuthz.Label(e.name).
+			Message("unexpected authorization service response body").With(err)
 	}
 
-	return data, nil
+	return evaluation, nil
 }
 
 // storeContext exposes the response data as request.context.<label>.
@@ -130,33 +147,38 @@ func (e *External) storeContext(req *http.Request, data map[string]interface{}) 
 	*req = *req.WithContext(context.WithValue(ctx, request.AccessControls, acMap))
 }
 
-// withResponseHeaders adds the callout response headers to the context data under "headers"
-// (lower-cased names, first value, like request.headers), without polluting the body map used
-// for permissions. A body property literally named "headers" is shadowed.
-func withResponseHeaders(data map[string]interface{}, header http.Header) map[string]interface{} {
+// evaluationContext flattens the response context for request.context.<label>. Couper adds
+// the decision and the callout response headers (lower-cased names, first value, like
+// request.headers). Both shadow a response context property of the same name.
+func evaluationContext(evaluation evaluationResponse, header http.Header) map[string]interface{} {
 	ctx := map[string]interface{}{}
-	for name, value := range data {
+	for name, value := range evaluation.Context {
 		ctx[name] = value
 	}
+
+	if evaluation.Decision != nil {
+		ctx["decision"] = *evaluation.Decision
+	}
 	ctx["headers"] = seetie.HeaderToMap(header)
+
 	return ctx
 }
 
-// grantPermissions appends the permissions from the configured response body
-// property to the request's granted permissions with the same value semantics
-// as the jwt block's permissions_claim: a space-separated string or a list of strings.
-func (e *External) grantPermissions(req *http.Request, data map[string]interface{}) error {
+// grantPermissions appends the permissions from the configured response context property to
+// the request's granted permissions with the same value semantics as the jwt block's
+// permissions_claim: a space-separated string or a list of strings.
+func (e *External) grantPermissions(req *http.Request, evalContext map[string]interface{}) error {
 	if e.permissionsProperty == "" {
 		return nil
 	}
 
-	value, exists := data[e.permissionsProperty]
+	value, exists := evalContext[e.permissionsProperty]
 	if !exists {
 		// A configured permissions property expresses a contract with the authorization
 		// service; its absence on an allow is a broken service, not an empty grant —
 		// failing loudly beats a puzzling 403 at required_permission.
 		return errors.ExternalAuthz.Label(e.name).
-			Messagef("missing %s permissions property in authorization service response", e.permissionsProperty)
+			Messagef("missing %s permissions property in authorization service response context", e.permissionsProperty)
 	}
 
 	invalidErr := func() error {

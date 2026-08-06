@@ -154,7 +154,10 @@ func TestExternalAuthz_HTTP2Callout(t *testing.T) {
 		mu.Unlock()
 
 		rw.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(rw).Encode(map[string]string{"proto": req.Proto})
+		_ = json.NewEncoder(rw).Encode(map[string]interface{}{
+			"decision": true,
+			"context":  map[string]string{"proto": req.Proto},
+		})
 	}))
 	selfSigned, err := server.NewCertificate(time.Minute, nil, nil)
 	helper.Must(err)
@@ -215,7 +218,9 @@ func TestExternalAuthz_MTLSClientCertificate(t *testing.T) {
 		mu.Lock()
 		calloutBody = body
 		mu.Unlock()
+		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusOK)
+		_, _ = rw.Write([]byte(`{"decision": true}`))
 	}))
 	defer authzService.Close()
 
@@ -347,7 +352,10 @@ func TestExternalAuthz_H2CCallout(t *testing.T) {
 		mu.Unlock()
 
 		rw.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(rw).Encode(map[string]string{"proto": req.Proto})
+		_ = json.NewEncoder(rw).Encode(map[string]interface{}{
+			"decision": true,
+			"context":  map[string]string{"proto": req.Proto},
+		})
 	}), h2s))
 	defer authzService.Close()
 
@@ -441,5 +449,55 @@ func TestExternalAuthz_ErrorHandler(t *testing.T) {
 	expChallenge := `Bearer resource_metadata="http://protected.example/.well-known/oauth-protected-resource"`
 	if challenge := res.Header.Get("Www-Authenticate"); challenge != expChallenge {
 		t.Errorf("expected challenge %q, got: %q", expChallenge, challenge)
+	}
+}
+
+func TestExternalAuthz_StockDecisionPoint(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/10_couper.hcl", helper)
+	defer shutdown()
+
+	for _, tc := range []struct {
+		name         string
+		path         string
+		expErrorType string
+	}{
+		{"flat deny without a couper convention", "/stock", "external_authz_insufficient_permissions"},
+		{"decision point rejects couper", "/broken", "external_authz"},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+			_, _ = io.Copy(io.Discard, res.Body)
+			_ = res.Body.Close()
+
+			if res.StatusCode != http.StatusForbidden {
+				st.Errorf("expected status %d, got: %d", http.StatusForbidden, res.StatusCode)
+			}
+
+			// A challenge tells the client to try again with other credentials. That is wrong
+			// for an authorization denial, and the challenge of a rejected callout is
+			// addressed to Couper.
+			if challenge := res.Header.Get("Www-Authenticate"); challenge != "" {
+				st.Errorf("expected no challenge, got: %q", challenge)
+			}
+
+			var loggedType string
+			for _, entry := range hook.AllEntries() {
+				if errorType, ok := entry.Data["error_type"].(string); ok && entry.Data["port"] == "8080" {
+					loggedType = errorType
+				}
+			}
+			if loggedType != tc.expErrorType {
+				st.Errorf("expected logged error_type %q, got: %q", tc.expErrorType, loggedType)
+			}
+		})
 	}
 }

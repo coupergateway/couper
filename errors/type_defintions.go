@@ -7,7 +7,7 @@ import "net/http"
 var Definitions = []*Error{
 	AccessControl,
 
-	AccessControl.Kind("external_authz").Status(http.StatusUnauthorized),
+	AccessControl.Kind("external_authz").Status(http.StatusForbidden),
 	AccessControl.Kind("external_authz").Kind("external_authz_invalid_credentials").Status(http.StatusUnauthorized),
 	AccessControl.Kind("external_authz").Kind("external_authz_insufficient_permissions").Status(http.StatusForbidden),
 

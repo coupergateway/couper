@@ -18,7 +18,10 @@ server "authz-service" {
   api {
     endpoint "/check" {
       response {
-        status = 401
+        json_body = {
+          decision = false
+          context  = { www_authenticate = "Bearer error=\"invalid_token\"" }
+        }
       }
     }
   }

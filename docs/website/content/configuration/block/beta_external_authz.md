@@ -127,21 +127,37 @@ Couper does not cache authorization decisions: whether a decision may be reused 
 known to the authorization service, which can cache internally whenever its decision
 allows it.
 
-The response status code of the authorization service determines the decision:
+The decision is in the response body, not in the response status code. The authorization
+service answers `200` with a `decision` and an optional free-form `context`:
 
-| Status    | Result                                                                                    |
-|:----------|:------------------------------------------------------------------------------------------|
-| `200`     | The request is allowed.                                                                     |
-| `401`     | Denied with error type `external_authz_invalid_credentials`, default response status `401`. |
-| `403`     | Denied with error type `external_authz_insufficient_permissions`, default response status `403`. |
-| any other | Denied with error type `external_authz`, default response status `401`.                    |
+```json
+{
+  "decision": false,
+  "context": {
+    "reason": "the subject is a viewer of the resource"
+  }
+}
+```
 
-The `200` response is exposed as the [`request.context.<label>` variable](/configuration/variables#context):
-the properties of a JSON object body (`Content-Type: application/json`) — the place for validated
-claims, the resolved identity or granted permissions — plus the response headers under
-`request.context.<label>.headers` (lower-cased names, first value, like `request.headers`).
-A malformed JSON body denies the request, as downstream permission checks may rely on this data.
-A body property literally named `headers` is shadowed by the response headers.
+| Response                                        | Result                                                                                           |
+|:------------------------------------------------|:-------------------------------------------------------------------------------------------------|
+| `200`, `"decision": true`                        | The request is allowed.                                                                            |
+| `200`, `"decision": false` with a `www_authenticate` challenge | Denied with error type `external_authz_invalid_credentials`, default response status `401`. |
+| `200`, `"decision": false`                       | Denied with error type `external_authz_insufficient_permissions`, default response status `403`.   |
+| `200` without a `decision`, or a malformed body  | Denied with error type `external_authz`, default response status `403`.                            |
+| any other status, or a callout failure           | Denied with error type `external_authz`, default response status `403`.                            |
+
+An error status of the authorization service reports a problem between Couper and that
+service, not a denied client. A `401`, for example, says that Couper failed to authenticate
+to the authorization service. Couper copies nothing from such a response, because its
+challenge is addressed to Couper and would mislead the client.
+
+The response `context` is exposed as the
+[`request.context.<label>` variable](/configuration/variables#context) — the place for
+validated claims, the resolved identity or granted permissions. Couper adds two members:
+`decision`, and `headers` with the callout response headers (lower-cased names, first value,
+like `request.headers`). Both shadow a response context property of the same name. Couper
+exposes the `context` of a denial as well, so an `error_handler` can read the reason.
 
 An upstream backend can trust a resolved identity or a re-signed internal token (created with
 [`jwt_sign()`](/configuration/functions)) the authorization service returns as a header, by
@@ -167,9 +183,9 @@ api {
 
 With `permissions_property` the authorization service can grant [permissions](/configuration/error-handling#permissions-related-error_handler)
 evaluated by `required_permission` in [`api`](/configuration/block/api) or [`endpoint`](/configuration/block/endpoint)
-blocks: the named response body property — a space-separated string or a list of strings, like the
+blocks: the named property of the response `context` — a space-separated string or a list of strings, like the
 [`jwt` block's](/configuration/block/jwt) `permissions_claim` — is added to `request.context.granted_permissions`.
-If the configured property is absent from the `200` response, the request is denied rather than allowed
+If the configured property is absent from an allowed response, the request is denied rather than allowed
 without permissions, matching the fail-closed handling of a malformed body.
 
 ```hcl
@@ -181,9 +197,27 @@ definitions {
 }
 ```
 
-On a `401` response the authorization service's `WWW-Authenticate` challenge — for example an
-RFC 9728 `resource_metadata` pointer for OAuth 2.0 clients — is forwarded to the client by a
-default `error_handler`, and its value is available to custom handlers as
+AuthZEN denies a request with a flat `"decision": false` and leaves the response `context`
+free-form. To keep an OAuth 2.0 protected resource workable, Couper reads one property of that
+context by convention — this convention is Couper's, not a part of the specification:
+
+```json
+{
+  "decision": false,
+  "context": {
+    "www_authenticate": "Bearer resource_metadata=\"https://couper.example.com/.well-known/oauth-protected-resource\""
+  }
+}
+```
+
+A challenge in `context.www_authenticate` means invalid credentials: it tells the client how to
+authenticate, for example with an RFC 9728 `resource_metadata` pointer. Couper then answers
+`401` and a default `error_handler` forwards the challenge to the client. Without a challenge
+the denial is an authorization decision and Couper answers `403`, because new credentials would
+not help the client. An authorization service that sends only `{"decision": false}` therefore
+works without any Couper-specific configuration.
+
+The challenge is available to custom handlers as
 `request.context.<label>.www_authenticate`. Defining an
 [`error_handler` block](/configuration/error-handling) for
 `external_authz_invalid_credentials` replaces the default:

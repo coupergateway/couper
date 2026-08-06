@@ -28,7 +28,8 @@ server "authz-service" {
           x-resolved-identity = "clark.kent"
         }
         json_body = {
-          sub = "clark.kent"
+          decision = true
+          context  = { sub = "clark.kent" }
         }
       }
     }

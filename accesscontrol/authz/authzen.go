@@ -17,6 +17,11 @@ const (
 	resourceTypeURI      = "uri"
 )
 
+// wwwAuthenticateProperty is a Couper convention on the free-form response context, not a
+// part of the specification. AuthZEN denies a request with a flat decision of false, but an
+// OAuth 2.0 protected resource must also tell the client how to authenticate.
+const wwwAuthenticateProperty = "www_authenticate"
+
 // evaluationRequest is an AuthZEN Authorization API 1.0 access evaluation request.
 // The subject, the action and the resource are mandatory.
 type evaluationRequest struct {
@@ -35,6 +40,14 @@ type entity struct {
 type action struct {
 	Name       string                 `json:"name"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
+}
+
+// evaluationResponse is an AuthZEN access evaluation response. The pointer separates an
+// absent decision from an explicit false: a decision point that answers 200 without a
+// decision has authorized nothing.
+type evaluationResponse struct {
+	Decision *bool                  `json:"decision"`
+	Context  map[string]interface{} `json:"context"`
 }
 
 func newEvaluationRequest(req *http.Request, includeTLS bool) evaluationRequest {

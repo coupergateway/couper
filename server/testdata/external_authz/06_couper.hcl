@@ -20,7 +20,10 @@ server "authz-service" {
     endpoint "/check" {
       response {
         json_body = {
-          granted_permissions = request.json_body.subject.id == "reader" ? ["can_read", "can_list"] : ["can_list"]
+          decision = true
+          context = {
+            granted_permissions = request.json_body.subject.id == "reader" ? ["can_read", "can_list"] : ["can_list"]
+          }
         }
       }
     }
