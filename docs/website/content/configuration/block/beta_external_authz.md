@@ -271,6 +271,9 @@ of `evaluate_permissions`. Couper sends `options.evaluations_semantic = "execute
 a short-circuit semantic truncates the answers and would lose permissions. The first decision
 allows or denies the request; a response with fewer answers than questions denies it.
 
+A `url` with a path of its own is used as configured — with `evaluate_permissions` it must
+point to the access evaluations endpoint, not to the single-evaluation endpoint.
+
 `evaluate_permissions` and `permissions_property` are mutually exclusive.
 
 AuthZEN denies a request with a flat `"decision": false` and leaves the response `context`
@@ -370,7 +373,7 @@ definitions {
   },
   {
     "default": "\"/access/v1/evaluation\"",
-    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block. Without a path, or with only the root path `/`, the AuthZEN access evaluation endpoint `/access/v1/evaluation` is used.",
+    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block. Without a path, or with only the root path `/`, the AuthZEN access evaluation endpoint `/access/v1/evaluation` is used — or `/access/v1/evaluations` with `evaluate_permissions`. An explicit path must point to the matching endpoint.",
     "name": "url",
     "type": "string"
   }

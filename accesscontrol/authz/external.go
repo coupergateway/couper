@@ -212,7 +212,7 @@ func (e *External) deny(evalContext map[string]interface{}) error {
 
 // decodeResponseBody reads the access evaluation response into target. A malformed body
 // denies the request: to drop data that a permission check relies on would fail open. A
-// response without a JSON body leaves target empty, which denies as a missing decision.
+// response without a JSON body leaves target empty, which denies.
 func (e *External) decodeResponseBody(res *http.Response, target interface{}) error {
 	mediaType, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
 	if mediaType != "application/json" {

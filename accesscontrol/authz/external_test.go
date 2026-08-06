@@ -493,6 +493,16 @@ func TestExternal_Validate_BatchPermissions(t *testing.T) {
 			t.Fatal("expected an error for an incomplete evaluations array")
 		}
 	})
+
+	t.Run("an oversized evaluations array fails closed", func(t *testing.T) {
+		external := newBatchExternal(respondJSONBody(http.StatusOK,
+			`{"evaluations": [{"decision": true}, {"decision": true}, {"decision": true}, {"decision": true}]}`))
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+
+		if err := external.Validate(req); err == nil {
+			t.Fatal("expected an error for an oversized evaluations array")
+		}
+	})
 }
 
 func TestExternal_Validate_ContextPropagation(t *testing.T) {

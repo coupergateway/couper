@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -27,7 +28,7 @@ type ExternalAuthZ struct {
 	IncludeTLS          bool     `hcl:"include_tls,optional" docs:"Include TLS connection information of the client request in the authorization request." default:"false"`
 	Name                string   `hcl:"name,label"`
 	PermissionsProperty string   `hcl:"permissions_property,optional" docs:"Name of the property in the response {context} containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions."`
-	URL                 string   `hcl:"url,optional" docs:"URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested {backend} block. Without a path, or with only the root path {/}, the AuthZEN access evaluation endpoint {/access/v1/evaluation} is used." default:"/access/v1/evaluation"`
+	URL                 string   `hcl:"url,optional" docs:"URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested {backend} block. Without a path, or with only the root path {/}, the AuthZEN access evaluation endpoint {/access/v1/evaluation} is used — or {/access/v1/evaluations} with {evaluate_permissions}. An explicit path must point to the matching endpoint." default:"/access/v1/evaluation"`
 	Remain              hcl.Body `hcl:",remain"`
 
 	// Internally used
@@ -46,6 +47,11 @@ func (a *ExternalAuthZ) Prepare(backendFunc PrepareBackendFunc) (err error) {
 func (a *ExternalAuthZ) check() error {
 	if a.URL == "" && a.BackendName == "" && len(hclbody.BlocksOfType(a.HCLBody(), "backend")) == 0 {
 		return fmt.Errorf("url attribute or backend required")
+	}
+	for _, permission := range a.EvaluatePermissions {
+		if strings.TrimSpace(permission) == "" {
+			return fmt.Errorf("evaluate_permissions must not contain empty entries")
+		}
 	}
 	// Both fill the granted permissions, but from different callouts; combining them would
 	// need a second round trip on the hot path.
