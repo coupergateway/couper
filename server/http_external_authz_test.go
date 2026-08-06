@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -449,6 +450,34 @@ func TestExternalAuthz_ErrorHandler(t *testing.T) {
 	expChallenge := `Bearer resource_metadata="http://protected.example/.well-known/oauth-protected-resource"`
 	if challenge := res.Header.Get("Www-Authenticate"); challenge != expChallenge {
 		t.Errorf("expected challenge %q, got: %q", expChallenge, challenge)
+	}
+}
+
+func TestExternalAuthz_ConfiguredSubject(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/11_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256,
+		jwt.MapClaims{"sub": "clark.kent"}).SignedString([]byte("test123"))
+	helper.Must(err)
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/todos/42", nil)
+	helper.Must(err)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	_, _ = io.Copy(io.Discard, res.Body)
+	_ = res.Body.Close()
+
+	// The decision point allows the request only if it saw the jwt claim as the subject id
+	// and the route pattern as the resource id.
+	if res.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
 	}
 }
 

@@ -59,11 +59,16 @@ func (a *ExternalAuthZ) HCLBody() *hclsyntax.Body {
 	return a.Remain.(*hclsyntax.Body)
 }
 
-// Inline implements the <Inline> interface.
+// Inline implements the <Inline> interface. The AuthZEN entities are evaluated per request,
+// so a preceding access control can name the subject.
 func (a *ExternalAuthZ) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
-		Backend *Backend `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the authorization callout (zero or one). Mutually exclusive with {backend} attribute."`
+		Action   map[string]cty.Value `hcl:"action,optional" docs:"Replaces the action of the access evaluation request. Requires a {name}; an optional {properties} object is passed through. Defaults to the request method."`
+		Backend  *Backend             `hcl:"backend,block" docs:"Configures a [backend](/configuration/block/backend) for the authorization callout (zero or one). Mutually exclusive with {backend} attribute."`
+		Context  map[string]cty.Value `hcl:"context,optional" docs:"Merges into the context of the access evaluation request. Configured keys win over the {headers} and {tls} defaults."`
+		Resource map[string]cty.Value `hcl:"resource,optional" docs:"Replaces the resource of the access evaluation request. Requires a {type} and an {id}; an optional {properties} object is passed through. Defaults to the matched route."`
+		Subject  map[string]cty.Value `hcl:"subject,optional" docs:"Replaces the subject of the access evaluation request. Requires a {type} and an {id}; an optional {properties} object is passed through. Defaults to the bearer token of the client request."`
 	}
 
 	return &Inline{}

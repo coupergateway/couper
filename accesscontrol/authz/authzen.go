@@ -1,11 +1,16 @@
 package authz
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+
 	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
@@ -50,7 +55,7 @@ type evaluationResponse struct {
 	Context  map[string]interface{} `json:"context"`
 }
 
-func newEvaluationRequest(req *http.Request, includeTLS bool) evaluationRequest {
+func newEvaluationRequest(req *http.Request, includeTLS bool, body *hclsyntax.Body) (evaluationRequest, error) {
 	evalReq := evaluationRequest{
 		Subject:  newSubject(req.Header),
 		Action:   action{Name: req.Method},
@@ -66,7 +71,94 @@ func newEvaluationRequest(req *http.Request, includeTLS bool) evaluationRequest 
 		}
 	}
 
-	return evalReq
+	return applyOverrides(evalReq, req, body)
+}
+
+// applyOverrides lets the configuration replace the subject, the action and the resource,
+// because each is a closed record with mandatory members and a partial merge would make a
+// confusing hybrid. The context is an open bag, and the default members are additive, so a
+// configured context merges over them.
+func applyOverrides(evalReq evaluationRequest, req *http.Request, body *hclsyntax.Body) (evaluationRequest, error) {
+	hclCtx := eval.ContextFromRequest(req).HCLContext()
+
+	if object, configured, err := configuredObject(hclCtx, body, "subject"); err != nil {
+		return evalReq, err
+	} else if configured {
+		if evalReq.Subject, err = newEntity("subject", object); err != nil {
+			return evalReq, err
+		}
+	}
+
+	if object, configured, err := configuredObject(hclCtx, body, "resource"); err != nil {
+		return evalReq, err
+	} else if configured {
+		if evalReq.Resource, err = newEntity("resource", object); err != nil {
+			return evalReq, err
+		}
+	}
+
+	if object, configured, err := configuredObject(hclCtx, body, "action"); err != nil {
+		return evalReq, err
+	} else if configured {
+		name := stringProperty(object, "name")
+		if name == "" {
+			return evalReq, fmt.Errorf("action requires a name")
+		}
+		evalReq.Action = action{Name: name, Properties: mapProperty(object, "properties")}
+	}
+
+	object, _, err := configuredObject(hclCtx, body, "context")
+	if err != nil {
+		return evalReq, err
+	}
+	for name, value := range object {
+		evalReq.Context[name] = value
+	}
+
+	return evalReq, nil
+}
+
+func configuredObject(hclCtx *hcl.EvalContext, body *hclsyntax.Body, name string) (map[string]interface{}, bool, error) {
+	if body == nil {
+		return nil, false, nil
+	}
+	if _, exists := body.Attributes[name]; !exists {
+		return nil, false, nil
+	}
+
+	value, err := eval.ValueFromBodyAttribute(hclCtx, body, name)
+	if err != nil {
+		return nil, true, err
+	}
+
+	return seetie.ValueToMap(value), true, nil
+}
+
+// newEntity builds a subject or a resource from a configured object. AuthZEN makes the type
+// and the id mandatory, so an empty value denies the request: to ask a decision point about
+// an unnamed subject would invite an accidental allow.
+func newEntity(kind string, object map[string]interface{}) (entity, error) {
+	result := entity{
+		Type:       stringProperty(object, "type"),
+		ID:         stringProperty(object, "id"),
+		Properties: mapProperty(object, "properties"),
+	}
+
+	if result.Type == "" || result.ID == "" {
+		return result, fmt.Errorf("%s requires a type and an id", kind)
+	}
+
+	return result, nil
+}
+
+func stringProperty(object map[string]interface{}, name string) string {
+	value, _ := object[name].(string)
+	return strings.TrimSpace(value)
+}
+
+func mapProperty(object map[string]interface{}, name string) map[string]interface{} {
+	value, _ := object[name].(map[string]interface{})
+	return value
 }
 
 // newSubject names the raw bearer token as the subject. Couper does not validate the
