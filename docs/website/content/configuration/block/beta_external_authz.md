@@ -228,7 +228,10 @@ service answers `200` with a `decision` and an optional free-form `context`:
 An error status of the authorization service reports a problem between Couper and that
 service, not a denied client. A `401`, for example, says that Couper failed to authenticate
 to the authorization service. Couper copies nothing from such a response, because its
-challenge is addressed to Couper and would mislead the client.
+challenge is addressed to Couper and would mislead the client. An
+[`error_handler` block](/configuration/error-handling) for the `external_authz` type catches
+every such rejection — a `400` for an action unknown to the decision point's model, for
+example, stays a plain denial with a body of your choosing.
 
 The response `context` is exposed as the
 [`request.context.<label>` variable](/configuration/variables#context) — the place for

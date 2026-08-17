@@ -557,6 +557,44 @@ func TestExternalAuthz_RequiredPermissionOverride(t *testing.T) {
 	}
 }
 
+func TestExternalAuthz_ErrorHandlerCatchesCalloutRejection(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/14_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusForbidden {
+		t.Errorf("expected status %d, got: %d", http.StatusForbidden, res.StatusCode)
+	}
+
+	var body map[string]interface{}
+	helper.Must(json.Unmarshal(resBytes, &body))
+	if body["error"] != "denied" {
+		t.Errorf("expected error_handler body, got: %s", resBytes)
+	}
+
+	var loggedType string
+	for _, entry := range hook.AllEntries() {
+		if errorType, ok := entry.Data["error_type"].(string); ok && entry.Data["port"] == "8080" {
+			loggedType = errorType
+		}
+	}
+	if loggedType != "external_authz" {
+		t.Errorf("expected logged error_type %q, got: %q", "external_authz", loggedType)
+	}
+}
+
 func TestExternalAuthz_StockDecisionPoint(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
