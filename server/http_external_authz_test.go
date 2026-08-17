@@ -595,6 +595,37 @@ func TestExternalAuthz_ErrorHandlerCatchesCalloutRejection(t *testing.T) {
 	}
 }
 
+// TestExternalAuthz_SearchSequence pins the documented pattern: a resource search callout
+// in an endpoint sequence filters an upstream listing down to the permitted subset.
+func TestExternalAuthz_SearchSequence(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/15_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/documents", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	var documents []map[string]interface{}
+	helper.Must(json.Unmarshal(resBytes, &documents))
+
+	if len(documents) != 2 || documents[0]["id"] != "roadmap" || documents[1]["id"] != "budget" {
+		t.Errorf("expected the permitted documents only, got: %s", resBytes)
+	}
+}
+
 func TestExternalAuthz_StockDecisionPoint(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)

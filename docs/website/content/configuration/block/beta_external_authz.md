@@ -369,6 +369,64 @@ definitions {
 }
 ```
 
+## Listing objects with the AuthZEN Search API
+
+An access control answers one question: may this request pass. Which objects a subject may
+see is a different question — a data question — and the AuthZEN
+[Search API](https://openid.net/specs/authorization-api-1_0.html) answers it: a resource
+search returns every resource of a type the subject has an action on. That callout is not an
+access control; it belongs into the endpoint that needs the list, as a
+[`request` block](/configuration/block/request) in a sequence.
+
+This endpoint filters an upstream listing down to the permitted subset. Both callouts are
+independent, so Couper runs them in parallel; the response waits for both:
+
+```hcl
+api {
+  endpoint "/documents" {
+    access_control = ["token"]
+
+    request "search" {
+      url = "https://pdp.example.com/access/v1/search/resource"
+      json_body = {
+        subject  = { type = "identity", id = request.context.token.sub }
+        action   = { name = "can_read" }
+        resource = { type = "document" }
+      }
+      expected_status = [200]
+    }
+
+    request "list" {
+      backend = "documents_api"
+      url     = "/documents"
+    }
+
+    response {
+      json_body = [
+        for doc in backend_responses.list.json_body.documents : doc
+        if contains([for r in backend_responses.search.json_body.results : r.id], doc.id)
+      ]
+    }
+  }
+}
+```
+
+`expected_status` keeps the endpoint fail-closed: an unexpected search answer is a sequence
+error, not an unfiltered listing. The same search answer also validates a client payload —
+a conditional expression turns an id outside the permitted set into a denial:
+
+```hcl
+response {
+  status = length([
+    for id in request.json_body.ids : id
+    if !contains([for r in backend_responses.search.json_body.results : r.id], id)
+  ]) == 0 ? 200 : 403
+}
+```
+
+The search runs on the hot path of its endpoint and Couper does not cache it — the sizing
+note above applies: keep the decision point close, behind a persistent HTTP/2 connection.
+
 {{< attributes >}}
 [
   {
