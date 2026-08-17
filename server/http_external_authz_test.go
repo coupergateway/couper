@@ -515,6 +515,48 @@ func TestExternalAuthz_BatchPermissions(t *testing.T) {
 	}
 }
 
+func TestExternalAuthz_RequiredPermissionOverride(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/13_couper.hcl", helper)
+	defer shutdown()
+
+	for _, tc := range []struct {
+		name      string
+		method    string
+		path      string
+		expStatus int
+		expAsked  string
+	}{
+		{"dynamic permission overrides candidates", http.MethodGet, "/todos/read", http.StatusNoContent, "GET,can_read"},
+		{"dynamic permission denied", http.MethodGet, "/todos/write", http.StatusForbidden, ""},
+		{"method map resolves the permission", http.MethodGet, "/mapped", http.StatusNoContent, "GET,can_read"},
+		{"method miss falls back to the candidates", http.MethodDelete, "/mapped", http.StatusMethodNotAllowed, ""},
+		{"no required permission keeps the candidates", http.MethodGet, "/plain", http.StatusNoContent, "GET,can_read,can_write"},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
+			req, err := http.NewRequest(tc.method, "http://protected.local:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+			_, _ = io.Copy(io.Discard, res.Body)
+			_ = res.Body.Close()
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("expected status %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			if asked := res.Header.Get("X-Asked"); asked != tc.expAsked {
+				st.Errorf("expected asked actions %q, got: %q", tc.expAsked, asked)
+			}
+		})
+	}
+}
+
 func TestExternalAuthz_StockDecisionPoint(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)

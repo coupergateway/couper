@@ -298,6 +298,33 @@ allows or denies the request; a response with fewer answers than questions denie
 A `url` with a path of its own is used as configured — with `evaluate_permissions` it must
 point to the access evaluations endpoint, not to the single-evaluation endpoint.
 
+A [`required_permission`](/configuration/block/endpoint) of the protected `endpoint` or `api`
+block replaces the candidates for that request: Couper resolves it at callout time — the
+expression sees everything a preceding access control provided — and asks about exactly the
+permission the endpoint will check. The permission declaration stays at the endpoint, and the
+batch stays small:
+
+```hcl
+api {
+  endpoint "/todos/{id}" {
+    access_control      = ["authz"]
+    required_permission = { GET = "can_read", "*" = "can_write" }
+    # a GET asks about the request and about can_read; nothing else
+    # ...
+  }
+}
+
+definitions {
+  beta_external_authz "authz" {
+    backend              = "pdp" # callout to /access/v1/evaluations
+    evaluate_permissions = ["can_read", "can_write", "can_delete"]
+  }
+}
+```
+
+Endpoints without a required permission — and requests whose method has no entry in a
+required-permission map — keep the configured candidates.
+
 `evaluate_permissions` and `permissions_property` are mutually exclusive.
 
 AuthZEN denies a request with a flat `"decision": false` and leaves the response `context`
@@ -385,7 +412,7 @@ definitions {
   },
   {
     "default": "[]",
-    "description": "Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. Mutually exclusive with `permissions_property`.",
+    "description": "Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. A `required_permission` of the protected endpoint or API replaces the candidates for that request. Mutually exclusive with `permissions_property`.",
     "name": "evaluate_permissions",
     "type": "tuple (string)"
   },
