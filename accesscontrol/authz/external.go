@@ -19,6 +19,7 @@ import (
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/handler/middleware"
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
@@ -171,7 +172,9 @@ func requiredPermissionCandidate(req *http.Request) (string, bool) {
 	}
 	if permissionMap != nil {
 		p, exists := permissionMap[req.Method]
-		if !exists {
+		if !exists && slices.Contains(middleware.DefaultEndpointAllowedMethods, req.Method) {
+			// The wildcard covers only the standard methods, mirroring the permissions
+			// control — a non-standard method must be listed explicitly to have a permission.
 			p, exists = permissionMap["*"]
 		}
 		if !exists {
