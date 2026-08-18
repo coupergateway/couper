@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -528,12 +529,15 @@ func TestExternalAuthz_RequiredPermissionOverride(t *testing.T) {
 		path      string
 		expStatus int
 		expAsked  string
+		expBatch  string
 	}{
-		{"dynamic permission overrides candidates", http.MethodGet, "/todos/read", http.StatusNoContent, "GET,can_read"},
-		{"dynamic permission denied", http.MethodGet, "/todos/write", http.StatusForbidden, ""},
-		{"method map resolves the permission", http.MethodGet, "/mapped", http.StatusNoContent, "GET,can_read"},
-		{"method miss falls back to the candidates", http.MethodDelete, "/mapped", http.StatusMethodNotAllowed, ""},
-		{"no required permission keeps the candidates", http.MethodGet, "/plain", http.StatusNoContent, "GET,can_read,can_write"},
+		{"dynamic permission overrides candidates", http.MethodGet, "/todos/read", http.StatusNoContent, "GET,can_read", "GET,can_read"},
+		{"dynamic permission denied", http.MethodGet, "/todos/write", http.StatusForbidden, "", "GET,can_write"},
+		{"method map resolves the permission", http.MethodGet, "/mapped", http.StatusNoContent, "GET,can_read", "GET,can_read"},
+		{"method miss falls back to the candidates", http.MethodDelete, "/mapped", http.StatusMethodNotAllowed, "", "DELETE,can_read,can_write"},
+		{"wildcard covers a standard method", http.MethodGet, "/wildcard", http.StatusNoContent, "GET,can_read", "GET,can_read"},
+		{"custom method is not covered by the wildcard", "BREW", "/wildcard", http.StatusMethodNotAllowed, "", "BREW,can_read,can_write"},
+		{"no required permission keeps the candidates", http.MethodGet, "/plain", http.StatusNoContent, "GET,can_read,can_write", "GET,can_read,can_write"},
 	} {
 		t.Run(tc.name, func(st *testing.T) {
 			hook.Reset()
@@ -552,6 +556,23 @@ func TestExternalAuthz_RequiredPermissionOverride(t *testing.T) {
 
 			if asked := res.Header.Get("X-Asked"); asked != tc.expAsked {
 				st.Errorf("expected asked actions %q, got: %q", tc.expAsked, asked)
+			}
+
+			// The PDP logs every batch it receives — the only observable evidence of what was
+			// asked when the protected endpoint exits through an error path.
+			var batch string
+			for _, entry := range hook.AllEntries() {
+				if entry.Data["server"] != "authz-service" {
+					continue
+				}
+				if custom, ok := entry.Data["custom"].(logrus.Fields); ok {
+					if asked, ok := custom["asked"].(string); ok {
+						batch = asked
+					}
+				}
+			}
+			if batch != tc.expBatch {
+				st.Errorf("expected the PDP to receive the batch %q, got: %q", tc.expBatch, batch)
 			}
 		})
 	}

@@ -29,6 +29,21 @@ server "protected" {
       }
     }
 
+    # The wildcard entry covers only the standard methods, mirroring the permissions
+    # control: an explicitly allowed custom method must be listed to have a permission.
+    endpoint "/wildcard" {
+      access_control      = ["authz"]
+      allowed_methods     = ["GET", "BREW"]
+      required_permission = { "*" = "can_read" }
+
+      response {
+        status = 204
+        headers = {
+          x-asked = request.context.authz.asked
+        }
+      }
+    }
+
   }
 
   # Endpoints with and without required_permission must not share one api block.
@@ -52,7 +67,13 @@ server "authz-service" {
 
   api {
     # Allows the client request and the can_read permission; echoes the asked action names.
+    # The custom log field captures what was actually asked — the only observable batch
+    # evidence when the protected endpoint exits through an error (e.g. method not allowed).
     endpoint "/evaluations" {
+      custom_log_fields = {
+        asked = join(",", [for ev in request.json_body.evaluations : ev.action.name])
+      }
+
       response {
         json_body = {
           evaluations = [for i, e in request.json_body.evaluations : {
