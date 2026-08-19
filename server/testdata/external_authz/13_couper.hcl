@@ -44,6 +44,19 @@ server "protected" {
       }
     }
 
+    # request.json_body must stay readable with required_permission set — the expression
+    # wrapper must keep the endpoint reachable for the server's buffer-option lookup.
+    endpoint "/body" {
+      access_control      = ["authz"]
+      required_permission = "can_read"
+
+      response {
+        status = 204
+        headers = {
+          x-method = default(request.json_body.method, "-")
+        }
+      }
+    }
   }
 
   # Endpoints with and without required_permission must not share one api block.

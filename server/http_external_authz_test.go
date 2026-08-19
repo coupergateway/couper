@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -575,6 +576,31 @@ func TestExternalAuthz_RequiredPermissionOverride(t *testing.T) {
 				st.Errorf("expected the PDP to receive the batch %q, got: %q", tc.expBatch, batch)
 			}
 		})
+	}
+}
+
+func TestExternalAuthz_RequiredPermissionKeepsJSONBody(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/external_authz/13_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodPost, "http://protected.local:8080/body", strings.NewReader(`{"method":"tools/call"}`))
+	helper.Must(err)
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	_, _ = io.Copy(io.Discard, res.Body)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
+	}
+
+	if method := res.Header.Get("X-Method"); method != "tools/call" {
+		t.Errorf("expected the json_body method %q, got: %q", "tools/call", method)
 	}
 }
 

@@ -833,11 +833,31 @@ func newAC(srvConf *config.Server, api *config.API) config.AccessControl {
 	return accessControl
 }
 
+// requiredPermissionExprHandler exposes its wrapped handler via Child so the server's
+// handler unwrapping still reaches the endpoint (e.g. for request body buffering).
+type requiredPermissionExprHandler struct {
+	expr hcl.Expression
+	next http.Handler
+}
+
 func newRequiredPermissionExprHandler(expr hcl.Expression, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		// Mutate the shared request: a fresh request object would hide the context values
-		// inner handlers store for outer ones, like the error type for the access log.
-		*req = *req.WithContext(context.WithValue(req.Context(), request.RequiredPermissionExpr, expr))
-		next.ServeHTTP(rw, req)
-	})
+	return &requiredPermissionExprHandler{expr: expr, next: next}
+}
+
+func (h *requiredPermissionExprHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	// Mutate the shared request: a fresh request object would hide the context values
+	// inner handlers store for outer ones, like the error type for the access log.
+	*req = *req.WithContext(context.WithValue(req.Context(), request.RequiredPermissionExpr, h.expr))
+	h.next.ServeHTTP(rw, req)
+}
+
+func (h *requiredPermissionExprHandler) Child() http.Handler {
+	return h.next
+}
+
+func (h *requiredPermissionExprHandler) String() string {
+	if s, ok := h.next.(fmt.Stringer); ok {
+		return s.String()
+	}
+	return "requiredPermissionExpr"
 }
