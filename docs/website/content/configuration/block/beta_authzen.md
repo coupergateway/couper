@@ -218,7 +218,7 @@ unreachable.
 
 Two checks protect the callout; each failure denies the request. The document must claim
 the `policy_decision_point` Couper asked — `configuration_url` without the well-known
-suffix. This prevents a mix-up between decision points. And the endpoint must stay on the
+suffix — which prevents a mix-up between decision points. The endpoint must stay on the
 origin of the document: a `backend` pins scheme and host, so a foreign endpoint would
 receive the client credentials on the configured host.
 
