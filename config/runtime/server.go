@@ -536,18 +536,18 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
-		for _, authZExternal := range conf.Definitions.AuthZen {
-			confErr := errors.Configuration.Label(authZExternal.Name)
-			backend, err := NewBackend(confCtx, authZExternal.Backend, log, conf, memStore)
+		for _, authzenConf := range conf.Definitions.AuthZen {
+			confErr := errors.Configuration.Label(authzenConf.Name)
+			backend, err := NewBackend(confCtx, authzenConf.Backend, log, conf, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
 
-			authZExt, err := authzen.NewExternal(conf.Context, authZExternal, backend, log)
+			authzenControl, err := authzen.NewExternal(conf.Context, authzenConf, backend, log)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
-			accessControls.Add(authZExternal.Name, authZExt, authZExternal.ErrorHandler)
+			accessControls.Add(authzenConf.Name, authzenControl, authzenConf.ErrorHandler)
 		}
 
 		for _, baConf := range conf.Definitions.BasicAuth {
