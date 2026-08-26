@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/coupergateway/couper/config"
+	"github.com/coupergateway/couper/config/configload/collect"
 	"github.com/coupergateway/couper/config/generate/shared"
 	"github.com/coupergateway/couper/errors"
 )
@@ -333,17 +335,62 @@ func extractVariables(schema *Schema) {
 	}
 }
 
-// errorFamilyToParentBlocks maps error family prefixes to their HCL parent block names.
-var errorFamilyToParentBlocks = map[string][]string{
-	"basic_auth":        {"basic_auth"},
-	"jwt":               {"jwt"},
-	"oauth2":            {"beta_oauth2", "oidc"},
-	"saml2":             {"saml"},
-	"beta_rate_limiter":  {"rate_limiter"},
+// accessControlBlockNames derives the definable access-control block names:
+// the Definitions fields whose types accept error_handler blocks.
+func accessControlBlockNames() []string {
+	setterType := reflect.TypeOf((*collect.ErrorHandlerSetter)(nil)).Elem()
+
+	var names []string
+	definitionsType := reflect.TypeOf(config.Definitions{})
+	for i := 0; i < definitionsType.NumField(); i++ {
+		field := definitionsType.Field(i)
+		hclInfo := shared.ParseHCLTag(field.Tag.Get("hcl"))
+		if !hclInfo.IsBlock || hclInfo.Name == "" {
+			continue
+		}
+		if field.Type.Kind() == reflect.Slice && field.Type.Elem().Implements(setterType) {
+			names = append(names, hclInfo.Name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+// irregularErrorFamilyBlocks lists the parent blocks that cannot be derived
+// from the family name: the oidc block emits oauth2-family errors and the
+// saml block's error family is saml2.
+var irregularErrorFamilyBlocks = map[string][]string{
+	"oauth2": {"oidc"},
+	"saml2":  {"saml"},
+}
+
+// errorFamilyToParentBlocks maps each access-control error family to its HCL
+// parent block names. A family matches its block name modulo the "beta_"
+// prefix; the rest comes from irregularErrorFamilyBlocks.
+func errorFamilyToParentBlocks(acBlocks []string) map[string][]string {
+	families := make(map[string][]string)
+	for _, def := range errors.Definitions {
+		kinds := def.Kinds()
+		if len(kinds) < 2 || kinds[len(kinds)-1] != "access_control" {
+			continue
+		}
+		family := kinds[len(kinds)-2]
+		for _, block := range acBlocks {
+			if block == family || block == "beta_"+family {
+				families[family] = appendUnique(families[family], block)
+			}
+		}
+		for _, block := range irregularErrorFamilyBlocks[family] {
+			families[family] = appendUnique(families[family], block)
+		}
+	}
+	return families
 }
 
 func extractErrorHandlerLabels(schema *Schema) {
 	labelsForParent := make(map[string][]string)
+	acBlocks := accessControlBlockNames()
+	familyToParentBlocks := errorFamilyToParentBlocks(acBlocks)
 
 	for _, def := range errors.Definitions {
 		kinds := def.Kinds()
@@ -367,7 +414,7 @@ func extractErrorHandlerLabels(schema *Schema) {
 			// kinds are most-specific first; last is "access_control"
 			// The family is the direct child of access_control
 			family := kinds[len(kinds)-2]
-			if parentBlocks, ok := errorFamilyToParentBlocks[family]; ok {
+			if parentBlocks, ok := familyToParentBlocks[family]; ok {
 				for _, parent := range parentBlocks {
 					for _, kind := range allKinds {
 						labelsForParent[parent] = appendUnique(labelsForParent[parent], kind)
@@ -378,10 +425,7 @@ func extractErrorHandlerLabels(schema *Schema) {
 	}
 
 	// 3. Add "access_control" super-type to api, endpoint, and all AC parent blocks
-	acParents := []string{"api", "endpoint"}
-	for _, parents := range errorFamilyToParentBlocks {
-		acParents = append(acParents, parents...)
-	}
+	acParents := append([]string{"api", "endpoint"}, acBlocks...)
 	for _, parent := range acParents {
 		labelsForParent[parent] = appendUnique(labelsForParent[parent], "access_control")
 	}
@@ -519,7 +563,7 @@ func getDefiningBlocks(attrName string) []string {
 	case "proxy":
 		return []string{"proxy"}
 	case "access_control", "disable_access_control":
-		return []string{"basic_auth", "jwt", "oidc", "saml", "beta_oauth2", "beta_rate_limiter"}
+		return accessControlBlockNames()
 	default:
 		return nil
 	}

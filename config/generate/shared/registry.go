@@ -63,6 +63,7 @@ var VSCodeBlockNamesMap = map[string]string{
 	"introspection":   "beta_introspection",
 	"oauth2_ac":       "beta_oauth2",
 	"oauth2_req_auth": "oauth2",
+	"rate_limiter":    "beta_rate_limiter",
 	"backend_tls":     "tls",
 	"server_tls":      "tls",
 }
