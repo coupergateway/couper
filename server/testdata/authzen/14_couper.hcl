@@ -30,10 +30,10 @@ server "authz-service" {
 }
 
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     url = "http://127.0.0.1:8081/evaluation"
 
-    error_handler "external_authz" {
+    error_handler "authzen" {
       response {
         status = 403
         json_body = {

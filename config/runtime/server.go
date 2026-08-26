@@ -19,7 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
-	"github.com/coupergateway/couper/accesscontrol/authz"
+	"github.com/coupergateway/couper/accesscontrol/authzen"
 	"github.com/coupergateway/couper/accesscontrol/jwk"
 	"github.com/coupergateway/couper/accesscontrol/saml"
 	"github.com/coupergateway/couper/cache"
@@ -536,14 +536,14 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
-		for _, authZExternal := range conf.Definitions.ExternalAuthZ {
+		for _, authZExternal := range conf.Definitions.AuthZen {
 			confErr := errors.Configuration.Label(authZExternal.Name)
 			backend, err := NewBackend(confCtx, authZExternal.Backend, log, conf, memStore)
 			if err != nil {
 				return nil, confErr.With(err)
 			}
 
-			authZExt, err := authz.NewExternal(conf.Context, authZExternal, backend, log)
+			authZExt, err := authzen.NewExternal(conf.Context, authZExternal, backend, log)
 			if err != nil {
 				return nil, confErr.With(err)
 			}

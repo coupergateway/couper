@@ -30,7 +30,7 @@ EOC
 }
 
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     url         = "{{.origin}}/check"
     include_tls = true
   }
