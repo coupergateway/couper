@@ -17,13 +17,13 @@ server "authz-service" {
   hosts = ["*:8081"]
 
   api {
+    # Allows the client request; grants can_read only to the reader subject.
     endpoint "/check" {
       response {
         json_body = {
-          decision = true
-          context = {
-            granted_permissions = request.json_body.subject.id == "reader" ? ["can_read", "can_list"] : ["can_list"]
-          }
+          evaluations = [for i, e in request.json_body.evaluations : {
+            decision = i == 0 ? true : request.json_body.subject.id == "reader"
+          }]
         }
       }
     }
@@ -32,7 +32,7 @@ server "authz-service" {
 
 definitions {
   beta_external_authz "authz" {
-    url               = "http://127.0.0.1:8081/check"
-    permissions_property = "granted_permissions"
+    url                  = "http://127.0.0.1:8081/check"
+    evaluate_permissions = ["can_read"]
   }
 }

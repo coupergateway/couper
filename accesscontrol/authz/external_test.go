@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -32,13 +31,12 @@ import (
 	"github.com/coupergateway/couper/internal/test"
 )
 
-func newTestExternal(name, calloutURL string, includeTLS bool, permissionsProperty string,
+func newTestExternal(name, calloutURL string, includeTLS bool,
 	transport http.RoundTripper) *authz.External {
 	return newConfiguredExternal(&config.ExternalAuthZ{
-		IncludeTLS:          includeTLS,
-		Name:                name,
-		PermissionsProperty: permissionsProperty,
-		URL:                 calloutURL,
+		IncludeTLS: includeTLS,
+		Name:       name,
+		URL:        calloutURL,
 	}, transport)
 }
 
@@ -125,7 +123,7 @@ func TestExternal_Validate_Decision(t *testing.T) {
 		{"decision point fails", respondStatus(http.StatusInternalServerError), "external_authz"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			external := newTestExternal("test_ac", "http://authz.service/check", false, "", tc.responder)
+			external := newTestExternal("test_ac", "http://authz.service/check", false, tc.responder)
 
 			req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
 			err := external.Validate(req)
@@ -158,7 +156,7 @@ func TestExternal_Validate_ProtocolErrorHidesChallenge(t *testing.T) {
 		return rec.Result(), nil
 	})
 
-	external := newTestExternal("test_ac", "http://authz.service/check", false, "", transport)
+	external := newTestExternal("test_ac", "http://authz.service/check", false, transport)
 	req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
 
 	if err := external.Validate(req); err == nil {
@@ -211,7 +209,7 @@ func objectAt(t *testing.T, parent map[string]interface{}, key string) map[strin
 
 func TestExternal_Validate_CalloutRequest(t *testing.T) {
 	transport, calloutReq, calloutBody := captureCallout(respondAllow())
-	external := newTestExternal("test_ac", "http://authz.service/check", false, "", transport)
+	external := newTestExternal("test_ac", "http://authz.service/check", false, transport)
 
 	req := httptest.NewRequest(http.MethodDelete, "http://client.request/todos/42?a=b", nil)
 	req.Header.Set("Authorization", "Bearer my-token")
@@ -284,7 +282,7 @@ func TestExternal_Validate_CalloutRequest(t *testing.T) {
 func TestExternal_Validate_CalloutRequest_Fallbacks(t *testing.T) {
 	t.Run("anonymous subject without bearer token", func(t *testing.T) {
 		transport, _, calloutBody := captureCallout(respondAllow())
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "", transport)
+		external := newTestExternal("test_ac", "http://authz.service/check", false, transport)
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
 		req.Header.Set("X-Api-Key", "opaque-key")
@@ -308,7 +306,7 @@ func TestExternal_Validate_CalloutRequest_Fallbacks(t *testing.T) {
 
 	t.Run("uri resource without route pattern", func(t *testing.T) {
 		transport, _, calloutBody := captureCallout(respondAllow())
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "", transport)
+		external := newTestExternal("test_ac", "http://authz.service/check", false, transport)
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/static/logo.svg", nil)
 
@@ -479,6 +477,23 @@ func TestExternal_Validate_BatchPermissions(t *testing.T) {
 		}
 	})
 
+	t.Run("appends to and dedupes against already granted permissions", func(t *testing.T) {
+		external := newBatchExternal(respondJSONBody(http.StatusOK,
+			`{"evaluations": [{"decision": true}, {"decision": true}, {"decision": true}]}`))
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		ctx := context.WithValue(req.Context(), request.GrantedPermissions, []string{"admin", "can_read"})
+		req = req.WithContext(ctx)
+
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		granted, _ := req.Context().Value(request.GrantedPermissions).([]string)
+		if len(granted) != 3 || granted[0] != "admin" || granted[1] != "can_read" || granted[2] != "can_write" {
+			t.Errorf("unexpected granted permissions: %v", granted)
+		}
+	})
+
 	t.Run("the first evaluation answers the client request", func(t *testing.T) {
 		external := newBatchExternal(respondJSONBody(http.StatusOK,
 			`{"evaluations": [{"decision": false}, {"decision": true}, {"decision": true}]}`))
@@ -538,7 +553,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	}
 
 	t.Run("json object response lands in access control context", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", `{"decision":true,"context":{"sub":"clark.kent","roles":["reporter"]}}`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -560,7 +575,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("response headers are exposed under headers", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 				rec := httptest.NewRecorder()
 				rec.Header().Set("Content-Type", "application/json")
@@ -582,7 +597,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("invalid json fails closed", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", `{"decision":`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -598,7 +613,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("non-object json fails closed", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", `[1,2]`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -608,7 +623,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("a denial still lands in the access control context", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", `{"decision":false,"context":{"reason":"no seat"}}`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -627,7 +642,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("a missing decision is exposed as false", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", `{"context":{"reason":"broken"}}`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -640,7 +655,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("the decision shadows a response context property of the same name", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", `{"context":{"decision":true}}`))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -653,7 +668,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("empty body fails closed but exposes headers", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("application/json", ""))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -666,7 +681,7 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 	})
 
 	t.Run("non-json response fails closed", func(t *testing.T) {
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "",
+		external := newTestExternal("test_ac", "http://authz.service/check", false,
 			respondBody("text/plain", "OK"))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
@@ -679,99 +694,6 @@ func TestExternal_Validate_ContextPropagation(t *testing.T) {
 		}
 		if data["sub"] != nil {
 			t.Errorf("expected no body properties, got: %v", data)
-		}
-	})
-}
-
-func TestExternal_Validate_PermissionsProperty(t *testing.T) {
-	respondJSON := func(body string) roundTripperFunc {
-		return func(_ *http.Request) (*http.Response, error) {
-			rec := httptest.NewRecorder()
-			rec.Header().Set("Content-Type", "application/json")
-			rec.WriteHeader(http.StatusOK)
-			_, _ = rec.WriteString(body)
-			return rec.Result(), nil
-		}
-	}
-
-	granted := func(req *http.Request) []string {
-		permissions, _ := req.Context().Value(request.GrantedPermissions).([]string)
-		return permissions
-	}
-
-	newExternal := func(evalContext string) *authz.External {
-		body := `{"decision": true, "context": ` + evalContext + `}`
-		return newTestExternal("test_ac", "http://authz.service/check", false, "perms", respondJSON(body))
-	}
-
-	t.Run("list property grants permissions", func(t *testing.T) {
-		external := newExternal(`{"perms":["read","write"]}`)
-		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
-
-		if err := external.Validate(req); err != nil {
-			t.Fatalf("expected no error, got: %v", err)
-		}
-		if p := granted(req); len(p) != 2 || p[0] != "read" || p[1] != "write" {
-			t.Errorf("unexpected granted permissions: %v", p)
-		}
-	})
-
-	t.Run("space-separated string grants permissions", func(t *testing.T) {
-		external := newExternal(`{"perms":"read write"}`)
-		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
-
-		if err := external.Validate(req); err != nil {
-			t.Fatalf("expected no error, got: %v", err)
-		}
-		if p := granted(req); len(p) != 2 || p[0] != "read" || p[1] != "write" {
-			t.Errorf("unexpected granted permissions: %v", p)
-		}
-	})
-
-	t.Run("appends to and dedupes against already granted permissions", func(t *testing.T) {
-		external := newExternal(`{"perms":["read","write"]}`)
-		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
-		ctx := context.WithValue(req.Context(), request.GrantedPermissions, []string{"admin", "read"})
-		req = req.WithContext(ctx)
-
-		if err := external.Validate(req); err != nil {
-			t.Fatalf("expected no error, got: %v", err)
-		}
-		if p := granted(req); len(p) != 3 || p[0] != "admin" || p[1] != "read" || p[2] != "write" {
-			t.Errorf("unexpected granted permissions: %v", p)
-		}
-	})
-
-	t.Run("missing property denies", func(t *testing.T) {
-		external := newExternal(`{"sub":"clark.kent"}`)
-		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
-
-		err := external.Validate(req)
-		if err == nil {
-			t.Fatal("expected an error for the missing permissions property")
-		}
-		logErr, ok := err.(errors.GoError)
-		if !ok || !strings.Contains(logErr.LogError(), "missing perms permissions property in authorization service response context") {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if p := granted(req); len(p) != 0 {
-			t.Errorf("expected no granted permissions, got: %v", p)
-		}
-	})
-
-	t.Run("invalid property type fails closed", func(t *testing.T) {
-		for _, body := range []string{`{"perms":42}`, `{"perms":["read",42]}`} {
-			external := newExternal(body)
-			req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
-
-			err := external.Validate(req)
-			cErr, ok := err.(*errors.Error)
-			if !ok {
-				t.Fatalf("expected *errors.Error for %s, got: %T", body, err)
-			}
-			if kinds := cErr.Kinds(); len(kinds) == 0 || kinds[0] != "external_authz" {
-				t.Errorf("expected error kind external_authz for %s, got: %v", body, kinds)
-			}
 		}
 	})
 }
@@ -816,7 +738,7 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 
 	t.Run("enabled", func(t *testing.T) {
 		var calloutBody []byte
-		external := newTestExternal("test_ac", "http://authz.service/check", true, "", captureBody(&calloutBody))
+		external := newTestExternal("test_ac", "http://authz.service/check", true, captureBody(&calloutBody))
 
 		if err := external.Validate(newTLSRequest()); err != nil {
 			t.Fatalf("expected no error, got: %v", err)
@@ -879,7 +801,7 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 		}
 
 		var calloutBody []byte
-		external := newTestExternal("test_ac", "http://authz.service/check", true, "", captureBody(&calloutBody))
+		external := newTestExternal("test_ac", "http://authz.service/check", true, captureBody(&calloutBody))
 		if err := external.Validate(req); err != nil {
 			t.Fatalf("expected no error, got: %v", err)
 		}
@@ -906,7 +828,7 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 
 	t.Run("enabled without tls connection", func(t *testing.T) {
 		var calloutBody []byte
-		external := newTestExternal("test_ac", "http://authz.service/check", true, "", captureBody(&calloutBody))
+		external := newTestExternal("test_ac", "http://authz.service/check", true, captureBody(&calloutBody))
 
 		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
 		if err := external.Validate(req); err != nil {
@@ -921,7 +843,7 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 
 	t.Run("disabled", func(t *testing.T) {
 		var calloutBody []byte
-		external := newTestExternal("test_ac", "http://authz.service/check", false, "", captureBody(&calloutBody))
+		external := newTestExternal("test_ac", "http://authz.service/check", false, captureBody(&calloutBody))
 
 		if err := external.Validate(newTLSRequest()); err != nil {
 			t.Fatalf("expected no error, got: %v", err)
@@ -935,7 +857,7 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 }
 
 func TestExternal_Validate_TransportError(t *testing.T) {
-	external := newTestExternal("test_ac", "http://authz.service/check", false, "", roundTripperFunc(
+	external := newTestExternal("test_ac", "http://authz.service/check", false, roundTripperFunc(
 		func(_ *http.Request) (*http.Response, error) {
 			return nil, io.ErrUnexpectedEOF
 		}))
@@ -970,7 +892,7 @@ func TestExternal_Validate_CalloutURL(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var calloutURL string
-			external := newTestExternal("test_ac", tc.configured, false, "", roundTripperFunc(
+			external := newTestExternal("test_ac", tc.configured, false, roundTripperFunc(
 				func(req *http.Request) (*http.Response, error) {
 					calloutURL = req.URL.String()
 					return respondAllow()(req)
@@ -989,7 +911,7 @@ func TestExternal_Validate_CalloutURL(t *testing.T) {
 
 func TestExternal_Validate_RequestIDCorrelation(t *testing.T) {
 	transport, calloutReq, _ := captureCallout(respondAllow())
-	external := newTestExternal("test_ac", "http://authz.service/check", false, "", transport)
+	external := newTestExternal("test_ac", "http://authz.service/check", false, transport)
 
 	req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
 	req = req.WithContext(context.WithValue(req.Context(), request.UID, "couper-uid-1"))
