@@ -30,6 +30,7 @@ type discovery struct {
 	configurationURL   string
 	expectedIdentifier string
 	syncedResource     *resource.SyncedResource
+	tenant             string
 }
 
 func newDiscovery(ctx context.Context, configurationURL string, batched bool,
@@ -43,11 +44,12 @@ func newDiscovery(ctx context.Context, configurationURL string, batched bool,
 	// The identifier the metadata must claim is the URL without the well-known suffix. A
 	// decision point that claims a different one is not the one Couper asked, which is how
 	// the specification prevents a mix-up between decision points.
-	identifier, err := policyDecisionPointIdentifier(configurationURL)
+	identifier, tenant, err := policyDecisionPointIdentifier(configurationURL)
 	if err != nil {
 		return nil, err
 	}
 	d.expectedIdentifier = identifier
+	d.tenant = tenant
 
 	d.syncedResource, err = resource.NewSyncedResource(ctx, "", "",
 		configurationURL, transport, roundTripName, ttl, maxStale, d, log)
@@ -65,9 +67,8 @@ func (d *discovery) Unmarshal(raw []byte) (interface{}, error) {
 		return nil, err
 	}
 
-	if configuration.PolicyDecisionPoint != d.expectedIdentifier {
-		return nil, fmt.Errorf("policy_decision_point %q does not match %q",
-			configuration.PolicyDecisionPoint, d.expectedIdentifier)
+	if err := d.verifyIdentifier(configuration.PolicyDecisionPoint); err != nil {
+		return nil, err
 	}
 
 	if configuration.AccessEvaluationEndpoint == "" {
@@ -115,20 +116,54 @@ func (d *discovery) endpoint() (string, error) {
 	return configuration.AccessEvaluationEndpoint, nil
 }
 
-func policyDecisionPointIdentifier(configurationURL string) (string, error) {
+// verifyIdentifier accepts the exact identifier of the configuration URL, or a same-origin
+// one whose path ends with the tenant: a multi-tenant decision point may root its
+// identifiers under a path of its own (OpenFGA claims <origin>/stores/<store_id>), and the
+// pinned origin plus the pinned tenant still rule out a mix-up between decision points.
+func (d *discovery) verifyIdentifier(published string) error {
+	if published == d.expectedIdentifier {
+		return nil
+	}
+
+	mismatchErr := fmt.Errorf("policy_decision_point %q does not match %q",
+		published, d.expectedIdentifier)
+
+	if d.tenant == "" {
+		return mismatchErr
+	}
+
+	base, err := url.Parse(d.configurationURL)
+	if err != nil {
+		return mismatchErr
+	}
+	parsed, err := url.Parse(published)
+	if err != nil || parsed.Scheme != base.Scheme || parsed.Host != base.Host ||
+		parsed.RawQuery != "" || parsed.Fragment != "" {
+		return mismatchErr
+	}
+
+	// The tenant keeps its leading slash, so the suffix match ends on a segment boundary.
+	if !strings.HasSuffix(strings.TrimSuffix(parsed.Path, "/"), d.tenant) {
+		return mismatchErr
+	}
+
+	return nil
+}
+
+func policyDecisionPointIdentifier(configurationURL string) (identifier, tenant string, err error) {
 	parsed, err := url.Parse(configurationURL)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	// A relative reference has no origin to check the endpoints against.
 	if !parsed.IsAbs() || parsed.Host == "" {
-		return "", fmt.Errorf("configuration_url must be an absolute URL")
+		return "", "", fmt.Errorf("configuration_url must be an absolute URL")
 	}
 
 	const wellKnown = "/.well-known/authzen-configuration"
 	base, tenant, found := strings.Cut(parsed.Path, wellKnown)
 	if !found || (tenant != "" && !strings.HasPrefix(tenant, "/")) {
-		return "", fmt.Errorf("configuration_url must contain %q", wellKnown)
+		return "", "", fmt.Errorf("configuration_url must contain %q", wellKnown)
 	}
 
 	// A multi-tenant decision point appends the tenant to the well-known path, and the
@@ -137,7 +172,7 @@ func policyDecisionPointIdentifier(configurationURL string) (string, error) {
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 
-	return strings.TrimSuffix(parsed.String(), "/"), nil
+	return strings.TrimSuffix(parsed.String(), "/"), strings.TrimSuffix(tenant, "/"), nil
 }
 
 func sameOrigin(configurationURL, endpoint string) error {
