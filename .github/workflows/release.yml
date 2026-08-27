@@ -85,8 +85,8 @@ jobs:
           git clone --depth=1 --branch=main \
             "https://x-access-token:${GH_TOKEN}@github.com/coupergateway/homebrew-couper.git" "$workdir"
           cd "$workdir"
-          git config user.name 'couper-bot'
-          git config user.email 'couperbot@gmail.com'
+          git config user.name 'couper-svc'
+          git config user.email '321729849+couper-svc@users.noreply.github.com'
           git switch -c "$BRANCH"
           cp "${GITHUB_WORKSPACE}/.github/workflows/couper.rb" ./couper.rb
           git add couper.rb
