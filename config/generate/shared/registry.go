@@ -60,10 +60,12 @@ var BlockNamesMap = map[string]string{
 // Maps internal Go type names to their HCL block names when they differ.
 var VSCodeBlockNamesMap = map[string]string{
 	"auth_zen":        "beta_authzen",
+	"health":          "beta_health",
 	"introspection":   "beta_introspection",
 	"oauth2_ac":       "beta_oauth2",
 	"oauth2_req_auth": "oauth2",
 	"rate_limiter":    "beta_rate_limiter",
+	"token_request":   "beta_token_request",
 	"backend_tls":     "tls",
 	"server_tls":      "tls",
 }
