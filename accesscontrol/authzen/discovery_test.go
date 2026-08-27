@@ -1,4 +1,4 @@
-package authz_test
+package authzen_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
-	"github.com/coupergateway/couper/accesscontrol/authz"
+	"github.com/coupergateway/couper/accesscontrol/authzen"
 	"github.com/coupergateway/couper/config"
 )
 
@@ -42,12 +42,12 @@ func newDecisionPoint(metadata func(origin string) string) (*httptest.Server, *[
 	return server, &calloutPaths
 }
 
-func newDiscoveringExternal(t *testing.T, conf *config.ExternalAuthZ) (*authz.External, error) {
+func newDiscoveringExternal(t *testing.T, conf *config.AuthZen) (*authzen.External, error) {
 	t.Helper()
 
 	conf.Remain = &hclsyntax.Body{}
 
-	return authz.NewExternal(context.Background(), conf, http.DefaultTransport, newTestLogEntry())
+	return authzen.NewExternal(context.Background(), conf, http.DefaultTransport, newTestLogEntry())
 }
 
 func TestExternal_Discovery(t *testing.T) {
@@ -58,7 +58,7 @@ func TestExternal_Discovery(t *testing.T) {
 		})
 		defer server.Close()
 
-		external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+		external, err := newDiscoveringExternal(t, &config.AuthZen{
 			ConfigurationURL: server.URL + wellKnownPath,
 			Name:             "test_ac",
 		})
@@ -84,7 +84,7 @@ func TestExternal_Discovery(t *testing.T) {
 		})
 		defer server.Close()
 
-		external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+		external, err := newDiscoveringExternal(t, &config.AuthZen{
 			ConfigurationURL:    server.URL + wellKnownPath,
 			EvaluatePermissions: []string{"can_read"},
 			Name:                "test_ac",
@@ -121,7 +121,7 @@ func TestExternal_Discovery(t *testing.T) {
 			_, _ = rw.Write([]byte(`{"decision": true}`))
 		})
 
-		external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+		external, err := newDiscoveringExternal(t, &config.AuthZen{
 			ConfigurationURL: server.URL + tenantWellKnown,
 			Name:             "test_ac",
 		})
@@ -157,7 +157,7 @@ func TestExternal_Discovery(t *testing.T) {
 						`"access_evaluation_endpoint": "` + server.URL + `/evaluate"}`))
 				})
 
-				external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+				external, err := newDiscoveringExternal(t, &config.AuthZen{
 					ConfigurationURL: server.URL + tenantWellKnown,
 					Name:             "test_ac",
 				})
@@ -230,7 +230,7 @@ func TestExternal_Discovery(t *testing.T) {
 			server, calloutPaths := newDecisionPoint(tc.metadata)
 			defer server.Close()
 
-			external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+			external, err := newDiscoveringExternal(t, &config.AuthZen{
 				ConfigurationURL: server.URL + wellKnownPath,
 				Name:             "test_ac",
 			})
@@ -258,7 +258,7 @@ func TestExternal_Discovery(t *testing.T) {
 			"https://pdp.example.com/.well-known/authzen-configuration-backup",
 			"/.well-known/authzen-configuration", // relative: no origin to check against
 		} {
-			_, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+			_, err := newDiscoveringExternal(t, &config.AuthZen{
 				ConfigurationURL: confURL,
 				Name:             "test_ac",
 			})
@@ -293,7 +293,7 @@ func TestExternal_Discovery(t *testing.T) {
 			_, _ = rw.Write([]byte(`{"decision": true}`))
 		})
 
-		external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+		external, err := newDiscoveringExternal(t, &config.AuthZen{
 			ConfigurationMaxStale: "1h",
 			ConfigurationTTL:      "50ms",
 			ConfigurationURL:      server.URL + wellKnownPath,

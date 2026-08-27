@@ -20,9 +20,7 @@ server "authz-service" {
       response {
         json_body = {
           decision = false
-          context = {
-            www_authenticate = "Bearer resource_metadata=\"http://protected.example/.well-known/oauth-protected-resource/protected\""
-          }
+          context  = { www_authenticate = "Bearer error=\"invalid_token\"" }
         }
       }
     }
@@ -30,7 +28,13 @@ server "authz-service" {
 }
 
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     url = "http://127.0.0.1:8081/check"
+
+    error_handler "authzen_invalid_credentials" {
+      set_response_headers = {
+        www-authenticate = "Bearer resource_metadata=\"http://protected.example/.well-known/oauth-protected-resource\""
+      }
+    }
   }
 }

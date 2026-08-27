@@ -1,18 +1,18 @@
 ---
-title: 'External Authorization (Beta)'
-slug: 'beta_external_authz'
-description: 'The beta_external_authz block lets you delegate the authorization decision for client requests to an external service.'
+title: 'AuthZEN Authorization (Beta)'
+slug: 'beta_authzen'
+description: 'The beta_authzen block lets you delegate the authorization decision for client requests to an external service.'
 ---
 
-# External Authorization (Beta)
+# AuthZEN Authorization (Beta)
 
 | Block name            | Context                                                | Label            |
 |:----------------------|:-------------------------------------------------------|:-----------------|
-| `beta_external_authz` | [Definitions Block](/configuration/block/definitions)  | &#9888; required |
+| `beta_authzen` | [Definitions Block](/configuration/block/definitions)  | &#9888; required |
 
-The `beta_external_authz` block lets you delegate the authorization decision for client
+The `beta_authzen` block lets you delegate the authorization decision for client
 requests to an external service. Like all [access control](/configuration/access-control)
-types, the `beta_external_authz` block is defined in the
+types, the `beta_authzen` block is defined in the
 [`definitions` block](/configuration/block/definitions) and can be referenced in all
 configuration blocks by its required _label_.
 
@@ -70,7 +70,7 @@ header, like the [`request.headers` variable](/configuration/variables#request).
 ## Shaping the evaluation request
 
 The `subject`, `action`, `resource` and `context` attributes shape the callout. Couper
-evaluates them for every request, so an access control in front of `beta_external_authz` can
+evaluates them for every request, so an access control in front of `beta_authzen` can
 name the subject. Access controls run in the order of the `access_control` list:
 
 ```hcl
@@ -87,7 +87,7 @@ definitions {
     key                 = "..."
   }
 
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     url = "https://pdp.example.com/access/v1/evaluation"
 
     subject = {
@@ -161,7 +161,7 @@ the authorization service instead. `configuration_url` and `url` are mutually ex
 
 ```hcl
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     configuration_url = "https://pdp.example.com/.well-known/authzen-configuration"
     configuration_ttl = "10m"
   }
@@ -195,7 +195,7 @@ multiplexing.
 
 ```hcl
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     backend {
       origin = "https://localhost:4000" # callout to /access/v1/evaluation
       http2  = true
@@ -223,16 +223,16 @@ service answers `200` with a `decision` and an optional free-form `context`:
 | Response                                        | Result                                                                                           |
 |:------------------------------------------------|:-------------------------------------------------------------------------------------------------|
 | `200`, `"decision": true`                        | The request is allowed.                                                                            |
-| `200`, `"decision": false` with a `www_authenticate` challenge | Denied with error type `external_authz_invalid_credentials`, default response status `401`. |
-| `200`, `"decision": false`                       | Denied with error type `external_authz_insufficient_permissions`, default response status `403`.   |
-| `200` without a `decision`, or a malformed body  | Denied with error type `external_authz`, default response status `403`.                            |
-| any other status, or a callout failure           | Denied with error type `external_authz`, default response status `403`.                            |
+| `200`, `"decision": false` with a `www_authenticate` challenge | Denied with error type `authzen_invalid_credentials`, default response status `401`. |
+| `200`, `"decision": false`                       | Denied with error type `authzen_insufficient_permissions`, default response status `403`.   |
+| `200` without a `decision`, or a malformed body  | Denied with error type `authzen`, default response status `403`.                            |
+| any other status, or a callout failure           | Denied with error type `authzen`, default response status `403`.                            |
 
 An error status of the authorization service reports a problem between Couper and that
 service, not a denied client. A `401`, for example, says that Couper failed to authenticate
 to the authorization service. Couper copies nothing from such a response, because its
 challenge is addressed to Couper and would mislead the client. An
-[`error_handler` block](/configuration/error-handling) for the `external_authz` type catches
+[`error_handler` block](/configuration/error-handling) for the `authzen` type catches
 every such rejection — a `400` for an action unknown to the decision point's model, for
 example, stays a plain denial with a body of your choosing.
 
@@ -274,7 +274,7 @@ every candidate. Couper grants the permissions the service allows.
 
 ```hcl
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     backend              = "pdp" # callout to /access/v1/evaluations
     evaluate_permissions = ["can_read", "can_write", "can_delete"]
   }
@@ -306,7 +306,7 @@ api {
 }
 
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     backend              = "pdp" # callout to /access/v1/evaluations
     evaluate_permissions = ["can_read", "can_write", "can_delete"]
   }
@@ -339,14 +339,14 @@ works without any Couper-specific configuration.
 The challenge is available to custom handlers as
 `request.context.<label>.www_authenticate`. Defining an
 [`error_handler` block](/configuration/error-handling) for
-`external_authz_invalid_credentials` replaces the default:
+`authzen_invalid_credentials` replaces the default:
 
 ```hcl
 definitions {
-  beta_external_authz "authz" {
+  beta_authzen "authz" {
     url = "https://authz.example.com/check"
 
-    error_handler "external_authz_invalid_credentials" {
+    error_handler "authzen_invalid_credentials" {
       set_response_headers = {
         www-authenticate = "Bearer resource_metadata=\"https://couper.example.com/.well-known/oauth-protected-resource\""
       }

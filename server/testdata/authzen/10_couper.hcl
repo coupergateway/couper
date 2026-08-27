@@ -45,11 +45,11 @@ server "authz-service" {
 }
 
 definitions {
-  beta_external_authz "stock_authz" {
+  beta_authzen "stock_authz" {
     url = "http://127.0.0.1:8081/stock"
   }
 
-  beta_external_authz "broken_authz" {
+  beta_authzen "broken_authz" {
     url = "http://127.0.0.1:8081/broken"
   }
 }

@@ -1,4 +1,4 @@
-package authz
+package authzen
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
-const roundTripName = "external_authz"
+const roundTripName = "authzen"
 
 // External authorization calls out to a policy decision point which decides whether the
 // client request is allowed. The decision is in the response body, not in its status code.
@@ -37,7 +37,7 @@ type External struct {
 	url                 string
 }
 
-func NewExternal(ctx context.Context, conf *config.ExternalAuthZ, transport http.RoundTripper,
+func NewExternal(ctx context.Context, conf *config.AuthZen, transport http.RoundTripper,
 	log *logrus.Entry) (*External, error) {
 
 	batched := len(conf.EvaluatePermissions) > 0
@@ -105,7 +105,7 @@ func calloutURL(configured, defaultPath string) string {
 func (e *External) Validate(req *http.Request) error {
 	evalReq, err := newEvaluationRequest(req, e.includeTLS, e.body)
 	if err != nil {
-		return errors.ExternalAuthz.Label(e.name).With(err)
+		return errors.Authzen.Label(e.name).With(err)
 	}
 
 	var payload interface{} = evalReq
@@ -121,7 +121,7 @@ func (e *External) Validate(req *http.Request) error {
 
 	endpoint, err := e.calloutEndpoint()
 	if err != nil {
-		return errors.ExternalAuthz.Label(e.name).With(err)
+		return errors.Authzen.Label(e.name).With(err)
 	}
 
 	res, err := e.callout(req, endpoint, payload)
@@ -134,7 +134,7 @@ func (e *External) Validate(req *http.Request) error {
 	// client. Couper must copy nothing from such a response: a 401 says that Couper failed to
 	// authenticate to the decision point, and its challenge would mislead the client.
 	if res.StatusCode != http.StatusOK {
-		return errors.ExternalAuthz.Label(e.name).
+		return errors.Authzen.Label(e.name).
 			Messagef("unexpected authorization service response status: %d", res.StatusCode)
 	}
 
@@ -189,12 +189,12 @@ func requiredPermissionCandidate(req *http.Request) (string, bool) {
 func (e *External) callout(req *http.Request, endpoint string, payload interface{}) (*http.Response, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, errors.ExternalAuthz.Label(e.name).With(err)
+		return nil, errors.Authzen.Label(e.name).With(err)
 	}
 
 	outreq, err := http.NewRequest(http.MethodPost, endpoint, nil)
 	if err != nil {
-		return nil, errors.ExternalAuthz.Label(e.name).With(err)
+		return nil, errors.Authzen.Label(e.name).With(err)
 	}
 
 	outreq.Header.Set("Accept", "application/json")
@@ -213,7 +213,7 @@ func (e *External) callout(req *http.Request, endpoint string, payload interface
 
 	res, err := e.transport.RoundTrip(outreq.WithContext(ctx))
 	if err != nil {
-		return nil, errors.ExternalAuthz.Label(e.name).With(err)
+		return nil, errors.Authzen.Label(e.name).With(err)
 	}
 
 	return res, nil
@@ -241,7 +241,7 @@ func (e *External) consumeBatch(req *http.Request, res *http.Response, candidate
 	if expected := len(candidates) + 1; len(batch.Evaluations) != expected {
 		// execute_all answers every question. A short array leaves permissions unresolved,
 		// which would surface as a puzzling 403 at required_permission.
-		return errors.ExternalAuthz.Label(e.name).
+		return errors.Authzen.Label(e.name).
 			Messagef("expected %d evaluations in authorization service response, got: %d",
 				expected, len(batch.Evaluations))
 	}
@@ -266,7 +266,7 @@ func (e *External) consumeBatch(req *http.Request, res *http.Response, candidate
 
 func (e *External) enforce(evaluation evaluationResponse) error {
 	if evaluation.Decision == nil {
-		return errors.ExternalAuthz.Label(e.name).Message("missing decision in authorization service response")
+		return errors.Authzen.Label(e.name).Message("missing decision in authorization service response")
 	}
 
 	if !*evaluation.Decision {
@@ -282,10 +282,10 @@ func (e *External) enforce(evaluation evaluationResponse) error {
 // decision, and new credentials would not help the client.
 func (e *External) deny(evalContext map[string]interface{}) error {
 	if challenge, _ := evalContext[wwwAuthenticateProperty].(string); challenge != "" {
-		return errors.ExternalAuthzInvalidCredentials.Label(e.name).Message("invalid credentials")
+		return errors.AuthzenInvalidCredentials.Label(e.name).Message("invalid credentials")
 	}
 
-	return errors.ExternalAuthzInsufficientPermissions.Label(e.name).Message("insufficient permissions")
+	return errors.AuthzenInsufficientPermissions.Label(e.name).Message("insufficient permissions")
 }
 
 // decodeResponseBody reads the access evaluation response into target. A malformed body
@@ -299,14 +299,14 @@ func (e *External) decodeResponseBody(res *http.Response, target interface{}) er
 
 	raw, err := io.ReadAll(res.Body)
 	if err != nil {
-		return errors.ExternalAuthz.Label(e.name).With(err)
+		return errors.Authzen.Label(e.name).With(err)
 	}
 	if len(raw) == 0 {
 		return nil
 	}
 
 	if err = json.Unmarshal(raw, target); err != nil {
-		return errors.ExternalAuthz.Label(e.name).
+		return errors.Authzen.Label(e.name).
 			Message("unexpected authorization service response body").With(err)
 	}
 

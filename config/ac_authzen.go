@@ -14,14 +14,14 @@ import (
 )
 
 var (
-	_ BackendReference      = &ExternalAuthZ{}
-	_ BackendInitialization = &ExternalAuthZ{}
-	_ Body                  = &ExternalAuthZ{}
-	_ Inline                = &ExternalAuthZ{}
+	_ BackendReference      = &AuthZen{}
+	_ BackendInitialization = &AuthZen{}
+	_ Body                  = &AuthZen{}
+	_ Inline                = &AuthZen{}
 )
 
-// ExternalAuthZ represents the beta_external_authz block.
-type ExternalAuthZ struct {
+// AuthZen represents the beta_authzen block.
+type AuthZen struct {
 	ErrorHandlerSetter
 	BackendName           string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with {backend} block."`
 	ConfigurationMaxStale string   `hcl:"configuration_max_stale,optional" docs:"Time after the expiration of the AuthZEN configuration document during which Couper keeps using it. A zero value means no stale use." type:"duration" default:"1h"`
@@ -37,7 +37,7 @@ type ExternalAuthZ struct {
 	Backend *hclsyntax.Body
 }
 
-func (a *ExternalAuthZ) Prepare(backendFunc PrepareBackendFunc) (err error) {
+func (a *AuthZen) Prepare(backendFunc PrepareBackendFunc) (err error) {
 	if err = a.check(); err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (a *ExternalAuthZ) Prepare(backendFunc PrepareBackendFunc) (err error) {
 }
 
 // check ensures a callout destination exists: a url or a backend providing an origin.
-func (a *ExternalAuthZ) check() error {
+func (a *AuthZen) check() error {
 	if a.URL != "" && a.ConfigurationURL != "" {
 		return fmt.Errorf("url and configuration_url are mutually exclusive")
 	}
@@ -69,18 +69,18 @@ func (a *ExternalAuthZ) check() error {
 }
 
 // Reference implements the <BackendReference> interface.
-func (a *ExternalAuthZ) Reference() string {
+func (a *AuthZen) Reference() string {
 	return a.BackendName
 }
 
 // HCLBody implements the <Body> interface.
-func (a *ExternalAuthZ) HCLBody() *hclsyntax.Body {
+func (a *AuthZen) HCLBody() *hclsyntax.Body {
 	return a.Remain.(*hclsyntax.Body)
 }
 
 // Inline implements the <Inline> interface. The AuthZEN entities are evaluated per request,
 // so a preceding access control can name the subject.
-func (a *ExternalAuthZ) Inline() interface{} {
+func (a *AuthZen) Inline() interface{} {
 	type Inline struct {
 		meta.LogFieldsAttribute
 		Action   map[string]cty.Value `hcl:"action,optional" docs:"Replaces the action of the access evaluation request. Requires a {name}; an optional {properties} object is passed through. Defaults to the request method."`
@@ -96,7 +96,7 @@ func (a *ExternalAuthZ) Inline() interface{} {
 // DefaultErrorHandlers forwards the authorization service's WWW-Authenticate challenge
 // on denied credentials so clients can bootstrap authentication (e.g. OAuth protected
 // resource metadata discovery); a user-defined handler for the kind replaces it.
-func (a *ExternalAuthZ) DefaultErrorHandlers() []*ErrorHandler {
+func (a *AuthZen) DefaultErrorHandlers() []*ErrorHandler {
 	challenge := &hclsyntax.ScopeTraversalExpr{
 		Traversal: hcl.Traversal{
 			hcl.TraverseRoot{Name: "request"},
@@ -117,13 +117,13 @@ func (a *ExternalAuthZ) DefaultErrorHandlers() []*ErrorHandler {
 	}
 	return []*ErrorHandler{
 		{
-			Kinds: []string{"external_authz_invalid_credentials"},
+			Kinds: []string{"authzen_invalid_credentials"},
 			Remain: &hclsyntax.Body{
 				Attributes: hclsyntax.Attributes{
 					"set_response_headers": {
 						Name:     "set_response_headers",
 						Expr:     headers,
-						SrcRange: hcl.Range{Filename: "default_external_authz_error_handler"},
+						SrcRange: hcl.Range{Filename: "default_authzen_error_handler"},
 					},
 				},
 			},
@@ -132,7 +132,7 @@ func (a *ExternalAuthZ) DefaultErrorHandlers() []*ErrorHandler {
 }
 
 // Schema implements the <Inline> interface.
-func (a *ExternalAuthZ) Schema(inline bool) *hcl.BodySchema {
+func (a *AuthZen) Schema(inline bool) *hcl.BodySchema {
 	if !inline {
 		schema, _ := gohcl.ImpliedBodySchema(a)
 		return schema

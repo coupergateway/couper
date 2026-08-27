@@ -470,10 +470,10 @@ func TestConfigErrors(t *testing.T) {
 		error string
 	}{
 		{
-			"external authz empty evaluate_permissions entry",
+			"authzen empty evaluate_permissions entry",
 			`server {}
 			definitions {
-			  beta_external_authz "authz" {
+			  beta_authzen "authz" {
 			    url = "https://pdp.example.com"
 			    evaluate_permissions = ["read", " "]
 			  }

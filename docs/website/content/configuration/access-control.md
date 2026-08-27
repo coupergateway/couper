@@ -22,7 +22,7 @@ All access controls have an option to handle [related errors](/configuration/err
 ### Blocks
 
 * [`basic_auth`](/configuration/block/basic_auth)
-* [`beta_external_authz`](/configuration/block/beta_external_authz)
+* [`beta_authzen`](/configuration/block/beta_authzen)
 * [`beta_oauth2`](/configuration/block/beta_oauth2)
 * [`beta_rate_limiter`](/configuration/block/rate_limiter)
 * [`jwt`](/configuration/block/jwt)

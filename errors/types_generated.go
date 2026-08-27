@@ -3,29 +3,29 @@
 package errors
 
 var (
-	ExternalAuthz                        = Definitions[1]
-	ExternalAuthzInvalidCredentials      = Definitions[2]
-	ExternalAuthzInsufficientPermissions = Definitions[3]
-	BasicAuth                            = Definitions[4]
-	BasicAuthCredentialsMissing          = Definitions[5]
-	Jwt                                  = Definitions[6]
-	JwtTokenExpired                      = Definitions[7]
-	JwtTokenInactive                     = Definitions[8]
-	JwtTokenInvalid                      = Definitions[9]
-	JwtTokenMissing                      = Definitions[10]
-	Oauth2                               = Definitions[11]
-	BetaRateLimiter                      = Definitions[12]
-	BetaRateLimiterKey                   = Definitions[13]
-	Saml2                                = Definitions[14]
-	Saml                                 = Definitions[15]
-	InsufficientPermissions              = Definitions[16]
-	BackendOpenapiValidation             = Definitions[18]
-	BackendThrottleExceeded              = Definitions[19]
-	BackendTimeout                       = Definitions[20]
-	BetaBackendTokenRequest              = Definitions[21]
-	BackendUnhealthy                     = Definitions[22]
-	Sequence                             = Definitions[24]
-	UnexpectedStatus                     = Definitions[25]
+	Authzen                        = Definitions[1]
+	AuthzenInvalidCredentials      = Definitions[2]
+	AuthzenInsufficientPermissions = Definitions[3]
+	BasicAuth                      = Definitions[4]
+	BasicAuthCredentialsMissing    = Definitions[5]
+	Jwt                            = Definitions[6]
+	JwtTokenExpired                = Definitions[7]
+	JwtTokenInactive               = Definitions[8]
+	JwtTokenInvalid                = Definitions[9]
+	JwtTokenMissing                = Definitions[10]
+	Oauth2                         = Definitions[11]
+	BetaRateLimiter                = Definitions[12]
+	BetaRateLimiterKey             = Definitions[13]
+	Saml2                          = Definitions[14]
+	Saml                           = Definitions[15]
+	InsufficientPermissions        = Definitions[16]
+	BackendOpenapiValidation       = Definitions[18]
+	BackendThrottleExceeded        = Definitions[19]
+	BackendTimeout                 = Definitions[20]
+	BetaBackendTokenRequest        = Definitions[21]
+	BackendUnhealthy               = Definitions[22]
+	Sequence                       = Definitions[24]
+	UnexpectedStatus               = Definitions[25]
 )
 
 // typeDefinitions holds all related error definitions which are
@@ -35,32 +35,32 @@ type typeDefinitions map[string]*Error
 // types holds all implemented ones. The name must match the structs
 // snake-name for fallback purposes. See TypeToSnake usage and reference.
 var types = typeDefinitions{
-	"access_control":                          AccessControl,
-	"external_authz":                          ExternalAuthz,
-	"external_authz_invalid_credentials":      ExternalAuthzInvalidCredentials,
-	"external_authz_insufficient_permissions": ExternalAuthzInsufficientPermissions,
-	"basic_auth":                              BasicAuth,
-	"basic_auth_credentials_missing":          BasicAuthCredentialsMissing,
-	"jwt":                                     Jwt,
-	"jwt_token_expired":                       JwtTokenExpired,
-	"jwt_token_inactive":                      JwtTokenInactive,
-	"jwt_token_invalid":                       JwtTokenInvalid,
-	"jwt_token_missing":                       JwtTokenMissing,
-	"oauth2":                                  Oauth2,
-	"beta_rate_limiter":                       BetaRateLimiter,
-	"beta_rate_limiter_key":                   BetaRateLimiterKey,
-	"saml2":                                   Saml2,
-	"saml":                                    Saml,
-	"insufficient_permissions":                InsufficientPermissions,
-	"backend":                                 Backend,
-	"backend_openapi_validation":              BackendOpenapiValidation,
-	"backend_throttle_exceeded":               BackendThrottleExceeded,
-	"backend_timeout":                         BackendTimeout,
-	"beta_backend_token_request":              BetaBackendTokenRequest,
-	"backend_unhealthy":                       BackendUnhealthy,
-	"endpoint":                                Endpoint,
-	"sequence":                                Sequence,
-	"unexpected_status":                       UnexpectedStatus,
+	"access_control":                   AccessControl,
+	"authzen":                          Authzen,
+	"authzen_invalid_credentials":      AuthzenInvalidCredentials,
+	"authzen_insufficient_permissions": AuthzenInsufficientPermissions,
+	"basic_auth":                       BasicAuth,
+	"basic_auth_credentials_missing":   BasicAuthCredentialsMissing,
+	"jwt":                              Jwt,
+	"jwt_token_expired":                JwtTokenExpired,
+	"jwt_token_inactive":               JwtTokenInactive,
+	"jwt_token_invalid":                JwtTokenInvalid,
+	"jwt_token_missing":                JwtTokenMissing,
+	"oauth2":                           Oauth2,
+	"beta_rate_limiter":                BetaRateLimiter,
+	"beta_rate_limiter_key":            BetaRateLimiterKey,
+	"saml2":                            Saml2,
+	"saml":                             Saml,
+	"insufficient_permissions":         InsufficientPermissions,
+	"backend":                          Backend,
+	"backend_openapi_validation":       BackendOpenapiValidation,
+	"backend_throttle_exceeded":        BackendThrottleExceeded,
+	"backend_timeout":                  BackendTimeout,
+	"beta_backend_token_request":       BetaBackendTokenRequest,
+	"backend_unhealthy":                BackendUnhealthy,
+	"endpoint":                         Endpoint,
+	"sequence":                         Sequence,
+	"unexpected_status":                UnexpectedStatus,
 }
 
 // IsKnown tells the configuration callee if Couper
