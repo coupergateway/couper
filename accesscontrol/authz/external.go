@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -33,18 +34,31 @@ type External struct {
 }
 
 func NewExternal(conf *config.ExternalAuthZ, transport http.RoundTripper) *External {
-	calloutURL := conf.URL
-	if calloutURL == "" { // destination origin is provided by the backend configuration
-		calloutURL = "/"
-	}
 	return &External{
 		body:                conf.HCLBody(),
 		includeTLS:          conf.IncludeTLS,
 		name:                conf.Name,
 		permissionsProperty: conf.PermissionsProperty,
 		transport:           transport,
-		url:                 calloutURL,
+		url:                 calloutURL(conf.URL),
 	}
+}
+
+// calloutURL adds the default AuthZEN access evaluation path to a configured URL with an
+// empty or root path, so an origin alone is enough to reach a conformant decision point.
+func calloutURL(configured string) string {
+	if configured == "" { // the backend configuration provides the origin
+		return authzenEvaluationPath
+	}
+
+	parsed, err := url.Parse(configured)
+	if err != nil || (parsed.Path != "" && parsed.Path != "/") {
+		return configured
+	}
+
+	parsed.Path = authzenEvaluationPath
+
+	return parsed.String()
 }
 
 func (e *External) Validate(req *http.Request) error {
@@ -65,6 +79,10 @@ func (e *External) Validate(req *http.Request) error {
 
 	outreq.Header.Set("Accept", "application/json")
 	outreq.Header.Set("Content-Type", "application/json")
+	// A decision point must echo this identifier, which ties its log to the Couper log.
+	if uid, _ := req.Context().Value(request.UID).(string); uid != "" {
+		outreq.Header.Set("X-Request-ID", uid)
+	}
 	eval.SetBody(outreq, body)
 
 	outCtx := context.WithValue(req.Context(), request.RoundTripName, roundTripName)
