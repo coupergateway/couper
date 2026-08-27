@@ -481,6 +481,40 @@ func TestExternalAuthz_ConfiguredSubject(t *testing.T) {
 	}
 }
 
+func TestExternalAuthz_BatchPermissions(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/12_couper.hcl", helper)
+	defer shutdown()
+
+	for _, tc := range []struct {
+		name          string
+		authorization string
+		expStatus     int
+	}{
+		{"granted permission", "Bearer reader", http.StatusNoContent},
+		{"missing permission", "Bearer writer", http.StatusForbidden},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+			helper.Must(err)
+			req.Header.Set("Authorization", tc.authorization)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+			_, _ = io.Copy(io.Discard, res.Body)
+			_ = res.Body.Close()
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("expected status %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+		})
+	}
+}
+
 func TestExternalAuthz_StockDecisionPoint(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)

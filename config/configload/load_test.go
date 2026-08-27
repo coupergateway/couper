@@ -470,6 +470,29 @@ func TestConfigErrors(t *testing.T) {
 		error string
 	}{
 		{
+			"external authz permissions_property and evaluate_permissions",
+			`server {}
+			definitions {
+			  beta_external_authz "authz" {
+			    url = "https://pdp.example.com"
+			    permissions_property = "perms"
+			    evaluate_permissions = ["read"]
+			  }
+			}`,
+			"permissions_property and evaluate_permissions are mutually exclusive",
+		},
+		{
+			"external authz empty evaluate_permissions entry",
+			`server {}
+			definitions {
+			  beta_external_authz "authz" {
+			    url = "https://pdp.example.com"
+			    evaluate_permissions = ["read", " "]
+			  }
+			}`,
+			"evaluate_permissions must not contain empty entries",
+		},
+		{
 			"websockets attribute and block",
 			`server {
 			  endpoint "/" {

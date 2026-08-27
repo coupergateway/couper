@@ -251,6 +251,31 @@ definitions {
 }
 ```
 
+`permissions_property` needs an authorization service that hands out a permission set. Most
+policy engines do not; they answer one question at a time. `evaluate_permissions` asks them in
+their own terms: Couper names candidate permissions, and one batch callout to the AuthZEN
+access evaluations endpoint `/access/v1/evaluations` asks about the client request and about
+every candidate. Couper grants the permissions the service allows.
+
+```hcl
+definitions {
+  beta_external_authz "authz" {
+    backend              = "pdp" # callout to /access/v1/evaluations
+    evaluate_permissions = ["can_read", "can_write", "can_delete"]
+  }
+}
+```
+
+The first entry of the `evaluations` array is the client request, the others follow the order
+of `evaluate_permissions`. Couper sends `options.evaluations_semantic = "execute_all"`, because
+a short-circuit semantic truncates the answers and would lose permissions. The first decision
+allows or denies the request; a response with fewer answers than questions denies it.
+
+A `url` with a path of its own is used as configured — with `evaluate_permissions` it must
+point to the access evaluations endpoint, not to the single-evaluation endpoint.
+
+`evaluate_permissions` and `permissions_property` are mutually exclusive.
+
 AuthZEN denies a request with a flat `"decision": false` and leaves the response `context`
 free-form. To keep an OAuth 2.0 protected resource workable, Couper reads one property of that
 context by convention — this convention is Couper's, not a part of the specification:
@@ -317,6 +342,12 @@ definitions {
     "type": "object"
   },
   {
+    "default": "[]",
+    "description": "Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. Mutually exclusive with `permissions_property`.",
+    "name": "evaluate_permissions",
+    "type": "tuple (string)"
+  },
+  {
     "default": "false",
     "description": "Include TLS connection information of the client request in the authorization request.",
     "name": "include_tls",
@@ -342,7 +373,7 @@ definitions {
   },
   {
     "default": "\"/access/v1/evaluation\"",
-    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block. Without a path, or with only the root path `/`, the AuthZEN access evaluation endpoint `/access/v1/evaluation` is used.",
+    "description": "URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested `backend` block. Without a path, or with only the root path `/`, the AuthZEN access evaluation endpoint `/access/v1/evaluation` is used — or `/access/v1/evaluations` with `evaluate_permissions`. An explicit path must point to the matching endpoint.",
     "name": "url",
     "type": "string"
   }

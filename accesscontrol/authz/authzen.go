@@ -14,8 +14,11 @@ import (
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
-// authzenEvaluationPath is the default path of the AuthZEN access evaluation endpoint.
-const authzenEvaluationPath = "/access/v1/evaluation"
+// Default paths of the AuthZEN access evaluation endpoints.
+const (
+	authzenEvaluationPath  = "/access/v1/evaluation"
+	authzenEvaluationsPath = "/access/v1/evaluations"
+)
 
 // Entity types of the AuthZEN API gateway mapping.
 const (
@@ -56,6 +59,43 @@ type action struct {
 type evaluationResponse struct {
 	Decision *bool                  `json:"decision"`
 	Context  map[string]interface{} `json:"context"`
+}
+
+// batchEvaluationRequest asks several questions in one callout. The top-level subject,
+// resource and context are the defaults of every entry, so only the action varies.
+type batchEvaluationRequest struct {
+	Subject     entity                 `json:"subject"`
+	Resource    entity                 `json:"resource"`
+	Context     map[string]interface{} `json:"context,omitempty"`
+	Evaluations []evaluationItem       `json:"evaluations"`
+	Options     map[string]interface{} `json:"options"`
+}
+
+type evaluationItem struct {
+	Action action `json:"action"`
+}
+
+type batchEvaluationResponse struct {
+	Evaluations []evaluationResponse `json:"evaluations"`
+}
+
+// newBatchEvaluationRequest asks the decision point about the request itself and about every
+// candidate permission. execute_all keeps the answers aligned with the questions; a
+// short-circuit semantic would truncate the array and lose permissions.
+func newBatchEvaluationRequest(evalReq evaluationRequest, permissions []string) batchEvaluationRequest {
+	evaluations := make([]evaluationItem, 0, len(permissions)+1)
+	evaluations = append(evaluations, evaluationItem{Action: evalReq.Action})
+	for _, permission := range permissions {
+		evaluations = append(evaluations, evaluationItem{Action: action{Name: permission}})
+	}
+
+	return batchEvaluationRequest{
+		Subject:     evalReq.Subject,
+		Resource:    evalReq.Resource,
+		Context:     evalReq.Context,
+		Evaluations: evaluations,
+		Options:     map[string]interface{}{"evaluations_semantic": "execute_all"},
+	}
 }
 
 func newEvaluationRequest(req *http.Request, includeTLS bool, body *hclsyntax.Body) (evaluationRequest, error) {
