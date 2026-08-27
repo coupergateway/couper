@@ -102,11 +102,96 @@ func TestExternal_Discovery(t *testing.T) {
 		}
 	})
 
+	// OpenFGA roots its identifiers under /stores: the origin and the tenant of the
+	// configuration URL stay pinned, only the path prefix of the identifier is free.
+	t.Run("a store-scoped identifier of a tenant configuration is accepted", func(t *testing.T) {
+		const tenantWellKnown = wellKnownPath + "/01ARZ"
+
+		mux := http.NewServeMux()
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		mux.HandleFunc(tenantWellKnown, func(rw http.ResponseWriter, _ *http.Request) {
+			rw.Header().Set("Content-Type", "application/json")
+			_, _ = rw.Write([]byte(`{"policy_decision_point": "` + server.URL + `/stores/01ARZ",` +
+				`"access_evaluation_endpoint": "` + server.URL + `/stores/01ARZ/access/v1/evaluation"}`))
+		})
+		mux.HandleFunc("/stores/01ARZ/access/v1/evaluation", func(rw http.ResponseWriter, _ *http.Request) {
+			rw.Header().Set("Content-Type", "application/json")
+			_, _ = rw.Write([]byte(`{"decision": true}`))
+		})
+
+		external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+			ConfigurationURL: server.URL + tenantWellKnown,
+			Name:             "test_ac",
+		})
+		if err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		if err = external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+	})
+
+	t.Run("a store-scoped identifier must keep the origin and the tenant", func(t *testing.T) {
+		const tenantWellKnown = wellKnownPath + "/01ARZ"
+
+		for _, tc := range []struct {
+			name       string
+			identifier func(origin string) string
+		}{
+			{"foreign origin", func(string) string { return "https://evil.example/stores/01ARZ" }},
+			{"foreign tenant", func(origin string) string { return origin + "/stores/OTHER" }},
+			{"tenant inside a segment", func(origin string) string { return origin + "/stores01ARZ" }},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				mux := http.NewServeMux()
+				server := httptest.NewServer(mux)
+				defer server.Close()
+
+				mux.HandleFunc(tenantWellKnown, func(rw http.ResponseWriter, _ *http.Request) {
+					rw.Header().Set("Content-Type", "application/json")
+					_, _ = rw.Write([]byte(`{"policy_decision_point": "` + tc.identifier(server.URL) + `",` +
+						`"access_evaluation_endpoint": "` + server.URL + `/evaluate"}`))
+				})
+
+				external, err := newDiscoveringExternal(t, &config.ExternalAuthZ{
+					ConfigurationURL: server.URL + tenantWellKnown,
+					Name:             "test_ac",
+				})
+				if err != nil {
+					t.Fatalf("expected no error, got: %v", err)
+				}
+
+				req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+				err = external.Validate(req)
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+				if !strings.Contains(err.(interface{ LogError() string }).LogError(), "does not match") {
+					t.Errorf("expected an identifier mismatch, got: %v", err)
+				}
+			})
+		}
+	})
+
 	for _, tc := range []struct {
 		name     string
 		metadata func(origin string) string
 		expError string
 	}{
+		{
+			// Without a tenant the identifier stays strict: an own path prefix is only
+			// acceptable when a tenant pins the suffix.
+			"a same-origin identifier under another path is rejected without a tenant",
+			func(origin string) string {
+				return `{"policy_decision_point": "` + origin + `/stores",` +
+					`"access_evaluation_endpoint": "` + origin + `/evaluate"}`
+			},
+			"does not match",
+		},
 		{
 			"a foreign policy decision point is rejected",
 			func(origin string) string {

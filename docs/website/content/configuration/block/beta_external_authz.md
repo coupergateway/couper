@@ -175,7 +175,10 @@ unreachable.
 
 Two checks protect the callout. The document must claim the `policy_decision_point` Couper
 asked, which is `configuration_url` without the well-known suffix — this is how the
-specification prevents a mix-up between decision points. And the endpoint must stay on the
+specification prevents a mix-up between decision points. A multi-tenant decision point may
+root its identifiers under a path of its own — OpenFGA claims `<origin>/stores/<store_id>`
+for `/.well-known/authzen-configuration/<store_id>` — and Couper accepts that as long as
+the origin and the tenant of `configuration_url` stay pinned. And the endpoint must stay on the
 origin of the document: a `backend` pins scheme and host, so an endpoint on a foreign origin
 would send the credentials of the client to the configured host instead. Couper denies the
 request in both cases.
