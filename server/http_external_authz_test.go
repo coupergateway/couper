@@ -9,11 +9,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -512,6 +514,162 @@ func TestExternalAuthz_BatchPermissions(t *testing.T) {
 				st.Errorf("expected status %d, got: %d", tc.expStatus, res.StatusCode)
 			}
 		})
+	}
+}
+
+func TestExternalAuthz_RequiredPermissionOverride(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/13_couper.hcl", helper)
+	defer shutdown()
+
+	for _, tc := range []struct {
+		name      string
+		method    string
+		path      string
+		expStatus int
+		expAsked  string
+		expBatch  string
+	}{
+		{"dynamic permission overrides candidates", http.MethodGet, "/todos/read", http.StatusNoContent, "GET,can_read", "GET,can_read"},
+		{"dynamic permission denied", http.MethodGet, "/todos/write", http.StatusForbidden, "", "GET,can_write"},
+		{"method map resolves the permission", http.MethodGet, "/mapped", http.StatusNoContent, "GET,can_read", "GET,can_read"},
+		{"method miss falls back to the candidates", http.MethodDelete, "/mapped", http.StatusMethodNotAllowed, "", "DELETE,can_read,can_write"},
+		{"wildcard covers a standard method", http.MethodGet, "/wildcard", http.StatusNoContent, "GET,can_read", "GET,can_read"},
+		{"custom method is not covered by the wildcard", "BREW", "/wildcard", http.StatusMethodNotAllowed, "", "BREW,can_read,can_write"},
+		{"no required permission keeps the candidates", http.MethodGet, "/plain", http.StatusNoContent, "GET,can_read,can_write", "GET,can_read,can_write"},
+	} {
+		t.Run(tc.name, func(st *testing.T) {
+			hook.Reset()
+
+			req, err := http.NewRequest(tc.method, "http://protected.local:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+			_, _ = io.Copy(io.Discard, res.Body)
+			_ = res.Body.Close()
+
+			if res.StatusCode != tc.expStatus {
+				st.Errorf("expected status %d, got: %d", tc.expStatus, res.StatusCode)
+			}
+
+			if asked := res.Header.Get("X-Asked"); asked != tc.expAsked {
+				st.Errorf("expected asked actions %q, got: %q", tc.expAsked, asked)
+			}
+
+			// The PDP logs every batch it receives — the only observable evidence of what was
+			// asked when the protected endpoint exits through an error path.
+			var batch string
+			for _, entry := range hook.AllEntries() {
+				if entry.Data["server"] != "authz-service" {
+					continue
+				}
+				if custom, ok := entry.Data["custom"].(logrus.Fields); ok {
+					if asked, ok := custom["asked"].(string); ok {
+						batch = asked
+					}
+				}
+			}
+			if batch != tc.expBatch {
+				st.Errorf("expected the PDP to receive the batch %q, got: %q", tc.expBatch, batch)
+			}
+		})
+	}
+}
+
+func TestExternalAuthz_RequiredPermissionKeepsJSONBody(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, _ := newCouper("testdata/external_authz/13_couper.hcl", helper)
+	defer shutdown()
+
+	req, err := http.NewRequest(http.MethodPost, "http://protected.local:8080/body", strings.NewReader(`{"method":"tools/call"}`))
+	helper.Must(err)
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	_, _ = io.Copy(io.Discard, res.Body)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status %d, got: %d", http.StatusNoContent, res.StatusCode)
+	}
+
+	if method := res.Header.Get("X-Method"); method != "tools/call" {
+		t.Errorf("expected the json_body method %q, got: %q", "tools/call", method)
+	}
+}
+
+func TestExternalAuthz_ErrorHandlerCatchesCalloutRejection(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/14_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/protected", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusForbidden {
+		t.Errorf("expected status %d, got: %d", http.StatusForbidden, res.StatusCode)
+	}
+
+	var body map[string]interface{}
+	helper.Must(json.Unmarshal(resBytes, &body))
+	if body["error"] != "denied" {
+		t.Errorf("expected error_handler body, got: %s", resBytes)
+	}
+
+	var loggedType string
+	for _, entry := range hook.AllEntries() {
+		if errorType, ok := entry.Data["error_type"].(string); ok && entry.Data["port"] == "8080" {
+			loggedType = errorType
+		}
+	}
+	if loggedType != "external_authz" {
+		t.Errorf("expected logged error_type %q, got: %q", "external_authz", loggedType)
+	}
+}
+
+// TestExternalAuthz_SearchSequence pins the documented pattern: a resource search callout
+// in an endpoint sequence filters an upstream listing down to the permitted subset.
+func TestExternalAuthz_SearchSequence(t *testing.T) {
+	client := newClient()
+	helper := test.New(t)
+
+	shutdown, hook := newCouper("testdata/external_authz/15_couper.hcl", helper)
+	defer shutdown()
+	hook.Reset()
+
+	req, err := http.NewRequest(http.MethodGet, "http://protected.local:8080/documents", nil)
+	helper.Must(err)
+
+	res, err := client.Do(req)
+	helper.Must(err)
+	resBytes, err := io.ReadAll(res.Body)
+	helper.Must(err)
+	_ = res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d, got: %d", http.StatusOK, res.StatusCode)
+	}
+
+	var documents []map[string]interface{}
+	helper.Must(json.Unmarshal(resBytes, &documents))
+
+	if len(documents) != 2 || documents[0]["id"] != "roadmap" || documents[1]["id"] != "budget" {
+		t.Errorf("expected the permitted documents only, got: %s", resBytes)
 	}
 }
 

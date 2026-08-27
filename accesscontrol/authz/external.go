@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/eval/buffer"
+	"github.com/coupergateway/couper/handler/middleware"
 	"github.com/coupergateway/couper/internal/seetie"
 )
 
@@ -109,8 +111,14 @@ func (e *External) Validate(req *http.Request) error {
 	}
 
 	var payload interface{} = evalReq
+	candidates := e.evaluatePermissions
 	if e.batched() {
-		payload = newBatchEvaluationRequest(evalReq, e.evaluatePermissions)
+		// The permission the endpoint will check beats the configured candidates: one
+		// evaluation answers exactly the question that decides the request.
+		if permission, resolved := requiredPermissionCandidate(req); resolved {
+			candidates = []string{permission}
+		}
+		payload = newBatchEvaluationRequest(evalReq, candidates)
 	}
 
 	endpoint, err := e.calloutEndpoint()
@@ -133,7 +141,7 @@ func (e *External) Validate(req *http.Request) error {
 	}
 
 	if e.batched() {
-		return e.consumeBatch(req, res)
+		return e.consumeBatch(req, res, candidates)
 	}
 
 	return e.consume(req, res)
@@ -141,6 +149,43 @@ func (e *External) Validate(req *http.Request) error {
 
 func (e *External) batched() bool {
 	return len(e.evaluatePermissions) > 0
+}
+
+// requiredPermissionCandidate resolves the endpoint's required_permission at callout time,
+// with everything a preceding access control put into the evaluation context. Anything
+// unresolvable falls back to the configured candidates: the permissions control owns the
+// error reporting for a broken required_permission.
+func requiredPermissionCandidate(req *http.Request) (string, bool) {
+	expr, _ := req.Context().Value(request.RequiredPermissionExpr).(hcl.Expression)
+	if expr == nil {
+		return "", false
+	}
+
+	value, err := eval.Value(eval.ContextFromRequest(req).HCLContext(), expr)
+	if err != nil {
+		return "", false
+	}
+
+	permission, permissionMap, err := seetie.ValueToPermission(value)
+	if err != nil {
+		return "", false
+	}
+	if permissionMap != nil {
+		p, exists := permissionMap[req.Method]
+		if !exists && slices.Contains(middleware.DefaultEndpointAllowedMethods, req.Method) {
+			// The wildcard covers only the standard methods, mirroring the permissions
+			// control — a non-standard method must be listed explicitly to have a permission.
+			p, exists = permissionMap["*"]
+		}
+		if !exists {
+			return "", false
+		}
+		permission = p
+	}
+
+	permission = strings.TrimSpace(permission)
+
+	return permission, permission != ""
 }
 
 func (e *External) callout(req *http.Request, endpoint string, payload interface{}) (*http.Response, error) {
@@ -193,13 +238,13 @@ func (e *External) consume(req *http.Request, res *http.Response) error {
 
 // consumeBatch applies the boxcarred decisions: the first evaluation answers the client
 // request, every other one answers whether the subject may do a candidate permission.
-func (e *External) consumeBatch(req *http.Request, res *http.Response) error {
+func (e *External) consumeBatch(req *http.Request, res *http.Response, candidates []string) error {
 	var batch batchEvaluationResponse
 	if err := e.decodeResponseBody(res, &batch); err != nil {
 		return err
 	}
 
-	if expected := len(e.evaluatePermissions) + 1; len(batch.Evaluations) != expected {
+	if expected := len(candidates) + 1; len(batch.Evaluations) != expected {
 		// execute_all answers every question. A short array leaves permissions unresolved,
 		// which would surface as a puzzling 403 at required_permission.
 		return errors.ExternalAuthz.Label(e.name).
@@ -215,7 +260,7 @@ func (e *External) consumeBatch(req *http.Request, res *http.Response) error {
 	}
 
 	var permissions []string
-	for i, permission := range e.evaluatePermissions {
+	for i, permission := range candidates {
 		if granted := batch.Evaluations[i+1].Decision; granted != nil && *granted {
 			permissions = append(permissions, permission)
 		}

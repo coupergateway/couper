@@ -3,6 +3,7 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net"
@@ -346,6 +347,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 			epOpts.LogHandlerKind = kind.String()
 
 			var epHandler, protectedHandler http.Handler
+			var requiredPermissionExpr hcl.Expression
 			if parentAPI != nil && parentAPI.CatchAllEndpoint == endpointConf {
 				protectedHandler = epOpts.ErrorTemplate.WithError(errors.RouteNotFound)
 			} else {
@@ -363,7 +365,7 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}
 				epHandler = handler.NewEndpoint(epOpts, log, modifier)
 
-				requiredPermissionExpr := endpointConf.RequiredPermission
+				requiredPermissionExpr = endpointConf.RequiredPermission
 				if requiredPermissionExpr == nil && parentAPI != nil {
 					// if required permission in endpoint {} not defined, try required permission in parent api {}
 					requiredPermissionExpr = parentAPI.RequiredPermission
@@ -406,6 +408,13 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 				}, log)
 			if err != nil {
 				return nil, err
+			}
+
+			// The permissions control resolves required_permission only after the access
+			// controls ran. The expression travels with the request, so an access control
+			// that shapes a callout from it evaluates it against its own, current context.
+			if requiredPermissionExpr != nil {
+				epHandler = newRequiredPermissionExprHandler(requiredPermissionExpr, epHandler)
 			}
 
 			corsOptions, err := middleware.NewCORSOptions(whichCORS(srvConf, parentAPI), allowedMethodsHandler.MethodAllowed)
@@ -822,4 +831,33 @@ func newAC(srvConf *config.Server, api *config.API) config.AccessControl {
 	}
 
 	return accessControl
+}
+
+// requiredPermissionExprHandler exposes its wrapped handler via Child so the server's
+// handler unwrapping still reaches the endpoint (e.g. for request body buffering).
+type requiredPermissionExprHandler struct {
+	expr hcl.Expression
+	next http.Handler
+}
+
+func newRequiredPermissionExprHandler(expr hcl.Expression, next http.Handler) http.Handler {
+	return &requiredPermissionExprHandler{expr: expr, next: next}
+}
+
+func (h *requiredPermissionExprHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	// Mutate the shared request: a fresh request object would hide the context values
+	// inner handlers store for outer ones, like the error type for the access log.
+	*req = *req.WithContext(context.WithValue(req.Context(), request.RequiredPermissionExpr, h.expr))
+	h.next.ServeHTTP(rw, req)
+}
+
+func (h *requiredPermissionExprHandler) Child() http.Handler {
+	return h.next
+}
+
+func (h *requiredPermissionExprHandler) String() string {
+	if s, ok := h.next.(fmt.Stringer); ok {
+		return s.String()
+	}
+	return "requiredPermissionExpr"
 }

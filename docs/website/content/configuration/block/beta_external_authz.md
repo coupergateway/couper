@@ -228,7 +228,10 @@ service answers `200` with a `decision` and an optional free-form `context`:
 An error status of the authorization service reports a problem between Couper and that
 service, not a denied client. A `401`, for example, says that Couper failed to authenticate
 to the authorization service. Couper copies nothing from such a response, because its
-challenge is addressed to Couper and would mislead the client.
+challenge is addressed to Couper and would mislead the client. An
+[`error_handler` block](/configuration/error-handling) for the `external_authz` type catches
+every such rejection — a `400` for an action unknown to the decision point's model, for
+example, stays a plain denial with a body of your choosing.
 
 The response `context` is exposed as the
 [`request.context.<label>` variable](/configuration/variables#context) — the place for
@@ -298,6 +301,33 @@ allows or denies the request; a response with fewer answers than questions denie
 A `url` with a path of its own is used as configured — with `evaluate_permissions` it must
 point to the access evaluations endpoint, not to the single-evaluation endpoint.
 
+A [`required_permission`](/configuration/block/endpoint) of the protected `endpoint` or `api`
+block replaces the candidates for that request: Couper resolves it at callout time — the
+expression sees everything a preceding access control provided — and asks about exactly the
+permission the endpoint will check. The permission declaration stays at the endpoint, and the
+batch stays small:
+
+```hcl
+api {
+  endpoint "/todos/{id}" {
+    access_control      = ["authz"]
+    required_permission = { GET = "can_read", "*" = "can_write" }
+    # a GET asks about the request and about can_read; nothing else
+    # ...
+  }
+}
+
+definitions {
+  beta_external_authz "authz" {
+    backend              = "pdp" # callout to /access/v1/evaluations
+    evaluate_permissions = ["can_read", "can_write", "can_delete"]
+  }
+}
+```
+
+Endpoints without a required permission — and requests whose method has no entry in a
+required-permission map — keep the configured candidates.
+
 `evaluate_permissions` and `permissions_property` are mutually exclusive.
 
 AuthZEN denies a request with a flat `"decision": false` and leaves the response `context`
@@ -338,6 +368,64 @@ definitions {
   }
 }
 ```
+
+## Listing objects with the AuthZEN Search API
+
+An access control answers one question: may this request pass. Which objects a subject may
+see is a different question — a data question — and the AuthZEN
+[Search API](https://openid.net/specs/authorization-api-1_0.html) answers it: a resource
+search returns every resource of a type the subject has an action on. That callout is not an
+access control; it belongs into the endpoint that needs the list, as a
+[`request` block](/configuration/block/request) in a sequence.
+
+This endpoint filters an upstream listing down to the permitted subset. Both callouts are
+independent, so Couper runs them in parallel; the response waits for both:
+
+```hcl
+api {
+  endpoint "/documents" {
+    access_control = ["token"]
+
+    request "search" {
+      url = "https://pdp.example.com/access/v1/search/resource"
+      json_body = {
+        subject  = { type = "identity", id = request.context.token.sub }
+        action   = { name = "can_read" }
+        resource = { type = "document" }
+      }
+      expected_status = [200]
+    }
+
+    request "list" {
+      backend = "documents_api"
+      url     = "/documents"
+    }
+
+    response {
+      json_body = [
+        for doc in backend_responses.list.json_body.documents : doc
+        if contains([for r in backend_responses.search.json_body.results : r.id], doc.id)
+      ]
+    }
+  }
+}
+```
+
+`expected_status` keeps the endpoint fail-closed: an unexpected search answer is a sequence
+error, not an unfiltered listing. The same search answer also validates a client payload —
+a conditional expression turns an id outside the permitted set into a denial:
+
+```hcl
+response {
+  status = length([
+    for id in request.json_body.ids : id
+    if !contains([for r in backend_responses.search.json_body.results : r.id], id)
+  ]) == 0 ? 200 : 403
+}
+```
+
+The search runs on the hot path of its endpoint and Couper does not cache it — the sizing
+note above applies: keep the decision point close, behind a persistent HTTP/2 connection.
 
 {{< attributes >}}
 [
@@ -385,7 +473,7 @@ definitions {
   },
   {
     "default": "[]",
-    "description": "Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. Mutually exclusive with `permissions_property`.",
+    "description": "Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. A `required_permission` of the protected endpoint or API replaces the candidates for that request. Mutually exclusive with `permissions_property`.",
     "name": "evaluate_permissions",
     "type": "tuple (string)"
   },

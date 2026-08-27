@@ -28,6 +28,7 @@ const (
 	OpenAPI
 	PathParams
 	RequiredPermission
+	RequiredPermissionExpr
 	ResponseBlock
 	ResponseWriter
 	RoundTripName
