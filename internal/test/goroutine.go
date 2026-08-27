@@ -9,6 +9,9 @@ import (
 	"strconv"
 )
 
+// NumGoroutines counts all goroutines whose stack contains the filter. The
+// profile groups goroutines by identical stack, so goroutines in the same
+// function can appear in more than one group; all matching groups are summed.
 func NumGoroutines(filter string) (numRoutine int) {
 	profile := pprof.Lookup("goroutine")
 	profileBuf := &bytes.Buffer{}
@@ -16,6 +19,8 @@ func NumGoroutines(filter string) (numRoutine int) {
 	pr := bufio.NewReader(profileBuf)
 
 	stackRegex := regexp.MustCompile(`(\d+)\s@\s0x`)
+	groupCount := 0
+	groupMatched := false
 	for {
 		line, _, readErr := pr.ReadLine()
 		if readErr != nil {
@@ -26,12 +31,14 @@ func NumGoroutines(filter string) (numRoutine int) {
 		}
 		match := stackRegex.FindSubmatch(line)
 		if len(match) > 1 {
-			numRoutine, _ = strconv.Atoi(string(match[1]))
+			groupCount, _ = strconv.Atoi(string(match[1]))
+			groupMatched = false
 			continue
 		}
-		if bytes.Contains(line, []byte(filter)) {
-			return numRoutine
+		if !groupMatched && bytes.Contains(line, []byte(filter)) {
+			numRoutine += groupCount
+			groupMatched = true
 		}
 	}
-	return -1
+	return numRoutine
 }
