@@ -77,54 +77,161 @@ func TestExternal_Validate_Status(t *testing.T) {
 	}
 }
 
-func TestExternal_Validate_CalloutRequest(t *testing.T) {
+// captureCallout returns the transport plus pointers to the callout request and its body.
+func captureCallout(status int) (roundTripperFunc, **http.Request, *[]byte) {
 	var calloutReq *http.Request
 	var calloutBody []byte
 
 	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		calloutReq = req
 		calloutBody, _ = io.ReadAll(req.Body)
-		return respondStatus(http.StatusOK)(req)
+		return respondStatus(status)(req)
 	})
 
+	return transport, &calloutReq, &calloutBody
+}
+
+func decodeCallout(t *testing.T, body []byte) map[string]interface{} {
+	t.Helper()
+
+	var sent map[string]interface{}
+	if err := json.Unmarshal(body, &sent); err != nil {
+		t.Fatalf("callout body is no valid json: %v", err)
+	}
+
+	return sent
+}
+
+func objectAt(t *testing.T, parent map[string]interface{}, key string) map[string]interface{} {
+	t.Helper()
+
+	child, _ := parent[key].(map[string]interface{})
+	if child == nil {
+		t.Fatalf("missing %q object in %v", key, parent)
+	}
+
+	return child
+}
+
+func TestExternal_Validate_CalloutRequest(t *testing.T) {
+	transport, calloutReq, calloutBody := captureCallout(http.StatusOK)
 	external := authz.NewExternal("test_ac", "http://authz.service/check", false, "", transport)
 
-	req := httptest.NewRequest(http.MethodDelete, "http://client.request/protected?a=b", nil)
+	req := httptest.NewRequest(http.MethodDelete, "http://client.request/todos/42?a=b", nil)
 	req.Header.Set("Authorization", "Bearer my-token")
+	req.RemoteAddr = "10.0.0.7:54321"
+	ctx := context.WithValue(req.Context(), request.RoutePattern, "/todos/{id}")
+	ctx = context.WithValue(ctx, request.PathParams, request.PathParameter{"id": "42"})
+	req = req.WithContext(ctx)
 
 	if err := external.Validate(req); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if calloutReq.Method != http.MethodPost {
-		t.Errorf("expected POST callout, got: %s", calloutReq.Method)
+	if (*calloutReq).Method != http.MethodPost {
+		t.Errorf("expected POST callout, got: %s", (*calloutReq).Method)
 	}
-	if calloutReq.URL.String() != "http://authz.service/check" {
-		t.Errorf("unexpected callout url: %s", calloutReq.URL)
+	if (*calloutReq).URL.String() != "http://authz.service/check" {
+		t.Errorf("unexpected callout url: %s", (*calloutReq).URL)
 	}
-	if ct := calloutReq.Header.Get("Content-Type"); ct != "application/json" {
+	if ct := (*calloutReq).Header.Get("Content-Type"); ct != "application/json" {
 		t.Errorf("unexpected content type: %q", ct)
 	}
 
-	var sent map[string]interface{}
-	if err := json.Unmarshal(calloutBody, &sent); err != nil {
-		t.Fatalf("callout body is no valid json: %v", err)
+	sent := decodeCallout(t, *calloutBody)
+
+	subject := objectAt(t, sent, "subject")
+	if subject["type"] != "JWT" {
+		t.Errorf("unexpected subject type: %v", subject["type"])
+	}
+	if subject["id"] != "my-token" {
+		t.Errorf("unexpected subject id: %v", subject["id"])
 	}
 
-	clientRequest, _ := sent["client_request"].(map[string]interface{})
-	if clientRequest == nil {
-		t.Fatal("missing client_request object")
+	action := objectAt(t, sent, "action")
+	if action["name"] != http.MethodDelete {
+		t.Errorf("unexpected action name: %v", action["name"])
 	}
-	if clientRequest["method"] != http.MethodDelete {
-		t.Errorf("expected serialized method DELETE, got: %v", clientRequest["method"])
+
+	resource := objectAt(t, sent, "resource")
+	if resource["type"] != "route" {
+		t.Errorf("unexpected resource type: %v", resource["type"])
 	}
-	if url, _ := clientRequest["url"].(string); !strings.HasSuffix(url, "/protected?a=b") {
-		t.Errorf("unexpected serialized url: %v", clientRequest["url"])
+	if resource["id"] != "/todos/{id}" {
+		t.Errorf("unexpected resource id: %v", resource["id"])
 	}
-	headers, _ := clientRequest["headers"].(map[string]interface{})
-	if headers == nil || headers["Authorization"] == nil {
-		t.Errorf("expected serialized authorization header, got: %v", clientRequest["headers"])
+
+	properties := objectAt(t, resource, "properties")
+	for key, want := range map[string]string{
+		"hostname": "client.request",
+		"ip":       "10.0.0.7",
+		"path":     "/todos/42",
+		"route":    "/todos/{id}",
+		"scheme":   "http",
+		"uri":      "http://client.request/todos/42?a=b",
+	} {
+		if properties[key] != want {
+			t.Errorf("resource property %q: expected %q, got: %v", key, want, properties[key])
+		}
 	}
+	assertJSONStrings(t, objectAt(t, properties, "query"), "a", []string{"b"})
+	if params := objectAt(t, properties, "params"); params["id"] != "42" {
+		t.Errorf("unexpected path parameters: %v", params)
+	}
+
+	headers := objectAt(t, objectAt(t, sent, "context"), "headers")
+	if headers["authorization"] != "Bearer my-token" {
+		t.Errorf("unexpected authorization header: %v", headers["authorization"])
+	}
+}
+
+func TestExternal_Validate_CalloutRequest_Fallbacks(t *testing.T) {
+	t.Run("anonymous subject without bearer token", func(t *testing.T) {
+		transport, _, calloutBody := captureCallout(http.StatusOK)
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false, "", transport)
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/protected", nil)
+		req.Header.Set("X-Api-Key", "opaque-key")
+
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		sent := decodeCallout(t, *calloutBody)
+		subject := objectAt(t, sent, "subject")
+		if subject["type"] != "anonymous" || subject["id"] != "anonymous" {
+			t.Errorf("expected anonymous subject, got: %v", subject)
+		}
+
+		// the opaque credential must stay reachable for the decision point
+		headers := objectAt(t, objectAt(t, sent, "context"), "headers")
+		if headers["x-api-key"] != "opaque-key" {
+			t.Errorf("unexpected api key header: %v", headers["x-api-key"])
+		}
+	})
+
+	t.Run("uri resource without route pattern", func(t *testing.T) {
+		transport, _, calloutBody := captureCallout(http.StatusOK)
+		external := authz.NewExternal("test_ac", "http://authz.service/check", false, "", transport)
+
+		req := httptest.NewRequest(http.MethodGet, "http://client.request/static/logo.svg", nil)
+
+		if err := external.Validate(req); err != nil {
+			t.Fatalf("expected no error, got: %v", err)
+		}
+
+		sent := decodeCallout(t, *calloutBody)
+		resource := objectAt(t, sent, "resource")
+		if resource["type"] != "uri" {
+			t.Errorf("unexpected resource type: %v", resource["type"])
+		}
+		if resource["id"] != "/static/logo.svg" {
+			t.Errorf("unexpected resource id: %v", resource["id"])
+		}
+		if _, exist := objectAt(t, resource, "properties")["route"]; exist {
+			t.Error("expected no route property without a matched route")
+		}
+	})
 }
 
 func TestExternal_Validate_ContextPropagation(t *testing.T) {
@@ -385,15 +492,9 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 			t.Fatalf("expected no error, got: %v", err)
 		}
 
-		var sent map[string]interface{}
-		if err := json.Unmarshal(calloutBody, &sent); err != nil {
-			t.Fatalf("callout body is no valid json: %v", err)
-		}
+		sent := decodeCallout(t, calloutBody)
 
-		metaTLS, _ := sent["metadata_tls"].(map[string]interface{})
-		if metaTLS == nil {
-			t.Fatal("missing metadata_tls object")
-		}
+		metaTLS := objectAt(t, objectAt(t, sent, "context"), "tls")
 		if metaTLS["version"] != "TLS 1.3" {
 			t.Errorf("unexpected tls version: %v", metaTLS["version"])
 		}
@@ -453,15 +554,9 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 			t.Fatalf("expected no error, got: %v", err)
 		}
 
-		var sent map[string]interface{}
-		if err := json.Unmarshal(calloutBody, &sent); err != nil {
-			t.Fatalf("callout body is no valid json: %v", err)
-		}
-		metaTLS, _ := sent["metadata_tls"].(map[string]interface{})
-		clientCert, _ := metaTLS["client_certificate"].(map[string]interface{})
-		if clientCert == nil {
-			t.Fatal("missing client_certificate object")
-		}
+		sent := decodeCallout(t, calloutBody)
+		metaTLS := objectAt(t, objectAt(t, sent, "context"), "tls")
+		clientCert := objectAt(t, metaTLS, "client_certificate")
 
 		if clientCert["subject"] != "CN=mcp-client" {
 			t.Errorf("unexpected subject: %v", clientCert["subject"])
@@ -488,12 +583,9 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 			t.Fatalf("expected no error, got: %v", err)
 		}
 
-		var sent map[string]interface{}
-		if err := json.Unmarshal(calloutBody, &sent); err != nil {
-			t.Fatalf("callout body is no valid json: %v", err)
-		}
-		if _, exist := sent["metadata_tls"]; exist {
-			t.Error("expected no metadata_tls object for non-tls connection")
+		sent := decodeCallout(t, calloutBody)
+		if _, exist := objectAt(t, sent, "context")["tls"]; exist {
+			t.Error("expected no tls context for a non-tls connection")
 		}
 	})
 
@@ -505,12 +597,9 @@ func TestExternal_Validate_IncludeTLS(t *testing.T) {
 			t.Fatalf("expected no error, got: %v", err)
 		}
 
-		var sent map[string]interface{}
-		if err := json.Unmarshal(calloutBody, &sent); err != nil {
-			t.Fatalf("callout body is no valid json: %v", err)
-		}
-		if _, exist := sent["metadata_tls"]; exist {
-			t.Error("expected no metadata_tls object when include_tls is disabled")
+		sent := decodeCallout(t, calloutBody)
+		if _, exist := objectAt(t, sent, "context")["tls"]; exist {
+			t.Error("expected no tls context when include_tls is disabled")
 		}
 	})
 }

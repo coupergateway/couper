@@ -2,16 +2,12 @@ package authz
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/tls"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"mime"
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
@@ -22,7 +18,7 @@ import (
 
 const roundTripName = "external_authz"
 
-// External authorization calls out to a service which decides whether the
+// External authorization calls out to a policy decision point which decides whether the
 // client request is allowed: 200 allows, 401 and 403 map to distinct error types.
 type External struct {
 	includeTLS          bool
@@ -30,43 +26,6 @@ type External struct {
 	permissionsProperty string
 	transport           http.RoundTripper
 	url                 string
-}
-
-// simplified form of http.Request for serialization
-type clientRequest struct {
-	Method  string      `json:"method"`
-	URL     string      `json:"url"`
-	Headers http.Header `json:"headers"`
-}
-
-// TLS connection information of the client request, forwarded opt-in
-type metadataTLS struct {
-	CipherSuite       string             `json:"cipher_suite"`
-	ClientCertificate *clientCertificate `json:"client_certificate,omitempty"`
-	ServerName        string             `json:"server_name,omitempty"`
-	Version           string             `json:"version"`
-}
-
-// clientCertificate carries the fields an authorization service keys on for a client-facing
-// mTLS decision: the subject/issuer DN, the serial and SHA-256 fingerprint for allow lists or
-// pinning, validity, and the subject alternative names that often hold the real identity.
-type clientCertificate struct {
-	DNSNames          []string  `json:"dns_names,omitempty"`
-	EmailAddresses    []string  `json:"email_addresses,omitempty"`
-	FingerprintSHA256 string    `json:"fingerprint_sha256,omitempty"`
-	IPAddresses       []string  `json:"ip_addresses,omitempty"`
-	Issuer            string    `json:"issuer"`
-	NotAfter          time.Time `json:"not_after"`
-	NotBefore         time.Time `json:"not_before"`
-	SerialNumber      string    `json:"serial_number,omitempty"`
-	Subject           string    `json:"subject"`
-	URIs              []string  `json:"uris,omitempty"`
-}
-
-// context sent to external authorization origin
-type authContext struct {
-	ClientRequest clientRequest `json:"client_request"`
-	MetadataTLS   *metadataTLS  `json:"metadata_tls,omitempty"`
 }
 
 func NewExternal(name, calloutURL string, includeTLS bool, permissionsProperty string, transport http.RoundTripper) *External {
@@ -82,59 +41,8 @@ func NewExternal(name, calloutURL string, includeTLS bool, permissionsProperty s
 	}
 }
 
-func newMetadataTLS(state *tls.ConnectionState) *metadataTLS {
-	if state == nil {
-		return nil
-	}
-
-	meta := &metadataTLS{
-		CipherSuite: tls.CipherSuiteName(state.CipherSuite),
-		ServerName:  state.ServerName,
-		Version:     tls.VersionName(state.Version),
-	}
-
-	if len(state.PeerCertificates) > 0 {
-		cert := state.PeerCertificates[0]
-		clientCert := &clientCertificate{
-			DNSNames:       cert.DNSNames,
-			EmailAddresses: cert.EmailAddresses,
-			Issuer:         cert.Issuer.String(),
-			NotAfter:       cert.NotAfter,
-			NotBefore:      cert.NotBefore,
-			Subject:        cert.Subject.String(),
-		}
-		if cert.SerialNumber != nil {
-			clientCert.SerialNumber = cert.SerialNumber.Text(16)
-		}
-		if len(cert.Raw) > 0 {
-			sum := sha256.Sum256(cert.Raw)
-			clientCert.FingerprintSHA256 = hex.EncodeToString(sum[:])
-		}
-		for _, uri := range cert.URIs {
-			clientCert.URIs = append(clientCert.URIs, uri.String())
-		}
-		for _, ip := range cert.IPAddresses {
-			clientCert.IPAddresses = append(clientCert.IPAddresses, ip.String())
-		}
-		meta.ClientCertificate = clientCert
-	}
-
-	return meta
-}
-
 func (e *External) Validate(req *http.Request) error {
-	authCtx := authContext{
-		ClientRequest: clientRequest{
-			Method:  req.Method,
-			URL:     req.URL.String(),
-			Headers: req.Header,
-		},
-	}
-	if e.includeTLS {
-		authCtx.MetadataTLS = newMetadataTLS(req.TLS)
-	}
-
-	body, err := json.Marshal(authCtx)
+	body, err := json.Marshal(newEvaluationRequest(req, e.includeTLS))
 	if err != nil {
 		return errors.ExternalAuthz.Label(e.name).With(err)
 	}
