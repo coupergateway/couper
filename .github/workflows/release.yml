@@ -77,7 +77,6 @@ jobs:
       - name: 'publish formula'
         env:
           GH_TOKEN: ${{ secrets.GH_COUPER_API_TOKEN }}
-          BRANCH: 'release.${{ github.ref_name }}'
           COMMIT_MSG: 'Update formula to ${{ github.ref_name }} release'
         run: |
           set -euo pipefail
@@ -87,15 +86,6 @@ jobs:
           cd "$workdir"
           git config user.name 'couper-svc'
           git config user.email '321729849+couper-svc@users.noreply.github.com'
-          git switch -c "$BRANCH"
           cp "${GITHUB_WORKSPACE}/.github/workflows/couper.rb" ./couper.rb
           git add couper.rb
-          git commit -m "$COMMIT_MSG"
-          git push --force-with-lease origin "$BRANCH"
-          gh pr view "$BRANCH" --repo coupergateway/homebrew-couper >/dev/null 2>&1 || \
-            gh pr create \
-              --repo coupergateway/homebrew-couper \
-              --base main \
-              --head "$BRANCH" \
-              --title "$COMMIT_MSG" \
-              --body "Automated formula update for ${{ github.ref_name }}."
+          git diff --staged --quiet || (git commit -m "$COMMIT_MSG" && git push origin main)
