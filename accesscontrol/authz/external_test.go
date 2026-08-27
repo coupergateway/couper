@@ -23,11 +23,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/sirupsen/logrus"
 
 	"github.com/coupergateway/couper/accesscontrol/authz"
 	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
+	"github.com/coupergateway/couper/internal/test"
 )
 
 func newTestExternal(name, calloutURL string, includeTLS bool, permissionsProperty string,
@@ -44,7 +46,18 @@ func newConfiguredExternal(conf *config.ExternalAuthZ, transport http.RoundTripp
 	if conf.Remain == nil {
 		conf.Remain = &hclsyntax.Body{}
 	}
-	return authz.NewExternal(conf, transport)
+
+	external, err := authz.NewExternal(context.Background(), conf, transport, newTestLogEntry())
+	if err != nil {
+		panic(err) // only a configuration_url can fail here, and no caller sets one
+	}
+
+	return external
+}
+
+func newTestLogEntry() *logrus.Entry {
+	logger, _ := test.NewLogger()
+	return logger.WithContext(context.Background())
 }
 
 func bodyFromHCL(t *testing.T, src string) *hclsyntax.Body {
