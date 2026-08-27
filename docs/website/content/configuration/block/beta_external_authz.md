@@ -67,6 +67,53 @@ type is `uri` and the `id` is the request path.
 `context.headers` holds all request headers with lower-case names and the first value of each
 header, like the [`request.headers` variable](/configuration/variables#request).
 
+## Shaping the evaluation request
+
+The `subject`, `action`, `resource` and `context` attributes shape the callout. Couper
+evaluates them for every request, so an access control in front of `beta_external_authz` can
+name the subject. Access controls run in the order of the `access_control` list:
+
+```hcl
+api {
+  endpoint "/todos/{id}" {
+    access_control = ["token", "authz"]
+    # ...
+  }
+}
+
+definitions {
+  jwt "token" {
+    signature_algorithm = "HS256"
+    key                 = "..."
+  }
+
+  beta_external_authz "authz" {
+    url = "https://pdp.example.com/access/v1/evaluation"
+
+    subject = {
+      type = "identity"
+      id   = request.context.token.sub
+    }
+
+    action = {
+      name = request.method == "GET" ? "can_read" : "can_write"
+    }
+
+    context = {
+      tenant = request.context.token.org
+    }
+  }
+}
+```
+
+`subject`, `action` and `resource` **replace** their default, because each is a closed record
+with mandatory members and a partial merge would make a confusing hybrid. A `subject` or a
+`resource` needs a `type` and an `id`, an `action` needs a `name`; an empty value denies the
+request. An optional `properties` object is passed through.
+
+`context` **merges over** the defaults, because it is an open bag and `headers` and `tls` are
+additive. A configured key wins over a default of the same name.
+
 With `include_tls = true` Couper adds the TLS connection state of the client request to
 `context.tls`. This state is a fact about the request, not a statement about the principal: the
 certificate can belong to a mesh sidecar while a bearer token identifies the caller. In a
@@ -240,9 +287,21 @@ definitions {
 [
   {
     "default": "",
+    "description": "Replaces the action of the access evaluation request. Requires a `name`; an optional `properties` object is passed through. Defaults to the request method.",
+    "name": "action",
+    "type": "object"
+  },
+  {
+    "default": "",
     "description": "References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with `backend` block.",
     "name": "backend",
     "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Merges into the context of the access evaluation request. Configured keys win over the `headers` and `tls` defaults.",
+    "name": "context",
+    "type": "object"
   },
   {
     "default": "",
@@ -261,6 +320,18 @@ definitions {
     "description": "Name of the property in the response `context` containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions.",
     "name": "permissions_property",
     "type": "string"
+  },
+  {
+    "default": "",
+    "description": "Replaces the resource of the access evaluation request. Requires a `type` and an `id`; an optional `properties` object is passed through. Defaults to the matched route.",
+    "name": "resource",
+    "type": "object"
+  },
+  {
+    "default": "",
+    "description": "Replaces the subject of the access evaluation request. Requires a `type` and an `id`; an optional `properties` object is passed through. Defaults to the bearer token of the client request.",
+    "name": "subject",
+    "type": "object"
   },
   {
     "default": "",

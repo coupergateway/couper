@@ -9,6 +9,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/coupergateway/couper/config"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
@@ -21,6 +24,7 @@ const roundTripName = "external_authz"
 // External authorization calls out to a policy decision point which decides whether the
 // client request is allowed. The decision is in the response body, not in its status code.
 type External struct {
+	body                *hclsyntax.Body
 	includeTLS          bool
 	name                string
 	permissionsProperty string
@@ -28,21 +32,28 @@ type External struct {
 	url                 string
 }
 
-func NewExternal(name, calloutURL string, includeTLS bool, permissionsProperty string, transport http.RoundTripper) *External {
+func NewExternal(conf *config.ExternalAuthZ, transport http.RoundTripper) *External {
+	calloutURL := conf.URL
 	if calloutURL == "" { // destination origin is provided by the backend configuration
 		calloutURL = "/"
 	}
 	return &External{
-		includeTLS:          includeTLS,
-		name:                name,
-		permissionsProperty: permissionsProperty,
+		body:                conf.HCLBody(),
+		includeTLS:          conf.IncludeTLS,
+		name:                conf.Name,
+		permissionsProperty: conf.PermissionsProperty,
 		transport:           transport,
 		url:                 calloutURL,
 	}
 }
 
 func (e *External) Validate(req *http.Request) error {
-	body, err := json.Marshal(newEvaluationRequest(req, e.includeTLS))
+	evalReq, err := newEvaluationRequest(req, e.includeTLS, e.body)
+	if err != nil {
+		return errors.ExternalAuthz.Label(e.name).With(err)
+	}
+
+	body, err := json.Marshal(evalReq)
 	if err != nil {
 		return errors.ExternalAuthz.Label(e.name).With(err)
 	}
