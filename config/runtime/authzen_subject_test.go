@@ -67,6 +67,30 @@ func TestAuthZenAnonymousSubjectWarning(t *testing.T) {
 			"",
 		},
 		{
+			"jwt between basic_auth and beta_authzen",
+			`server {
+			   api {
+			     access_control = ["ba", "token", "authz"]
+			     endpoint "/" {
+			       response {}
+			     }
+			   }
+			 }`,
+			"",
+		},
+		{
+			"cookie jwt between basic_auth and beta_authzen",
+			`server {
+			   api {
+			     access_control = ["ba", "cookie_token", "authz"]
+			     endpoint "/" {
+			       response {}
+			     }
+			   }
+			 }`,
+			`beta_authzen "authz" runs behind basic_auth "ba" (request.context.ba.user) without a subject attribute`,
+		},
+		{
 			"beta_authzen before basic_auth",
 			`server {
 			   api {
@@ -101,6 +125,11 @@ func TestAuthZenAnonymousSubjectWarning(t *testing.T) {
 		  jwt "token" {
 		    signature_algorithm = "HS256"
 		    key = "asdf"
+		  }
+		  jwt "cookie_token" {
+		    signature_algorithm = "HS256"
+		    key = "asdf"
+		    cookie = "tok"
 		  }
 		  beta_authzen "authz" {
 		    url = "http://localhost:8081/access/v1/evaluation"

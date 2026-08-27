@@ -569,12 +569,29 @@ func warnAnonymousAuthZenSubject(conf *config.Couper, log *logrus.Entry) {
 		return
 	}
 
+	// A jwt reading from the Authorization Bearer header proves the token the default subject
+	// carries; one reading from a cookie, another header, an expression or a DPoP header does not.
+	bearerJWT := make(map[string]bool)
+	for _, c := range conf.Definitions.JWT {
+		if c.Cookie != "" || c.Dpop || (c.Header != "" && strings.ToLower(c.Header) != "authorization") {
+			continue
+		}
+		if tv, err := c.TokenValue.Value(nil); err != nil || !tv.IsNull() {
+			continue
+		}
+		bearerJWT[c.Name] = true
+	}
+
 	warned := make(map[string]bool)
 	warnChain := func(chain []string) {
 		var preceding string
 		for _, name := range chain {
 			if described, ok := nonBearerAuthn[name]; ok {
 				preceding = described
+				continue
+			}
+			if bearerJWT[name] {
+				preceding = ""
 				continue
 			}
 			if !authZenWithoutSubject[name] || preceding == "" {
