@@ -115,7 +115,7 @@ jobs:
       - name: setup git && push
         working-directory: './website'
         run: |
-          git config user.name "couper-bot"
-          git config user.email "couperbot@gmail.com"
+          git config user.name "couper-svc"
+          git config user.email "321729849+couper-svc@users.noreply.github.com"
           git add -A
           git diff --staged --quiet || (git commit -m "Update website" && git push origin main)
