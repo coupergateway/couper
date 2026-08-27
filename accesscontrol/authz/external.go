@@ -33,7 +33,6 @@ type External struct {
 	evaluatePermissions []string
 	includeTLS          bool
 	name                string
-	permissionsProperty string
 	transport           http.RoundTripper
 	url                 string
 }
@@ -52,7 +51,6 @@ func NewExternal(ctx context.Context, conf *config.ExternalAuthZ, transport http
 		evaluatePermissions: conf.EvaluatePermissions,
 		includeTLS:          conf.IncludeTLS,
 		name:                conf.Name,
-		permissionsProperty: conf.PermissionsProperty,
 		transport:           transport,
 		url:                 calloutURL(conf.URL, defaultPath),
 	}
@@ -229,11 +227,7 @@ func (e *External) consume(req *http.Request, res *http.Response) error {
 
 	e.storeContext(req, evaluationContext(evaluation, res.Header))
 
-	if err := e.enforce(evaluation); err != nil {
-		return err
-	}
-
-	return e.grantConfiguredPermissions(req, evaluation.Context)
+	return e.enforce(evaluation)
 }
 
 // consumeBatch applies the boxcarred decisions: the first evaluation answers the client
@@ -348,49 +342,6 @@ func evaluationContext(evaluation evaluationResponse, header http.Header) map[st
 	ctx["headers"] = seetie.HeaderToMap(header)
 
 	return ctx
-}
-
-// grantConfiguredPermissions appends the permissions from the configured response context
-// property to the request's granted permissions with the same value semantics as the jwt
-// block's permissions_claim: a space-separated string or a list of strings.
-func (e *External) grantConfiguredPermissions(req *http.Request, evalContext map[string]interface{}) error {
-	if e.permissionsProperty == "" {
-		return nil
-	}
-
-	value, exists := evalContext[e.permissionsProperty]
-	if !exists {
-		// A configured permissions property expresses a contract with the authorization
-		// service; its absence on an allow is a broken service, not an empty grant —
-		// failing loudly beats a puzzling 403 at required_permission.
-		return errors.ExternalAuthz.Label(e.name).
-			Messagef("missing %s permissions property in authorization service response context", e.permissionsProperty)
-	}
-
-	invalidErr := func() error {
-		return errors.ExternalAuthz.Label(e.name).
-			Messagef("invalid %s permissions value: %#v", e.permissionsProperty, value)
-	}
-
-	var permissions []string
-	switch v := value.(type) {
-	case string:
-		permissions = strings.Split(v, " ")
-	case []interface{}:
-		for _, entry := range v {
-			p, ok := entry.(string)
-			if !ok {
-				return invalidErr()
-			}
-			permissions = append(permissions, p)
-		}
-	default:
-		return invalidErr()
-	}
-
-	grantPermissions(req, permissions)
-
-	return nil
 }
 
 // grantPermissions adds permissions the request does not carry yet, so a preceding access

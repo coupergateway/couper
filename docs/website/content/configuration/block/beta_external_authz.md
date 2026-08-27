@@ -265,24 +265,9 @@ api {
 ```
 
 
-With `permissions_property` the authorization service can grant [permissions](/configuration/error-handling#permissions-related-error_handler)
+The authorization service can grant [permissions](/configuration/error-handling#permissions-related-error_handler)
 evaluated by `required_permission` in [`api`](/configuration/block/api) or [`endpoint`](/configuration/block/endpoint)
-blocks: the named property of the response `context` — a space-separated string or a list of strings, like the
-[`jwt` block's](/configuration/block/jwt) `permissions_claim` — is added to `request.context.granted_permissions`.
-If the configured property is absent from an allowed response, the request is denied rather than allowed
-without permissions, matching the fail-closed handling of a malformed body.
-
-```hcl
-definitions {
-  beta_external_authz "authz" {
-    url                  = "https://authz.example.com/check"
-    permissions_property = "granted_permissions"
-  }
-}
-```
-
-`permissions_property` needs an authorization service that hands out a permission set. Most
-policy engines do not; they answer one question at a time. `evaluate_permissions` asks them in
+blocks. Policy engines answer one question at a time, and `evaluate_permissions` asks them in
 their own terms: Couper names candidate permissions, and one batch callout to the AuthZEN
 access evaluations endpoint `/access/v1/evaluations` asks about the client request and about
 every candidate. Couper grants the permissions the service allows.
@@ -330,8 +315,6 @@ definitions {
 
 Endpoints without a required permission — and requests whose method has no entry in a
 required-permission map — keep the configured candidates.
-
-`evaluate_permissions` and `permissions_property` are mutually exclusive.
 
 AuthZEN denies a request with a flat `"decision": false` and leaves the response `context`
 free-form. To keep an OAuth 2.0 protected resource workable, Couper reads one property of that
@@ -476,7 +459,7 @@ note above applies: keep the decision point close, behind a persistent HTTP/2 co
   },
   {
     "default": "[]",
-    "description": "Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. A `required_permission` of the protected endpoint or API replaces the candidates for that request. Mutually exclusive with `permissions_property`.",
+    "description": "Candidate permissions to resolve with one batch callout to the AuthZEN access evaluations endpoint. Couper asks the authorization service about the client request and about every listed permission, and grants those it allows. A `required_permission` of the protected endpoint or API replaces the candidates for that request.",
     "name": "evaluate_permissions",
     "type": "tuple (string)"
   },
@@ -485,12 +468,6 @@ note above applies: keep the decision point close, behind a persistent HTTP/2 co
     "description": "Include TLS connection information of the client request in the authorization request.",
     "name": "include_tls",
     "type": "bool"
-  },
-  {
-    "default": "",
-    "description": "Name of the property in the response `context` containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions.",
-    "name": "permissions_property",
-    "type": "string"
   },
   {
     "default": "",

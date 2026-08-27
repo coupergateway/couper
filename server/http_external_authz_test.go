@@ -291,7 +291,10 @@ func TestExternalAuthz_MTLSClientCertificate(t *testing.T) {
 	}
 }
 
-func TestExternalAuthz_PermissionsClaim(t *testing.T) {
+// TestExternalAuthz_RequiredPermissionEnforcement pins that a batch grant feeds the
+// endpoint's required_permission check: a denied candidate surfaces as a 403 of the
+// permissions control, not as a decision point rejection.
+func TestExternalAuthz_RequiredPermissionEnforcement(t *testing.T) {
 	client := newClient()
 	helper := test.New(t)
 
