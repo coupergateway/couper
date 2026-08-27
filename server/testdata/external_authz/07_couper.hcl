@@ -18,9 +18,11 @@ server "authz-service" {
   api {
     endpoint "/check" {
       response {
-        status = 401
-        headers = {
-          www-authenticate = "Bearer resource_metadata=\"http://protected.example/.well-known/oauth-protected-resource/protected\""
+        json_body = {
+          decision = false
+          context = {
+            www_authenticate = "Bearer resource_metadata=\"http://protected.example/.well-known/oauth-protected-resource/protected\""
+          }
         }
       }
     }

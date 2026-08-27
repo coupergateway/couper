@@ -25,7 +25,7 @@ type ExternalAuthZ struct {
 	BackendName         string   `hcl:"backend,optional" docs:"References a [backend](/configuration/block/backend) in [definitions](/configuration/block/definitions) for the authorization callout. Mutually exclusive with {backend} block."`
 	IncludeTLS          bool     `hcl:"include_tls,optional" docs:"Include TLS connection information of the client request in the authorization request." default:"false"`
 	Name                string   `hcl:"name,label"`
-	PermissionsProperty string   `hcl:"permissions_property,optional" docs:"Name of the response body property containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions."`
+	PermissionsProperty string   `hcl:"permissions_property,optional" docs:"Name of the property in the response {context} containing the granted permissions. The property value must either be a string containing a space-separated list of permissions or a list of string permissions."`
 	URL                 string   `hcl:"url,optional" docs:"URL of the authorization service. Relative URL references are resolved against the origin of a referenced or nested {backend} block."`
 	Remain              hcl.Body `hcl:",remain"`
 

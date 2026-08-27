@@ -22,8 +22,11 @@ server "authz-service" {
     endpoint "/check" {
       response {
         json_body = {
-          sub   = "clark.kent"
-          roles = ["reporter", "hero"]
+          decision = true
+          context = {
+            sub   = "clark.kent"
+            roles = ["reporter", "hero"]
+          }
         }
       }
     }

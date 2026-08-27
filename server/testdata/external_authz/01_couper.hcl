@@ -18,7 +18,11 @@ server "authz-service" {
   api {
     endpoint "/check" {
       response {
-        status = request.json_body.subject.id == "valid" ? 200 : (request.json_body.subject.type == "anonymous" ? 401 : 403)
+        json_body = request.json_body.subject.id == "valid" ? { decision = true } : (
+          request.json_body.subject.type == "anonymous"
+          ? { decision = false, context = { www_authenticate = "Bearer error=\"invalid_token\"" } }
+          : { decision = false }
+        )
       }
     }
   }
