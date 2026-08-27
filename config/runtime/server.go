@@ -110,6 +110,8 @@ func NewServerConfiguration(conf *config.Couper, log *logrus.Entry, memStore *ca
 		return nil, acErr
 	}
 
+	warnAnonymousAuthZenSubject(conf, log)
+
 	var (
 		serverConfiguration = make(ServerConfiguration)
 		defaultPort         = conf.Settings.DefaultPort
@@ -528,6 +530,100 @@ func configureOidcConfigs(conf *config.Couper, confCtx *hcl.EvalContext, log *lo
 	}
 
 	return oidcConfigs, nil
+}
+
+// warnAnonymousAuthZenSubject flags a beta_authzen without a subject attribute running behind
+// an access control that authenticates without a bearer token: the evaluation subject stays
+// "anonymous" although the chain resolved an identity into request.context.
+func warnAnonymousAuthZenSubject(conf *config.Couper, log *logrus.Entry) {
+	if conf.Definitions == nil {
+		return
+	}
+
+	authZenWithoutSubject := make(map[string]bool)
+	for _, a := range conf.Definitions.AuthZen {
+		if _, set := a.HCLBody().Attributes["subject"]; !set {
+			authZenWithoutSubject[a.Name] = true
+		}
+	}
+	if len(authZenWithoutSubject) == 0 {
+		return
+	}
+
+	// The subject accessor the preceding control resolves its identity into; beta_oauth2 has
+	// none, its token response is not required to carry an identity.
+	nonBearerAuthn := make(map[string]string)
+	for _, c := range conf.Definitions.BasicAuth {
+		nonBearerAuthn[c.Name] = fmt.Sprintf("basic_auth %q (request.context.%s.user)", c.Name, c.Name)
+	}
+	for _, c := range conf.Definitions.SAML {
+		nonBearerAuthn[c.Name] = fmt.Sprintf("saml %q (request.context.%s.sub)", c.Name, c.Name)
+	}
+	for _, c := range conf.Definitions.OIDC {
+		nonBearerAuthn[c.Name] = fmt.Sprintf("oidc %q (request.context.%s.id_token_claims.sub)", c.Name, c.Name)
+	}
+	for _, c := range conf.Definitions.OAuth2AC {
+		nonBearerAuthn[c.Name] = fmt.Sprintf("beta_oauth2 %q", c.Name)
+	}
+	if len(nonBearerAuthn) == 0 {
+		return
+	}
+
+	// A jwt reading from the Authorization Bearer header proves the token the default subject
+	// carries; one reading from a cookie, another header, an expression or a DPoP header does not.
+	bearerJWT := make(map[string]bool)
+	for _, c := range conf.Definitions.JWT {
+		if c.Cookie != "" || c.Dpop || (c.Header != "" && strings.ToLower(c.Header) != "authorization") {
+			continue
+		}
+		if tv, err := c.TokenValue.Value(nil); err != nil || !tv.IsNull() {
+			continue
+		}
+		bearerJWT[c.Name] = true
+	}
+
+	warned := make(map[string]bool)
+	warnChain := func(chain []string) {
+		var preceding string
+		for _, name := range chain {
+			if described, ok := nonBearerAuthn[name]; ok {
+				preceding = described
+				continue
+			}
+			if bearerJWT[name] {
+				preceding = ""
+				continue
+			}
+			if !authZenWithoutSubject[name] || preceding == "" {
+				continue
+			}
+			key := name + "|" + preceding
+			if warned[key] {
+				continue
+			}
+			warned[key] = true
+			log.Warnf("beta_authzen %q runs behind %s without a subject attribute: the evaluation subject stays anonymous", name, preceding)
+		}
+	}
+
+	for _, srvConf := range conf.Servers {
+		srvAC := config.NewAccessControl(srvConf.AccessControl, srvConf.DisableAccessControl)
+		for _, spaConf := range srvConf.SPAs {
+			warnChain(srvAC.Merge(config.NewAccessControl(spaConf.AccessControl, spaConf.DisableAccessControl)).List())
+		}
+		for _, filesConf := range srvConf.Files {
+			warnChain(srvAC.Merge(config.NewAccessControl(filesConf.AccessControl, filesConf.DisableAccessControl)).List())
+		}
+		for _, endpointConf := range srvConf.Endpoints {
+			warnChain(srvAC.Merge(config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl)).List())
+		}
+		for _, apiConf := range srvConf.APIs {
+			apiAC := srvAC.Merge(config.NewAccessControl(apiConf.AccessControl, apiConf.DisableAccessControl))
+			for _, endpointConf := range apiConf.Endpoints {
+				warnChain(apiAC.Merge(config.NewAccessControl(endpointConf.AccessControl, endpointConf.DisableAccessControl)).List())
+			}
+		}
+	}
 }
 
 func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log *logrus.Entry,

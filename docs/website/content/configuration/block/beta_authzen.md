@@ -451,6 +451,49 @@ guidance on when each fits:
 
 > Specification: [OpenFGA: Search With Permissions](https://openfga.dev/docs/interacting/search-with-permissions)
 
+## Naming the subject from a preceding access control
+
+Access controls run in the order of the `access_control` list. Couper evaluates the
+[`subject` attribute](#shaping-the-evaluation-request) after the preceding controls ran.
+The default subject reads only a bearer token. Every other authentication resolves its
+identity into `request.context.<label>` — name the subject from there:
+
+| Access control | Identity in |
+| :------------- | :---------- |
+| `jwt` | `request.context.<label>` holds the token claims. The default subject already carries the token when the control reads it from the `Authorization` header (the default). With `cookie`, `header` or `token_value` set, name the subject from a claim. |
+| `basic_auth` | `request.context.<label>.user` |
+| `saml` | `request.context.<label>.sub` |
+| `oidc` | `request.context.<label>.id_token_claims.sub` |
+| `beta_oauth2` | None. The token response does not have to carry an identity. |
+
+```hcl
+server {
+  api {
+    access_control = ["ba", "pdp"]
+    # ...
+  }
+}
+
+definitions {
+  basic_auth "ba" {
+    htpasswd_file = "htpasswd"
+  }
+
+  beta_authzen "pdp" {
+    url = "https://authorization-service.example.com"
+
+    subject = {
+      type = "identity"
+      id   = request.context.ba.user
+    }
+  }
+}
+```
+
+> Note: Without the `subject` attribute the evaluation asks about `"anonymous"`, although
+> the chain authenticated a caller. Couper logs a warning at startup for such a
+> configuration.
+
 {{< attributes >}}
 [
   {
