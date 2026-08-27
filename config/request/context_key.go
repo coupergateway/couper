@@ -32,6 +32,7 @@ const (
 	ResponseWriter
 	RoundTripName
 	RoundTripProxy
+	RoutePattern
 	ServerName
 	ServerTimings
 	StartTime

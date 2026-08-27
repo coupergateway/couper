@@ -26,8 +26,9 @@ type Mux struct {
 }
 
 const (
-	serverOptionsKey = "serverContextOptions"
-	wildcardSearch   = "/**"
+	serverOptionsKey  = "serverContextOptions"
+	wildcardRouteName = "**"
+	wildcardSearch    = "/**"
 )
 
 func isParamSegment(segment string) bool {
@@ -127,9 +128,9 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 			return tpl.WithError(errors.RouteNotFound.Label(api.BasePath)) // TODO: api label
 		}
 
-		fileHandler, exist := m.hasFileResponse(req)
+		fileHandler, fileMatch, exist := m.hasFileResponse(req)
 		if exist {
-			*req = *req.WithContext(ctx)
+			*req = *req.WithContext(withRoutePattern(ctx, fileMatch))
 			return fileHandler
 		}
 
@@ -137,6 +138,7 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 
 		if !matches {
 			if fileHandler != nil {
+				*req = *req.WithContext(withRoutePattern(ctx, fileMatch))
 				return fileHandler
 			}
 
@@ -160,14 +162,37 @@ func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	wc := strings.TrimPrefix(req.URL.Path, p)
 	wc = strings.TrimPrefix(wc, "/")
 
-	if routeMatch.Route.GetName() == "**" {
+	if routeMatch.Route.GetName() == wildcardRouteName {
 		ctx = context.WithValue(ctx, request.Wildcard, wc)
 	}
 
 	ctx = context.WithValue(ctx, request.PathParams, pathParams)
-	*req = *req.WithContext(ctx)
+	*req = *req.WithContext(withRoutePattern(ctx, routeMatch))
 
 	return routeMatch.Handler
+}
+
+// withRoutePattern adds the registered route pattern, base path included. Couper registers
+// a wildcard route without its "/**" suffix and adds a trailing slash variant of each path,
+// so this function restores the configured pattern. Policies apply to the pattern, not to
+// the request path.
+func withRoutePattern(ctx context.Context, routeMatch *gmux.RouteMatch) context.Context {
+	if routeMatch == nil || routeMatch.Route == nil {
+		return ctx
+	}
+
+	pattern, err := routeMatch.Route.GetPathTemplate()
+	if err != nil {
+		return ctx
+	}
+
+	if routeMatch.Route.GetName() == wildcardRouteName {
+		pattern = strings.TrimSuffix(pattern, "/") + wildcardSearch
+	} else if pattern != "/" {
+		pattern = strings.TrimSuffix(pattern, "/")
+	}
+
+	return context.WithValue(ctx, request.RoutePattern, pattern)
 }
 
 func (m *Mux) match(root *gmux.Router, req *http.Request) (*gmux.RouteMatch, bool) {
@@ -179,23 +204,23 @@ func (m *Mux) match(root *gmux.Router, req *http.Request) (*gmux.RouteMatch, boo
 	return nil, false
 }
 
-func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, bool) {
+func (m *Mux) hasFileResponse(req *http.Request) (http.Handler, *gmux.RouteMatch, bool) {
 	routeMatch, matches := m.match(m.fileRoot, req)
 	if !matches {
-		return nil, false
+		return nil, nil, false
 	}
 
 	fileHandler := routeMatch.Handler
 	unprotectedHandler := getChildHandler(fileHandler)
 	if fh, ok := unprotectedHandler.(*handler.File); ok {
-		return fileHandler, fh.HasResponse(req)
+		return fileHandler, routeMatch, fh.HasResponse(req)
 	}
 
 	if fh, ok := fileHandler.(*handler.File); ok {
-		return fileHandler, fh.HasResponse(req)
+		return fileHandler, routeMatch, fh.HasResponse(req)
 	}
 
-	return fileHandler, false
+	return fileHandler, routeMatch, false
 }
 
 func (m *Mux) getAPIErrorTemplate(reqPath string) (*errors.Template, *config.API) {
@@ -231,14 +256,14 @@ func mustAddRoute(root *gmux.Router, path string, handler http.Handler, trailing
 	if strings.HasSuffix(path, wildcardSearch) {
 		path = path[:len(path)-len(wildcardSearch)]
 		if len(path) == 0 {
-			root.PathPrefix("/").Name("**").Handler(handler)
+			root.PathPrefix("/").Name(wildcardRouteName).Handler(handler)
 			return
 		}
-		root.Path(path).Name("**").Handler(handler) // register /path ...
+		root.Path(path).Name(wildcardRouteName).Handler(handler) // register /path ...
 		if !strings.HasSuffix(path, "/") {
 			path = path + "/" // ... and /path/**
 		}
-		root.PathPrefix(path).Name("**").Handler(handler)
+		root.PathPrefix(path).Name(wildcardRouteName).Handler(handler)
 		return
 	}
 
