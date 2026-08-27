@@ -460,7 +460,7 @@ identity into `request.context.<label>` — name the subject from there:
 
 | Access control | Identity in |
 | :------------- | :---------- |
-| `jwt` | `request.context.<label>` holds the token claims. The default subject already carries the bearer token. |
+| `jwt` | `request.context.<label>` holds the token claims. The default subject already carries the token when the control reads it from the `Authorization` header (the default). With `cookie`, `header` or `token_value` set, name the subject from a claim. |
 | `basic_auth` | `request.context.<label>.user` |
 | `saml` | `request.context.<label>.sub` |
 | `oidc` | `request.context.<label>.id_token_claims.sub` |
