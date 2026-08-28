@@ -1,5 +1,10 @@
 name: Sync VS Code Schema
 
+# The extension needs more than the generated file: the hand-maintained
+# overlay has to follow a renamed block, and src/schema.js is built from
+# both. All of it lands in one commit, so couper-vscode never holds a
+# schema that is half applied.
+
 on:
   push:
     branches: [main]
@@ -35,27 +40,50 @@ jobs:
           ssh-key: ${{ secrets.VSCODE_DEPLOY_KEY }}
           path: couper-vscode
 
-      - name: Copy schema
-        run: cp vscode-schema.json couper-vscode/generated/schema.json
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: couper-vscode/package-lock.json
 
-      - name: Check for changes
-        id: check_changes
+      - name: Install couper-vscode dependencies
+        run: npm ci
+        working-directory: couper-vscode
+
+      # A rename the reconciler cannot resolve fails here, which leaves
+      # couper-vscode untouched and names the file to edit.
+      - name: Reconcile the overlay and rebuild the schema
+        id: apply
+        working-directory: couper-vscode
         run: |
-          cd couper-vscode
-          if git diff --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
+          previous="$RUNNER_TEMP/previous-schema.json"
+          cp generated/schema.json "$previous"
+          cp ../vscode-schema.json generated/schema.json
+
+          if git diff --quiet -- generated/schema.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+          node scripts/schema-drift.js --fix --baseline "$previous"
+          node scripts/merge-schema.js
+
+      - name: Test couper-vscode
+        if: steps.apply.outputs.changed == 'true'
+        run: npm run jest -- --color
+        working-directory: couper-vscode
 
       - name: Commit and push
-        if: steps.check_changes.outputs.changed == 'true'
+        if: steps.apply.outputs.changed == 'true'
+        working-directory: couper-vscode
         run: |
-          cd couper-vscode
           git config user.name "couper-svc"
           git config user.email "321729849+couper-svc@users.noreply.github.com"
-          git add generated/schema.json
+          git add generated/schema.json src/schema.js src/schema-overlay.json
           git commit -m "chore: sync schema from couper
 
-          Auto-generated from coupergateway/couper@${{ github.sha }}"
+          Generated from coupergateway/couper@${{ github.sha }} and
+          reconciled by scripts/schema-drift.js."
           git push
