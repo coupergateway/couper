@@ -1,10 +1,15 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.2...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.3...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
+
+## [1.14.3](https://github.com/coupergateway/couper/releases/tag/v1.14.3)
+
+* **Security**
+  * build with [go 1.26.8](https://go.dev/doc/devel/release#go1.26.8) — security fixes for `crypto/tls`, `crypto/x509`, `encoding/asn1`, `encoding/xml`, `html/template`, `mime`, `net`, `net/http`, `net/http/httputil`, `net/mail`, `net/textproto`, `net/url`, `os` and `syscall` ([#1007](https://github.com/coupergateway/couper/pull/1007))
 
 ## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)
 
