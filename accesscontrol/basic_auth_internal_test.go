@@ -2,6 +2,11 @@ package accesscontrol
 
 import (
 	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"golang.org/x/crypto/argon2"
@@ -36,7 +41,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeApr1,
 	}
 
-	if !validateAccessData("john", pass, data) {
+	if !validateAccessData("john", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -49,11 +54,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeBcrypt,
 	}
 
-	if !validateAccessData("jane", pass, data) {
+	if !validateAccessData("jane", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
-	if validateAccessData("foo", "bar", data) {
+	if validateAccessData("foo", "bar", data, nil) {
 		t.Error("Unexpected validation success")
 	}
 
@@ -66,7 +71,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeMD5,
 	}
 
-	if !validateAccessData("jock", pass, data) {
+	if !validateAccessData("jock", pass, data, nil) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -88,11 +93,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jack", pass, data) {
+	if !validateAccessData("jack", pass, data, nil) {
 		t.Error("Unexpected validation failure for argon2id")
 	}
 
-	if validateAccessData("jack", "wrong-pass", data) {
+	if validateAccessData("jack", "wrong-pass", data, nil) {
 		t.Error("Unexpected validation success for argon2id with wrong password")
 	}
 
@@ -110,11 +115,88 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jim", pass, data) {
+	if !validateAccessData("jim", pass, data, nil) {
 		t.Error("Unexpected validation failure for argon2i")
 	}
 
-	if validateAccessData("jim", "wrong-pass", data) {
+	if validateAccessData("jim", "wrong-pass", data, nil) {
 		t.Error("Unexpected validation success for argon2i with wrong password")
+	}
+}
+
+// Test_Argon2Verifier_CollapsesConcurrentAttempts drives the real Validate path:
+// a retry storm with one credential must cost fewer derivations than requests,
+// and every caller must still get the correct result.
+func Test_Argon2Verifier_CollapsesConcurrentAttempts(t *testing.T) {
+	const callers = 8
+
+	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var derivations, entered int64
+	release := make(chan struct{})
+
+	ba.verifier.derive = func(plainPass string, p pwd) bool {
+		atomic.AddInt64(&derivations, 1)
+		<-release // hold the flight open so the other callers join it
+
+		return runArgon2(plainPass, p)
+	}
+
+	results := make([]error, callers)
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			req := httptest.NewRequest(http.MethodGet, "http://couper.io/", nil)
+			req.SetBasicAuth("jack", "my-pass")
+
+			atomic.AddInt64(&entered, 1)
+			results[i] = ba.Validate(req)
+		}(i)
+	}
+
+	for atomic.LoadInt64(&entered) < callers {
+		runtime.Gosched()
+	}
+	close(release)
+	wg.Wait()
+
+	for i, rErr := range results {
+		if rErr != nil {
+			t.Errorf("caller %d: unexpected validation error: %v", i, rErr)
+		}
+	}
+
+	if got := atomic.LoadInt64(&derivations); got < 1 || got >= callers {
+		t.Errorf("derivations: want at least 1 and fewer than %d, got %d", callers, got)
+	}
+}
+
+// Test_Argon2Verifier_NilReceiver keeps the direct derivation path working for
+// the tests that build htData without a BasicAuth instance.
+func Test_Argon2Verifier_NilReceiver(t *testing.T) {
+	var verifier *argon2Verifier
+
+	salt := []byte("0123456789abcdef")
+	p := pwd{
+		pwdOrig:       argon2.IDKey([]byte("my-pass"), salt, 1, 8, 1, 32),
+		pwdType:       pwdTypeArgon2id,
+		argon2Time:    1,
+		argon2Memory:  8,
+		argon2Threads: 1,
+		argon2KeyLen:  32,
+		argon2Salt:    salt,
+	}
+
+	if !verifier.validateArgon2("my-pass", p) {
+		t.Error("Unexpected validation failure")
+	}
+	if verifier.validateArgon2("wrong-pass", p) {
+		t.Error("Unexpected validation success")
 	}
 }

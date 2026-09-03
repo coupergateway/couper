@@ -3,6 +3,7 @@ package accesscontrol
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
@@ -11,7 +12,35 @@ import (
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/sync/singleflight"
 )
+
+// argon2Verifier collapses concurrent identical argon2 evaluations, so a retry
+// storm with one credential costs one derivation instead of one per request. A
+// nil receiver derives directly, which keeps the tests that build htData by
+// hand simple.
+type argon2Verifier struct {
+	sf     *singleflight.Group
+	derive func(plainPass string, p pwd) bool // seam: tests count derivations
+}
+
+func newArgon2Verifier() *argon2Verifier {
+	return &argon2Verifier{
+		sf:     &singleflight.Group{},
+		derive: runArgon2,
+	}
+}
+
+// key identifies one derivation by the stored hash and the submitted password,
+// the two inputs that decide the result. It lives only while the flight runs.
+func (v *argon2Verifier) key(plainPass string, p pwd) string {
+	sum := sha256.New()
+	sum.Write(p.pwdOrig)
+	sum.Write([]byte{0})
+	sum.Write([]byte(plainPass))
+
+	return string(sum.Sum(nil))
+}
 
 const (
 	pwdPrefixApr1     = "$apr1$"
@@ -85,7 +114,7 @@ func getPwdType(pass string) int {
 	return pwdTypeUnknown
 }
 
-func validateAccessData(plainUser, plainPass string, data htData) bool {
+func validateAccessData(plainUser, plainPass string, data htData, verifier *argon2Verifier) bool {
 	for user, pass := range data {
 		if user == plainUser {
 			switch pass.pwdType {
@@ -100,7 +129,7 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 					return true
 				}
 			case pwdTypeArgon2id, pwdTypeArgon2i:
-				if validateArgon2(plainPass, pass) {
+				if verifier.validateArgon2(plainPass, pass) {
 					return true
 				}
 			}
@@ -110,7 +139,22 @@ func validateAccessData(plainUser, plainPass string, data htData) bool {
 	return false
 }
 
-func validateArgon2(plainPass string, p pwd) bool {
+// validateArgon2 derives the argon2 key for plainPass and compares it with the
+// stored hash. Concurrent identical attempts share one derivation.
+func (v *argon2Verifier) validateArgon2(plainPass string, p pwd) bool {
+	if v == nil {
+		return runArgon2(plainPass, p)
+	}
+
+	result, _, _ := v.sf.Do(v.key(plainPass, p), func() (any, error) {
+		return v.derive(plainPass, p), nil
+	})
+	ok, _ := result.(bool)
+
+	return ok
+}
+
+func runArgon2(plainPass string, p pwd) bool {
 	var key []byte
 	switch p.pwdType {
 	case pwdTypeArgon2id:
