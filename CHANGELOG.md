@@ -13,6 +13,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `github.com/getkin/kin-openapi` 0.144.0 — fix uncontrolled resource consumption when decoding `deepObject` query parameters ([GHSA-xhj3-7xw9-vr34](https://github.com/advisories/GHSA-xhj3-7xw9-vr34)) and a nil-pointer panic when validating a request against a `content` parameter without schema ([GHSA-jpcw-4wr7-c3vq](https://github.com/advisories/GHSA-jpcw-4wr7-c3vq)); both are reachable via the [`openapi`](https://docs.couper.io/configuration/block/openapi) block ([#1008](https://github.com/coupergateway/couper/pull/1008))
   * `google.golang.org/grpc` 1.83.1 — fix heap memory exhaustion via HTTP/2 DATA frame fragmentation ([GHSA-vp52-pcj8-j9qc](https://github.com/advisories/GHSA-vp52-pcj8-j9qc)) ([#1008](https://github.com/coupergateway/couper/pull/1008))
 
+* **Changed**
+  * [`openapi`](https://docs.couper.io/configuration/block/openapi) request validation accepts an empty query parameter value (`?b` or `?b=`) for a required parameter, because `kin-openapi` 0.144.0 decodes it as an empty string instead of a missing value. An absent parameter is still rejected. Add `minLength: 1` to the parameter schema to reject empty values again ([#1008](https://github.com/coupergateway/couper/pull/1008))
+
 * **Dependencies**
   * `github.com/getkin/kin-openapi` 0.133.0 → 0.144.0 ([#1008](https://github.com/coupergateway/couper/pull/1008))
   * `google.golang.org/grpc` 1.80.0 → 1.83.1, and `go.opentelemetry.io/otel`, `otel/metric`, `otel/sdk`, `otel/sdk/metric`, `otel/trace` 1.43.0 → 1.44.0 as its requirement ([#1008](https://github.com/coupergateway/couper/pull/1008))
