@@ -4,9 +4,6 @@
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
-* **Fixed**
-  * Forward HTTP/2 backend response trailers (e.g. gRPC `grpc-status`) to the client instead of dropping them ([#968](https://github.com/coupergateway/couper/issues/968))
-
 ---
 
 ## [1.14.3](https://github.com/coupergateway/couper/releases/tag/v1.14.3)
@@ -18,6 +15,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 
 * **Changed**
   * [`openapi`](https://docs.couper.io/configuration/block/openapi) request validation accepts an empty query parameter value (`?b` or `?b=`) for a required parameter, because `kin-openapi` 0.144.0 decodes it as an empty string instead of a missing value. An absent parameter is still rejected. Set [`minLength: 1`](https://docs.couper.io/configuration/block/openapi#empty-query-parameter-values) in the parameter schema to reject empty values again ([#1008](https://github.com/coupergateway/couper/pull/1008))
+
+* **Fixed**
+  * Forward HTTP/2 backend response trailers (e.g. gRPC `grpc-status`) to the client instead of dropping them ([#968](https://github.com/coupergateway/couper/issues/968))
 
 * **Dependencies**
   * `github.com/getkin/kin-openapi` 0.133.0 → 0.144.0 ([#1008](https://github.com/coupergateway/couper/pull/1008))
