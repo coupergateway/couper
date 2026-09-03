@@ -79,7 +79,7 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
   },
   {
     "default": "false",
-    "description": "Enables the HTTP2 support. Must not be used in backend refinement.",
+    "description": "Enables HTTP/2 support for the connection to the origin. Must not be used in backend refinement.",
     "name": "http2",
     "type": "bool"
   },
@@ -218,6 +218,10 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
   }
 ]
 {{< /blocks >}}
+
+## Response trailers
+
+Couper forwards response trailers from the origin to the client, as a standard reverse proxy does. gRPC services, for example, send the call result in the `grpc-status` trailer. To let the trailers follow the body, Couper removes a fixed `Content-Length` from HTTP/2 origin responses; a large body then reaches an HTTP/1.1 client with chunked transfer-encoding.
 
 ## Refining a referenced backend
 
