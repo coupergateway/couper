@@ -14,7 +14,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `google.golang.org/grpc` 1.83.1 — fix heap memory exhaustion via HTTP/2 DATA frame fragmentation ([GHSA-vp52-pcj8-j9qc](https://github.com/advisories/GHSA-vp52-pcj8-j9qc)) ([#1008](https://github.com/coupergateway/couper/pull/1008))
 
 * **Changed**
-  * [`openapi`](https://docs.couper.io/configuration/block/openapi) request validation accepts an empty query parameter value (`?b` or `?b=`) for a required parameter, because `kin-openapi` 0.144.0 decodes it as an empty string instead of a missing value. An absent parameter is still rejected. Add `minLength: 1` to the parameter schema to reject empty values again ([#1008](https://github.com/coupergateway/couper/pull/1008))
+  * [`openapi`](https://docs.couper.io/configuration/block/openapi) request validation accepts an empty query parameter value (`?b` or `?b=`) for a required parameter, because `kin-openapi` 0.144.0 decodes it as an empty string instead of a missing value. An absent parameter is still rejected. Set [`minLength: 1`](https://docs.couper.io/configuration/block/openapi#empty-query-parameter-values) in the parameter schema to reject empty values again ([#1008](https://github.com/coupergateway/couper/pull/1008))
 
 * **Dependencies**
   * `github.com/getkin/kin-openapi` 0.133.0 → 0.144.0 ([#1008](https://github.com/coupergateway/couper/pull/1008))
