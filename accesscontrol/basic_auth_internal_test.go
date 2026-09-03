@@ -1,15 +1,22 @@
 package accesscontrol
 
 import (
+	"context"
 	"encoding/base64"
+	goerrors "errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/argon2"
+
+	"github.com/coupergateway/couper/errors"
 )
 
 func Test_Apr1MD5(t *testing.T) {
@@ -41,7 +48,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeApr1,
 	}
 
-	if !validateAccessData("john", pass, data, nil) {
+	if !mustValidate(t, "john", pass, data) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -54,11 +61,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeBcrypt,
 	}
 
-	if !validateAccessData("jane", pass, data, nil) {
+	if !mustValidate(t, "jane", pass, data) {
 		t.Error("Unexpected validation failure")
 	}
 
-	if validateAccessData("foo", "bar", data, nil) {
+	if mustValidate(t, "foo", "bar", data) {
 		t.Error("Unexpected validation success")
 	}
 
@@ -71,7 +78,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeMD5,
 	}
 
-	if !validateAccessData("jock", pass, data, nil) {
+	if !mustValidate(t, "jock", pass, data) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -93,11 +100,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jack", pass, data, nil) {
+	if !mustValidate(t, "jack", pass, data) {
 		t.Error("Unexpected validation failure for argon2id")
 	}
 
-	if validateAccessData("jack", "wrong-pass", data, nil) {
+	if mustValidate(t, "jack", "wrong-pass", data) {
 		t.Error("Unexpected validation success for argon2id with wrong password")
 	}
 
@@ -115,11 +122,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jim", pass, data, nil) {
+	if !mustValidate(t, "jim", pass, data) {
 		t.Error("Unexpected validation failure for argon2i")
 	}
 
-	if validateAccessData("jim", "wrong-pass", data, nil) {
+	if mustValidate(t, "jim", "wrong-pass", data) {
 		t.Error("Unexpected validation success for argon2i with wrong password")
 	}
 }
@@ -193,10 +200,115 @@ func Test_Argon2Verifier_NilReceiver(t *testing.T) {
 		argon2Salt:    salt,
 	}
 
-	if !verifier.validateArgon2("my-pass", p) {
-		t.Error("Unexpected validation failure")
+	valid, err := verifier.validateArgon2(context.Background(), "my-pass", p)
+	if err != nil || !valid {
+		t.Errorf("Unexpected validation failure: valid=%v, err=%v", valid, err)
 	}
-	if verifier.validateArgon2("wrong-pass", p) {
-		t.Error("Unexpected validation success")
+
+	valid, err = verifier.validateArgon2(context.Background(), "wrong-pass", p)
+	if err != nil || valid {
+		t.Errorf("Unexpected validation success: valid=%v, err=%v", valid, err)
+	}
+}
+
+// mustValidate keeps the table style of the validation tests: an error means the
+// derivation was abandoned, which none of them provokes.
+func mustValidate(t *testing.T, user, pass string, data htData) bool {
+	t.Helper()
+
+	valid, err := validateAccessData(context.Background(), user, pass, data, nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	return valid
+}
+
+// Test_Argon2Verifier_BoundsConcurrentDerivations covers the limit that closes
+// the amplification: unique passwords defeat the flight collapsing, so without
+// the semaphore the peak memory would follow the number of requests in flight.
+func Test_Argon2Verifier_BoundsConcurrentDerivations(t *testing.T) {
+	const (
+		bound   = 2
+		callers = 8
+	)
+
+	original := argon2Sem
+	argon2Sem = make(chan struct{}, bound)
+	defer func() { argon2Sem = original }()
+
+	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var inFlight, peak int64
+	ba.verifier.derive = func(plainPass string, p pwd) bool {
+		current := atomic.AddInt64(&inFlight, 1)
+		for {
+			seen := atomic.LoadInt64(&peak)
+			if current <= seen || atomic.CompareAndSwapInt64(&peak, seen, current) {
+				break
+			}
+		}
+
+		time.Sleep(20 * time.Millisecond) // hold the slot so an overlap becomes visible
+		atomic.AddInt64(&inFlight, -1)
+
+		return runArgon2(plainPass, p)
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			req := httptest.NewRequest(http.MethodGet, "http://couper.io/", nil)
+			req.SetBasicAuth("jack", fmt.Sprintf("wrong-pass-%d", i)) // unique, so each attempt derives
+
+			_ = ba.Validate(req)
+		}(i)
+	}
+	wg.Wait()
+
+	got := atomic.LoadInt64(&peak)
+	if got > bound {
+		t.Errorf("concurrent derivations: want at most %d, got %d", bound, got)
+	}
+	if got < 2 {
+		t.Errorf("concurrent derivations: want an overlap to prove the limit applies, got %d", got)
+	}
+}
+
+// Test_Argon2Verifier_AbandonsOnCanceledContext ensures a request that already
+// ended stops waiting, and that its log does not claim a credential mismatch.
+func Test_Argon2Verifier_AbandonsOnCanceledContext(t *testing.T) {
+	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blocked := make(chan struct{})
+	defer close(blocked)
+
+	ba.verifier.derive = func(_ string, _ pwd) bool {
+		<-blocked
+
+		return false
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	req := httptest.NewRequest(http.MethodGet, "http://couper.io/", nil).WithContext(ctx)
+	req.SetBasicAuth("jack", "my-pass")
+
+	vErr := ba.Validate(req)
+	if !goerrors.Is(vErr, context.Canceled) {
+		t.Errorf("Expected the context error, got: %v", vErr)
+	}
+	if !strings.Contains(vErr.(*errors.Error).LogError(), "argon2 verification abandoned") {
+		t.Errorf("Expected the log to name the abandoned derivation, got: %q", vErr.(*errors.Error).LogError())
 	}
 }

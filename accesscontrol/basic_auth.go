@@ -150,7 +150,11 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	}
 
 	if len(ba.htFile) > 0 {
-		if validateAccessData(user, pass, ba.htFile, ba.verifier) {
+		valid, vErr := validateAccessData(req.Context(), user, pass, ba.htFile, ba.verifier)
+		if vErr != nil {
+			return errors.BasicAuth.With(vErr).Message("file: argon2 verification abandoned")
+		}
+		if valid {
 			return ba.withUsername(req, user)
 		}
 		return errors.BasicAuth.Message("file: credential mismatch")

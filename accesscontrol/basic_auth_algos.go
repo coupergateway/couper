@@ -2,11 +2,13 @@ package accesscontrol
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -14,6 +16,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/sync/singleflight"
 )
+
+// argon2Sem bounds the argon2 derivations that run at the same time, process
+// wide, so the peak memory follows the semaphore size instead of the number of
+// requests in flight. Unique passwords defeat the flight collapsing below, so
+// this is what keeps a credential flood from exhausting the memory of the
+// gateway. More derivations than cores raise the memory use without raising the
+// throughput, because a derivation saturates a core.
+var argon2Sem = make(chan struct{}, max(1, runtime.GOMAXPROCS(0)))
 
 // argon2Verifier collapses concurrent identical argon2 evaluations, so a retry
 // storm with one credential costs one derivation instead of one per request. A
@@ -114,7 +124,10 @@ func getPwdType(pass string) int {
 	return pwdTypeUnknown
 }
 
-func validateAccessData(plainUser, plainPass string, data htData, verifier *argon2Verifier) bool {
+// validateAccessData reports whether the credentials match an htpasswd entry.
+// The error is not a mismatch: it says the argon2 derivation was abandoned
+// because the request context ended while it waited for a derivation slot.
+func validateAccessData(ctx context.Context, plainUser, plainPass string, data htData, verifier *argon2Verifier) (bool, error) {
 	for user, pass := range data {
 		if user == plainUser {
 			switch pass.pwdType {
@@ -122,36 +135,57 @@ func validateAccessData(plainUser, plainPass string, data htData, verifier *argo
 				fallthrough
 			case pwdTypeMD5:
 				if subtle.ConstantTimeCompare(apr1MD5(plainPass, pass.pwdSalt, pass.pwdPrefix), pass.pwdOrig) == 1 {
-					return true
+					return true, nil
 				}
 			case pwdTypeBcrypt:
 				if err := bcrypt.CompareHashAndPassword(pass.pwdOrig, []byte(plainPass)); err == nil {
-					return true
+					return true, nil
 				}
 			case pwdTypeArgon2id, pwdTypeArgon2i:
-				if verifier.validateArgon2(plainPass, pass) {
-					return true
+				valid, err := verifier.validateArgon2(ctx, plainPass, pass)
+				if err != nil {
+					return false, err
+				}
+				if valid {
+					return true, nil
 				}
 			}
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 // validateArgon2 derives the argon2 key for plainPass and compares it with the
-// stored hash. Concurrent identical attempts share one derivation.
-func (v *argon2Verifier) validateArgon2(plainPass string, p pwd) bool {
+// stored hash. Concurrent identical attempts share one derivation, and the
+// derivations that run are limited by argon2Sem. Each caller waits on its own
+// context, so a request that ends does not hold the others back and does not
+// make them fail.
+func (v *argon2Verifier) validateArgon2(ctx context.Context, plainPass string, p pwd) (bool, error) {
 	if v == nil {
-		return runArgon2(plainPass, p)
+		return runArgon2(plainPass, p), nil
 	}
 
-	result, _, _ := v.sf.Do(v.key(plainPass, p), func() (any, error) {
+	flight := v.sf.DoChan(v.key(plainPass, p), func() (any, error) {
+		// The flight serves every caller, so it must not follow the context of
+		// one of them. It waits for a slot instead, which the semaphore bounds.
+		argon2Sem <- struct{}{}
+		defer func() { <-argon2Sem }()
+
 		return v.derive(plainPass, p), nil
 	})
-	ok, _ := result.(bool)
 
-	return ok
+	select {
+	case result := <-flight:
+		if result.Err != nil {
+			return false, result.Err
+		}
+		ok, _ := result.Val.(bool)
+
+		return ok, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
 }
 
 func runArgon2(plainPass string, p pwd) bool {
