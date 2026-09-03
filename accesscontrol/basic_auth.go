@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 )
@@ -23,8 +25,10 @@ type BasicAuth struct {
 	pass   string
 }
 
-// NewBasicAuth creates a new AC-BasicAuth object
-func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
+// NewBasicAuth creates a new AC-BasicAuth object. logger (may be nil) receives
+// startup warnings about htpasswd entries that load but carry argon2 parameters
+// above the recommended maxima.
+func NewBasicAuth(name, user, pass, file string, logger *logrus.Entry) (*BasicAuth, error) {
 	ba := &BasicAuth{
 		htFile: make(htData),
 		name:   name,
@@ -96,9 +100,14 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 			if pwdType == pwdTypeArgon2i {
 				prefix = pwdPrefixArgon2i
 			}
-			p, pErr := parseArgon2(password, prefix)
+			p, warnings, pErr := parseArgon2(password, prefix)
 			if pErr != nil {
 				return nil, fmt.Errorf("parse error: malformed password for user: %s: %w", username, pErr)
+			}
+			if logger != nil {
+				for _, w := range warnings {
+					logger.Warnf("basic_auth %q: user %q (line %d): %s; lower the parameter or chain a beta_rate_limiter before this access control to bound argon2 resource use", name, username, lineNr, w)
+				}
 			}
 			ba.htFile[username] = p
 		default:

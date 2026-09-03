@@ -4,7 +4,11 @@ import (
 	b64 "encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
 	couperErr "github.com/coupergateway/couper/errors"
@@ -39,8 +43,9 @@ func Test_NewBasicAuth(t *testing.T) {
 		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `parse error: malformed password for user: foo`, true},
 		{"name", "user", "pass", "testdata/htpasswd_err_multi", `multiple user: foo`, true},
 		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "parse error: algorithm not supported", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_argon2_time_zero", "parse error: malformed password for user: jack: invalid argon2 parameter t: must be >= 1", true},
 	} {
-		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file)
+		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file, nil)
 		if tc.shouldFail && ba != nil {
 			t.Error("Expected no successful basic auth creation")
 		}
@@ -56,7 +61,7 @@ func Test_NewBasicAuth(t *testing.T) {
 }
 
 func Test_BasicAuth_Validate(t *testing.T) {
-	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd")
+	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", nil)
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -96,19 +101,19 @@ func Test_BasicAuth_Validate(t *testing.T) {
 func Test_BasicAuth_ValidateCases(t *testing.T) {
 	req := &http.Request{Header: make(http.Header)}
 
-	ba1, err := ac.NewBasicAuth("name", "", "pass", "")
+	ba1, err := ac.NewBasicAuth("name", "", "pass", "", nil)
 	if err != nil || ba1 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba2, err := ac.NewBasicAuth("name", "user", "", "")
+	ba2, err := ac.NewBasicAuth("name", "user", "", "", nil)
 	if err != nil || ba2 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba3, err := ac.NewBasicAuth("name", "", "", "")
+	ba3, err := ac.NewBasicAuth("name", "", "", "", nil)
 	if err != nil || ba3 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd")
+	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd", nil)
 	if err != nil || ba4 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -148,5 +153,50 @@ func Test_BasicAuth_ValidateCases(t *testing.T) {
 				subT.Errorf("Expected Unauthorized error, got: %v", err)
 			}
 		})
+	}
+}
+
+// Test_NewBasicAuth_Argon2OverRecommendedMaximum ensures an htpasswd entry with
+// argon2 parameters above the recommended maxima still loads — an upgrade must
+// not stop a running deployment — and that the operator learns which entry
+// makes each request expensive.
+func Test_NewBasicAuth_Argon2OverRecommendedMaximum(t *testing.T) {
+	logger, hook := logrustest.NewNullLogger()
+	logger.SetLevel(logrus.WarnLevel)
+
+	ba, err := ac.NewBasicAuth("ba", "", "", "testdata/htpasswd_argon2_over_cap", logrus.NewEntry(logger))
+	if err != nil {
+		t.Fatalf("Expected the entries to load, got: %v", err)
+	}
+	if ba == nil {
+		t.Fatal("Expected a basic auth instance")
+	}
+
+	var warnings []string
+	for _, entry := range hook.AllEntries() {
+		if entry.Level == logrus.WarnLevel {
+			warnings = append(warnings, entry.Message)
+		}
+	}
+
+	if len(warnings) != 3 {
+		t.Fatalf("Expected one warning per entry, got %d: %v", len(warnings), warnings)
+	}
+
+	for _, want := range []string{
+		`basic_auth "ba": user "overm" (line 1): argon2 parameter m=94209 KiB exceeds the recommended maximum of 94208 KiB`,
+		`basic_auth "ba": user "overt" (line 2): argon2 parameter t=11 exceeds the recommended maximum of 10`,
+		`basic_auth "ba": user "overp" (line 3): argon2 parameter p=3 exceeds the recommended maximum of 2`,
+	} {
+		var found bool
+		for _, w := range warnings {
+			if strings.HasPrefix(w, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected a warning starting with %q, got: %v", want, warnings)
+		}
 	}
 }
