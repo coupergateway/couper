@@ -37,14 +37,16 @@ func TestHTTPServer_BackendResponseTrailers(t *testing.T) {
 			expect: map[string]string{"Grpc-Status": "0", "X-Announced": "after-body"},
 		},
 		{
-			// Real gRPC: the grpc-status trailer is unannounced and only
-			// appears after a (here large, streamed) body, so the response
-			// header has already been flushed before it is known.
-			name: "unannounced only with large body",
+			// Real gRPC: grpc-status is unannounced and follows the body. The
+			// origin also states a Content-Length. Couper must drop it, because
+			// with a fixed length the HTTP/1.1 client never reads the trailer.
+			name: "unannounced only with content-length",
 			handler: func(rw http.ResponseWriter, _ *http.Request) {
+				body := []byte("body\n")
 				rw.Header().Set("Content-Type", "application/grpc")
+				rw.Header().Set("Content-Length", strconv.Itoa(len(body)))
 				rw.WriteHeader(http.StatusOK)
-				_, _ = rw.Write(bytes.Repeat([]byte("x"), 4096))
+				_, _ = rw.Write(body)
 				rw.Header().Set(http.TrailerPrefix+"Grpc-Status", "0")
 			},
 			expect: map[string]string{"Grpc-Status": "0"},
