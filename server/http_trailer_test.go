@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -229,4 +230,56 @@ func TestHTTPServer_HTTP2BackendWithoutTrailers(t *testing.T) {
 			subT.Errorf("transfer-encoding: want none, got %v", res.TransferEncoding)
 		}
 	})
+}
+
+// TestHTTPServer_ForwardsTETrailers checks that a client which advertises
+// trailer support reaches the backend with "Te: trailers". RFC 9110 tells the
+// client to list TE in Connection, so the Connection strip runs before the
+// hop-by-hop strip and must not lose the token.
+func TestHTTPServer_ForwardsTETrailers(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header()["X-Backend-Te"] = req.Header.Values("Te")
+		rw.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+
+	shutdown, _, err := newCouperWithTemplate(
+		"testdata/integration/trailers/02_couper.hcl",
+		helper,
+		map[string]interface{}{"origin": origin.URL},
+	)
+	helper.Must(err)
+	defer shutdown()
+
+	for _, tc := range []struct {
+		name    string
+		headers map[string]string
+		want    []string
+	}{
+		{"te listed in connection", map[string]string{"TE": "trailers", "Connection": "TE"}, []string{"trailers"}},
+		{"te alone", map[string]string{"TE": "trailers"}, []string{"trailers"}},
+		{"te with other codings", map[string]string{"TE": "gzip, trailers"}, []string{"trailers"}},
+		{"te without trailers", map[string]string{"TE": "gzip"}, nil},
+		{"no te", nil, nil},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			h := test.New(subT)
+
+			req, rErr := http.NewRequest(http.MethodGet, "http://example.com:8080/h1/te", nil)
+			h.Must(rErr)
+			for k, v := range tc.headers {
+				req.Header.Set(k, v)
+			}
+			res, rErr := client.Do(req)
+			h.Must(rErr)
+			h.Must(res.Body.Close())
+
+			if got := res.Header.Values("X-Backend-Te"); !slices.Equal(got, tc.want) {
+				subT.Errorf("backend Te: want %v, got %v", tc.want, got)
+			}
+		})
+	}
 }
