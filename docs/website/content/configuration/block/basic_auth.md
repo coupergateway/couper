@@ -98,11 +98,11 @@ _Memory cost is per request_. Couper allocates `m` KiB on every basic auth verif
 
 Entries above these still load — so upgrading Couper cannot break a deployment whose htpasswd file predates this guidance — but Couper logs a startup warning naming the offending line. Lower the parameter to bound per-request cost, or pair the access control with a rate limiter (see below). Entries that could never authenticate (`t` or `p` below `1`, or a malformed hash) are still rejected at startup.
 
-Couper bounds the argon2 work in two ways. Concurrent verifications of the same credential collapse into a single derivation, so a client that retries one password pays once. And the derivations that run at the same time are limited process wide to the number of available cores, because a derivation saturates a core: the peak memory therefore follows that limit rather than the number of requests in flight. A caller whose request ends while it waits for a slot stops waiting. Per-attempt cost still follows the parameters in the hash, so a caller that cycles through unique passwords pays a full derivation each time — see "Pair with a rate limiter" below.
+Couper limits the derivations that run at the same time. The limit applies to the process, and thus to all `basic_auth` blocks together. It is the number of available cores, because one derivation keeps one core busy. The peak memory then follows this limit, and not the number of requests. A request that ends while it waits for a slot leaves the queue, and Couper runs no derivation for it. Each attempt still costs what the parameters in the hash specify. A caller that sends many different passwords therefore pays a full derivation each time — see "Pair with a rate limiter" below.
 
 ### Pair with a rate limiter
 
-Argon2 is intentionally expensive. The concurrency limit bounds the peak memory, but an attacker who cycles through unique wrong passwords still forces one full derivation per attempt and fills the queue ahead of legitimate callers. Place a [`beta_rate_limiter`](/configuration/block/rate_limiter) access control _before_ the basic auth in the endpoint's `access_control` list so abusive callers are rejected before any argon2 work runs:
+Argon2 is expensive by design. The limit above bounds the peak memory, but an attacker who sends many different passwords still causes one full derivation per attempt. These derivations also fill the queue before the requests of legitimate callers. Put a [`beta_rate_limiter`](/configuration/block/rate_limiter) access control _before_ the basic auth in the `access_control` list of the endpoint. Couper then rejects an abusive caller before it starts argon2 work:
 
 ```hcl
 server {

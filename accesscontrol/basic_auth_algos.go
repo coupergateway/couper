@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
@@ -14,43 +13,16 @@ import (
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/sync/singleflight"
 )
 
-// argon2Sem bounds the argon2 derivations that run at the same time, process
-// wide, so the peak memory follows the semaphore size instead of the number of
-// requests in flight. Unique passwords defeat the flight collapsing below, so
-// this is what keeps a credential flood from exhausting the memory of the
-// gateway. More derivations than cores raise the memory use without raising the
-// throughput, because a derivation saturates a core.
+// argon2Sem limits the argon2 derivations that run at the same time. The limit
+// applies to the process, and thus to all basic_auth blocks together. The peak
+// memory then follows this limit, and not the number of requests. The limit is
+// the number of cores, because one derivation keeps one core busy.
 var argon2Sem = make(chan struct{}, max(1, runtime.GOMAXPROCS(0)))
 
-// argon2Verifier collapses concurrent identical argon2 evaluations, so a retry
-// storm with one credential costs one derivation instead of one per request. A
-// nil receiver derives directly, which keeps the tests that build htData by
-// hand simple.
-type argon2Verifier struct {
-	sf     *singleflight.Group
-	derive func(plainPass string, p pwd) bool // seam: tests count derivations
-}
-
-func newArgon2Verifier() *argon2Verifier {
-	return &argon2Verifier{
-		sf:     &singleflight.Group{},
-		derive: runArgon2,
-	}
-}
-
-// key identifies one derivation by the stored hash and the submitted password,
-// the two inputs that decide the result. It lives only while the flight runs.
-func (v *argon2Verifier) key(plainPass string, p pwd) string {
-	sum := sha256.New()
-	sum.Write(p.pwdOrig)
-	sum.Write([]byte{0})
-	sum.Write([]byte(plainPass))
-
-	return string(sum.Sum(nil))
-}
+// argon2Derive lets the test count the derivations that run at the same time.
+var argon2Derive = runArgon2
 
 const (
 	pwdPrefixApr1     = "$apr1$"
@@ -78,11 +50,11 @@ const (
 	aprMuddleRounds  = 1000
 )
 
-// Recommended maxima for the argon2 parameters in an htpasswd entry, set at
-// 2x the highest values of the OWASP Password Storage Cheat Sheet trade-off
-// table (m=46 MiB, t=5, p=1). An entry above these still loads, but Couper
-// warns at startup: the derivation cost applies per request, so a generous
-// entry lets a caller turn the access control into a memory-exhaustion vector.
+// These are the recommended maxima for the argon2 parameters in an htpasswd
+// entry. They are 2x the highest values of the OWASP Password Storage Cheat
+// Sheet (m=46 MiB, t=5, p=1). An entry above them still loads, but Couper warns
+// at startup. Each request pays the cost of these parameters. A large value
+// therefore lets a caller use much memory of the gateway.
 const (
 	argon2MaxMemory  uint32 = 94208 // KiB, 2x OWASP 46 MiB
 	argon2MaxTime    uint32 = 10    // 2x OWASP 5
@@ -125,9 +97,9 @@ func getPwdType(pass string) int {
 }
 
 // validateAccessData reports whether the credentials match an htpasswd entry.
-// The error is not a mismatch: it says the argon2 derivation was abandoned
-// because the request context ended while it waited for a derivation slot.
-func validateAccessData(ctx context.Context, plainUser, plainPass string, data htData, verifier *argon2Verifier) (bool, error) {
+// An error is not a mismatch. It shows that Couper did not run the argon2
+// derivation, because the request ended before a slot became free.
+func validateAccessData(ctx context.Context, plainUser, plainPass string, data htData) (bool, error) {
 	for user, pass := range data {
 		if user == plainUser {
 			switch pass.pwdType {
@@ -142,7 +114,7 @@ func validateAccessData(ctx context.Context, plainUser, plainPass string, data h
 					return true, nil
 				}
 			case pwdTypeArgon2id, pwdTypeArgon2i:
-				valid, err := verifier.validateArgon2(ctx, plainPass, pass)
+				valid, err := validateArgon2(ctx, plainPass, pass)
 				if err != nil {
 					return false, err
 				}
@@ -156,36 +128,24 @@ func validateAccessData(ctx context.Context, plainUser, plainPass string, data h
 	return false, nil
 }
 
-// validateArgon2 derives the argon2 key for plainPass and compares it with the
-// stored hash. Concurrent identical attempts share one derivation, and the
-// derivations that run are limited by argon2Sem. Each caller waits on its own
-// context, so a request that ends does not hold the others back and does not
-// make them fail.
-func (v *argon2Verifier) validateArgon2(ctx context.Context, plainPass string, p pwd) (bool, error) {
-	if v == nil {
-		return runArgon2(plainPass, p), nil
+// validateArgon2 derives the argon2 key for plainPass. Then it compares the key
+// with the stored hash. The derivation starts only after argon2Sem gives a slot.
+// If the request ends first, the caller leaves the queue and no derivation runs.
+func validateArgon2(ctx context.Context, plainPass string, p pwd) (bool, error) {
+	// A request that already ended must not start a derivation. Without this
+	// test the select below can take either case, because both are ready.
+	if err := ctx.Err(); err != nil {
+		return false, err
 	}
 
-	flight := v.sf.DoChan(v.key(plainPass, p), func() (any, error) {
-		// The flight serves every caller, so it must not follow the context of
-		// one of them. It waits for a slot instead, which the semaphore bounds.
-		argon2Sem <- struct{}{}
-		defer func() { <-argon2Sem }()
-
-		return v.derive(plainPass, p), nil
-	})
-
 	select {
-	case result := <-flight:
-		if result.Err != nil {
-			return false, result.Err
-		}
-		ok, _ := result.Val.(bool)
-
-		return ok, nil
+	case argon2Sem <- struct{}{}:
+		defer func() { <-argon2Sem }()
 	case <-ctx.Done():
 		return false, ctx.Err()
 	}
+
+	return argon2Derive(plainPass, p), nil
 }
 
 func runArgon2(plainPass string, p pwd) bool {
@@ -202,11 +162,12 @@ func runArgon2(plainPass string, p pwd) bool {
 	return subtle.ConstantTimeCompare(key, p.pwdOrig) == 1
 }
 
-// parseArgon2 decodes a PHC format argon2 htpasswd entry. The warnings name
-// parameters above the recommended maxima: the entry still loads, so an upgrade
-// cannot break a running deployment, but the caller can tell the operator to
-// lower the cost. Parameters that make the entry unusable — missing, not
-// numeric, or t and p below 1, which argon2 panics on — are errors.
+// parseArgon2 decodes an argon2 htpasswd entry in PHC format. The warnings name
+// the parameters above the recommended maxima. Such an entry still loads, thus
+// an upgrade cannot stop a deployment that runs. The caller shows the warnings
+// to the operator, who can then lower the cost. A parameter that makes the entry
+// unusable gives an error. This applies if it is absent, if it is not a number,
+// or if t or p is below 1. argon2 panics on the last condition.
 func parseArgon2(password, prefix string) (pwd, []string, error) {
 	// PHC format: $argon2id$v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
 	// After stripping the prefix ($argon2id$ or $argon2i$), we have:

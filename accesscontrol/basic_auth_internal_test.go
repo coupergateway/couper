@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -131,92 +130,12 @@ func Test_ValidateAccessData(t *testing.T) {
 	}
 }
 
-// Test_Argon2Verifier_CollapsesConcurrentAttempts drives the real Validate path:
-// a retry storm with one credential must cost fewer derivations than requests,
-// and every caller must still get the correct result.
-func Test_Argon2Verifier_CollapsesConcurrentAttempts(t *testing.T) {
-	const callers = 8
-
-	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var derivations, entered int64
-	release := make(chan struct{})
-
-	ba.verifier.derive = func(plainPass string, p pwd) bool {
-		atomic.AddInt64(&derivations, 1)
-		<-release // hold the flight open so the other callers join it
-
-		return runArgon2(plainPass, p)
-	}
-
-	results := make([]error, callers)
-	var wg sync.WaitGroup
-	for i := 0; i < callers; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-
-			req := httptest.NewRequest(http.MethodGet, "http://couper.io/", nil)
-			req.SetBasicAuth("jack", "my-pass")
-
-			atomic.AddInt64(&entered, 1)
-			results[i] = ba.Validate(req)
-		}(i)
-	}
-
-	for atomic.LoadInt64(&entered) < callers {
-		runtime.Gosched()
-	}
-	close(release)
-	wg.Wait()
-
-	for i, rErr := range results {
-		if rErr != nil {
-			t.Errorf("caller %d: unexpected validation error: %v", i, rErr)
-		}
-	}
-
-	if got := atomic.LoadInt64(&derivations); got < 1 || got >= callers {
-		t.Errorf("derivations: want at least 1 and fewer than %d, got %d", callers, got)
-	}
-}
-
-// Test_Argon2Verifier_NilReceiver keeps the direct derivation path working for
-// the tests that build htData without a BasicAuth instance.
-func Test_Argon2Verifier_NilReceiver(t *testing.T) {
-	var verifier *argon2Verifier
-
-	salt := []byte("0123456789abcdef")
-	p := pwd{
-		pwdOrig:       argon2.IDKey([]byte("my-pass"), salt, 1, 8, 1, 32),
-		pwdType:       pwdTypeArgon2id,
-		argon2Time:    1,
-		argon2Memory:  8,
-		argon2Threads: 1,
-		argon2KeyLen:  32,
-		argon2Salt:    salt,
-	}
-
-	valid, err := verifier.validateArgon2(context.Background(), "my-pass", p)
-	if err != nil || !valid {
-		t.Errorf("Unexpected validation failure: valid=%v, err=%v", valid, err)
-	}
-
-	valid, err = verifier.validateArgon2(context.Background(), "wrong-pass", p)
-	if err != nil || valid {
-		t.Errorf("Unexpected validation success: valid=%v, err=%v", valid, err)
-	}
-}
-
-// mustValidate keeps the table style of the validation tests: an error means the
-// derivation was abandoned, which none of them provokes.
+// mustValidate keeps the table style of the validation tests. An error means
+// that Couper did not run the derivation, which no table case provokes.
 func mustValidate(t *testing.T, user, pass string, data htData) bool {
 	t.Helper()
 
-	valid, err := validateAccessData(context.Background(), user, pass, data, nil)
+	valid, err := validateAccessData(context.Background(), user, pass, data)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -224,18 +143,19 @@ func mustValidate(t *testing.T, user, pass string, data htData) bool {
 	return valid
 }
 
-// Test_Argon2Verifier_BoundsConcurrentDerivations covers the limit that closes
-// the amplification: unique passwords defeat the flight collapsing, so without
-// the semaphore the peak memory would follow the number of requests in flight.
-func Test_Argon2Verifier_BoundsConcurrentDerivations(t *testing.T) {
+// Test_Argon2_BoundsConcurrentDerivations covers the limit that closes the
+// amplification. Each caller sends a different password, thus each attempt runs
+// its own derivation. Without the limit the peak memory would follow the number
+// of requests.
+func Test_Argon2_BoundsConcurrentDerivations(t *testing.T) {
 	const (
 		bound   = 2
 		callers = 8
 	)
 
-	original := argon2Sem
+	originalSem, originalDerive := argon2Sem, argon2Derive
 	argon2Sem = make(chan struct{}, bound)
-	defer func() { argon2Sem = original }()
+	defer func() { argon2Sem, argon2Derive = originalSem, originalDerive }()
 
 	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
 	if err != nil {
@@ -243,7 +163,7 @@ func Test_Argon2Verifier_BoundsConcurrentDerivations(t *testing.T) {
 	}
 
 	var inFlight, peak int64
-	ba.verifier.derive = func(plainPass string, p pwd) bool {
+	argon2Derive = func(plainPass string, p pwd) bool {
 		current := atomic.AddInt64(&inFlight, 1)
 		for {
 			seen := atomic.LoadInt64(&peak)
@@ -252,7 +172,7 @@ func Test_Argon2Verifier_BoundsConcurrentDerivations(t *testing.T) {
 			}
 		}
 
-		time.Sleep(20 * time.Millisecond) // hold the slot so an overlap becomes visible
+		time.Sleep(20 * time.Millisecond) // hold the slot, so an overlap becomes visible
 		atomic.AddInt64(&inFlight, -1)
 
 		return runArgon2(plainPass, p)
@@ -281,19 +201,20 @@ func Test_Argon2Verifier_BoundsConcurrentDerivations(t *testing.T) {
 	}
 }
 
-// Test_Argon2Verifier_AbandonsOnCanceledContext ensures a request that already
-// ended stops waiting, and that its log does not claim a credential mismatch.
-func Test_Argon2Verifier_AbandonsOnCanceledContext(t *testing.T) {
+// Test_Argon2_AbandonsCanceledRequest shows that a request which already ended
+// runs no derivation. Its log must also not report a credential mismatch.
+func Test_Argon2_AbandonsCanceledRequest(t *testing.T) {
 	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	blocked := make(chan struct{})
-	defer close(blocked)
+	original := argon2Derive
+	defer func() { argon2Derive = original }()
 
-	ba.verifier.derive = func(_ string, _ pwd) bool {
-		<-blocked
+	var derivations int64
+	argon2Derive = func(_ string, _ pwd) bool {
+		atomic.AddInt64(&derivations, 1)
 
 		return false
 	}
@@ -310,5 +231,8 @@ func Test_Argon2Verifier_AbandonsOnCanceledContext(t *testing.T) {
 	}
 	if !strings.Contains(vErr.(*errors.Error).LogError(), "argon2 verification abandoned") {
 		t.Errorf("Expected the log to name the abandoned derivation, got: %q", vErr.(*errors.Error).LogError())
+	}
+	if got := atomic.LoadInt64(&derivations); got != 0 {
+		t.Errorf("derivations: want none for a request that ended, got %d", got)
 	}
 }

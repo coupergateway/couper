@@ -19,23 +19,21 @@ var _ AccessControl = &BasicAuth{}
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
-	htFile   htData
-	name     string
-	user     string
-	pass     string
-	verifier *argon2Verifier
+	htFile htData
+	name   string
+	user   string
+	pass   string
 }
 
-// NewBasicAuth creates a new AC-BasicAuth object. logger (may be nil) receives
-// startup warnings about htpasswd entries that load but carry argon2 parameters
-// above the recommended maxima.
+// NewBasicAuth creates a new AC-BasicAuth object. The logger can be nil. It
+// receives the startup warnings about htpasswd entries that load, but that hold
+// argon2 parameters above the recommended maxima.
 func NewBasicAuth(name, user, pass, file string, logger *logrus.Entry) (*BasicAuth, error) {
 	ba := &BasicAuth{
-		htFile:   make(htData),
-		name:     name,
-		user:     user,
-		pass:     pass,
-		verifier: newArgon2Verifier(),
+		htFile: make(htData),
+		name:   name,
+		user:   user,
+		pass:   pass,
 	}
 
 	if file == "" {
@@ -108,7 +106,7 @@ func NewBasicAuth(name, user, pass, file string, logger *logrus.Entry) (*BasicAu
 			}
 			if logger != nil {
 				for _, w := range warnings {
-					logger.Warnf("basic_auth %q: user %q (line %d): %s; lower the parameter or chain a beta_rate_limiter before this access control to bound argon2 resource use", name, username, lineNr, w)
+					logger.Warnf("basic_auth %q: user %q (line %d): %s. Lower the parameter, or put a beta_rate_limiter before this access control.", name, username, lineNr, w)
 				}
 			}
 			ba.htFile[username] = p
@@ -150,7 +148,7 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	}
 
 	if len(ba.htFile) > 0 {
-		valid, vErr := validateAccessData(req.Context(), user, pass, ba.htFile, ba.verifier)
+		valid, vErr := validateAccessData(req.Context(), user, pass, ba.htFile)
 		if vErr != nil {
 			return errors.BasicAuth.With(vErr).Message("file: argon2 verification abandoned")
 		}
