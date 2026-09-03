@@ -223,7 +223,7 @@ Backends can be defined in the [Definitions Block](/configuration/block/definiti
 
 Setting `http2 = true` connects to the origin over HTTP/2. Response trailers sent by the origin are then forwarded transparently to the client — no additional configuration is required. This lets Couper act as an edge proxy in front of gRPC services, where the call result is carried in the `grpc-status` trailer.
 
-Forwarding trailers requires dropping a fixed `Content-Length` so the trailing values can follow the body. Towards an HTTP/1.1 client this means responses from HTTP/2 backends are sent using chunked transfer-encoding; an HTTP/2 client receives the trailers in a trailing frame.
+Forwarding trailers requires dropping a fixed `Content-Length` so the trailing values can follow the body. Towards an HTTP/1.1 client, large or streamed responses from HTTP/2 backends are therefore sent with chunked transfer-encoding; small responses still carry a `Content-Length`. An HTTP/2 client receives the trailers in a trailing frame.
 
 ## Refining a referenced backend
 
