@@ -60,7 +60,8 @@ func TestOpenAPIValidator_ValidateRequest(t *testing.T) {
 		wantBody   bool
 		wantErrLog string
 	}{
-		{"GET without required query", "/a?b", nil, false, `backend error: parameter "b" in query has an error: empty value is not allowed`},
+		{"GET with empty required query", "/a?b", nil, false, ""},
+		{"GET without required query", "/a", nil, false, `backend error: parameter "b" in query has an error: value is required but missing`},
 		{"GET with required query", "/a?b=value", nil, false, ""},
 		{"GET with required path", "/a/value", nil, false, ""},
 		{"GET with required path missing", "/a//", nil, false, `backend error: 'GET /a//': no matching operation was found`},

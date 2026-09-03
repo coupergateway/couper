@@ -43,6 +43,27 @@ In this case the response validation will fail if not ignored, too.
 ]
 {{< /attributes >}}
 
+### Empty query parameter values
+
+A query parameter that is present without a value (`?q` or `?q=`) is validated as
+an empty string. For a parameter with `type: string` an empty string satisfies both
+`required: true` and the default `allowEmptyValue: false`, so such a request passes
+request validation. A parameter of any other type — `integer`, for example — is
+still rejected, and a parameter that is absent altogether still fails the
+`required` check.
+
+Use `minLength: 1` in the parameter schema to reject empty values:
+
+```yaml
+parameters:
+  - in: query
+    name: q
+    required: true
+    schema:
+      type: string
+      minLength: 1
+```
+
 ### Example
 
 ```hcl
