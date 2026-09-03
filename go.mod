@@ -1,6 +1,6 @@
 module github.com/coupergateway/couper
 
-go 1.26.2
+go 1.26.8
 
 require (
 	github.com/docker/go-units v0.5.0
