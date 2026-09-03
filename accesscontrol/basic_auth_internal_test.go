@@ -1,10 +1,21 @@
 package accesscontrol
 
 import (
+	"context"
 	"encoding/base64"
+	goerrors "errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/argon2"
+
+	"github.com/coupergateway/couper/errors"
 )
 
 func Test_Apr1MD5(t *testing.T) {
@@ -36,7 +47,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeApr1,
 	}
 
-	if !validateAccessData("john", pass, data) {
+	if !mustValidate(t, "john", pass, data) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -49,11 +60,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeBcrypt,
 	}
 
-	if !validateAccessData("jane", pass, data) {
+	if !mustValidate(t, "jane", pass, data) {
 		t.Error("Unexpected validation failure")
 	}
 
-	if validateAccessData("foo", "bar", data) {
+	if mustValidate(t, "foo", "bar", data) {
 		t.Error("Unexpected validation success")
 	}
 
@@ -66,7 +77,7 @@ func Test_ValidateAccessData(t *testing.T) {
 		pwdType:   pwdTypeMD5,
 	}
 
-	if !validateAccessData("jock", pass, data) {
+	if !mustValidate(t, "jock", pass, data) {
 		t.Error("Unexpected validation failure")
 	}
 
@@ -88,11 +99,11 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jack", pass, data) {
+	if !mustValidate(t, "jack", pass, data) {
 		t.Error("Unexpected validation failure for argon2id")
 	}
 
-	if validateAccessData("jack", "wrong-pass", data) {
+	if mustValidate(t, "jack", "wrong-pass", data) {
 		t.Error("Unexpected validation success for argon2id with wrong password")
 	}
 
@@ -110,11 +121,118 @@ func Test_ValidateAccessData(t *testing.T) {
 		argon2Salt:    argon2Salt,
 	}
 
-	if !validateAccessData("jim", pass, data) {
+	if !mustValidate(t, "jim", pass, data) {
 		t.Error("Unexpected validation failure for argon2i")
 	}
 
-	if validateAccessData("jim", "wrong-pass", data) {
+	if mustValidate(t, "jim", "wrong-pass", data) {
 		t.Error("Unexpected validation success for argon2i with wrong password")
+	}
+}
+
+// mustValidate keeps the table style of the validation tests. An error means
+// that Couper did not run the derivation, which no table case provokes.
+func mustValidate(t *testing.T, user, pass string, data htData) bool {
+	t.Helper()
+
+	valid, err := validateAccessData(context.Background(), user, pass, data)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	return valid
+}
+
+// Test_Argon2_BoundsConcurrentDerivations covers the limit that closes the
+// amplification. Each caller sends a different password, thus each attempt runs
+// its own derivation. Without the limit the peak memory would follow the number
+// of requests.
+func Test_Argon2_BoundsConcurrentDerivations(t *testing.T) {
+	const (
+		bound   = 2
+		callers = 8
+	)
+
+	originalSem, originalDerive := argon2Sem, argon2Derive
+	argon2Sem = make(chan struct{}, bound)
+	defer func() { argon2Sem, argon2Derive = originalSem, originalDerive }()
+
+	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var inFlight, peak int64
+	argon2Derive = func(plainPass string, p pwd) bool {
+		current := atomic.AddInt64(&inFlight, 1)
+		for {
+			seen := atomic.LoadInt64(&peak)
+			if current <= seen || atomic.CompareAndSwapInt64(&peak, seen, current) {
+				break
+			}
+		}
+
+		time.Sleep(20 * time.Millisecond) // hold the slot, so an overlap becomes visible
+		atomic.AddInt64(&inFlight, -1)
+
+		return runArgon2(plainPass, p)
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			req := httptest.NewRequest(http.MethodGet, "http://couper.io/", nil)
+			req.SetBasicAuth("jack", fmt.Sprintf("wrong-pass-%d", i)) // unique, so each attempt derives
+
+			_ = ba.Validate(req)
+		}(i)
+	}
+	wg.Wait()
+
+	got := atomic.LoadInt64(&peak)
+	if got > bound {
+		t.Errorf("concurrent derivations: want at most %d, got %d", bound, got)
+	}
+	if got < 2 {
+		t.Errorf("concurrent derivations: want an overlap to prove the limit applies, got %d", got)
+	}
+}
+
+// Test_Argon2_AbandonsCanceledRequest shows that a request which already ended
+// runs no derivation. Its log must also not report a credential mismatch.
+func Test_Argon2_AbandonsCanceledRequest(t *testing.T) {
+	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	original := argon2Derive
+	defer func() { argon2Derive = original }()
+
+	var derivations int64
+	argon2Derive = func(_ string, _ pwd) bool {
+		atomic.AddInt64(&derivations, 1)
+
+		return false
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	req := httptest.NewRequest(http.MethodGet, "http://couper.io/", nil).WithContext(ctx)
+	req.SetBasicAuth("jack", "my-pass")
+
+	vErr := ba.Validate(req)
+	if !goerrors.Is(vErr, context.Canceled) {
+		t.Errorf("Expected the context error, got: %v", vErr)
+	}
+	if !strings.Contains(vErr.(*errors.Error).LogError(), "argon2 verification abandoned") {
+		t.Errorf("Expected the log to name the abandoned derivation, got: %q", vErr.(*errors.Error).LogError())
+	}
+	if got := atomic.LoadInt64(&derivations); got != 0 {
+		t.Errorf("derivations: want none for a request that ended, got %d", got)
 	}
 }
