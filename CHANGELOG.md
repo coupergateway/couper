@@ -9,6 +9,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * log the negotiated HTTP protocol version of backend responses (`response.proto` in `couper_backend` logs) ([#979](https://github.com/coupergateway/couper/pull/979))
   * `http2_prior_knowledge` backend attribute: cleartext HTTP/2 (h2c) for trusted `http` origins, e.g. multiplexed `beta_authzen` callouts without TLS ([#979](https://github.com/coupergateway/couper/pull/979))
 
+* **Fixed**
+  * metrics: bucket boundaries for the duration histograms — the SDK defaults (`5` … `10000`) assume milliseconds while Couper records seconds, so every observation fell into the first bucket and `histogram_quantile` returned the quantile fraction of `5s` rather than a measurement. `couper_backend_connections_lifetime_seconds` gets a wider ladder, because a pooled keep-alive connection outlives a request by orders of magnitude ([#1010](https://github.com/coupergateway/couper/issues/1010))
+
 ---
 
 ## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)

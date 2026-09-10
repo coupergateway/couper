@@ -41,7 +41,8 @@ func (mh *MetricsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	meter := provider.Meter("couper/server")
 
 	counter, _ := meter.Int64Counter(instrumentation.ClientRequest)
-	duration, _ := meter.Float64Histogram(instrumentation.ClientRequestDuration)
+	duration, _ := meter.Float64Histogram(instrumentation.ClientRequestDuration,
+		metric.WithExplicitBucketBoundaries(instrumentation.DefaultDurationSecondsBoundaries...))
 
 	option := metric.WithAttributes(metricsAttrs...)
 	counter.Add(req.Context(), 1, option)
