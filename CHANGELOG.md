@@ -18,6 +18,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 
 * **Fixed**
   * Forward HTTP/2 backend response trailers (e.g. gRPC `grpc-status`) to the client instead of dropping them ([#968](https://github.com/coupergateway/couper/issues/968))
+  * metrics: bucket boundaries for the duration histograms — the SDK defaults (`5` … `10000`) assume milliseconds while Couper records seconds, so every observation fell into the first bucket and `histogram_quantile` returned the quantile fraction of `5s` rather than a measurement. `couper_backend_connections_lifetime_seconds` gets a wider ladder, because a pooled keep-alive connection outlives a request by orders of magnitude ([#1010](https://github.com/coupergateway/couper/issues/1010))
 
 * **Dependencies**
   * `github.com/getkin/kin-openapi` 0.133.0 → 0.144.0 ([#1008](https://github.com/coupergateway/couper/pull/1008))
