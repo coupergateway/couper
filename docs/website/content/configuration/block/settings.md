@@ -29,6 +29,12 @@ gateway instance.
     "type": "number"
   },
   {
+    "default": "[]",
+    "description": "Histogram bucket boundaries in seconds for `couper_client_request_duration_seconds`. Defaults to the boundaries the OpenTelemetry semantic conventions specify for HTTP request duration.",
+    "name": "beta_metrics_request_duration_buckets",
+    "type": "tuple (float64)"
+  },
+  {
     "default": "\"couper\"",
     "description": "Service name which applies to the `service_name` metric and trace labels.",
     "name": "beta_service_name",

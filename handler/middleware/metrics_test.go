@@ -15,7 +15,7 @@ import (
 )
 
 // serveWithMetrics returns the exported bucket boundaries and their cumulative counts.
-func serveWithMetrics(t *testing.T, handlerDelay time.Duration) ([]float64, []uint64) {
+func serveWithMetrics(t *testing.T, boundaries []float64, handlerDelay time.Duration) ([]float64, []uint64) {
 	t.Helper()
 
 	registry := prom.NewRegistry()
@@ -33,7 +33,7 @@ func serveWithMetrics(t *testing.T, handlerDelay time.Duration) ([]float64, []ui
 		time.Sleep(handlerDelay)
 		rw.WriteHeader(http.StatusOK)
 	})
-	NewMetricsHandler()(inner).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+	NewMetricsHandler(boundaries)(inner).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 
 	families, err := registry.Gather()
 	if err != nil {
@@ -61,7 +61,7 @@ func serveWithMetrics(t *testing.T, handlerDelay time.Duration) ([]float64, []ui
 }
 
 func TestMetricsHandler_DefaultBucketBoundaries(t *testing.T) {
-	bounds, _ := serveWithMetrics(t, 0)
+	bounds, _ := serveWithMetrics(t, nil, 0)
 
 	want := instrumentation.DefaultDurationSecondsBoundaries
 	if len(bounds) != len(want) {
@@ -74,9 +74,23 @@ func TestMetricsHandler_DefaultBucketBoundaries(t *testing.T) {
 	}
 }
 
+func TestMetricsHandler_ConfiguredBucketBoundariesAreSorted(t *testing.T) {
+	bounds, _ := serveWithMetrics(t, []float64{1, 0.05, 10, 0.2}, 0)
+
+	want := []float64{0.05, 0.2, 1, 10}
+	if len(bounds) != len(want) {
+		t.Fatalf("want %d boundaries, got %d: %v", len(want), len(bounds), bounds)
+	}
+	for i, boundary := range want {
+		if bounds[i] != boundary {
+			t.Errorf("boundary %d: want %v, got %v", i, boundary, bounds[i])
+		}
+	}
+}
+
 // The SDK's default boundaries put every request faster than 5s into one bucket.
 func TestMetricsHandler_ResolvesSubSecondDurations(t *testing.T) {
-	bounds, counts := serveWithMetrics(t, 25*time.Millisecond)
+	bounds, counts := serveWithMetrics(t, nil, 25*time.Millisecond)
 
 	capturedAt := -1
 	for i, count := range counts {

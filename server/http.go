@@ -105,7 +105,7 @@ func New(cmdCtx, evalCtx context.Context, log logrus.FieldLogger, settings *conf
 	// order matters
 	telemetryHandler := middleware.NewHandler(httpSrv, nil) // fallback to plain wrapper without telemetry options
 	if settings.TelemetryMetrics {
-		telemetryHandler = middleware.NewMetricsHandler()(httpSrv)
+		telemetryHandler = middleware.NewMetricsHandler(settings.TelemetryMetricsRequestDurationBuckets)(httpSrv)
 	}
 	if settings.TelemetryTraces {
 		telemetryHandler = middleware.NewTraceHandler(
