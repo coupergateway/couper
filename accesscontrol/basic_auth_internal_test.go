@@ -135,7 +135,7 @@ func Test_ValidateAccessData(t *testing.T) {
 func mustValidate(t *testing.T, user, pass string, data htData) bool {
 	t.Helper()
 
-	valid, err := validateAccessData(context.Background(), user, pass, data)
+	valid, err := validateAccessData(context.Background(), user, pass, data, NewArgon2Limiter(DefaultArgon2MemoryBudget, 0))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -153,14 +153,14 @@ func Test_Argon2_BoundsConcurrentDerivations(t *testing.T) {
 		callers = 8
 	)
 
-	originalSem, originalDerive := argon2Sem, argon2Derive
-	argon2Sem = make(chan struct{}, bound)
-	defer func() { argon2Sem, argon2Derive = originalSem, originalDerive }()
+	originalDerive := argon2Derive
+	defer func() { argon2Derive = originalDerive }()
 
 	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd")
 	if err != nil {
 		t.Fatal(err)
 	}
+	ba.UseArgon2Limiter(&Argon2Limiter{slots: make(chan struct{}, bound)})
 
 	var inFlight, peak int64
 	argon2Derive = func(plainPass string, p pwd) bool {

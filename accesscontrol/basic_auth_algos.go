@@ -15,11 +15,60 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// argon2Sem limits the argon2 derivations that run at the same time. The limit
-// applies to the process, and thus to all basic_auth blocks together. The peak
-// memory then follows this limit, and not the number of requests. The limit is
-// the number of cores, because one derivation keeps one core busy.
-var argon2Sem = make(chan struct{}, max(1, runtime.GOMAXPROCS(0)))
+// DefaultArgon2MemoryBudget is the memory in KiB that the argon2 derivations may
+// use at the same time, if the settings give no beta_argon2_memory_budget.
+const DefaultArgon2MemoryBudget uint32 = 256 * 1024
+
+// Argon2Limiter limits the argon2 derivations that run at the same time, so the
+// peak memory follows a budget and not the number of requests. One limiter
+// serves all basic_auth blocks of a configuration.
+type Argon2Limiter struct {
+	slots  chan struct{}
+	memory uint32 // KiB per derivation, the most expensive loaded entry
+}
+
+// NewArgon2Limiter gives as many slots as derivations of the most expensive
+// entry fit into the budget, both in KiB. The number of cores is the upper
+// limit, because a derivation keeps one core busy and more slots only raise the
+// memory use. One derivation can always run, even if it alone exceeds the budget.
+func NewArgon2Limiter(budget, memory uint32) *Argon2Limiter {
+	slots := runtime.GOMAXPROCS(0)
+	if memory > 0 && int(budget/memory) < slots {
+		slots = int(budget / memory)
+	}
+
+	return &Argon2Limiter{
+		slots:  make(chan struct{}, max(1, slots)),
+		memory: memory,
+	}
+}
+
+// Slots returns the number of derivations that run at the same time.
+func (l *Argon2Limiter) Slots() int {
+	return cap(l.slots)
+}
+
+// PeakMemory returns the memory in KiB that all slots use together.
+func (l *Argon2Limiter) PeakMemory() uint64 {
+	return uint64(cap(l.slots)) * uint64(l.memory)
+}
+
+// acquire waits for a slot and returns its release. If the request ends first,
+// it returns the context error and takes no slot.
+func (l *Argon2Limiter) acquire(ctx context.Context) (func(), error) {
+	// A request that already ended must not start a derivation. Without this
+	// test the select below can take either case, because both are ready.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	select {
+	case l.slots <- struct{}{}:
+		return func() { <-l.slots }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
 
 // argon2Derive lets the test count the derivations that run at the same time.
 var argon2Derive = runArgon2
@@ -119,7 +168,7 @@ func getPwdType(pass string) int {
 // validateAccessData reports whether the credentials match an htpasswd entry.
 // An error is not a mismatch. It shows that Couper did not run the argon2
 // derivation, because the request ended before a slot became free.
-func validateAccessData(ctx context.Context, plainUser, plainPass string, data htData) (bool, error) {
+func validateAccessData(ctx context.Context, plainUser, plainPass string, data htData, limiter *Argon2Limiter) (bool, error) {
 	for user, pass := range data {
 		if user == plainUser {
 			switch pass.pwdType {
@@ -134,7 +183,7 @@ func validateAccessData(ctx context.Context, plainUser, plainPass string, data h
 					return true, nil
 				}
 			case pwdTypeArgon2id, pwdTypeArgon2i:
-				valid, err := validateArgon2(ctx, plainPass, pass)
+				valid, err := validateArgon2(ctx, plainPass, pass, limiter)
 				if err != nil {
 					return false, err
 				}
@@ -149,21 +198,15 @@ func validateAccessData(ctx context.Context, plainUser, plainPass string, data h
 }
 
 // validateArgon2 derives the argon2 key for plainPass. Then it compares the key
-// with the stored hash. The derivation starts only after argon2Sem gives a slot.
-// If the request ends first, the caller leaves the queue and no derivation runs.
-func validateArgon2(ctx context.Context, plainPass string, p pwd) (bool, error) {
-	// A request that already ended must not start a derivation. Without this
-	// test the select below can take either case, because both are ready.
-	if err := ctx.Err(); err != nil {
+// with the stored hash. The derivation starts only after the limiter gives a
+// slot. If the request ends first, the caller leaves the queue and no derivation
+// runs.
+func validateArgon2(ctx context.Context, plainPass string, p pwd, limiter *Argon2Limiter) (bool, error) {
+	release, err := limiter.acquire(ctx)
+	if err != nil {
 		return false, err
 	}
-
-	select {
-	case argon2Sem <- struct{}{}:
-		defer func() { <-argon2Sem }()
-	case <-ctx.Done():
-		return false, ctx.Err()
-	}
+	defer release()
 
 	return argon2Derive(plainPass, p), nil
 }

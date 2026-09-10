@@ -17,6 +17,12 @@ gateway instance.
     "type": "tuple (string)"
   },
   {
+    "default": "\"256MiB\"",
+    "description": "Memory that the argon2 derivations of all [`basic_auth`](basic_auth) `htpasswd_file` entries may use at the same time. Couper runs as many derivations in parallel as fit into the budget, at most one per core. Valid units are: `KiB`, `MiB`, `GiB`.",
+    "name": "beta_argon2_memory_budget",
+    "type": "string"
+  },
+  {
     "default": "false",
     "description": "Enables the Prometheus [metrics](/observation/metrics) exporter.",
     "name": "beta_metrics",

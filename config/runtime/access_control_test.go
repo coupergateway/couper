@@ -2,7 +2,9 @@ package runtime_test
 
 import (
 	"context"
+	goerrors "errors"
 	"fmt"
+	goruntime "runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -13,6 +15,7 @@ import (
 	"github.com/coupergateway/couper/config/configload"
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/config/runtime"
+	couperErr "github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/internal/test"
 )
@@ -311,6 +314,89 @@ func TestBasicAuthArgon2Warnings(t *testing.T) {
 			}
 			if len(got) > 0 && got[0] != wantFirst {
 				subT.Errorf("want first warning %q, got %q", wantFirst, got[0])
+			}
+		})
+	}
+}
+
+// TestBasicAuthArgon2Budget ensures one memory budget sizes the argon2 limiter
+// for all basic_auth blocks, that Couper reports the result once, warns if one
+// derivation alone exceeds the budget, and rejects an invalid budget.
+func TestBasicAuthArgon2Budget(t *testing.T) {
+	const template = `
+		server {}
+		settings {
+		  %s
+		}
+		definitions {
+		  basic_auth "a" {
+		    htpasswd_file = "../../accesscontrol/testdata/htpasswd"
+		  }
+		  basic_auth "b" {
+		    htpasswd_file = "../../accesscontrol/testdata/htpasswd_argon2_over_cap"
+		  }
+		}
+	`
+	// The most expensive entry has m=94209 KiB, so the default 256MiB hold two derivations.
+	defaultSlots := min(2, goruntime.GOMAXPROCS(0))
+
+	for _, tt := range []struct {
+		name     string
+		setting  string
+		wantInfo string
+		wantWarn string
+		wantErr  string
+	}{
+		{"default budget", "", fmt.Sprintf("concurrent argon2 derivations: %d, peak memory: ", defaultSlots), "", ""},
+		{"budget below one derivation", `beta_argon2_memory_budget = "64MiB"`, "concurrent argon2 derivations: 1,", "more than the beta_argon2_memory_budget of 64MiB", ""},
+		{"invalid budget", `beta_argon2_memory_budget = "much"`, "", "", "beta_argon2_memory_budget"},
+	} {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := configload.LoadBytes([]byte(fmt.Sprintf(template, tt.setting)), "couper.hcl")
+			if err != nil {
+				subT.Fatal(err)
+			}
+			log, hook := test.NewLogger()
+			logger := log.WithContext(context.TODO())
+			tmpStoreCh := make(chan struct{})
+			defer close(tmpStoreCh)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			conf.Context = conf.Context.Value(request.ContextType).(*eval.Context).WithContext(ctx)
+
+			_, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh))
+			if tt.wantErr != "" {
+				var cErr *couperErr.Error
+				if !goerrors.As(err, &cErr) || !strings.Contains(cErr.LogError(), tt.wantErr) {
+					subT.Fatalf("want a configuration error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				subT.Fatal(err)
+			}
+
+			var infos, warns []string
+			for _, entry := range hook.AllEntries() {
+				if !strings.HasPrefix(entry.Message, "basic_auth: ") {
+					continue
+				}
+				switch entry.Level {
+				case logrus.InfoLevel:
+					infos = append(infos, entry.Message)
+				case logrus.WarnLevel:
+					warns = append(warns, entry.Message)
+				}
+			}
+			if len(infos) != 1 || !strings.Contains(infos[0], tt.wantInfo) {
+				subT.Errorf("want one info containing %q, got: %v", tt.wantInfo, infos)
+			}
+			if tt.wantWarn == "" && len(warns) != 0 {
+				subT.Errorf("want no budget warning, got: %v", warns)
+			}
+			if tt.wantWarn != "" && (len(warns) != 1 || !strings.Contains(warns[0], tt.wantWarn)) {
+				subT.Errorf("want one warning containing %q, got: %v", tt.wantWarn, warns)
 			}
 		})
 	}

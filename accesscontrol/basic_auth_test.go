@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"runtime"
 	"testing"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
@@ -188,5 +189,31 @@ func Test_Argon2CostWarning_String(t *testing.T) {
 		if got := tc.warning.String(); got != tc.want {
 			t.Errorf("want %q, got %q", tc.want, got)
 		}
+	}
+}
+
+// Test_NewArgon2Limiter_Slots pins the sizing rule: as many derivations as fit
+// into the budget, at most one per core, at least one.
+func Test_NewArgon2Limiter_Slots(t *testing.T) {
+	cores := runtime.GOMAXPROCS(0)
+
+	for _, tc := range []struct {
+		name   string
+		budget uint32
+		memory uint32
+		slots  int
+		peak   uint64
+	}{
+		{"no argon2 entry: one slot per core", 256 * 1024, 0, cores, 0},
+		{"budget holds more than the cores", 256 * 1024, 1024, cores, uint64(cores) * 1024},
+		{"budget holds two derivations", 2 * 65536, 65536, min(2, cores), uint64(min(2, cores)) * 65536},
+		{"one derivation exceeds the budget", 65536, 94208, 1, 94208},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			limiter := ac.NewArgon2Limiter(tc.budget, tc.memory)
+			if limiter.Slots() != tc.slots || limiter.PeakMemory() != tc.peak {
+				subT.Errorf("want %d slots and %d KiB peak, got %d slots and %d KiB", tc.slots, tc.peak, limiter.Slots(), limiter.PeakMemory())
+			}
+		})
 	}
 }
