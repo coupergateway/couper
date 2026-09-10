@@ -526,6 +526,11 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	accessControls := make(ACDefinitions)
 
 	if conf.Definitions != nil {
+		// The -watch reload builds the configuration twice, first as a dry run.
+		// Log once, from the configuration that Couper accepts.
+		_, dryRun := conf.Context.Value(request.ConfigDryRun).(bool)
+
+		var basicAuths []*ac.BasicAuth
 		for _, baConf := range conf.Definitions.BasicAuth {
 			confErr := errors.Configuration.Label(baConf.Name)
 			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
@@ -533,7 +538,18 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 				return nil, confErr.With(err)
 			}
 
+			if !dryRun {
+				for _, w := range basicAuth.Warnings() {
+					log.Warnf("basic_auth %q: user %q (line %d): %s. Lower the parameter, or put a beta_rate_limiter before this access control.", baConf.Name, w.User, w.Line, w)
+				}
+			}
+
+			basicAuths = append(basicAuths, basicAuth)
 			accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler)
+		}
+
+		if err := limitArgon2(basicAuths, conf.Settings.Argon2MemoryBudget, log, dryRun); err != nil {
+			return nil, errors.Configuration.Label("settings").With(err)
 		}
 
 		for _, jwtConf := range conf.Definitions.JWT {
@@ -807,4 +823,59 @@ func newAC(srvConf *config.Server, api *config.API) config.AccessControl {
 	}
 
 	return accessControl
+}
+
+// limitArgon2 gives all basic_auth blocks one limiter, so the argon2 derivations
+// of the whole configuration stay within the memory budget.
+func limitArgon2(basicAuths []*ac.BasicAuth, budgetSetting string, log *logrus.Entry, dryRun bool) error {
+	var memory uint32
+	for _, ba := range basicAuths {
+		memory = max(memory, ba.Argon2Memory())
+	}
+	if memory == 0 {
+		return nil
+	}
+
+	budget, err := parseArgon2MemoryBudget(budgetSetting)
+	if err != nil {
+		return err
+	}
+
+	limiter := ac.NewArgon2Limiter(budget, memory)
+	for _, ba := range basicAuths {
+		ba.UseArgon2Limiter(limiter)
+	}
+
+	if dryRun {
+		return nil
+	}
+
+	log.Infof("basic_auth: concurrent argon2 derivations: %d, peak memory: %s, budget: %s", limiter.Slots(), kibSize(limiter.PeakMemory()), kibSize(uint64(budget)))
+	if limiter.PeakMemory() > uint64(budget) {
+		log.Warnf("basic_auth: one argon2 derivation needs %s, more than the beta_argon2_memory_budget of %s. Couper runs one derivation at a time. Lower the parameter m, or raise the budget.", kibSize(uint64(memory)), kibSize(uint64(budget)))
+	}
+
+	return nil
+}
+
+// parseArgon2MemoryBudget returns the budget in KiB, the unit of the argon2 parameter m.
+func parseArgon2MemoryBudget(budget string) (uint32, error) {
+	if budget == "" {
+		return ac.DefaultArgon2MemoryBudget, nil
+	}
+
+	size, err := units.RAMInBytes(budget)
+	if err != nil {
+		return 0, fmt.Errorf("beta_argon2_memory_budget: %w", err)
+	}
+	kib := size / 1024
+	if kib < 1 || kib > math.MaxUint32 {
+		return 0, fmt.Errorf("beta_argon2_memory_budget: %s is out of range", budget)
+	}
+
+	return uint32(kib), nil
+}
+
+func kibSize(kib uint64) string {
+	return units.BytesSize(float64(kib) * 1024)
 }

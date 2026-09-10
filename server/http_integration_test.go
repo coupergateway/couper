@@ -5527,6 +5527,60 @@ func TestRateLimiter(t *testing.T) {
 	}
 }
 
+// TestBasicAuthArgon2_RateLimiterChain verifies that a beta_rate_limiter
+// listed before an argon2 basic_auth gates the expensive derivation:
+// within budget basic auth runs (200 for correct, 401 for wrong creds),
+// and once the budget is exhausted the limiter rejects first (429 for
+// wrong AND correct creds — proving argon2 never runs). The limiter uses
+// a static key, so all requests share one budget and the steps must run
+// in order against one instance.
+func TestBasicAuthArgon2_RateLimiterChain(t *testing.T) {
+	client := newClient()
+
+	shutdown, hook := newCouper("testdata/integration/config/ba_argon2_ratelimit.hcl", test.New(t))
+	defer shutdown()
+
+	correct := "Basic " + base64.StdEncoding.EncodeToString([]byte("jack:my-pass"))
+	wrong := "Basic " + base64.StdEncoding.EncodeToString([]byte("jack:wrong"))
+
+	for i, step := range []struct {
+		name       string
+		authHeader string
+		status     int
+		wantErrLog string
+	}{
+		{"correct creds, within budget", correct, http.StatusOK, ""},
+		{"wrong creds, within budget", wrong, http.StatusUnauthorized, "access control error: ba_argon2: file: credential mismatch"},
+		{"wrong creds, rate limited", wrong, http.StatusTooManyRequests, "access control error: ip_rate: rate limit exceeded"},
+		{"correct creds, rate limited", correct, http.StatusTooManyRequests, "access control error: ip_rate: rate limit exceeded"},
+	} {
+		t.Run(step.name, func(subT *testing.T) {
+			helper := test.New(subT)
+			hook.Reset()
+
+			req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/private", nil)
+			helper.Must(err)
+			req.Header.Set("Authorization", step.authHeader)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != step.status {
+				subT.Fatalf("step %d (%s): expected status %d, got %d", i+1, step.name, step.status, res.StatusCode)
+			}
+
+			message := getFirstAccessLogMessage(hook)
+			if step.wantErrLog == "" {
+				if message != "" {
+					subT.Errorf("step %d (%s): expected no error log, got %q", i+1, step.name, message)
+				}
+			} else if !strings.HasPrefix(message, step.wantErrLog) {
+				subT.Errorf("step %d (%s): expected error log %q, got %q", i+1, step.name, step.wantErrLog, message)
+			}
+		})
+	}
+}
+
 func TestAllowedMethods(t *testing.T) {
 	client := newClient()
 

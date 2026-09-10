@@ -17,10 +17,13 @@ var _ AccessControl = &BasicAuth{}
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
-	htFile htData
-	name   string
-	user   string
-	pass   string
+	htFile       htData
+	name         string
+	user         string
+	pass         string
+	warnings     []Argon2CostWarning
+	argon2       *Argon2Limiter
+	argon2Memory uint32
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
@@ -30,6 +33,7 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 		name:   name,
 		user:   user,
 		pass:   pass,
+		argon2: NewArgon2Limiter(DefaultArgon2MemoryBudget, 0),
 	}
 
 	if file == "" {
@@ -96,18 +100,45 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 			if pwdType == pwdTypeArgon2i {
 				prefix = pwdPrefixArgon2i
 			}
-			p, pErr := parseArgon2(password, prefix)
+			p, warnings, pErr := parseArgon2(password, prefix)
 			if pErr != nil {
 				return nil, fmt.Errorf("parse error: malformed password for user: %s: %w", username, pErr)
 			}
+			for _, w := range warnings {
+				w.User, w.Line = username, lineNr
+				ba.warnings = append(ba.warnings, w)
+			}
 			ba.htFile[username] = p
+			ba.argon2Memory = max(ba.argon2Memory, p.argon2Memory)
 		default:
 			return nil, fmt.Errorf("parse error: algorithm not supported")
 		}
 	}
 
+	if ba.argon2Memory > 0 {
+		ba.argon2 = NewArgon2Limiter(DefaultArgon2MemoryBudget, ba.argon2Memory)
+	}
+
 	err = scanner.Err()
 	return ba, err
+}
+
+// Argon2Memory returns the memory in KiB that one derivation of the most
+// expensive argon2 entry needs, or 0 if no entry uses argon2.
+func (ba *BasicAuth) Argon2Memory() uint32 {
+	return ba.argon2Memory
+}
+
+// UseArgon2Limiter replaces the limiter, so all basic_auth blocks of a
+// configuration share one memory budget.
+func (ba *BasicAuth) UseArgon2Limiter(limiter *Argon2Limiter) {
+	ba.argon2 = limiter
+}
+
+// Warnings lists the htpasswd entries that load with an argon2 parameter above
+// the recommended maximum.
+func (ba *BasicAuth) Warnings() []Argon2CostWarning {
+	return ba.warnings
 }
 
 // Validate implements the AccessControl interface
@@ -139,7 +170,11 @@ func (ba *BasicAuth) Validate(req *http.Request) error {
 	}
 
 	if len(ba.htFile) > 0 {
-		if validateAccessData(user, pass, ba.htFile) {
+		valid, vErr := validateAccessData(req.Context(), user, pass, ba.htFile, ba.argon2)
+		if vErr != nil {
+			return errors.BasicAuth.With(vErr).Message("file: argon2 verification abandoned")
+		}
+		if valid {
 			return ba.withUsername(req, user)
 		}
 		return errors.BasicAuth.Message("file: credential mismatch")

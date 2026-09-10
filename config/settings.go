@@ -9,6 +9,7 @@ import (
 const otelCollectorEndpoint = "localhost:4317"
 
 var defaultSettings = Settings{
+	Argon2MemoryBudget:       "256MiB",
 	DefaultPort:              8080,
 	Environment:              "",
 	HealthPath:               "/healthz",
@@ -37,6 +38,7 @@ type Settings struct {
 	Certificate     []byte
 
 	AcceptForwardedURL            List   `hcl:"accept_forwarded_url,optional" docs:"Which {X-Forwarded-*} request HTTP header fields should be accepted to change the [request variables](../variables#request) {url}, {origin}, {protocol}, {host}, {port}. Valid values: {\"proto\"}, {\"host\"} and {\"port\"}. The port in a {X-Forwarded-Port} header takes precedence over a port in {X-Forwarded-Host}. Affects relative URL values for [{sp_acs_url}](saml) attribute and {redirect_uri} attribute within [{beta_oauth2}](oauth2) and [{oidc}](oidc)."`
+	Argon2MemoryBudget            string `hcl:"beta_argon2_memory_budget,optional" docs:"Memory that the argon2 derivations of all [{basic_auth}](basic_auth) {htpasswd_file} entries may use at the same time. Couper runs as many derivations in parallel as fit into the budget, at most one per core. Valid units are: {KiB}, {MiB}, {GiB}." default:"256MiB"`
 	BindAddress                   string `hcl:"bind_address,optional" docs:"A comma-separated list of addresses to bind." default:"*"`
 	CAFile                        string `hcl:"ca_file,optional" docs:"Adds the given PEM encoded CA certificate to the existing system certificate pool for all outgoing connections."`
 	DefaultPort                   int    `hcl:"default_port,optional" docs:"Port which will be used if not explicitly specified per host within the [{hosts}](server) attribute." default:"8080"`
