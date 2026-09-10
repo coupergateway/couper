@@ -157,7 +157,7 @@ func Test_Argon2_BoundsConcurrentDerivations(t *testing.T) {
 	argon2Sem = make(chan struct{}, bound)
 	defer func() { argon2Sem, argon2Derive = originalSem, originalDerive }()
 
-	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
+	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func Test_Argon2_BoundsConcurrentDerivations(t *testing.T) {
 // Test_Argon2_AbandonsCanceledRequest shows that a request which already ended
 // runs no derivation. Its log must also not report a credential mismatch.
 func Test_Argon2_AbandonsCanceledRequest(t *testing.T) {
-	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd", nil)
+	ba, err := NewBasicAuth("ba", "", "", "testdata/htpasswd")
 	if err != nil {
 		t.Fatal(err)
 	}

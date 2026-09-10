@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/errors"
 )
@@ -19,16 +17,15 @@ var _ AccessControl = &BasicAuth{}
 
 // BasicAuth represents an AC-BasicAuth object
 type BasicAuth struct {
-	htFile htData
-	name   string
-	user   string
-	pass   string
+	htFile   htData
+	name     string
+	user     string
+	pass     string
+	warnings []string
 }
 
-// NewBasicAuth creates a new AC-BasicAuth object. The logger can be nil. It
-// receives the startup warnings about htpasswd entries that load, but that hold
-// argon2 parameters above the recommended maxima.
-func NewBasicAuth(name, user, pass, file string, logger *logrus.Entry) (*BasicAuth, error) {
+// NewBasicAuth creates a new AC-BasicAuth object
+func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 	ba := &BasicAuth{
 		htFile: make(htData),
 		name:   name,
@@ -104,10 +101,8 @@ func NewBasicAuth(name, user, pass, file string, logger *logrus.Entry) (*BasicAu
 			if pErr != nil {
 				return nil, fmt.Errorf("parse error: malformed password for user: %s: %w", username, pErr)
 			}
-			if logger != nil {
-				for _, w := range warnings {
-					logger.Warnf("basic_auth %q: user %q (line %d): %s. Lower the parameter, or put a beta_rate_limiter before this access control.", name, username, lineNr, w)
-				}
+			for _, w := range warnings {
+				ba.warnings = append(ba.warnings, fmt.Sprintf("basic_auth %q: user %q (line %d): %s. Lower the parameter, or put a beta_rate_limiter before this access control.", name, username, lineNr, w))
 			}
 			ba.htFile[username] = p
 		default:
@@ -117,6 +112,12 @@ func NewBasicAuth(name, user, pass, file string, logger *logrus.Entry) (*BasicAu
 
 	err = scanner.Err()
 	return ba, err
+}
+
+// Warnings returns the startup warnings about htpasswd entries that load, but
+// that hold argon2 parameters above the recommended maxima.
+func (ba *BasicAuth) Warnings() []string {
+	return ba.warnings
 }
 
 // Validate implements the AccessControl interface

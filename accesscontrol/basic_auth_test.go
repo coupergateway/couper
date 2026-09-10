@@ -7,9 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sirupsen/logrus"
-	logrustest "github.com/sirupsen/logrus/hooks/test"
-
 	ac "github.com/coupergateway/couper/accesscontrol"
 	couperErr "github.com/coupergateway/couper/errors"
 )
@@ -45,7 +42,7 @@ func Test_NewBasicAuth(t *testing.T) {
 		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "parse error: algorithm not supported", true},
 		{"name", "user", "pass", "testdata/htpasswd_err_argon2_time_zero", "parse error: malformed password for user: jack: invalid argon2 parameter t: must be >= 1", true},
 	} {
-		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file, nil)
+		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file)
 		if tc.shouldFail && ba != nil {
 			t.Error("Expected no successful basic auth creation")
 		}
@@ -61,7 +58,7 @@ func Test_NewBasicAuth(t *testing.T) {
 }
 
 func Test_BasicAuth_Validate(t *testing.T) {
-	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd", nil)
+	ba, err := ac.NewBasicAuth("name", "user", "pass", "testdata/htpasswd")
 	if err != nil || ba == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -101,19 +98,19 @@ func Test_BasicAuth_Validate(t *testing.T) {
 func Test_BasicAuth_ValidateCases(t *testing.T) {
 	req := &http.Request{Header: make(http.Header)}
 
-	ba1, err := ac.NewBasicAuth("name", "", "pass", "", nil)
+	ba1, err := ac.NewBasicAuth("name", "", "pass", "")
 	if err != nil || ba1 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba2, err := ac.NewBasicAuth("name", "user", "", "", nil)
+	ba2, err := ac.NewBasicAuth("name", "user", "", "")
 	if err != nil || ba2 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba3, err := ac.NewBasicAuth("name", "", "", "", nil)
+	ba3, err := ac.NewBasicAuth("name", "", "", "")
 	if err != nil || ba3 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
-	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd", nil)
+	ba4, err := ac.NewBasicAuth("name", "", "", "testdata/htpasswd")
 	if err != nil || ba4 == nil {
 		t.Fatal("Expected a basic auth object")
 	}
@@ -161,10 +158,7 @@ func Test_BasicAuth_ValidateCases(t *testing.T) {
 // not stop a running deployment — and that the operator learns which entry
 // makes each request expensive.
 func Test_NewBasicAuth_Argon2OverRecommendedMaximum(t *testing.T) {
-	logger, hook := logrustest.NewNullLogger()
-	logger.SetLevel(logrus.WarnLevel)
-
-	ba, err := ac.NewBasicAuth("ba", "", "", "testdata/htpasswd_argon2_over_cap", logrus.NewEntry(logger))
+	ba, err := ac.NewBasicAuth("ba", "", "", "testdata/htpasswd_argon2_over_cap")
 	if err != nil {
 		t.Fatalf("Expected the entries to load, got: %v", err)
 	}
@@ -172,13 +166,7 @@ func Test_NewBasicAuth_Argon2OverRecommendedMaximum(t *testing.T) {
 		t.Fatal("Expected a basic auth instance")
 	}
 
-	var warnings []string
-	for _, entry := range hook.AllEntries() {
-		if entry.Level == logrus.WarnLevel {
-			warnings = append(warnings, entry.Message)
-		}
-	}
-
+	warnings := ba.Warnings()
 	if len(warnings) != 3 {
 		t.Fatalf("Expected one warning per entry, got %d: %v", len(warnings), warnings)
 	}

@@ -528,9 +528,17 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 	if conf.Definitions != nil {
 		for _, baConf := range conf.Definitions.BasicAuth {
 			confErr := errors.Configuration.Label(baConf.Name)
-			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File, log)
+			basicAuth, err := ac.NewBasicAuth(baConf.Name, baConf.User, baConf.Pass, baConf.File)
 			if err != nil {
 				return nil, confErr.With(err)
+			}
+
+			// The -watch reload builds the configuration twice, first as a dry run.
+			// Warn once, from the configuration that Couper accepts.
+			if _, dryRun := conf.Context.Value(request.ConfigDryRun).(bool); !dryRun {
+				for _, w := range basicAuth.Warnings() {
+					log.Warn(w)
+				}
 			}
 
 			accessControls.Add(baConf.Name, basicAuth, baConf.ErrorHandler)

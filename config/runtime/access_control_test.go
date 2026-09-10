@@ -7,9 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/coupergateway/couper/cache"
 	"github.com/coupergateway/couper/config/configload"
+	"github.com/coupergateway/couper/config/request"
 	"github.com/coupergateway/couper/config/runtime"
+	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/internal/test"
 )
 
@@ -245,6 +249,63 @@ func TestDuplicateEndpoint(t *testing.T) {
 			if fmt.Sprint(tt.endpoints) != fmt.Sprint(endpoints) {
 				subT.Errorf("unexpected endpoints, want: %v, got: %v", tt.endpoints, endpoints)
 				return
+			}
+		})
+	}
+}
+
+// TestBasicAuthArgon2Warnings ensures the over-cap warning reaches the log once.
+// The -watch reload builds the configuration twice, and the dry run must stay
+// silent.
+func TestBasicAuthArgon2Warnings(t *testing.T) {
+	const hcl = `
+		server {}
+		definitions {
+		  basic_auth "ba" {
+		    htpasswd_file = "../../accesscontrol/testdata/htpasswd_argon2_over_cap"
+		  }
+		}
+	`
+
+	for _, tt := range []struct {
+		name     string
+		dryRun   bool
+		warnings int
+	}{
+		{"accepted configuration warns", false, 3},
+		{"dry run stays silent", true, 0},
+	} {
+		t.Run(tt.name, func(subT *testing.T) {
+			conf, err := configload.LoadBytes([]byte(hcl), "couper.hcl")
+			if err != nil {
+				subT.Fatal(err)
+			}
+			log, hook := test.NewLogger()
+			logger := log.WithContext(context.TODO())
+			tmpStoreCh := make(chan struct{})
+			defer close(tmpStoreCh)
+
+			// The -watch reload sets the dry run flag on the inner context, see main.go.
+			ctx := context.Background()
+			if tt.dryRun {
+				ctx = context.WithValue(ctx, request.ConfigDryRun, true)
+			}
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			conf.Context = conf.Context.Value(request.ContextType).(*eval.Context).WithContext(ctx)
+
+			if _, err = runtime.NewServerConfiguration(conf, logger, cache.New(logger, tmpStoreCh)); err != nil {
+				subT.Fatal(err)
+			}
+
+			var got []string
+			for _, entry := range hook.AllEntries() {
+				if entry.Level == logrus.WarnLevel && strings.HasPrefix(entry.Message, `basic_auth "ba"`) {
+					got = append(got, entry.Message)
+				}
+			}
+			if len(got) != tt.warnings {
+				subT.Errorf("want %d warnings, got %d: %v", tt.warnings, len(got), got)
 			}
 		})
 	}
