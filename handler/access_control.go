@@ -37,7 +37,8 @@ func (a *AccessControl) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	meter := provider.Meter(instrumentation.AccessControlInstrumentationName)
 	counter, _ := meter.Int64Counter(instrumentation.AccessControlTotal)
-	duration, _ := meter.Float64Histogram(instrumentation.AccessControlDuration)
+	duration, _ := meter.Float64Histogram(instrumentation.AccessControlDuration,
+		metric.WithExplicitBucketBoundaries(instrumentation.DefaultDurationSecondsBoundaries...))
 	rateLimitedCounter, _ := meter.Int64Counter(instrumentation.AccessControlRateLimited)
 
 	for _, control := range a.acl {
