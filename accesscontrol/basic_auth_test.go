@@ -4,7 +4,7 @@ import (
 	b64 "encoding/base64"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"reflect"
 	"testing"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
@@ -155,8 +155,8 @@ func Test_BasicAuth_ValidateCases(t *testing.T) {
 
 // Test_NewBasicAuth_Argon2OverRecommendedMaximum ensures an htpasswd entry with
 // argon2 parameters above the recommended maxima still loads — an upgrade must
-// not stop a running deployment — and that the operator learns which entry
-// makes each request expensive.
+// not stop a running deployment — and that each entry is reported with its
+// location and the parameter that makes a request expensive.
 func Test_NewBasicAuth_Argon2OverRecommendedMaximum(t *testing.T) {
 	ba, err := ac.NewBasicAuth("ba", "", "", "testdata/htpasswd_argon2_over_cap")
 	if err != nil {
@@ -166,25 +166,27 @@ func Test_NewBasicAuth_Argon2OverRecommendedMaximum(t *testing.T) {
 		t.Fatal("Expected a basic auth instance")
 	}
 
-	warnings := ba.Warnings()
-	if len(warnings) != 3 {
-		t.Fatalf("Expected one warning per entry, got %d: %v", len(warnings), warnings)
+	want := []ac.Argon2CostWarning{
+		{User: "overm", Line: 1, Parameter: "m", Value: 94209, Maximum: 94208},
+		{User: "overt", Line: 2, Parameter: "t", Value: 11, Maximum: 10},
+		{User: "overp", Line: 3, Parameter: "p", Value: 3, Maximum: 2},
 	}
+	if got := ba.Warnings(); !reflect.DeepEqual(got, want) {
+		t.Errorf("Expected warnings %+v, got: %+v", want, got)
+	}
+}
 
-	for _, want := range []string{
-		`basic_auth "ba": user "overm" (line 1): argon2 parameter m=94209 KiB exceeds the recommended maximum of 94208 KiB`,
-		`basic_auth "ba": user "overt" (line 2): argon2 parameter t=11 exceeds the recommended maximum of 10`,
-		`basic_auth "ba": user "overp" (line 3): argon2 parameter p=3 exceeds the recommended maximum of 2`,
+func Test_Argon2CostWarning_String(t *testing.T) {
+	for _, tc := range []struct {
+		warning ac.Argon2CostWarning
+		want    string
+	}{
+		{ac.Argon2CostWarning{Parameter: "m", Value: 94209, Maximum: 94208}, "argon2 parameter m=94209 KiB exceeds the recommended maximum of 94208 KiB"},
+		{ac.Argon2CostWarning{Parameter: "t", Value: 11, Maximum: 10}, "argon2 parameter t=11 exceeds the recommended maximum of 10"},
+		{ac.Argon2CostWarning{Parameter: "p", Value: 3, Maximum: 2}, "argon2 parameter p=3 exceeds the recommended maximum of 2"},
 	} {
-		var found bool
-		for _, w := range warnings {
-			if strings.HasPrefix(w, want) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Expected a warning starting with %q, got: %v", want, warnings)
+		if got := tc.warning.String(); got != tc.want {
+			t.Errorf("want %q, got %q", tc.want, got)
 		}
 	}
 }

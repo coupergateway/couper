@@ -537,7 +537,7 @@ func configureAccessControls(conf *config.Couper, confCtx *hcl.EvalContext, log 
 			// Warn once, from the configuration that Couper accepts.
 			if _, dryRun := conf.Context.Value(request.ConfigDryRun).(bool); !dryRun {
 				for _, w := range basicAuth.Warnings() {
-					log.Warn(w)
+					log.Warnf("basic_auth %q: user %q (line %d): %s. Lower the parameter, or put a beta_rate_limiter before this access control.", baConf.Name, w.User, w.Line, w)
 				}
 			}
 

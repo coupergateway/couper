@@ -254,9 +254,9 @@ func TestDuplicateEndpoint(t *testing.T) {
 	}
 }
 
-// TestBasicAuthArgon2Warnings ensures the over-cap warning reaches the log once.
-// The -watch reload builds the configuration twice, and the dry run must stay
-// silent.
+// TestBasicAuthArgon2Warnings ensures the over-cap warning reaches the log once,
+// with location, fact and advice. The -watch reload builds the configuration
+// twice, and the dry run must stay silent.
 func TestBasicAuthArgon2Warnings(t *testing.T) {
 	const hcl = `
 		server {}
@@ -266,6 +266,8 @@ func TestBasicAuthArgon2Warnings(t *testing.T) {
 		  }
 		}
 	`
+
+	const wantFirst = `basic_auth "ba": user "overm" (line 1): argon2 parameter m=94209 KiB exceeds the recommended maximum of 94208 KiB. Lower the parameter, or put a beta_rate_limiter before this access control.`
 
 	for _, tt := range []struct {
 		name     string
@@ -305,7 +307,10 @@ func TestBasicAuthArgon2Warnings(t *testing.T) {
 				}
 			}
 			if len(got) != tt.warnings {
-				subT.Errorf("want %d warnings, got %d: %v", tt.warnings, len(got), got)
+				subT.Fatalf("want %d warnings, got %d: %v", tt.warnings, len(got), got)
+			}
+			if len(got) > 0 && got[0] != wantFirst {
+				subT.Errorf("want first warning %q, got %q", wantFirst, got[0])
 			}
 		})
 	}

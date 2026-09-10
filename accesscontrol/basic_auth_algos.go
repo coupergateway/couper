@@ -61,6 +61,26 @@ const (
 	argon2MaxThreads uint8  = 2     // 2x OWASP 1
 )
 
+// Argon2CostWarning names an htpasswd entry that loads with an argon2 parameter
+// above the recommended maximum. Each request for this user pays that cost.
+type Argon2CostWarning struct {
+	User      string
+	Line      int
+	Parameter string // m, t or p
+	Value     uint64
+	Maximum   uint64
+}
+
+// String states the fact. The caller adds the location and the advice.
+func (w Argon2CostWarning) String() string {
+	unit := ""
+	if w.Parameter == "m" {
+		unit = " KiB"
+	}
+
+	return fmt.Sprintf("argon2 parameter %s=%d%s exceeds the recommended maximum of %d%s", w.Parameter, w.Value, unit, w.Maximum, unit)
+}
+
 var pwdPrefixes = map[string]int{
 	pwdPrefixApr1:     pwdTypeApr1,
 	pwdPrefixBcrypt2a: pwdTypeBcrypt,
@@ -168,7 +188,7 @@ func runArgon2(plainPass string, p pwd) bool {
 // to the operator, who can then lower the cost. A parameter that makes the entry
 // unusable gives an error. This applies if it is absent, if it is not a number,
 // or if t or p is below 1. argon2 panics on the last condition.
-func parseArgon2(password, prefix string) (pwd, []string, error) {
+func parseArgon2(password, prefix string) (pwd, []Argon2CostWarning, error) {
 	// PHC format: $argon2id$v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
 	// After stripping the prefix ($argon2id$ or $argon2i$), we have:
 	// v=19$m=65536,t=3,p=2$<base64-salt>$<base64-hash>
@@ -195,7 +215,7 @@ func parseArgon2(password, prefix string) (pwd, []string, error) {
 	}
 
 	var parseErr error
-	var warnings []string
+	var warnings []Argon2CostWarning
 	if v, ok := params["m"]; ok {
 		memory, parseErr = strconv.ParseUint(v, 10, 32)
 	} else {
@@ -205,7 +225,7 @@ func parseArgon2(password, prefix string) (pwd, []string, error) {
 		return pwd{}, nil, fmt.Errorf("invalid argon2 parameter m: %w", parseErr)
 	}
 	if uint32(memory) > argon2MaxMemory {
-		warnings = append(warnings, fmt.Sprintf("argon2 parameter m=%d KiB exceeds the recommended maximum of %d KiB", memory, argon2MaxMemory))
+		warnings = append(warnings, Argon2CostWarning{Parameter: "m", Value: memory, Maximum: uint64(argon2MaxMemory)})
 	}
 
 	if v, ok := params["t"]; ok {
@@ -220,7 +240,7 @@ func parseArgon2(password, prefix string) (pwd, []string, error) {
 		return pwd{}, nil, fmt.Errorf("invalid argon2 parameter t: must be >= 1")
 	}
 	if uint32(time) > argon2MaxTime {
-		warnings = append(warnings, fmt.Sprintf("argon2 parameter t=%d exceeds the recommended maximum of %d", time, argon2MaxTime))
+		warnings = append(warnings, Argon2CostWarning{Parameter: "t", Value: time, Maximum: uint64(argon2MaxTime)})
 	}
 
 	if v, ok := params["p"]; ok {
@@ -235,7 +255,7 @@ func parseArgon2(password, prefix string) (pwd, []string, error) {
 		return pwd{}, nil, fmt.Errorf("invalid argon2 parameter p: must be >= 1")
 	}
 	if uint8(threads) > argon2MaxThreads {
-		warnings = append(warnings, fmt.Sprintf("argon2 parameter p=%d exceeds the recommended maximum of %d", threads, argon2MaxThreads))
+		warnings = append(warnings, Argon2CostWarning{Parameter: "p", Value: threads, Maximum: uint64(argon2MaxThreads)})
 	}
 
 	// parts[2] = base64-encoded salt

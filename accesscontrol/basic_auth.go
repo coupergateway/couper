@@ -21,7 +21,7 @@ type BasicAuth struct {
 	name     string
 	user     string
 	pass     string
-	warnings []string
+	warnings []Argon2CostWarning
 }
 
 // NewBasicAuth creates a new AC-BasicAuth object
@@ -102,7 +102,8 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 				return nil, fmt.Errorf("parse error: malformed password for user: %s: %w", username, pErr)
 			}
 			for _, w := range warnings {
-				ba.warnings = append(ba.warnings, fmt.Sprintf("basic_auth %q: user %q (line %d): %s. Lower the parameter, or put a beta_rate_limiter before this access control.", name, username, lineNr, w))
+				w.User, w.Line = username, lineNr
+				ba.warnings = append(ba.warnings, w)
 			}
 			ba.htFile[username] = p
 		default:
@@ -114,9 +115,9 @@ func NewBasicAuth(name, user, pass, file string) (*BasicAuth, error) {
 	return ba, err
 }
 
-// Warnings returns the startup warnings about htpasswd entries that load, but
-// that hold argon2 parameters above the recommended maxima.
-func (ba *BasicAuth) Warnings() []string {
+// Warnings lists the htpasswd entries that load with an argon2 parameter above
+// the recommended maximum.
+func (ba *BasicAuth) Warnings() []Argon2CostWarning {
 	return ba.warnings
 }
 
