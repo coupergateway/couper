@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,14 +9,16 @@ import (
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/metric/noop"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/coupergateway/couper/telemetry/instrumentation"
 	"github.com/coupergateway/couper/telemetry/provider"
 )
 
-// serveWithMetrics returns the exported bucket boundaries and their cumulative counts.
-func serveWithMetrics(t *testing.T, handlerDelay time.Duration) ([]float64, []uint64) {
+// serveWithMetrics serves one request through handler and returns the exported bucket
+// boundaries of the client request duration histogram and their cumulative counts.
+func serveWithMetrics(t *testing.T, handler http.Handler) ([]float64, []uint64) {
 	t.Helper()
 
 	registry := prom.NewRegistry()
@@ -27,13 +30,15 @@ func serveWithMetrics(t *testing.T, handlerDelay time.Duration) ([]float64, []ui
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider.SetMeterProvider(sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter)))
 
-	inner := http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
-		time.Sleep(handlerDelay)
-		rw.WriteHeader(http.StatusOK)
+	meterProvider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+	provider.SetMeterProvider(meterProvider)
+	t.Cleanup(func() {
+		_ = meterProvider.Shutdown(context.Background())
+		provider.SetMeterProvider(noop.NewMeterProvider())
 	})
-	NewMetricsHandler()(inner).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 
 	families, err := registry.Gather()
 	if err != nil {
@@ -61,7 +66,11 @@ func serveWithMetrics(t *testing.T, handlerDelay time.Duration) ([]float64, []ui
 }
 
 func TestMetricsHandler_DefaultBucketBoundaries(t *testing.T) {
-	bounds, _ := serveWithMetrics(t, 0)
+	inner := http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	})
+
+	bounds, _ := serveWithMetrics(t, NewMetricsHandler()(inner))
 
 	want := instrumentation.DefaultDurationSecondsBoundaries
 	if len(bounds) != len(want) {
@@ -76,7 +85,17 @@ func TestMetricsHandler_DefaultBucketBoundaries(t *testing.T) {
 
 // The SDK's default boundaries put every request faster than 5s into one bucket.
 func TestMetricsHandler_ResolvesSubSecondDurations(t *testing.T) {
-	bounds, counts := serveWithMetrics(t, 25*time.Millisecond)
+	now := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return now }
+
+	// The handler advances the clock instead of sleeping, so the recorded duration
+	// is exactly 25ms on every machine.
+	inner := http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		now = now.Add(25 * time.Millisecond)
+		rw.WriteHeader(http.StatusOK)
+	})
+
+	bounds, counts := serveWithMetrics(t, &MetricsHandler{handler: inner, clock: clock})
 
 	capturedAt := -1
 	for i, count := range counts {
@@ -90,7 +109,8 @@ func TestMetricsHandler_ResolvesSubSecondDurations(t *testing.T) {
 		t.Fatalf("observation was not recorded: %v", counts)
 	}
 
-	if bounds[capturedAt] > 0.1 {
-		t.Errorf("a 25ms request was first captured at le=%v; the boundaries do not resolve sub-second durations", bounds[capturedAt])
+	const want = 0.025
+	if bounds[capturedAt] != want {
+		t.Errorf("a 25ms request was first captured at le=%v, want le=%v", bounds[capturedAt], want)
 	}
 }
