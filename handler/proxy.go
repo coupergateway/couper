@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/http/httpguts"
 
 	hclbody "github.com/coupergateway/couper/config/body"
 	"github.com/coupergateway/couper/config/request"
@@ -96,16 +97,21 @@ func (p *Proxy) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, fmt.Errorf("client tried to switch to invalid protocol %q", reqUpType)
 	}
 
+	// A client that follows RFC 9110 lists TE in Connection, so the Connection
+	// strip below deletes it. Read the token first, and give it back after the
+	// hop-by-hop strip. The backend then knows that trailers can pass Couper.
+	teTrailers := httpguts.HeaderValuesContainsToken(req.Header["Te"], "trailers")
+
 	transport.RemoveConnectionHeaders(req.Header)
 
-	// Remove hop-by-hop headers to the backend. Especially
-	// important is "Connection" because we want a persistent
-	// connection, regardless of what the client sent to us.
-	for _, h := range transport.HopHeaders {
-		req.Header.Del(h)
-	}
+	// Remove hop-by-hop headers to the backend. Especially important is
+	// "Connection" because we want a persistent connection, regardless of what
+	// the client sent to us.
+	transport.RemoveHopHeaders(req.Header)
 
-	// TODO: trailer header here
+	if teTrailers {
+		req.Header.Set("Te", "trailers")
+	}
 
 	// After stripping all the hop-by-hop connection headers above, add back any
 	// necessary for protocol upgrades, such as for websockets.
