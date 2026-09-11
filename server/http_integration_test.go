@@ -160,14 +160,14 @@ func newCouperWithConfig(couperConfig *config.Couper, helper *test.Helper) (func
 	port := couperConfig.Settings.DefaultPort
 	test.WaitForClosedPort(port)
 	waitForCh := make(chan struct{}, 1)
-	command.RunCmdTestCallback = func() {
+	command.RunCmdTestCallback = func(_ []string) {
 		waitForCh <- struct{}{}
 	}
 	defer func() { command.RunCmdTestCallback = nil }()
 
 	go func() {
 		if err := command.NewRun(ctx).Execute(nil, couperConfig, log.WithContext(ctx)); err != nil {
-			command.RunCmdTestCallback()
+			command.RunCmdTestCallback(nil)
 			shutdownFn()
 			if lerr, ok := err.(*errors.Error); ok {
 				panic(lerr.LogError())

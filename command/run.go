@@ -25,7 +25,8 @@ import (
 )
 
 var _ Cmd = &Run{}
-var RunCmdTestCallback func()
+
+var RunCmdTestCallback func(listenPorts []string)
 var RunCmdConfigTestCallback func(*config.Settings)
 
 // Run starts the frontend gateway server and listen
@@ -44,38 +45,46 @@ func NewRun(ctx context.Context) *Run {
 // limitFn depends on current OS, set via build flags
 var limitFn func(entry *logrus.Entry)
 
-func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
-	logEntry.WithField("files", config.Files.AsList()).Debug("loaded files")
-
+func (r *Run) applySettings(args Args, conf *config.Couper, logEntry *logrus.Entry) error {
 	// apply command context
-	config.Context = config.Context.(*eval.Context).WithContext(r.context)
+	conf.Context = conf.Context.(*eval.Context).WithContext(r.context)
 
 	// apply cli flags to file settings obj
-	r.flagSet = newFlagSet(config.Settings, "run")
+	r.flagSet = newFlagSet(conf.Settings, "run")
 	if err := r.flagSet.Parse(args.Filter(r.flagSet)); err != nil {
 		return err
 	}
 
 	// TODO: move to config validation
-	if config.Settings.SecureCookies != "" &&
-		config.Settings.SecureCookies != writer.SecureCookiesStrip {
-		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", config.Settings.SecureCookies)
+	if conf.Settings.SecureCookies != "" &&
+		conf.Settings.SecureCookies != writer.SecureCookiesStrip {
+		return fmt.Errorf("invalid value for the -secure-cookies flag given: '%s' only 'strip' is supported", conf.Settings.SecureCookies)
 	}
 
 	// finally apply environment variables to settings obj
-	env.Decode(config.Settings)
+	env.Decode(conf.Settings)
 
-	if err := config.Settings.ApplyAcceptForwarded(); err != nil {
+	if err := conf.Settings.ApplyAcceptForwarded(); err != nil {
 		return err
 	}
 
-	if config.Settings.CAFile != "" {
+	if conf.Settings.CAFile != "" {
 		var err error
-		config.Settings.Certificate, err = readCertificateFile(config.Settings.CAFile)
+		conf.Settings.Certificate, err = readCertificateFile(conf.Settings.CAFile)
 		if err != nil {
 			return err
 		}
-		logEntry.Infof("configured with ca-certificate: %s", config.Settings.CAFile)
+		logEntry.Infof("configured with ca-certificate: %s", conf.Settings.CAFile)
+	}
+
+	return nil
+}
+
+func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) error {
+	logEntry.WithField("files", config.Files.AsList()).Debug("loaded files")
+
+	if err := r.applySettings(args, config, logEntry); err != nil {
+		return err
 	}
 
 	if RunCmdConfigTestCallback != nil {
@@ -130,6 +139,8 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		}
 	}
 
+	var listenPorts []string
+
 	for _, srv := range servers {
 		if listenErr := srv.Listen(); listenErr != nil {
 			return listenErr
@@ -139,6 +150,8 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 		if splitErr != nil {
 			return splitErr
 		}
+
+		listenPorts = append(listenPorts, port)
 
 		for _, tlsPort := range tlsDevPorts.Get(port) {
 			tlsSrv, tlsErr := server.NewTLSProxy(srv.Addr(), tlsPort, logEntry, config.Settings)
@@ -151,7 +164,7 @@ func (r *Run) Execute(args Args, config *config.Couper, logEntry *logrus.Entry) 
 	}
 
 	if RunCmdTestCallback != nil {
-		RunCmdTestCallback()
+		RunCmdTestCallback(listenPorts)
 	}
 
 	listenCmdShutdown()
