@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"crypto/tls"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +30,7 @@ func TestNewRun(t *testing.T) {
 	_, currFile, _, _ := runtime.Caller(0)
 	wd := filepath.Dir(currFile)
 
-	log, hook := logrustest.NewNullLogger()
+	log, _ := logrustest.NewNullLogger()
 	//log.Out = os.Stdout
 
 	defaultSettings := config.NewDefaultSettings()
@@ -105,36 +106,12 @@ func TestNewRun(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
-			defer time.Sleep(time.Millisecond * 100)
-
-			resultSettings := make(chan *config.Settings, 1)
-			listenCh := make(chan struct{})
-			RunCmdTestCallback = func() {
-				close(listenCh)
-			}
-			RunCmdConfigTestCallback = func(s *config.Settings) {
-				resultSettings <- s
-				close(resultSettings)
-			}
-
-			ctx, shutdown := context.WithTimeout(context.Background(), 22*time.Second) // fail fast for port binds
-			defer func() {
-				n := time.Now()
-				shutdown()
-				subT.Log("shutdown duration: " + time.Since(n).String())
-				RunCmdTestCallback = nil
-				RunCmdConfigTestCallback = nil
-			}()
-
-			runCmd := NewRun(ctx)
-			if runCmd == nil {
-				subT.Error("create run cmd failed")
-				return
-			}
+			ctx, shutdown := context.WithCancel(context.Background())
+			defer shutdown()
 
 			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file), "")
 			if err != nil {
-				subT.Error(err)
+				subT.Fatal(err)
 			}
 
 			if len(tt.envs) > 0 {
@@ -144,24 +121,94 @@ func TestNewRun(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
-			go func() {
-				execErr := runCmd.Execute(tt.args, couperFile, log.WithContext(ctx))
-				if execErr != nil {
-					subT.Error(execErr)
-				}
-			}()
-			<-listenCh
-
-			result := <-resultSettings
-			if !reflect.DeepEqual(result, tt.settings) {
-				subT.Errorf("Settings differ: %s:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.settings, result)
+			runCmd := NewRun(ctx)
+			if runCmd == nil {
+				subT.Fatal("create run cmd failed")
 			}
 
+			if err = runCmd.applySettings(tt.args, couperFile, log.WithContext(ctx)); err != nil {
+				subT.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(couperFile.Settings, tt.settings) {
+				subT.Errorf("Settings differ: %s:\nwant:\t%#v\ngot:\t%#v\n", tt.name, tt.settings, couperFile.Settings)
+			}
+		})
+	}
+}
+
+func TestNewRun_Serve(t *testing.T) {
+	_, currFile, _, _ := runtime.Caller(0)
+	wd := filepath.Dir(currFile)
+
+	log, hook := logrustest.NewNullLogger()
+
+	tests := []struct {
+		name      string
+		file      string
+		wantUUID4 bool
+	}{
+		{"common request id format", "01_defaults.hcl", false},
+		{"uuid4 request id format", "02_changed_defaults.hcl", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(subT *testing.T) {
+			resultSettings := make(chan *config.Settings, 1)
+			listenCh := make(chan []string, 1)
+			execErrCh := make(chan error, 1)
+
+			RunCmdTestCallback = func(listenPorts []string) {
+				listenCh <- listenPorts
+			}
+			RunCmdConfigTestCallback = func(s *config.Settings) {
+				resultSettings <- s
+			}
+
+			ctx, shutdown := context.WithTimeout(context.Background(), 22*time.Second)
+			defer func() {
+				shutdown()
+				RunCmdTestCallback = nil
+				RunCmdConfigTestCallback = nil
+			}()
+
+			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tt.file), "")
+			if err != nil {
+				subT.Fatal(err)
+			}
+
+			runCmd := NewRun(ctx)
+			if runCmd == nil {
+				subT.Fatal("create run cmd failed")
+			}
+
+			go func() {
+				execErrCh <- runCmd.Execute(Args{"-p", "0"}, couperFile, log.WithContext(ctx))
+			}()
+
+			var listenPorts []string
+			select {
+			case listenPorts = <-listenCh:
+			case execErr := <-execErrCh:
+				subT.Fatalf("couper did not start to listen: %v", execErr)
+			case <-ctx.Done():
+				subT.Fatal("timeout while waiting for couper to listen")
+			}
+
+			if len(listenPorts) != 1 {
+				subT.Fatalf("want one listen port, got: %v", listenPorts)
+			}
+
+			if port, atoiErr := strconv.Atoi(listenPorts[0]); atoiErr != nil || port <= 0 {
+				subT.Fatalf("want an assigned port, got: %q", listenPorts[0])
+			}
+
+			settings := <-resultSettings
 			hook.Reset()
 
-			res, err := test.NewHTTPClient().Get("http://localhost:" + strconv.Itoa(result.DefaultPort) + result.HealthPath)
+			res, err := test.NewHTTPClient().Get("http://localhost:" + listenPorts[0] + settings.HealthPath)
 			if err != nil {
-				subT.Error(err)
+				subT.Fatal(err)
 			}
 
 			if res.StatusCode != http.StatusOK {
@@ -170,14 +217,77 @@ func TestNewRun(t *testing.T) {
 
 			uid, _ := hook.LastEntry().Data["uid"].(string)
 			xidLen := len(xid.New().String())
-			if result.RequestIDFormat == "uuid4" {
+			if tt.wantUUID4 {
 				if len(uid) <= xidLen {
 					subT.Errorf("expected uuid4 format, got: %s", uid)
 				}
 			} else if len(uid) > xidLen {
 				subT.Errorf("expected common id format, got: %s", uid)
 			}
+
+			shutdown()
+			select {
+			case execErr := <-execErrCh:
+				if execErr != nil {
+					subT.Errorf("run returned an error: %v", execErr)
+				}
+			case <-time.After(5 * time.Second):
+				subT.Error("run did not return after the shutdown")
+			}
 		})
+	}
+}
+
+func TestNewRun_ListenError(t *testing.T) {
+	_, currFile, _, _ := runtime.Caller(0)
+	wd := filepath.Dir(currFile)
+
+	log, _ := logrustest.NewNullLogger()
+
+	// A wildcard bind coexists with one to a specific address, so hold the wildcard
+	// Couper binds by default.
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	_, port, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", "01_defaults.hcl"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	listenCh := make(chan []string, 1)
+	RunCmdTestCallback = func(listenPorts []string) {
+		listenCh <- listenPorts
+	}
+	defer func() { RunCmdTestCallback = nil }()
+
+	ctx, shutdown := context.WithTimeout(context.Background(), 22*time.Second)
+	defer shutdown()
+
+	execErrCh := make(chan error, 1)
+	go func() {
+		execErrCh <- NewRun(ctx).Execute(Args{"-p", port}, couperFile, log.WithContext(ctx))
+	}()
+
+	select {
+	case execErr := <-execErrCh:
+		if execErr == nil {
+			t.Fatal("expected a listen error")
+		}
+		if !strings.Contains(execErr.Error(), "address already in use") {
+			t.Errorf("want an address-in-use error, got: %v", execErr)
+		}
+	case listenPorts := <-listenCh:
+		t.Fatalf("expected no listener, got: %v", listenPorts)
+	case <-ctx.Done():
+		t.Fatal("Execute did not return the listen error")
 	}
 }
 
@@ -208,28 +318,19 @@ func TestAcceptForwarded(t *testing.T) {
 
 	for _, testcase := range tests {
 		t.Run(testcase.name, func(subT *testing.T) {
-			time.Sleep(time.Millisecond * 100)
 			tc := testcase
 
 			caseCtx, caseCancel := context.WithCancel(ctx)
 			defer caseCancel()
 
-			resultSettings := make(chan *config.Settings, 1)
-			RunCmdConfigTestCallback = func(s *config.Settings) {
-				resultSettings <- s
-				close(resultSettings)
-			}
-			defer func() { RunCmdConfigTestCallback = nil }()
-
 			runCmd := NewRun(caseCtx)
 			if runCmd == nil {
-				t.Error("create run cmd failed")
-				return
+				subT.Fatal("create run cmd failed")
 			}
 
 			couperFile, err := configload.LoadFile(filepath.Join(wd, "testdata/settings", tc.file), "")
 			if err != nil {
-				subT.Error(err)
+				subT.Fatal(err)
 			}
 
 			if len(tc.envs) > 0 {
@@ -239,15 +340,11 @@ func TestAcceptForwarded(t *testing.T) {
 				defer env.SetTestOsEnviron(os.Environ)
 			}
 
-			go func(asyncT *testing.T) {
-				err = runCmd.Execute(tc.args, couperFile, log.WithContext(caseCtx))
-				if err != nil {
-					asyncT.Error(err)
-				}
-			}(subT)
-			test.WaitForOpenPort(8080)
+			if err = runCmd.applySettings(tc.args, couperFile, log.WithContext(caseCtx)); err != nil {
+				subT.Fatal(err)
+			}
 
-			settings := <-resultSettings
+			settings := couperFile.Settings
 			if settings.AcceptsForwardedProtocol() != tc.expProto {
 				subT.Errorf("%s: AcceptsForwardedProtocol() differ:\nwant:\t%#v\ngot:\t%#v\n", tc.name, tc.expProto, settings.AcceptsForwardedProtocol())
 			}
@@ -338,21 +435,44 @@ definitions {
 	couperFile, err := configload.LoadBytes([]byte(couperHCL), "ca-file-test.hcl")
 	helper.Must(err)
 
-	port := couperFile.Settings.DefaultPort
+	listenCh := make(chan []string, 1)
+	RunCmdTestCallback = func(listenPorts []string) {
+		listenCh <- listenPorts
+	}
+	defer func() { RunCmdTestCallback = nil }()
 
-	// ensure the previous tests aren't listening
-	test.WaitForClosedPort(port)
+	execErrCh := make(chan error, 1)
 	go func() {
-		execErr := runCmd.Execute(Args{"-ca-file=" + tmpFile.Name()}, couperFile, log.WithContext(ctx))
-		if execErr != nil {
-			helper.Must(execErr)
+		execErrCh <- runCmd.Execute(Args{"-ca-file=" + tmpFile.Name(), "-p", "0"}, couperFile, log.WithContext(ctx))
+	}()
+	defer func() {
+		shutdown()
+		select {
+		case execErr := <-execErrCh:
+			if execErr != nil {
+				t.Errorf("run returned an error: %v", execErr)
+			}
+		case <-time.After(5 * time.Second):
+			t.Error("run did not return after the shutdown")
 		}
 	}()
-	test.WaitForOpenPort(port)
+
+	var port string
+	select {
+	case listenPorts := <-listenCh:
+		if len(listenPorts) != 1 {
+			t.Fatalf("want one listen port, got: %v", listenPorts)
+		}
+		port = listenPorts[0]
+	case execErr := <-execErrCh:
+		t.Fatalf("couper did not start to listen: %v", execErr)
+	case <-ctx.Done():
+		t.Fatal("timeout while waiting for couper to listen")
+	}
 
 	client := test.NewHTTPClient()
 
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:"+port+"/", nil)
 
 	// ca before
 	res, err := client.Do(req)
@@ -379,8 +499,6 @@ settings {
 	couperFile, err := configload.LoadBytes([]byte(couperHCL), "ca-file-test.hcl")
 	helper.Must(err)
 
-	port := couperFile.Settings.DefaultPort
-
 	ctx, shutdown := context.WithDeadline(context.Background(), time.Now().Add(time.Second))
 	defer shutdown()
 
@@ -391,9 +509,6 @@ settings {
 	}
 
 	log, _ := test.NewLogger()
-
-	// ensure the previous tests aren't listening
-	test.WaitForClosedPort(port)
 
 	execErr := runCmd.Execute(Args{}, couperFile, log.WithContext(ctx))
 	if execErr == nil {

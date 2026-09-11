@@ -9,6 +9,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * log the negotiated HTTP protocol version of backend responses (`response.proto` in `couper_backend` logs) ([#979](https://github.com/coupergateway/couper/pull/979))
   * `http2_prior_knowledge` backend attribute: cleartext HTTP/2 (h2c) for trusted `http` origins, e.g. multiplexed `beta_authzen` callouts without TLS ([#979](https://github.com/coupergateway/couper/pull/979))
 
+* **Fixed**
+  * tests: let the OS assign the listen port instead of binding the fixed default one in three packages, which made `go test ./...` fail depending on `-p` and the number of available cores. A failed bind is now reported instead of blocking until the test timeout ([#1013](https://github.com/coupergateway/couper/issues/1013))
+
 ---
 
 ## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)
