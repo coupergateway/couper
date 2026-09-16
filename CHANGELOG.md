@@ -1,6 +1,6 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.2...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.3...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
@@ -10,6 +10,28 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `http2_prior_knowledge` backend attribute: cleartext HTTP/2 (h2c) for trusted `http` origins, e.g. multiplexed `beta_authzen` callouts without TLS ([#979](https://github.com/coupergateway/couper/pull/979))
 
 ---
+
+## [1.14.3](https://github.com/coupergateway/couper/releases/tag/v1.14.3)
+
+* **Security**
+  * build with [go 1.26.8](https://go.dev/doc/devel/release#go1.26.8) — security fixes for `crypto/tls`, `crypto/x509`, `encoding/asn1`, `encoding/xml`, `html/template`, `mime`, `net`, `net/http`, `net/http/httputil`, `net/mail`, `net/textproto`, `net/url`, `os` and `syscall` ([#1007](https://github.com/coupergateway/couper/pull/1007))
+  * `github.com/getkin/kin-openapi` 0.144.0 — fix uncontrolled resource consumption when decoding `deepObject` query parameters ([GHSA-xhj3-7xw9-vr34](https://github.com/advisories/GHSA-xhj3-7xw9-vr34)) and a nil-pointer panic when validating a request against a `content` parameter without schema ([GHSA-jpcw-4wr7-c3vq](https://github.com/advisories/GHSA-jpcw-4wr7-c3vq)); both are reachable via the [`openapi`](https://docs.couper.io/configuration/block/openapi) block ([#1008](https://github.com/coupergateway/couper/pull/1008))
+  * `google.golang.org/grpc` 1.83.1 — fix heap memory exhaustion via HTTP/2 DATA frame fragmentation ([GHSA-vp52-pcj8-j9qc](https://github.com/advisories/GHSA-vp52-pcj8-j9qc)) ([#1008](https://github.com/coupergateway/couper/pull/1008))
+  * `golang.org/x/text` 0.39.0 — fix an infinite loop in `unicode/norm` when the input contains invalid UTF-8 bytes ([GO-2026-5970](https://pkg.go.dev/vuln/GO-2026-5970), [CVE-2026-56852](https://www.cve.org/CVERecord?id=CVE-2026-56852)). Couper calls this code on the request path: in the HTTP/2 backend transport, in the HCL template evaluation, and in the conversion of request cookies to variables ([#1016](https://github.com/coupergateway/couper/pull/1016))
+  * [`basic_auth`](https://docs.couper.io/configuration/block/basic_auth): bound the argon2 cost of an `htpasswd_file` entry. The argon2 parameters apply to each request. Couper now limits the argon2 derivations that run at the same time to a memory budget, `256MiB` by default and set with [`beta_argon2_memory_budget`](https://docs.couper.io/configuration/block/settings), and to one per core. The peak memory then follows the budget and no longer the number of requests. Couper logs the effective limit at startup, and warns if one derivation alone exceeds the budget. Couper warns at startup if an entry is above the recommended maxima (`m` ≤ 94208 KiB, `t` ≤ 10, `p` ≤ 2). The entry still loads. Each attempt still costs what its parameters specify, so put a [`beta_rate_limiter`](https://docs.couper.io/configuration/block/rate_limiter) before this access control ([#866](https://github.com/coupergateway/couper/issues/866))
+
+* **Changed**
+  * [`openapi`](https://docs.couper.io/configuration/block/openapi) request validation accepts an empty query parameter value (`?b` or `?b=`) for a required parameter, because `kin-openapi` 0.144.0 decodes it as an empty string instead of a missing value. An absent parameter is still rejected. Set [`minLength: 1`](https://docs.couper.io/configuration/block/openapi#empty-query-parameter-values) in the parameter schema to reject empty values again ([#1008](https://github.com/coupergateway/couper/pull/1008))
+
+* **Fixed**
+  * Forward HTTP/2 backend response trailers (e.g. gRPC `grpc-status`) to the client instead of dropping them ([#968](https://github.com/coupergateway/couper/issues/968))
+  * metrics: bucket boundaries for the duration histograms — the SDK defaults (`5` … `10000`) assume milliseconds while Couper records seconds, so every observation fell into the first bucket and `histogram_quantile` returned the quantile fraction of `5s` rather than a measurement. `couper_backend_connections_lifetime_seconds` gets a wider ladder, because a pooled keep-alive connection outlives a request by orders of magnitude ([#1010](https://github.com/coupergateway/couper/issues/1010))
+
+* **Dependencies**
+  * `github.com/getkin/kin-openapi` 0.133.0 → 0.144.0 ([#1008](https://github.com/coupergateway/couper/pull/1008))
+  * `google.golang.org/grpc` 1.80.0 → 1.83.1, and `go.opentelemetry.io/otel`, `otel/metric`, `otel/sdk`, `otel/sdk/metric`, `otel/trace` 1.43.0 → 1.44.0 as its requirement ([#1008](https://github.com/coupergateway/couper/pull/1008))
+  * `golang.org/x/net` 0.52.0 → 0.55.0, `golang.org/x/crypto` 0.49.0 → 0.52.0 ([#1008](https://github.com/coupergateway/couper/pull/1008))
+  * `golang.org/x/text` 0.37.0 → 0.39.0. The module graph moves `golang.org/x/net` 0.55.0 → 0.56.0, `golang.org/x/crypto` 0.52.0 → 0.53.0 and the indirect `golang.org/x/sync`, `golang.org/x/sys`, `golang.org/x/mod` and `golang.org/x/tools` with it ([#1016](https://github.com/coupergateway/couper/pull/1016))
 
 ## [1.14.2](https://github.com/coupergateway/couper/releases/tag/v1.14.2)
 

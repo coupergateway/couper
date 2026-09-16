@@ -183,6 +183,26 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// copy/write like a reverseProxy
 	copyHeader(rw.Header(), clientres.Header)
 
+	// Announce backend response trailers before writing the status, mirroring
+	// httputil.ReverseProxy: http.Transport surfaces them on clientres.Trailer.
+	announcedTrailers := len(clientres.Trailer)
+	if announcedTrailers > 0 {
+		trailerKeys := make([]string, 0, announcedTrailers)
+		for k := range clientres.Trailer {
+			trailerKeys = append(trailerKeys, k)
+		}
+		rw.Header().Add("Trailer", strings.Join(trailerKeys, ", "))
+	}
+
+	// Trailers require chunked transfer-encoding downstream, which is
+	// incompatible with a fixed Content-Length. An HTTP/2 backend may send
+	// both, and gRPC trailers (e.g. grpc-status) arrive unannounced only after
+	// the body, so drop the Content-Length for every HTTP/2 response to force
+	// chunking; otherwise Go honours the length and discards the trailers.
+	if clientres.ProtoMajor == 2 || announcedTrailers > 0 {
+		rw.Header().Del("Content-Length")
+	}
+
 	rw.WriteHeader(clientres.StatusCode)
 
 	if clientres.Body == nil {
@@ -196,7 +216,26 @@ func (e *Endpoint) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		log.WithError(errors.Server.With(err).Message("body copy failed")).Error()
 	}
 
-	_ = clientres.Body.Close()
+	_ = clientres.Body.Close() // close now to populate clientres.Trailer
+
+	if len(clientres.Trailer) > 0 {
+		// Force chunking so late (unannounced) trailers can still be sent.
+		if fl, ok := rw.(http.Flusher); ok {
+			fl.Flush()
+		}
+	}
+
+	if len(clientres.Trailer) == announcedTrailers {
+		copyHeader(rw.Header(), clientres.Trailer)
+		return
+	}
+
+	for k, vv := range clientres.Trailer {
+		k = http.TrailerPrefix + k
+		for _, v := range vv {
+			rw.Header().Add(k, v)
+		}
+	}
 }
 
 func getServerTimings(headers http.Header, beresps producer.ResultMap) string {

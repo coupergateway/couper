@@ -4,6 +4,8 @@ import (
 	b64 "encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"runtime"
 	"testing"
 
 	ac "github.com/coupergateway/couper/accesscontrol"
@@ -39,6 +41,7 @@ func Test_NewBasicAuth(t *testing.T) {
 		{"name", "user", "pass", "testdata/htpasswd_err_malformed", `parse error: malformed password for user: foo`, true},
 		{"name", "user", "pass", "testdata/htpasswd_err_multi", `multiple user: foo`, true},
 		{"name", "user", "pass", "testdata/htpasswd_err_unsupported", "parse error: algorithm not supported", true},
+		{"name", "user", "pass", "testdata/htpasswd_err_argon2_time_zero", "parse error: malformed password for user: jack: invalid argon2 parameter t: must be >= 1", true},
 	} {
 		ba, err = ac.NewBasicAuth(tc.name, tc.user, tc.pass, tc.file)
 		if tc.shouldFail && ba != nil {
@@ -146,6 +149,70 @@ func Test_BasicAuth_ValidateCases(t *testing.T) {
 			err = testcase.ba.Validate(req)
 			if testcase.expErr != nil && !couperErr.Equals(err, testcase.expErr) {
 				subT.Errorf("Expected Unauthorized error, got: %v", err)
+			}
+		})
+	}
+}
+
+// Test_NewBasicAuth_Argon2OverRecommendedMaximum ensures an htpasswd entry with
+// argon2 parameters above the recommended maxima still loads — an upgrade must
+// not stop a running deployment — and that each entry is reported with its
+// location and the parameter that makes a request expensive.
+func Test_NewBasicAuth_Argon2OverRecommendedMaximum(t *testing.T) {
+	ba, err := ac.NewBasicAuth("ba", "", "", "testdata/htpasswd_argon2_over_cap")
+	if err != nil {
+		t.Fatalf("Expected the entries to load, got: %v", err)
+	}
+	if ba == nil {
+		t.Fatal("Expected a basic auth instance")
+	}
+
+	want := []ac.Argon2CostWarning{
+		{User: "overm", Line: 1, Parameter: "m", Value: 94209, Maximum: 94208},
+		{User: "overt", Line: 2, Parameter: "t", Value: 11, Maximum: 10},
+		{User: "overp", Line: 3, Parameter: "p", Value: 3, Maximum: 2},
+	}
+	if got := ba.Warnings(); !reflect.DeepEqual(got, want) {
+		t.Errorf("Expected warnings %+v, got: %+v", want, got)
+	}
+}
+
+func Test_Argon2CostWarning_String(t *testing.T) {
+	for _, tc := range []struct {
+		warning ac.Argon2CostWarning
+		want    string
+	}{
+		{ac.Argon2CostWarning{Parameter: "m", Value: 94209, Maximum: 94208}, "argon2 parameter m=94209 KiB exceeds the recommended maximum of 94208 KiB"},
+		{ac.Argon2CostWarning{Parameter: "t", Value: 11, Maximum: 10}, "argon2 parameter t=11 exceeds the recommended maximum of 10"},
+		{ac.Argon2CostWarning{Parameter: "p", Value: 3, Maximum: 2}, "argon2 parameter p=3 exceeds the recommended maximum of 2"},
+	} {
+		if got := tc.warning.String(); got != tc.want {
+			t.Errorf("want %q, got %q", tc.want, got)
+		}
+	}
+}
+
+// Test_NewArgon2Limiter_Slots pins the sizing rule: as many derivations as fit
+// into the budget, at most one per core, at least one.
+func Test_NewArgon2Limiter_Slots(t *testing.T) {
+	cores := runtime.GOMAXPROCS(0)
+
+	for _, tc := range []struct {
+		name   string
+		budget uint32
+		memory uint32
+		slots  int
+		peak   uint64
+	}{
+		{"no argon2 entry: one slot per core", 256 * 1024, 0, cores, 0},
+		{"budget holds more than the cores", 256 * 1024, 1024, cores, uint64(cores) * 1024},
+		{"budget holds two derivations", 2 * 65536, 65536, min(2, cores), uint64(min(2, cores)) * 65536},
+		{"one derivation exceeds the budget", 65536, 94208, 1, 94208},
+	} {
+		t.Run(tc.name, func(subT *testing.T) {
+			limiter := ac.NewArgon2Limiter(tc.budget, tc.memory)
+			if limiter.Slots() != tc.slots || limiter.PeakMemory() != tc.peak {
+				subT.Errorf("want %d slots and %d KiB peak, got %d slots and %d KiB", tc.slots, tc.peak, limiter.Slots(), limiter.PeakMemory())
 			}
 		})
 	}
