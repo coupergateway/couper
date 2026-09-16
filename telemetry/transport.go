@@ -63,7 +63,8 @@ func (t *InstrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	// Metrics setup
 	meter := provider.Meter(instrumentation.BackendInstrumentationName)
 	counter, _ := meter.Int64Counter(instrumentation.BackendRequest)
-	duration, _ := meter.Float64Histogram(instrumentation.BackendRequestDuration)
+	duration, _ := meter.Float64Histogram(instrumentation.BackendRequestDuration,
+		metric.WithExplicitBucketBoundaries(instrumentation.DefaultDurationSecondsBoundaries...))
 
 	attrs := []attribute.KeyValue{
 		attribute.String("backend_name", backendName),

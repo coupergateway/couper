@@ -86,7 +86,8 @@ func (o *OriginConn) logFields(event string) logrus.Fields {
 		since := time.Since(o.createdAt)
 
 		meter := provider.Meter("couper/connection")
-		duration, _ := meter.Float64Histogram(instrumentation.BackendConnectionsLifetime)
+		duration, _ := meter.Float64Histogram(instrumentation.BackendConnectionsLifetime,
+			metric.WithExplicitBucketBoundaries(instrumentation.ConnectionLifetimeSecondsBoundaries...))
 		duration.Record(context.Background(), since.Seconds(), metric.WithAttributes(o.labels...))
 
 		fields["lifetime"] = since.Milliseconds()
