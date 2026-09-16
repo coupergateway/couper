@@ -47,6 +47,7 @@ func TestNewRun(t *testing.T) {
 		{"defaults from file", "01_defaults.hcl", nil, nil, defaultSettings},
 		{"overrides from file", "02_changed_defaults.hcl", nil, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
+			Argon2MemoryBudget:       defaultSettings.Argon2MemoryBudget,
 			BindAddress:              "*",
 			BindAddresses:            map[string]string{"": "tcp"},
 			DefaultPort:              9090,
@@ -67,6 +68,7 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag port", "01_defaults.hcl", Args{"-p", "9876"}, nil, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
+			Argon2MemoryBudget:       defaultSettings.Argon2MemoryBudget,
 			BindAddress:              "*",
 			BindAddresses:            map[string]string{"": "tcp"},
 			DefaultPort:              9876,
@@ -85,6 +87,7 @@ func TestNewRun(t *testing.T) {
 		}},
 		{"defaults with flag and env port", "01_defaults.hcl", Args{"-p", "9876"}, []string{"COUPER_DEFAULT_PORT=4561"}, &config.Settings{
 			AcceptForwarded:          &config.AcceptForwarded{},
+			Argon2MemoryBudget:       defaultSettings.Argon2MemoryBudget,
 			BindAddress:              "*",
 			BindAddresses:            map[string]string{"": "tcp"},
 			DefaultPort:              4561,
