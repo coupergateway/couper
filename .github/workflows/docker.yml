@@ -91,6 +91,8 @@ jobs:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
             docker.io/${{ matrix.image }}
@@ -132,6 +134,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           tags: ${{ steps.meta.outputs.tags }}
           push: ${{ GitHub.event_name != 'pull_request' }}
 
@@ -142,6 +145,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           tags: ${{ steps.meta.outputs.tags }}
           push: ${{ GitHub.event_name != 'pull_request' }}
 
