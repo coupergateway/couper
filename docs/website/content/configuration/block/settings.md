@@ -36,7 +36,7 @@ gateway instance.
   },
   {
     "default": "[]",
-    "description": "Histogram bucket boundaries in seconds for `couper_client_request_duration_seconds`. Defaults to the boundaries the OpenTelemetry semantic conventions specify for HTTP request duration.",
+    "description": "Histogram bucket boundaries in seconds for `couper_client_request_duration_seconds`. Unordered lists are sorted; boundaries must be unique and non-negative. Defaults to the boundaries the OpenTelemetry semantic conventions specify for HTTP request duration.",
     "name": "beta_metrics_request_duration_buckets",
     "type": "tuple (float64)"
   },

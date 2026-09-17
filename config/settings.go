@@ -61,7 +61,7 @@ type Settings struct {
 	TelemetryMetricsEndpoint               string    `hcl:"beta_metrics_endpoint,optional" docs:"" default:""`
 	TelemetryMetricsExporter               string    `hcl:"beta_metrics_exporter,optional" docs:"" default:""`
 	TelemetryMetricsPort                   int       `hcl:"beta_metrics_port,optional" docs:"Prometheus exporter listen port." default:"9090"`
-	TelemetryMetricsRequestDurationBuckets []float64 `hcl:"beta_metrics_request_duration_buckets,optional" docs:"Histogram bucket boundaries in seconds for {couper_client_request_duration_seconds}. Defaults to the boundaries the OpenTelemetry semantic conventions specify for HTTP request duration."`
+	TelemetryMetricsRequestDurationBuckets []float64 `hcl:"beta_metrics_request_duration_buckets,optional" docs:"Histogram bucket boundaries in seconds for {couper_client_request_duration_seconds}. Unordered lists are sorted; boundaries must be unique and non-negative. Defaults to the boundaries the OpenTelemetry semantic conventions specify for HTTP request duration."`
 	TelemetryServiceName                   string    `hcl:"beta_service_name,optional" docs:"Service name which applies to the {service_name} metric and trace labels." default:"couper"`
 	TelemetryTraces                        bool      `hcl:"beta_traces,optional" docs:"Enables the [OpenTelemetry](/observation/tracing) traces exporter."`
 	TelemetryTracesEndpoint                string    `hcl:"beta_traces_endpoint,optional" docs:"OpenTelemetry collector endpoint for exporting traces via gRPC." default:"localhost:4317"`

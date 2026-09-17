@@ -8,7 +8,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `beta_authzen` access control: delegate the authorization decision to a policy decision point via the [OpenID AuthZEN Authorization API 1.0](https://openid.net/specs/authorization-api-1_0.html) — access evaluation callout with per-request `subject`, `action`, `resource` and `context`, endpoint discovery (`configuration_url`), batch permission resolution (`evaluate_permissions`, replaced by an endpoint's `required_permission`), opt-in TLS connection state (`include_tls`) and distinct `authzen_*` error types ([#873](https://github.com/coupergateway/couper/issues/873))
   * log the negotiated HTTP protocol version of backend responses (`response.proto` in `couper_backend` logs) ([#979](https://github.com/coupergateway/couper/pull/979))
   * `http2_prior_knowledge` backend attribute: cleartext HTTP/2 (h2c) for trusted `http` origins, e.g. multiplexed `beta_authzen` callouts without TLS ([#979](https://github.com/coupergateway/couper/pull/979))
-  * `beta_metrics_request_duration_buckets` setting: histogram bucket boundaries in seconds for `couper_client_request_duration_seconds` ([#1010](https://github.com/coupergateway/couper/issues/1010))
+  * `beta_metrics_request_duration_buckets` setting: histogram bucket boundaries in seconds for `couper_client_request_duration_seconds`. Unordered lists are sorted, duplicate or negative boundaries are rejected at config load ([#1010](https://github.com/coupergateway/couper/issues/1010))
 
 ---
 
