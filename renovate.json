@@ -38,6 +38,16 @@
       "matchBaseBranches": ["release.1.14"],
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false
+    },
+    {
+      "description": "The website is built from main only, so the release branch does not need its updates",
+      "matchFileNames": ["docs/website/**", ".github/workflows/docs-website.yml"],
+      "matchBaseBranches": ["release.1.14"],
+      "enabled": false
+    },
+    {
+      "matchFileNames": ["docs/website/**"],
+      "groupName": "website dependencies"
     }
   ]
 }
