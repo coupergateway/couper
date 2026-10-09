@@ -5,8 +5,9 @@ on:
   workflow_dispatch:
   pull_request:
 jobs:
-  build:
-    name: Build
+  pull-request:
+    name: Scan pull request
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     permissions:
       # required for all workflows
@@ -28,3 +29,37 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
+
+  branches:
+    name: Scan ${{ matrix.ref }}
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
+    permissions:
+      # required for all workflows
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [main, release.1.14]
+    steps:
+      - name: Checkout code
+        id: checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.ref }}
+
+      - name: Run Trivy vulnerability scanner in repo mode
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: 'trivy-results.sarif'
+          ref: refs/heads/${{ matrix.ref }}
+          sha: ${{ steps.checkout.outputs.commit }}
