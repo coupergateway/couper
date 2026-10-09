@@ -13,6 +13,7 @@
   "postUpdateOptions": ["gomodTidy"],
   "labels": ["dependencies"],
   "vulnerabilityAlerts": {
+    "enabled": true,
     "addLabels": ["security"]
   },
   "packageRules": [
