@@ -6,6 +6,20 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
 
+## [1.14.4](https://github.com/coupergateway/couper/releases/tag/v1.14.4)
+
+* **Dependencies (Security)**
+  * `golang.org/x/crypto` 0.53.0 → 0.57.0 ([#1034](https://github.com/coupergateway/couper/pull/1034), [#1039](https://github.com/coupergateway/couper/pull/1039), [#1040](https://github.com/coupergateway/couper/pull/1040))
+  * `golang.org/x/net` 0.56.0 → 0.60.0 ([#1034](https://github.com/coupergateway/couper/pull/1034), [#1040](https://github.com/coupergateway/couper/pull/1040))
+  * `google.golang.org/grpc` 1.83.1 → 1.83.2 ([#1034](https://github.com/coupergateway/couper/pull/1034))
+  * `go.opentelemetry.io/otel` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/exporters/otlp/otlptrace` 1.43.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/metric` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/sdk` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/sdk/metric` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/trace` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc` 1.43.0 → 1.45.0 ([#1037](https://github.com/coupergateway/couper/pull/1037))
+
 ## [1.14.3](https://github.com/coupergateway/couper/releases/tag/v1.14.3)
 
 * **Security**
