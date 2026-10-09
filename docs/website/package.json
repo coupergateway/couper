@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "license": "MIT",
-  "packageManager": "pnpm@10.4.1",
+  "packageManager": "pnpm@10.34.5",
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.16",
     "@tailwindcss/postcss": "^4.1.18",
