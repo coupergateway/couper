@@ -63,3 +63,8 @@ test-coverage-show:
 .PHONY: mtls-certificates
 mtls-certificates:
 	time go run internal/tls/cli/main.go
+
+BASE ?= main
+.PHONY: changelog-deps
+changelog-deps:
+	@scripts/changelog-deps.sh $(BASE) $(SINCE)
