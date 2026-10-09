@@ -480,3 +480,5 @@ All new features and changes targeting the master branch must be documented in [
 - **Categories**: Use `Added`, `Changed`, `Fixed`, `Removed`, or `Dependencies` subsections
 - **Format**: Include a brief description with a link to relevant documentation and the PR number
 - **Example**: `* Feature description ([docs link](https://docs.couper.io/...)) ([#123](https://github.com/coupergateway/couper/pull/123))`
+- **Dependency updates**: Bot PRs carry no changelog entry. `make changelog-deps BASE=release.1.14` prints the `Dependencies` entries from the merged PRs since the last release
+- **Release branches**: Entries go into the section of the patch release. `[Unreleased]` stays empty on a release branch

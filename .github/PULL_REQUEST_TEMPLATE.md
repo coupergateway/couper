@@ -5,7 +5,7 @@ Describe your changes!
     <summary>Reviewer checklist</summary>
     <ul>
         <li>Read PR description: a summary about the changes is required</li>
-        <li>Changelog updated</li>
+        <li>Changelog updated (not for dependency PRs, see <code>make changelog-deps</code>)</li>
         <li>Documentation: docs/{Reference, Cli, ...}, Docker and cli help/usage</li>
         <li>Pulled branch, manually tested</li>
         <li>Verified requirements are met</li>
