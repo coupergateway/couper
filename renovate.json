@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "enabledManagers": ["gomod", "npm", "github-actions"],
+  "baseBranchPatterns": ["$default", "release.1.14"],
+  "osvVulnerabilityAlerts": true,
+  "minimumReleaseAge": "14 days",
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 6am on monday"],
+  "postUpdateOptions": ["gomodTidy"],
+  "labels": ["dependencies"],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "addLabels": ["security"]
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "addLabels": ["go"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "addLabels": ["javascript"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "addLabels": ["github_actions"]
+    },
+    {
+      "description": "The go directive moves by hand, together with the toolchain and the build images",
+      "matchDepNames": ["go"],
+      "enabled": false
+    },
+    {
+      "matchBaseBranches": ["release.1.14"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    }
+  ]
+}
