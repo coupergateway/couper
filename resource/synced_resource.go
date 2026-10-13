@@ -83,6 +83,7 @@ func (s *SyncedResource) sync() {
 
 	init := func() {
 		expired = time.After(s.ttl)
+		invalidated = nil
 		backoff = time.Second
 	}
 
@@ -105,7 +106,10 @@ func (s *SyncedResource) sync() {
 		case <-expired:
 			err = s.fetch()
 			if err != nil {
-				invalidated = time.After(s.maxStale)
+				// max_stale starts at the first failed refresh.
+				if invalidated == nil && s.data != nil {
+					invalidated = time.After(s.maxStale)
+				}
 				expired = time.After(backoff)
 				if backoff < time.Minute {
 					backoff *= 2
@@ -124,6 +128,7 @@ func (s *SyncedResource) sync() {
 					Warn("cached resource invalidated after max_stale expired")
 			}
 			s.data = nil
+			invalidated = nil
 		}
 	}
 }

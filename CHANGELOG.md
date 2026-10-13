@@ -11,6 +11,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Security**
   * build with [go 1.26.9](https://go.dev/doc/devel/release#go1.26.9): security fixes for `crypto/tls`, `html/template`, `net/http`, `net/textproto` and `os` ([#1050](https://github.com/coupergateway/couper/pull/1050))
 
+* **Fixed**
+  * [`jwks_max_stale`](https://docs.couper.io/configuration/block/jwt), [`configuration_max_stale`](https://docs.couper.io/configuration/block/oidc), [`metadata_max_stale`](https://docs.couper.io/configuration/block/saml): the stale period starts with the first failed refresh and ends with a successful one. Before, each failed refresh restarted it. Cached data stayed valid too long, and fresh data was dropped ([#1049](https://github.com/coupergateway/couper/issues/1049))
+
 ## [1.14.4](https://github.com/coupergateway/couper/releases/tag/v1.14.4)
 
 * **Dependencies (Security)**
