@@ -1,6 +1,6 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.3...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.5...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
@@ -10,6 +10,28 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * `http2_prior_knowledge` backend attribute: cleartext HTTP/2 (h2c) for trusted `http` origins, e.g. multiplexed `beta_authzen` callouts without TLS ([#979](https://github.com/coupergateway/couper/pull/979))
 
 ---
+
+## [1.14.5](https://github.com/coupergateway/couper/releases/tag/v1.14.5)
+
+* **Security**
+  * build with [go 1.26.9](https://go.dev/doc/devel/release#go1.26.9): security fixes for `crypto/tls`, `html/template`, `net/http`, `net/textproto` and `os` ([#1050](https://github.com/coupergateway/couper/pull/1050))
+
+* **Fixed**
+  * [`jwks_max_stale`](https://docs.couper.io/configuration/block/jwt), [`configuration_max_stale`](https://docs.couper.io/configuration/block/oidc), [`metadata_max_stale`](https://docs.couper.io/configuration/block/saml): the stale period starts with the first failed refresh and ends with a successful one. Before, each failed refresh restarted it. Cached data stayed valid too long, and fresh data was dropped ([#1049](https://github.com/coupergateway/couper/issues/1049))
+
+## [1.14.4](https://github.com/coupergateway/couper/releases/tag/v1.14.4)
+
+* **Dependencies (Security)**
+  * `golang.org/x/crypto` 0.53.0 → 0.57.0 ([#1034](https://github.com/coupergateway/couper/pull/1034), [#1039](https://github.com/coupergateway/couper/pull/1039), [#1040](https://github.com/coupergateway/couper/pull/1040))
+  * `golang.org/x/net` 0.56.0 → 0.60.0 ([#1034](https://github.com/coupergateway/couper/pull/1034), [#1040](https://github.com/coupergateway/couper/pull/1040))
+  * `google.golang.org/grpc` 1.83.1 → 1.83.2 ([#1034](https://github.com/coupergateway/couper/pull/1034))
+  * `go.opentelemetry.io/otel` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/exporters/otlp/otlptrace` 1.43.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/metric` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/sdk` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/sdk/metric` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/trace` 1.44.0 → 1.45.0 ([#1036](https://github.com/coupergateway/couper/pull/1036))
+  * `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc` 1.43.0 → 1.45.0 ([#1037](https://github.com/coupergateway/couper/pull/1037))
 
 ## [1.14.3](https://github.com/coupergateway/couper/releases/tag/v1.14.3)
 

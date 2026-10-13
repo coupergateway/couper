@@ -3487,7 +3487,7 @@ func TestJWTAccessControl(t *testing.T) {
 
 	// RSA tokens created with server/testdata/integration/files/pkcs8.key
 	// ECDSA tokens created with server/testdata/integration/files/ecdsa.key
-	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
+	rsaToken := rs256Token
 	hmacToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwic2NvcGUiOiJmb28gYmFyIiwiaWF0IjoxNTE2MjM5MDIyfQ.7wz7Z7IajfEpwYayfshag6tQVS0e0zZJyjAhuFC0L-E"
 	ecdsaToken := "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImVzMjU2In0.eyJzdWIiOjEyMzQ1Njc4OTB9.jXsNtPUXxBi8Bz2i2Maj9lzbB1ebQDmz8TU6GSs6G0yzq9YguXm_HQuwsg4ZTbPER3bpXH_cxz9eEZHUBXfWzw"
 	ecdsaToken2 := "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImVzMjU2LWNydi14LXkifQ.eyJzdWIiOjEyMzQ1Njc4OTB9.4-uNC6KGkSY1YYAmGoR-naUu2-Rxo6HSzEkecb7Ua9FVkif0X2gC55DpPU06_HH-yfK-dFozLwzuV2AT6ouOIg"
@@ -3721,6 +3721,9 @@ func createDPoPHeaders(method, path string, privKey *rsa.PrivateKey, jwk map[str
 	return header
 }
 
+// rs256Token is signed with testdata/integration/files/pkcs8.key.
+const rs256Token = "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
+
 func TestJWKsMaxStale(t *testing.T) {
 	helper := test.New(t)
 	client := newClient()
@@ -3769,9 +3772,7 @@ func TestJWKsMaxStale(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
 	helper.Must(err)
 
-	rsaToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzMjU2IiwidHlwIjoiSldUIn0.eyJzdWIiOjEyMzQ1Njc4OTB9.AZ0gZVqPe9TjjjJO0GnlTvERBXhPyxW_gTn050rCoEkseFRlp4TYry7WTQ7J4HNrH3btfxaEQLtTv7KooVLXQyMDujQbKU6cyuYH6MZXaM0Co3Bhu0awoX-2GVk997-7kMZx2yvwIR5ypd1CERIbNs5QcQaI4sqx_8oGrjO5ZmOWRqSpi4Mb8gJEVVccxurPu65gPFq9esVWwTf4cMQ3GGzijatnGDbRWs_igVGf8IAfmiROSVd17fShQtfthOFd19TGUswVAleOftC7-DDeJgAK8Un5xOHGRjv3ypK_6ZLRonhswaGXxovE0kLq4ZSzumQY2hOFE6x_BbrR1WKtGw"
-
-	req.Header = http.Header{"Authorization": []string{"Bearer " + rsaToken}}
+	req.Header = http.Header{"Authorization": []string{"Bearer " + rs256Token}}
 
 	// Phases run against absolute deadlines so slow execution (e.g. coverage
 	// runs) cannot drift a phase out of its window.
@@ -3815,6 +3816,142 @@ func TestJWKsMaxStale(t *testing.T) {
 
 	expectedMessage := "access control error: stale: token is unverifiable: error while executing keyfunc: received no valid JWKs data: <nil>, status code 500"
 	if message != expectedMessage {
+		t.Fatalf("expected message %q, got: %q", expectedMessage, message)
+	}
+}
+
+func TestJWKsMaxStaleClearedByRefresh(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	jwksData, err := os.ReadFile(filepath.Join(testWorkingDir, "../internal/test/testdata/jwks.json"))
+	helper.Must(err)
+
+	// Fetches 1-4 fail (0s, 1s, 3s, 3s). Fetch 5 succeeds (4s).
+	var fetches atomic.Int32
+	jwksBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		if fetches.Add(1) <= 4 {
+			rw.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		rw.Write(jwksData)
+	}))
+	defer jwksBackend.Close()
+
+	cfg := `
+	  server {
+	    endpoint "/" {
+	      access_control = ["stale"]
+	      response {
+	        body = "hi"
+	      }
+	    }
+	  }
+	  definitions {
+	    jwt "stale" {
+	      jwks_url = "` + jwksBackend.URL + `/jwks.json"
+	      jwks_ttl = "5s"
+	      jwks_max_stale = "3s"
+	      backend {
+	        origin = "` + jwksBackend.URL + `"
+	      }
+	    }
+	  }
+	`
+
+	shutdown, hook, err := newCouperWithBytes([]byte(cfg), helper)
+	defer shutdown()
+	helper.Must(err)
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
+	helper.Must(err)
+	req.Header = http.Header{"Authorization": []string{"Bearer " + rs256Token}}
+
+	time.Sleep(5 * time.Second)
+	// A) 5s: keys fetched at 4s
+	res, err := client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, getFirstAccessLogMessage(hook))
+	}
+
+	time.Sleep(2500 * time.Millisecond)
+	// B) 7.5s: max_stale after the last failure has passed, keys stay valid
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, getFirstAccessLogMessage(hook))
+	}
+}
+
+func TestJWKsMaxStaleFromFirstFailure(t *testing.T) {
+	helper := test.New(t)
+	client := newClient()
+
+	jwksData, err := os.ReadFile(filepath.Join(testWorkingDir, "../internal/test/testdata/jwks.json"))
+	helper.Must(err)
+
+	// Fetch 1 succeeds. Refreshes fail at 1s, 2s, 4s, 8s.
+	var fetches atomic.Int32
+	jwksBackend := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		if fetches.Add(1) > 1 {
+			rw.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+		rw.Write(jwksData)
+	}))
+	defer jwksBackend.Close()
+
+	cfg := `
+	  server {
+	    endpoint "/" {
+	      access_control = ["stale"]
+	      response {
+	        body = "hi"
+	      }
+	    }
+	  }
+	  definitions {
+	    jwt "stale" {
+	      jwks_url = "` + jwksBackend.URL + `/jwks.json"
+	      jwks_ttl = "1s"
+	      jwks_max_stale = "3s"
+	      backend {
+	        origin = "` + jwksBackend.URL + `"
+	      }
+	    }
+	  }
+	`
+
+	shutdown, hook, err := newCouperWithBytes([]byte(cfg), helper)
+	defer shutdown()
+	helper.Must(err)
+
+	req, err := http.NewRequest(http.MethodGet, "http://back.end:8080/", nil)
+	helper.Must(err)
+	req.Header = http.Header{"Authorization": []string{"Bearer " + rs256Token}}
+
+	time.Sleep(2500 * time.Millisecond)
+	// A) 2.5s: stale since 1s, within max_stale
+	res, err := client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("A) expected status %d, got: %d (%s)", http.StatusOK, res.StatusCode, getFirstAccessLogMessage(hook))
+	}
+
+	time.Sleep(3 * time.Second)
+	// B) 5.5s: max_stale ended at 4s, the failure at 4s does not extend it
+	res, err = client.Do(req)
+	helper.Must(err)
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("B) expected status %d, got: %d (%s)", http.StatusUnauthorized, res.StatusCode, getFirstAccessLogMessage(hook))
+	}
+
+	time.Sleep(time.Second)
+	expectedMessage := "access control error: stale: token is unverifiable: error while executing keyfunc: received no valid JWKs data: <nil>, status code 503"
+	if message := getFirstAccessLogMessage(hook); message != expectedMessage {
 		t.Fatalf("expected message %q, got: %q", expectedMessage, message)
 	}
 }

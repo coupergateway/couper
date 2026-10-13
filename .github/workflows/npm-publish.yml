@@ -2,7 +2,7 @@ name: npm-publish
 
 on:
   workflow_run:
-    workflows: ["Release"]
+    workflows: ["Docker"]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -14,15 +14,25 @@ jobs:
   npm:
     name: 'update npm package'
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Docker also runs on every push to main; only its release run means the GitHub release is published.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'release' && github.event.workflow_run.conclusion == 'success') }}
+    permissions:
+      contents: read
     env:
       PACKAGE_NAME: 'couper'
-      PACKAGE_VERSION: ${{ github.event.inputs.package-version || github.event.workflow_run.head_branch || github.ref_name }}
+      PACKAGE_VERSION: ${{ github.event.inputs.package-version || github.event.workflow_run.head_branch }}
       # https://github.com/JS-DevTools/npm-publish/issues/15
       INPUT_TOKEN: ''
     steps:
       - name: 'checkout'
         uses: actions/checkout@v6
+      - name: 'require a published release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [[ "$PACKAGE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$PACKAGE_VERSION' is not a release tag"; exit 1; }
+          draft=$(gh release view "$PACKAGE_VERSION" --json isDraft --jq .isDraft) || { echo "::error::release $PACKAGE_VERSION not found"; exit 1; }
+          [[ "$draft" == "false" ]] || { echo "::error::release $PACKAGE_VERSION is still a draft"; exit 1; }
       - name: 'prepare package'
         run: |
           cp LICENSE .npm
