@@ -60,8 +60,14 @@ jobs:
     - name: Test container serves index.html
       if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
       run: |
-        docker run -d --rm -p 8080:8080 'couper-test-${{ github.ref }}'
-        [[ $(curl --head --location --connect-timeout 5 --write-out %{http_code} --silent --output /dev/null http://localhost:8080/) == 200 ]]
+        cid=$(docker run -d --rm -p 8080:8080 'couper-test-${{ github.ref }}')
+        for _ in $(seq 10); do
+          [[ $(curl --head --location --connect-timeout 5 --write-out %{http_code} --silent --output /dev/null http://localhost:8080/) == 200 ]] && exit 0
+          sleep 1
+        done
+        docker logs "$cid"
+        echo "::error::container did not answer with 200 within 10s"
+        exit 1
 
   publish:
     needs: build
