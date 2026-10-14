@@ -70,9 +70,27 @@ func TestMetricsHandler_DefaultBucketBoundaries(t *testing.T) {
 		rw.WriteHeader(http.StatusOK)
 	})
 
-	bounds, _ := serveWithMetrics(t, NewMetricsHandler()(inner))
+	bounds, _ := serveWithMetrics(t, NewMetricsHandler(nil)(inner))
 
 	want := instrumentation.DefaultDurationSecondsBoundaries
+	if len(bounds) != len(want) {
+		t.Fatalf("want %d boundaries, got %d: %v", len(want), len(bounds), bounds)
+	}
+	for i, boundary := range want {
+		if bounds[i] != boundary {
+			t.Errorf("boundary %d: want %v, got %v", i, boundary, bounds[i])
+		}
+	}
+}
+
+func TestMetricsHandler_ConfiguredBucketBoundariesAreSorted(t *testing.T) {
+	inner := http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	})
+
+	bounds, _ := serveWithMetrics(t, NewMetricsHandler([]float64{1, 0.05, 10, 0.2})(inner))
+
+	want := []float64{0.05, 0.2, 1, 10}
 	if len(bounds) != len(want) {
 		t.Fatalf("want %d boundaries, got %d: %v", len(want), len(bounds), bounds)
 	}
@@ -95,7 +113,11 @@ func TestMetricsHandler_ResolvesSubSecondDurations(t *testing.T) {
 		rw.WriteHeader(http.StatusOK)
 	})
 
-	bounds, counts := serveWithMetrics(t, &MetricsHandler{handler: inner, clock: clock})
+	bounds, counts := serveWithMetrics(t, &MetricsHandler{
+		durationBoundaries: instrumentation.DefaultDurationSecondsBoundaries,
+		handler:            inner,
+		clock:              clock,
+	})
 
 	capturedAt := -1
 	for i, count := range counts {
