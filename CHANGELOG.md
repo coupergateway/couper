@@ -9,6 +9,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * log the negotiated HTTP protocol version of backend responses (`response.proto` in `couper_backend` logs) ([#979](https://github.com/coupergateway/couper/pull/979))
   * `http2_prior_knowledge` backend attribute: cleartext HTTP/2 (h2c) for trusted `http` origins, e.g. multiplexed `beta_authzen` callouts without TLS ([#979](https://github.com/coupergateway/couper/pull/979))
 
+* **Fixed**
+  * [`error_handler`](https://docs.couper.io/configuration/block/error_handler) can catch the `configuration` error type, by name and through the catch-all `*` or label-less handler: a backend `origin` that evaluates to an empty string raised a per-request configuration error that no error handler could match, so it always reached the client as a generic `500` response ([#983](https://github.com/coupergateway/couper/issues/983))
+
 ---
 
 ## [1.14.5](https://github.com/coupergateway/couper/releases/tag/v1.14.5)

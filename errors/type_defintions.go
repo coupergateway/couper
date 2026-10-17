@@ -30,6 +30,10 @@ var Definitions = []*Error{
 
 	AccessControl.Kind("insufficient_permissions").Context("api").Context("endpoint"),
 
+	// Configuration errors are raised per request (e.g. a backend origin evaluating to an empty
+	// string) and must be catchable by an error_handler.
+	Configuration.Context("api").Context("endpoint"),
+
 	Backend,
 	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
 	Backend.Kind("backend_throttle_exceeded").Status(http.StatusTooManyRequests),
