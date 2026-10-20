@@ -9,7 +9,7 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 ## [1.14.6](https://github.com/coupergateway/couper/releases/tag/v1.14.6)
 
 * **Security**
-  * Request paths are normalized before routing. Dot segments are resolved and repeated slashes are merged, so `//admin`, `/./admin` and `/x/../admin` reach the same endpoint and access controls as `/admin`. A path that resolves above the root, or that forms an empty or dot segment through an encoded slash, is rejected with status `400`. Endpoint, `files` and `spa` matching, `request.path` and the upstream request use the normalized path. The access log adds `request.raw_path` with the path as sent when it differs ([#1058](https://github.com/coupergateway/couper/issues/1058))
+  * Request paths are normalized before routing. Dot segments are resolved and repeated slashes are merged, so `//admin`, `/./admin` and `/x/../admin` reach the same endpoint and access controls as `/admin`. A path that resolves above the root, or that forms an empty or dot segment through an encoded slash, is rejected with status `400`. Endpoint, `files` and `spa` matching, `request.path` and the upstream request use the normalized path. The `htu` claim of a DPoP proof gets the same normalization before it is compared. The access log adds `request.raw_path` with the path as sent when it differs ([#1058](https://github.com/coupergateway/couper/issues/1058))
 
 ## [1.14.5](https://github.com/coupergateway/couper/releases/tag/v1.14.5)
 

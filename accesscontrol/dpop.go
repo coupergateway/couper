@@ -16,6 +16,7 @@ import (
 
 	acjwk "github.com/coupergateway/couper/accesscontrol/jwk"
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -108,6 +109,9 @@ func (p *ProofClaims) getReqAndPcHtu() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	if err = normalizePathSegments(reqHtu); err != nil {
+		return "", "", err
+	}
 
 	pcHtu, err := url.Parse(p.Htu)
 	if err != nil {
@@ -117,8 +121,27 @@ func (p *ProofClaims) getReqAndPcHtu() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	if err = normalizePathSegments(pcHtu); err != nil {
+		return "", "", err
+	}
 
 	return reqHtu.String(), pcHtu.String(), nil
+}
+
+// normalizePathSegments applies the request path normalization of the server,
+// so that the proof and the request agree on one canonical path.
+func normalizePathSegments(u *url.URL) error {
+	escaped, err := utils.NormalizePath(u.EscapedPath())
+	if err != nil {
+		return err
+	}
+	unescaped, err := url.PathUnescape(escaped)
+	if err != nil {
+		return err
+	}
+	u.RawPath = escaped
+	u.Path = unescaped
+	return nil
 }
 
 func (p *ProofClaims) validateIat() error {
