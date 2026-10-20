@@ -291,4 +291,14 @@ func TestPathNormalization_URLAttribute(t *testing.T) {
 		{path: "/r?f=x", status: 200, body: "origin saw /files/x", origin: true},
 		{path: "/r?f=../admin/panel.txt", status: 500},
 	})
+
+	t.Run("opaque", func(t *testing.T) {
+		// url.ParseRequestURI accepts "http:http://host/..." as an opaque URL with an empty path.
+		opaque := "http%3Ahttp%3A%2F%2Forigin.example%2Ffiles%2F..%2Fadmin%2Fpanel.txt"
+		runPathCases(t, "testdata/integration/path_normalization/05_couper.hcl", "http://example.com:9897", []pathCase{
+			{path: "/ou?u=%2Fx", status: 200, body: "origin saw /x", origin: true},
+			{path: "/ou?u=" + opaque, status: 500},
+			{path: "/or?u=" + opaque, status: 500},
+		})
+	})
 }
