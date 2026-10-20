@@ -117,6 +117,14 @@ func registerHandler(root *gmux.Router, methods []string, path string, handler h
 
 func (m *Mux) FindHandler(req *http.Request) http.Handler {
 	ctx := context.WithValue(req.Context(), request.ServerName, m.opts.ServerOptions.ServerName)
+	if err := normalizeRequestPath(req); err != nil {
+		*req = *req.WithContext(ctx)
+		if tpl, _ := m.getAPIErrorTemplate(req.URL.Path); tpl != nil {
+			return tpl.WithError(err)
+		}
+		return m.opts.ServerOptions.ServerErrTpl.WithError(err)
+	}
+
 	routeMatch, matches := m.match(m.endpointRoot, req)
 	if !matches {
 		// No matches for api or free endpoints. Determine if we have entered an api basePath
