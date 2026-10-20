@@ -109,9 +109,6 @@ func (p *ProofClaims) getReqAndPcHtu() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	if err = normalizePathSegments(reqHtu); err != nil {
-		return "", "", err
-	}
 
 	pcHtu, err := url.Parse(p.Htu)
 	if err != nil {
@@ -119,9 +116,6 @@ func (p *ProofClaims) getReqAndPcHtu() (string, string, error) {
 	}
 	pcHtu, err = normalize(pcHtu)
 	if err != nil {
-		return "", "", err
-	}
-	if err = normalizePathSegments(pcHtu); err != nil {
 		return "", "", err
 	}
 
@@ -470,13 +464,10 @@ func toInt(bs []byte) int {
 func normalize(u *url.URL) (*url.URL, error) {
 	// https://www.rfc-editor.org/rfc/rfc3986
 	// 6.2.2.  Syntax-Based Normalization
-	// 6.2.2.3.  Path Segment Normalization
-	ru, err := url.Parse(u.RequestURI())
-	if err != nil {
+	// 6.2.2.3.  Path Segment Normalization, with the rules of the request router
+	if err := normalizePathSegments(u); err != nil {
 		return nil, err
 	}
-	// ResolveReference also resolves . and .. segements
-	u = u.ResolveReference(ru)
 	// 6.2.2.1.  Case Normalization
 	// 6.2.2.2.  Percent-Encoding Normalization
 	u.RawPath = u.Path
