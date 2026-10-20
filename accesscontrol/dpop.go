@@ -463,6 +463,11 @@ func toInt(bs []byte) int {
 
 func normalize(u *url.URL) (*url.URL, error) {
 	// https://www.rfc-editor.org/rfc/rfc3986
+	// 6.2.3.  Scheme-Based Normalization: an empty path is "/"
+	if u.Path == "" {
+		u.Path = "/"
+		u.RawPath = ""
+	}
 	// 6.2.2.  Syntax-Based Normalization
 	// 6.2.2.3.  Path Segment Normalization, with the rules of the request router
 	if err := normalizePathSegments(u); err != nil {
