@@ -1,6 +1,5 @@
-# Gateway under test on the default port. The origin is a second Couper
-# server in this file. It echoes the URL it receives, so any dot segment
-# or encoding that reaches it is visible to the test.
+# Gateway under test on the default port. The origin is a plain test
+# server that echoes the request target byte for byte.
 server "gateway" {
   hosts = ["*:8080"]
 
@@ -29,22 +28,6 @@ server "gateway" {
   }
 }
 
-server "origin" {
-  hosts = ["*:9898"]
-
-  endpoint "/admin/panel.txt" {
-    response {
-      body = "TOP SECRET admin panel"
-    }
-  }
-
-  endpoint "/**" {
-    response {
-      body = "origin saw ${request.url}"
-    }
-  }
-}
-
 definitions {
   basic_auth "creds" {
     user     = "alice"
@@ -58,6 +41,6 @@ definitions {
   }
 
   backend "origin" {
-    origin = "http://localhost:9898"
+    origin = env.COUPER_TEST_RAW_BACKEND_ADDR
   }
 }

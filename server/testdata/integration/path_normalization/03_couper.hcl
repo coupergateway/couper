@@ -24,22 +24,6 @@ server "gateway" {
   }
 }
 
-server "origin" {
-  hosts = ["*:9898"]
-
-  endpoint "/admin/panel.txt" {
-    response {
-      body = "TOP SECRET admin panel"
-    }
-  }
-
-  endpoint "/**" {
-    response {
-      body = "origin saw ${request.url}"
-    }
-  }
-}
-
 definitions {
   basic_auth "creds" {
     user     = "alice"
@@ -47,6 +31,6 @@ definitions {
   }
 
   backend "origin" {
-    origin = "http://localhost:9898"
+    origin = env.COUPER_TEST_RAW_BACKEND_ADDR
   }
 }
