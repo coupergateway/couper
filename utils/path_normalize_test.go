@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -65,6 +66,46 @@ func TestNormalizePath(t *testing.T) {
 			again, err := NormalizePath(got)
 			if err != nil || again != got {
 				subT.Errorf("not idempotent: %q -> %q, %v", got, again, err)
+			}
+		})
+	}
+}
+
+func TestNormalizeURLPath(t *testing.T) {
+	tests := []struct {
+		in          string
+		wantPath    string
+		wantEscaped string
+		wantErr     bool
+	}{
+		{"http://host/x/%2e%2e/admin", "/admin", "/admin", false},
+		{"http://host//admin/", "/admin/", "/admin/", false},
+		{"http://host/a%2Fb", "/a/b", "/a%2Fb", false},
+		{"http://host/x//a%2Fb", "/x/a/b", "/x/a%2Fb", false},
+		{"http://host/x//%61dmin", "/x/admin", "/x/%61dmin", false},
+		{"http://host/a%20b", "/a b", "/a%20b", false},
+		{"http://host", "", "", false},
+		{"http://host/..", "", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.in, func(subT *testing.T) {
+			u, err := url.Parse(tt.in)
+			if err != nil {
+				subT.Fatal(err)
+			}
+			err = NormalizeURLPath(u)
+			if (err != nil) != tt.wantErr {
+				subT.Fatalf("error: want %v, got %v", tt.wantErr, err)
+			}
+			if err != nil {
+				return
+			}
+			if u.Path != tt.wantPath {
+				subT.Errorf("Path: want %q, got %q", tt.wantPath, u.Path)
+			}
+			if got := u.EscapedPath(); got != tt.wantEscaped {
+				subT.Errorf("EscapedPath: want %q, got %q", tt.wantEscaped, got)
 			}
 		})
 	}

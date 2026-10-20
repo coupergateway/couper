@@ -122,22 +122,6 @@ func (p *ProofClaims) getReqAndPcHtu() (string, string, error) {
 	return reqHtu.String(), pcHtu.String(), nil
 }
 
-// normalizePathSegments applies the request path normalization of the server,
-// so that the proof and the request agree on one canonical path.
-func normalizePathSegments(u *url.URL) error {
-	escaped, err := utils.NormalizePath(u.EscapedPath())
-	if err != nil {
-		return err
-	}
-	unescaped, err := url.PathUnescape(escaped)
-	if err != nil {
-		return err
-	}
-	u.RawPath = escaped
-	u.Path = unescaped
-	return nil
-}
-
 func (p *ProofClaims) validateIat() error {
 	// 11. The creation time of the JWT, as determined by either the iat
 	//     claim or a server managed timestamp via the nonce claim, is within
@@ -470,7 +454,7 @@ func normalize(u *url.URL) (*url.URL, error) {
 	}
 	// 6.2.2.  Syntax-Based Normalization
 	// 6.2.2.3.  Path Segment Normalization, with the rules of the request router
-	if err := normalizePathSegments(u); err != nil {
+	if err := utils.NormalizeURLPath(u); err != nil {
 		return nil, err
 	}
 	// 6.2.2.1.  Case Normalization

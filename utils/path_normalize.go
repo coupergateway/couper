@@ -2,11 +2,34 @@ package utils
 
 import (
 	"errors"
+	"net/url"
 	"strings"
 )
 
 // ErrPathAboveRoot reports a path whose dot segments resolve above the root.
 var ErrPathAboveRoot = errors.New("path resolves above the root")
+
+// NormalizeURLPath rewrites Path and RawPath of u to the normalized form of its
+// path, so that EscapedPath keeps the encoding of the normalized form.
+func NormalizeURLPath(u *url.URL) error {
+	escaped := u.EscapedPath()
+	normalized, err := NormalizePath(escaped)
+	if err != nil {
+		return err
+	}
+	if normalized == escaped {
+		return nil
+	}
+
+	unescaped, err := url.PathUnescape(normalized)
+	if err != nil {
+		return err
+	}
+	u.RawPath = normalized
+	u.Path = unescaped
+
+	return nil
+}
 
 // NormalizePath removes dot segments and merges slashes of an escaped path
 // (RFC 3986 section 5.2.4). Only a segment made of literal or %2E-encoded dots is
