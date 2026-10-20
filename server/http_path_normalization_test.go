@@ -280,3 +280,15 @@ func TestPathNormalization_Files(t *testing.T) {
 		{path: "/index.html", status: 200, body: "public index", logPath: "/index.html"},
 	})
 }
+
+func TestPathNormalization_URLAttribute(t *testing.T) {
+	runPathCases(t, "testdata/integration/path_normalization/05_couper.hcl", "http://example.com:8080", []pathCase{
+		{path: "/u?f=x", status: 200, body: "origin saw /files/x", origin: true},
+		{path: "/u?f=../admin/panel.txt", status: 500},
+		{path: "/u?f=%2e%2e/admin/panel.txt", status: 500},
+		{path: "/u?f=%252e%252e/admin/panel.txt", status: 500},
+		{path: "/u?f=x%2F..%2Fadmin/panel.txt", status: 500},
+		{path: "/r?f=x", status: 200, body: "origin saw /files/x", origin: true},
+		{path: "/r?f=../admin/panel.txt", status: 500},
+	})
+}
