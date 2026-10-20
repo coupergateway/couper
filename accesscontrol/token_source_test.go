@@ -654,6 +654,12 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
 		{
 			"encoded dot segments", "https://www.example.com/a/%2e%2e/path", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com/path", "iat": time.Now().Unix(), "ath": ath},
 		},
+		{
+			"root without trailing slash in htu", "https://www.example.com/", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com", "iat": time.Now().Unix(), "ath": ath},
+		},
+		{
+			"root without trailing slash in request", "https://www.example.com", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com/", "iat": time.Now().Unix(), "ath": ath},
+		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)

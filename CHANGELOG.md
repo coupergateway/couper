@@ -9,8 +9,11 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 ## [1.14.6](https://github.com/coupergateway/couper/releases/tag/v1.14.6)
 
 * **Security**
-  * Request paths are normalized before routing. Dot segments are resolved and repeated slashes are merged, so `//admin`, `/./admin` and `/x/../admin` reach the same endpoint and access controls as `/admin`. A path that resolves above the root, or that forms an empty or dot segment through an encoded slash, is rejected with status `400`. Endpoint, `files` and `spa` matching, `request.path` and the upstream request use the normalized path. The `htu` claim of a DPoP proof gets the same normalization before it is compared. The access log adds `request.raw_path` with the path as sent when it differs ([#1058](https://github.com/coupergateway/couper/issues/1058))
+  * Request paths are normalized before routing. Dot segments are resolved and repeated slashes are merged, so `//admin`, `/./admin` and `/x/../admin` reach the same endpoint and access controls as `/admin`. A path that resolves above the root, or that forms an empty or dot segment through an encoded slash, is rejected with status `400`. Endpoint, `files` and `spa` matching, `request.path` and the upstream request use the normalized path. The access log adds `request.raw_path` with the path as sent when it differs ([#1058](https://github.com/coupergateway/couper/issues/1058))
   * Reject path traversal sequences (`..`, `%2e%2e`) in the `url` attribute of `proxy` and `request` blocks, like `path` and `path_prefix` ([#1059](https://github.com/coupergateway/couper/pull/1059))
+
+* **Changed**
+  * DPoP: the `htu` claim and the request URI are compared after the same path normalization as routing. Dot segments are resolved, repeated slashes are merged, and an empty path is `/`. A proof signed for the path as sent and a proof signed for the normalized path are both accepted ([#1059](https://github.com/coupergateway/couper/pull/1059))
 
 ## [1.14.5](https://github.com/coupergateway/couper/releases/tag/v1.14.5)
 
