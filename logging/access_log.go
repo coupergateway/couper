@@ -51,6 +51,10 @@ func rawRequestPath(req *http.Request) string {
 	if err != nil {
 		return ""
 	}
+	// RawPath keeps bytes that EscapedPath would encode, such as "|".
+	if u.RawPath != "" {
+		return u.RawPath
+	}
 	return u.EscapedPath()
 }
 

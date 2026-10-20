@@ -1,7 +1,10 @@
 package server_test
 
 import (
+	"bufio"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -192,6 +195,55 @@ func TestPathNormalization_FixedSegments(t *testing.T) {
 		{path: "/x/panel.txt", status: 200, body: "origin saw http://localhost:9898/x/panel.txt", origin: true},
 		{path: "/admin/..", status: 404, logPath: "/", rawPath: "/admin/.."},
 	})
+}
+
+// rawRequest sends the request target byte for byte; net/http clients would
+// re-encode characters such as "|".
+func rawRequest(t *testing.T, addr, target string) int {
+	t.Helper()
+
+	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	_, err = fmt.Fprintf(conn, "GET %s HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n", target)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	_, _ = io.Copy(io.Discard, res.Body)
+
+	return res.StatusCode
+}
+
+func TestPathNormalization_RawPathBytes(t *testing.T) {
+	helper := test.New(t)
+	shutdown, hook := newCouper("testdata/integration/path_normalization/01_couper.hcl", helper)
+	defer shutdown()
+
+	hook.Reset()
+	if status := rawRequest(t, "127.0.0.1:8080", "/a|b/../admin/panel.txt"); status != http.StatusUnauthorized {
+		t.Errorf("status: want 401, got %d", status)
+	}
+
+	access, _ := waitForAccessLog(hook)
+	if access == nil {
+		t.Fatal("missing access log entry")
+	}
+	reqFields, _ := access.Data["request"].(logging.Fields)
+	if p, _ := reqFields["path"].(string); p != "/admin/panel.txt" {
+		t.Errorf("access log path: want %q, got %q", "/admin/panel.txt", p)
+	}
+	if raw, _ := reqFields["raw_path"].(string); raw != "/a|b/../admin/panel.txt" {
+		t.Errorf("access log raw_path: want %q, got %q", "/a|b/../admin/panel.txt", raw)
+	}
 }
 
 func TestPathNormalization_Files(t *testing.T) {
