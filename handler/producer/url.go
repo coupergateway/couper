@@ -11,6 +11,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/coupergateway/couper/config/request"
+	"github.com/coupergateway/couper/errors"
 	"github.com/coupergateway/couper/eval"
 	"github.com/coupergateway/couper/utils"
 )
@@ -37,6 +38,11 @@ func NewURLFromAttribute(hclCtx *hcl.EvalContext, content *hclsyntax.Body, attrN
 	u, err := url.ParseRequestURI(urlStr) // method forces abs path
 	if err != nil {
 		return nil, err
+	}
+
+	// An opaque URL has no path to check and is sent as request target as is.
+	if u.Opaque != "" {
+		return nil, errors.Configuration.Label(attrName+" attribute").Messagef("opaque url not allowed: %q", urlStr)
 	}
 
 	// The value may carry request data, so it gets the same check as path and path_prefix.
