@@ -6,6 +6,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -34,9 +36,31 @@ type pathCase struct {
 	varPath string
 }
 
+// newRawBackend serves the protected resource and echoes every other request
+// target byte for byte. It uses no ServeMux, so nothing cleans the path.
+func newRawBackend(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.RequestURI == "/admin/panel.txt" {
+			_, _ = rw.Write([]byte("TOP SECRET admin panel"))
+			return
+		}
+		_, _ = fmt.Fprintf(rw, "origin saw %s", req.RequestURI)
+	}))
+	t.Cleanup(srv.Close)
+
+	if err := os.Setenv("COUPER_TEST_RAW_BACKEND_ADDR", srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	return srv
+}
+
 func runPathCases(t *testing.T, fixture, base string, cases []pathCase) {
 	t.Helper()
 
+	newRawBackend(t)
 	helper := test.New(t)
 	shutdown, hook := newCouper(fixture, helper)
 	defer shutdown()
@@ -132,7 +156,7 @@ func TestPathNormalization_AccessControl(t *testing.T) {
 		{path: "/x/.%2E/admin/panel.txt", status: 401, logPath: "/admin/panel.txt", rawPath: "/x/.%2E/admin/panel.txt"},
 		{path: "/%61dmin/panel.txt", status: 401, logPath: "/%61dmin/panel.txt"},
 		{path: "/admin/.", status: 401, logPath: "/admin/", rawPath: "/admin/."},
-		{path: "/admin/..", status: 200, body: "origin saw http://localhost:9898/", origin: true, logPath: "/", rawPath: "/admin/.."},
+		{path: "/admin/..", status: 200, body: "origin saw /", origin: true, logPath: "/", rawPath: "/admin/.."},
 		{path: "/../admin/panel.txt", status: 400, logPath: "/../admin/panel.txt"},
 		{path: "/%2e%2e/admin/panel.txt", status: 400, logPath: "/%2e%2e/admin/panel.txt"},
 		{path: "/x%2F..%2Fadmin/panel.txt", status: 400, logPath: "/x%2F..%2Fadmin/panel.txt"},
@@ -143,12 +167,12 @@ func TestPathNormalization_AccessControl(t *testing.T) {
 
 func TestPathNormalization_Upstream(t *testing.T) {
 	runPathCases(t, "testdata/integration/path_normalization/01_couper.hcl", "http://example.com:8080", []pathCase{
-		{path: "/x//y", status: 200, body: "origin saw http://localhost:9898/x/y", origin: true, logPath: "/x/y", rawPath: "/x//y", varPath: "/x/y"},
-		{path: "/x/z/../y", status: 200, body: "origin saw http://localhost:9898/x/y", origin: true, logPath: "/x/y", rawPath: "/x/z/../y", varPath: "/x/y"},
-		{path: "/a%2Fb", status: 200, body: "origin saw http://localhost:9898/a%2Fb", origin: true, logPath: "/a%2Fb", varPath: "/a/b"},
-		{path: "/%78/y", status: 200, body: "origin saw http://localhost:9898/%78/y", origin: true, logPath: "/%78/y"},
-		{path: "/x/y/", status: 200, body: "origin saw http://localhost:9898/x/y/", origin: true, logPath: "/x/y/"},
-		{path: "/x/y?q=../", status: 200, body: "origin saw http://localhost:9898/x/y?q=../", origin: true, logPath: "/x/y?q=../"},
+		{path: "/x//y", status: 200, body: "origin saw /x/y", origin: true, logPath: "/x/y", rawPath: "/x//y", varPath: "/x/y"},
+		{path: "/x/z/../y", status: 200, body: "origin saw /x/y", origin: true, logPath: "/x/y", rawPath: "/x/z/../y", varPath: "/x/y"},
+		{path: "/a%2Fb", status: 200, body: "origin saw /a%2Fb", origin: true, logPath: "/a%2Fb", varPath: "/a/b"},
+		{path: "/%78/y", status: 200, body: "origin saw /%78/y", origin: true, logPath: "/%78/y"},
+		{path: "/x/y/", status: 200, body: "origin saw /x/y/", origin: true, logPath: "/x/y/"},
+		{path: "/x/y?q=../", status: 200, body: "origin saw /x/y?q=../", origin: true, logPath: "/x/y?q=../"},
 	})
 }
 
@@ -170,8 +194,8 @@ func TestPathNormalization_Rewrites(t *testing.T) {
 			{path: "/x/%2e%2e/admin/panel.txt", status: 401, logPath: "/admin/panel.txt", rawPath: "/x/%2e%2e/admin/panel.txt"},
 			{path: "/x%2F..%2Fadmin/panel.txt", status: 400},
 			{path: "/x/../../admin/panel.txt", status: 400},
-			{path: "/x/y/../z", status: 200, body: "origin saw http://localhost:9898/files/z", origin: true, logPath: "/x/z", rawPath: "/x/y/../z"},
-			{path: "/x/z", status: 200, body: "origin saw http://localhost:9898/files/z", origin: true, logPath: "/x/z"},
+			{path: "/x/y/../z", status: 200, body: "origin saw /files/z", origin: true, logPath: "/x/z", rawPath: "/x/y/../z"},
+			{path: "/x/z", status: 200, body: "origin saw /files/z", origin: true, logPath: "/x/z"},
 		})
 	})
 
@@ -181,7 +205,7 @@ func TestPathNormalization_Rewrites(t *testing.T) {
 			{path: "/x/../admin/panel.txt", status: 401, logPath: "/admin/panel.txt", rawPath: "/x/../admin/panel.txt"},
 			{path: "/x/../../admin/panel.txt", status: 400},
 			{path: "/x/%2e%2e/%2e%2e/admin/panel.txt", status: 400},
-			{path: "/x/y/../z", status: 200, body: "origin saw http://localhost:9898/files/x/z", origin: true, logPath: "/x/z", rawPath: "/x/y/../z"},
+			{path: "/x/y/../z", status: 200, body: "origin saw /files/x/z", origin: true, logPath: "/x/z", rawPath: "/x/y/../z"},
 		})
 	})
 }
@@ -192,7 +216,7 @@ func TestPathNormalization_FixedSegments(t *testing.T) {
 		{path: "/x/../admin/panel.txt", status: 401, logPath: "/admin/panel.txt", rawPath: "/x/../admin/panel.txt"},
 		{path: "/./admin/panel.txt", status: 401, logPath: "/admin/panel.txt", rawPath: "/./admin/panel.txt"},
 		{path: "//admin/panel.txt", status: 401, logPath: "/admin/panel.txt", rawPath: "//admin/panel.txt"},
-		{path: "/x/panel.txt", status: 200, body: "origin saw http://localhost:9898/x/panel.txt", origin: true},
+		{path: "/x/panel.txt", status: 200, body: "origin saw /x/panel.txt", origin: true},
 		{path: "/admin/..", status: 404, logPath: "/", rawPath: "/admin/.."},
 	})
 }
@@ -224,6 +248,7 @@ func rawRequest(t *testing.T, addr, target string) int {
 }
 
 func TestPathNormalization_RawPathBytes(t *testing.T) {
+	newRawBackend(t)
 	helper := test.New(t)
 	shutdown, hook := newCouper("testdata/integration/path_normalization/01_couper.hcl", helper)
 	defer shutdown()
