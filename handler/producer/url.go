@@ -39,6 +39,11 @@ func NewURLFromAttribute(hclCtx *hcl.EvalContext, content *hclsyntax.Body, attrN
 		return nil, err
 	}
 
+	// The value may carry request data, so it gets the same check as path and path_prefix.
+	if err = eval.ValidatePath(u.EscapedPath(), attrName+" attribute"); err != nil {
+		return nil, err
+	}
+
 	pathMatch, wildcardEP := req.Context().Value(request.Wildcard).(string)
 
 	path := u.Path
