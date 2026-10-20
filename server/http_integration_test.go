@@ -3631,6 +3631,9 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
 		{"DPoP proof signed for the path as sent", "/jwt//dpop", createDPoPHeaders(http.MethodGet, "/jwt//dpop", privKey, jwk, h, false, false), http.StatusOK, "", ""},
 		{"DPoP proof signed for the normalized path", "/jwt/x/../dpop", createDPoPHeaders(http.MethodGet, "/jwt/dpop", privKey, jwk, h, false, false), http.StatusOK, "", ""},
 		{"DPoP proof signed for another path", "/jwt/dpop", createDPoPHeaders(http.MethodGet, "/jwt/other", privKey, jwk, h, false, false), http.StatusUnauthorized, "jwt_token_invalid", `DPoP algs="RS256 RS384 RS512 ES256 ES384 ES512", error="invalid_token"`},
+		{"DPoP proof signed for a leading double slash", "//jwt/dpop", createDPoPHeaders(http.MethodGet, "//jwt/dpop", privKey, jwk, h, false, false), http.StatusOK, "", ""},
+		{"DPoP proof signed for slash and dot segments", "/jwt/x//../dpop", createDPoPHeaders(http.MethodGet, "/jwt/x//../dpop", privKey, jwk, h, false, false), http.StatusOK, "", ""},
+		{"DPoP proof signed for encoded dot segments", "/jwt/%2e%2e/jwt/dpop", createDPoPHeaders(http.MethodGet, "/jwt/%2e%2e/jwt/dpop", privKey, jwk, h, false, false), http.StatusOK, "", ""},
 
 		{"valid token in header", "/jwt/header", http.Header{"X-Token": []string{validToken}}, http.StatusOK, "", ""},
 		{"no token in header", "/jwt/header", http.Header{}, http.StatusUnauthorized, "jwt_token_missing", ""},
