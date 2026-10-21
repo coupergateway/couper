@@ -35,6 +35,9 @@ func TestNormalizeRequestPath(t *testing.T) {
 		{"/a%2F%2Fb|", "", "", true},
 		{"/a|b/../c", "/c", "/c", false},
 		{"/a|b/../c|", "/c|", "/c%7C", false},
+		// An opaque request target has no path.
+		{"http:foo", "", "", true},
+		{"mailto:a@b", "", "", true},
 	}
 
 	for _, tt := range tests {

@@ -362,7 +362,7 @@ Specific error types are generated via `go generate` from `errors/error.go:Defin
 
 ## Request Processing Pipeline
 
-1. `server.Mux` normalizes the request path (`server/path.go`): dot segments are resolved, repeated slashes are merged, only `%2E` is decoded. A path above the root or an empty/dot segment formed by `%2F` gets a `400`. `req.URL` is rewritten in place, so routing, access controls, variables and the upstream request see one canonical path.
+1. `server.Mux` normalizes the request path (`server/path.go`): dot segments are resolved, repeated slashes are merged, only `%2E` is decoded. A path above the root, an empty/dot segment formed by `%2F` or an opaque request target like `http:foo` gets a `400`. `req.URL` is rewritten in place, so routing, access controls, variables and the upstream request see one canonical path.
 2. `server.Mux` routes request to handler based on path/host
 3. Access controls validate (JWT, Basic Auth, OAuth2, etc.)
 4. `handler.Endpoint` orchestrates request/response:
