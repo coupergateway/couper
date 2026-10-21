@@ -162,6 +162,7 @@ func TestPathNormalization_AccessControl(t *testing.T) {
 		{path: "/x%2F..%2Fadmin/panel.txt", status: 400, logPath: "/x%2F..%2Fadmin/panel.txt"},
 		{path: "/admin%2F..", status: 400, logPath: "/admin%2F.."},
 		{path: "/a%2F%2Fb", status: 400, logPath: "/a%2F%2Fb"},
+		{path: "/x//y%2F..%2Fz", status: 400, logPath: "/x//y%2F..%2Fz"},
 	})
 }
 
