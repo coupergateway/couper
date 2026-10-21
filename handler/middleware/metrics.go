@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"slices"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -13,15 +14,24 @@ import (
 )
 
 type MetricsHandler struct {
-	handler http.Handler
-	clock   func() time.Time
+	durationBoundaries []float64
+	handler            http.Handler
+	clock              func() time.Time
 }
 
-func NewMetricsHandler() Next {
+// NewMetricsHandler falls back to instrumentation.DefaultDurationSecondsBoundaries
+// when durationBoundaries is empty.
+func NewMetricsHandler(durationBoundaries []float64) Next {
+	boundaries := instrumentation.DefaultDurationSecondsBoundaries
+	if len(durationBoundaries) > 0 {
+		boundaries = slices.Sorted(slices.Values(durationBoundaries))
+	}
+
 	return func(handler http.Handler) *NextHandler {
 		return NewHandler(&MetricsHandler{
-			handler: handler,
-			clock:   time.Now,
+			durationBoundaries: boundaries,
+			handler:            handler,
+			clock:              time.Now,
 		}, handler)
 	}
 }
@@ -44,7 +54,7 @@ func (mh *MetricsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	counter, _ := meter.Int64Counter(instrumentation.ClientRequest)
 	duration, _ := meter.Float64Histogram(instrumentation.ClientRequestDuration,
-		metric.WithExplicitBucketBoundaries(instrumentation.DefaultDurationSecondsBoundaries...))
+		metric.WithExplicitBucketBoundaries(mh.durationBoundaries...))
 
 	option := metric.WithAttributes(metricsAttrs...)
 	counter.Add(req.Context(), 1, option)
