@@ -9,11 +9,15 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 ## [1.14.6](https://github.com/coupergateway/couper/releases/tag/v1.14.6)
 
 * **Security**
+  * `github.com/getkin/kin-openapi` 0.149.0 — fix six advisories: a panic on a self-referential `additionalProperties` `$ref` ([GHSA-mh7x-f8wq-4jhx](https://github.com/advisories/GHSA-mh7x-f8wq-4jhx)), a stack overflow on circular `allOf`/`anyOf`/`oneOf` schemas ([GHSA-g8cf-rcjf-c8cf](https://github.com/advisories/GHSA-g8cf-rcjf-c8cf)), a panic on YAML `NaN`/`Inf` values under OpenAPI 3.1 ([GHSA-rj39-cv6w-8wv7](https://github.com/advisories/GHSA-rj39-cv6w-8wv7)), nil-pointer panics on an array parameter without `items` ([GHSA-vrcc-3ch7-hppw](https://github.com/advisories/GHSA-vrcc-3ch7-hppw)), a panic on an unknown HTTP method in the legacy router ([GHSA-fh4f-47mf-f2gj](https://github.com/advisories/GHSA-fh4f-47mf-f2gj)) and a security-requirement bypass in `ValidationHandler` ([GHSA-23vg-4cjm-66q5](https://github.com/advisories/GHSA-23vg-4cjm-66q5)). The schema and parameter fixes apply to the [`openapi`](https://docs.couper.io/configuration/block/openapi) block. Couper uses neither the legacy router nor `ValidationHandler` ([#1054](https://github.com/coupergateway/couper/pull/1054))
   * Request paths are normalized before routing. Dot segments are resolved and repeated slashes are merged, so `//admin`, `/./admin` and `/x/../admin` reach the same endpoint and access controls as `/admin`. A path that resolves above the root, or that forms an empty or dot segment through an encoded slash, is rejected with status `400`, as is an opaque request target like `http:foo`. Endpoint, `files` and `spa` matching, `request.path` and the upstream request use the normalized path. The access log adds `request.raw_path` with the path as sent when it differs ([#1058](https://github.com/coupergateway/couper/issues/1058))
   * Reject path traversal sequences (`..`, `%2e%2e`) in the `url` attribute of `proxy` and `request` blocks, like `path` and `path_prefix` ([#1059](https://github.com/coupergateway/couper/pull/1059))
 
 * **Changed**
   * DPoP: the `htu` claim and the request URI are compared after the same path normalization as routing. Dot segments are resolved, repeated slashes are merged, and an empty path is `/`. A proof signed for the path as sent and a proof signed for the normalized path are both accepted ([#1059](https://github.com/coupergateway/couper/pull/1059))
+
+* **Dependencies**
+  * `github.com/getkin/kin-openapi` 0.144.0 → 0.149.0 ([#1054](https://github.com/coupergateway/couper/pull/1054))
 
 ## [1.14.5](https://github.com/coupergateway/couper/releases/tag/v1.14.5)
 
