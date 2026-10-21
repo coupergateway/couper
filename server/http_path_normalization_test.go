@@ -283,6 +283,23 @@ func TestPathNormalization_RawPathBytes(t *testing.T) {
 	}
 }
 
+func TestPathNormalization_OpaqueTarget(t *testing.T) {
+	newRawBackend(t)
+	helper := test.New(t)
+	shutdown, _ := newCouper("testdata/integration/path_normalization/01_couper.hcl", helper)
+	defer shutdown()
+
+	for _, target := range []string{"http:foo", "http:admin/panel.txt", "mailto:a@b"} {
+		if status := rawRequest(t, "127.0.0.1:8080", target); status != http.StatusBadRequest {
+			t.Errorf("%s: status: want 400, got %d", target, status)
+		}
+	}
+	// The absolute form is a regular target and gets normalized.
+	if status := rawRequest(t, "127.0.0.1:8080", "http://example.com/x/../admin/panel.txt"); status != http.StatusUnauthorized {
+		t.Errorf("absolute form: status: want 401, got %d", status)
+	}
+}
+
 func TestPathNormalization_Files(t *testing.T) {
 	runPathCases(t, "testdata/integration/path_normalization/04_couper.hcl", "http://example.com:8080", []pathCase{
 		{path: "/private/secret.txt", status: 401},
