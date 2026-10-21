@@ -269,6 +269,17 @@ func TestPathNormalization_RawPathBytes(t *testing.T) {
 	if raw, _ := reqFields["raw_path"].(string); raw != "/a|b/../admin/panel.txt" {
 		t.Errorf("access log raw_path: want %q, got %q", "/a|b/../admin/panel.txt", raw)
 	}
+
+	// The raw "|" must not let an encoded slash form a dot or empty segment.
+	for _, target := range []string{
+		"/x%2F..%2Fadmin/panel.txt|",
+		"/admin%2F..%2Fpublic/file.txt|",
+		"/a%2F%2Fb|",
+	} {
+		if status := rawRequest(t, "127.0.0.1:8080", target); status != http.StatusBadRequest {
+			t.Errorf("%s: status: want 400, got %d", target, status)
+		}
+	}
 }
 
 func TestPathNormalization_Files(t *testing.T) {

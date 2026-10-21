@@ -84,6 +84,12 @@ func TestNormalizeURLPath(t *testing.T) {
 		{"http://host/x//a%2Fb", "/x/a/b", "/x/a%2Fb", false},
 		{"http://host/x//%61dmin", "/x/admin", "/x/%61dmin", false},
 		{"http://host/a%20b", "/a b", "/a%20b", false},
+		// A raw "|" makes EscapedPath re-encode Path. The normalizer must still
+		// keep %2F inside its segment and resolve dot segments from the raw bytes.
+		{"http://host/x%2F..%2Fadmin/panel.txt|", "/x/../admin/panel.txt|", "/x/../admin/panel.txt%7C", false},
+		{"http://host/a%2F%2Fb|", "/a//b|", "/a//b%7C", false},
+		{"http://host/a|b/../c", "/c", "/c", false},
+		{"http://host/a|b/../c|", "/c|", "/c%7C", false},
 		{"http://host", "", "", false},
 		{"http://host/..", "", "", true},
 	}

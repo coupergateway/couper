@@ -28,6 +28,12 @@ func TestNormalizeRequestPath(t *testing.T) {
 		{"/admin%2F..", "", "", true},
 		{"/a%2F%2Fb", "", "", true},
 		{"/a%2F.%2Fb", "", "", true},
+		// A raw "|" must not switch the normalizer to the re-encoded path.
+		{"/x%2F..%2Fadmin/panel.txt|", "", "", true},
+		{"/admin%2F..%2Fpublic/file.txt|", "", "", true},
+		{"/a%2F%2Fb|", "", "", true},
+		{"/a|b/../c", "/c", "/c", false},
+		{"/a|b/../c|", "/c|", "/c%7C", false},
 	}
 
 	for _, tt := range tests {

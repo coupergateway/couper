@@ -11,8 +11,13 @@ var ErrPathAboveRoot = errors.New("path resolves above the root")
 
 // NormalizeURLPath rewrites Path and RawPath of u to the normalized form of its
 // path, so that EscapedPath keeps the encoding of the normalized form.
+// It starts from RawPath, the path as sent. EscapedPath would re-encode Path when
+// RawPath holds a byte like "|" that Go escapes, and that turns %2F into a slash.
 func NormalizeURLPath(u *url.URL) error {
-	escaped := u.EscapedPath()
+	escaped := u.RawPath
+	if escaped == "" {
+		escaped = u.EscapedPath()
+	}
 	normalized, err := NormalizePath(escaped)
 	if err != nil {
 		return err
