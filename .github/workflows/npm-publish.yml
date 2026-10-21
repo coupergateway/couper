@@ -53,4 +53,9 @@ jobs:
           token: ${{ secrets.NPM_TOKEN }}
       - name: 'test published package'
         run: |
+          # the registry serves a new version some minutes after publish; wait for it, 10 minutes at most
+          for i in $(seq 1 60); do
+            curl -sfo /dev/null "https://registry.npmjs.org/${PACKAGE_NAME}/${PACKAGE_VERSION#v}" && break
+            echo "waiting for ${PACKAGE_NAME}@${PACKAGE_VERSION#v} on the registry ($i/60)"; sleep 10
+          done
           cd $(mktemp -d) && npm install ${PACKAGE_NAME}@${PACKAGE_VERSION#v} && npx couper version
