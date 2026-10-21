@@ -17,9 +17,6 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Changed**
   * DPoP: the `htu` claim and the request URI are compared after the same path normalization as routing. Dot segments are resolved, repeated slashes are merged, and an empty path is `/`. A proof signed for the path as sent and a proof signed for the normalized path are both accepted ([#1059](https://github.com/coupergateway/couper/pull/1059))
 
-* **Dependencies**
-  * `github.com/getkin/kin-openapi` 0.144.0 → 0.149.0 ([#1054](https://github.com/coupergateway/couper/pull/1054))
-
 ## [1.14.5](https://github.com/coupergateway/couper/releases/tag/v1.14.5)
 
 * **Security**
