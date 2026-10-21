@@ -67,6 +67,13 @@ func TestSortPathPatterns(t *testing.T) {
 	}
 }
 
+// recordStatus serves the handler once; handlers are compared by their response.
+func recordStatus(h http.Handler, req *http.Request) int {
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec.Code
+}
+
 func TestMux_FindHandler_PathParamContext(t *testing.T) {
 	type noContentHandler http.Handler
 	var noContent noContentHandler = http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -131,7 +138,7 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"project": "foo",
 		}, "bar/ha"},
 		{" /w non existing path", newReq("/foo/{bar}/123"), errors.DefaultJSON.WithError(errors.RouteNotFound), nil, ""},
-		{" files", newReq("/htdocs/test.html"), http.NotFoundHandler(), request.PathParameter{
+		{" files", newReq("/htdocs/test.html"), noContent, request.PathParameter{
 			"section": "htdocs",
 			"project": "test.html",
 		}, ""},
@@ -144,7 +151,9 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 		{" w/ path param, trailing /, w/o wildcard", newReq("/w/c/my-param/"), noContent, request.PathParameter{
 			"param": "my-param",
 		}, ""},
-		{" w/o path param, w/ wildcard", newReq("/w/c//wild/card"), http.NotFoundHandler(), nil, ""},
+		{" w/ path param, merged slashes, w/ wildcard", newReq("/w/c//wild/card"), noContent, request.PathParameter{
+			"param": "wild",
+		}, "card"},
 		{" w/o path param, w/o wildcard", newReq("/w/c"), noContent, request.PathParameter{
 			"section": "w",
 			"project": "c",
@@ -153,17 +162,32 @@ func TestMux_FindHandler_PathParamContext(t *testing.T) {
 			"section": "w",
 			"project": "c",
 		}, ""},
-		{" w/o path param, w/o wildcard, double /", newReq("/w/c//"), http.NotFoundHandler(), nil, ""},
-		{" w/o path param, w/o wildcard, triple /", newReq("/w/c///"), http.NotFoundHandler(), nil, ""},
+		{" w/o path param, w/o wildcard, double /", newReq("/w/c//"), noContent, request.PathParameter{
+			"section": "w",
+			"project": "c",
+		}, ""},
+		{" w/o path param, w/o wildcard, triple /", newReq("/w/c///"), noContent, request.PathParameter{
+			"section": "w",
+			"project": "c",
+		}, ""},
 		{"** not just concatenating", newReq("/prefixandsomethingelse"), http.NotFoundHandler(), nil, ""},
+		{" dot segments resolved before matching", newReq("/x/../with//my123/./parameter"), noContent, request.PathParameter{
+			"my": "my123",
+		}, ""},
+		{" encoded dot segments resolved before matching", newReq("/project/%2e%2e/project/foo/bar"), noContent, request.PathParameter{
+			"project": "foo",
+		}, "bar"},
+		{" dot segment above root", newReq("/../with/my123/parameter"), errors.DefaultJSON.WithError(errors.ClientRequest), nil, ""},
+		{" encoded slash forming a dot segment", newReq("/with%2F..%2Fmy123/parameter"), errors.DefaultJSON.WithError(errors.ClientRequest), nil, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(subT *testing.T) {
 			mux := server.NewMux(testOptions)
 			mux.RegisterConfigured()
 
-			if got := mux.FindHandler(tt.req); reflect.DeepEqual(got, tt.want) {
-				subT.Errorf("FindHandler() = %v, want %v", got, tt.want)
+			got := mux.FindHandler(tt.req)
+			if gotStatus, wantStatus := recordStatus(got, tt.req), recordStatus(tt.want, tt.req); gotStatus != wantStatus {
+				subT.Errorf("FindHandler() status = %d, want %d", gotStatus, wantStatus)
 			}
 
 			paramCtx, ok := tt.req.Context().Value(request.PathParams).(request.PathParameter)

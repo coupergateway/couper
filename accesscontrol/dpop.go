@@ -16,6 +16,7 @@ import (
 
 	acjwk "github.com/coupergateway/couper/accesscontrol/jwk"
 	acjwt "github.com/coupergateway/couper/accesscontrol/jwt"
+	"github.com/coupergateway/couper/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -446,14 +447,16 @@ func toInt(bs []byte) int {
 
 func normalize(u *url.URL) (*url.URL, error) {
 	// https://www.rfc-editor.org/rfc/rfc3986
+	// 6.2.3.  Scheme-Based Normalization: an empty path is "/"
+	if u.Path == "" {
+		u.Path = "/"
+		u.RawPath = ""
+	}
 	// 6.2.2.  Syntax-Based Normalization
-	// 6.2.2.3.  Path Segment Normalization
-	ru, err := url.Parse(u.RequestURI())
-	if err != nil {
+	// 6.2.2.3.  Path Segment Normalization, with the rules of the request router
+	if err := utils.NormalizeURLPath(u); err != nil {
 		return nil, err
 	}
-	// ResolveReference also resolves . and .. segements
-	u = u.ResolveReference(ru)
 	// 6.2.2.1.  Case Normalization
 	// 6.2.2.2.  Percent-Encoding Normalization
 	u.RawPath = u.Path

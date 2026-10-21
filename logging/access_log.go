@@ -41,6 +41,23 @@ func NewAccessLog(c *Config, logger logrus.FieldLogger) *AccessLog {
 	}
 }
 
+// rawRequestPath returns the path as the client sent it, before the server
+// normalized req.URL.
+func rawRequestPath(req *http.Request) string {
+	if req.RequestURI == "" {
+		return ""
+	}
+	u, err := url.ParseRequestURI(req.RequestURI)
+	if err != nil {
+		return ""
+	}
+	// RawPath keeps bytes that EscapedPath would encode, such as "|".
+	if u.RawPath != "" {
+		return u.RawPath
+	}
+	return u.EscapedPath()
+}
+
 func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 	serveDone := time.Now()
 	startTime := req.Context().Value(request.StartTime).(time.Time)
@@ -98,6 +115,9 @@ func (log *AccessLog) Do(writer http.ResponseWriter, req *http.Request) {
 		Fragment:   req.URL.Fragment,
 	}
 	requestFields["path"] = path.String()
+	if raw := rawRequestPath(req); raw != "" && raw != req.URL.EscapedPath() {
+		requestFields["raw_path"] = raw
+	}
 
 	if req.URL.Host == "" {
 		req.URL.Host = req.Host // fallback e.g. metrics

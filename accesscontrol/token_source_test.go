@@ -645,6 +645,21 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
 		{
 			"several normalizations", "hTtPs://wWw.ExAmPlE.cOm:443/./b/../%63/%7bfoo%7d?query=to_be_ignored", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com/c/%7Bfoo%7D", "iat": time.Now().Unix(), "ath": ath},
 		},
+		{
+			"leading double slash", "https://www.example.com//path", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com//path", "iat": time.Now().Unix(), "ath": ath},
+		},
+		{
+			"slash and dot segments", "https://www.example.com/a//../path", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com/path", "iat": time.Now().Unix(), "ath": ath},
+		},
+		{
+			"encoded dot segments", "https://www.example.com/a/%2e%2e/path", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com/path", "iat": time.Now().Unix(), "ath": ath},
+		},
+		{
+			"root without trailing slash in htu", "https://www.example.com/", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com", "iat": time.Now().Unix(), "ath": ath},
+		},
+		{
+			"root without trailing slash in request", "https://www.example.com", map[string]interface{}{"cnf": map[string]interface{}{"jkt": jkt}}, map[string]interface{}{"typ": ac.DpopTyp, "alg": "RS256", "jwk": jwk}, jwt.MapClaims{"jti": "some_id", "htm": "GET", "htu": "https://www.example.com/", "iat": time.Now().Unix(), "ath": ath},
+		},
 	} {
 		t.Run(tc.name, func(subT *testing.T) {
 			helper := test.New(subT)

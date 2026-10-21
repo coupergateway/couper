@@ -61,7 +61,7 @@ defaults {
 | `protocol`                         | string        | Request protocol.                                                                                                                                                            | `"https"`                                     |
 | `host`                             | string        | Host of the request URL.                                                                                                                                                     | `"www.example.com"`                           |
 | `port`                             | integer       | Port of the request URL.                                                                                                                                                     | `443`                                         |
-| `path`                             | string        | Request URL path.                                                                                                                                                            | `"/path/to"`                                  |
+| `path`                             | string        | Request URL path, normalized: dot segments are resolved and repeated slashes are merged before routing.                                                                      | `"/path/to"`                                  |
 | `remote_ip`                        | string        | Remote IP address.                                                                                                                                                           | `"192.0.2.155"`                               |
 
 The value of `context.<name>` depends on the type of block referenced by `<name>`.
