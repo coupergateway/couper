@@ -63,7 +63,7 @@ jobs:
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3.2.1
         with:
-          hugo-version: '0.161.1'
+          hugo-version: '0.168.0'
           extended: true
 
       - name: install algolia-client
