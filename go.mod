@@ -4,7 +4,7 @@ go 1.26.10
 
 require (
 	github.com/docker/go-units v0.5.0
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/hashicorp/hcl/v2 v2.23.0
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
