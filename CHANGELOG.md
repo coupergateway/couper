@@ -1,10 +1,19 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.6...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.7...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
+
+## [1.14.7](https://github.com/coupergateway/couper/releases/tag/v1.14.7)
+
+* **Security**
+  * dependency: `golang.org/x/net` 0.60.0 → 0.62.0 — fixes quadratic text node coalescing ([GO-2026-6860](https://pkg.go.dev/vuln/GO-2026-6860), [CVE-2026-78661](https://nvd.nist.gov/vuln/detail/CVE-2026-78661)) and raw text rendering in foreign namespaces ([GO-2026-6866](https://pkg.go.dev/vuln/GO-2026-6866), [CVE-2026-97045](https://nvd.nist.gov/vuln/detail/CVE-2026-97045)) in `golang.org/x/net/html`. Couper does not use this package ([#1068](https://github.com/coupergateway/couper/pull/1068))
+
+* **Dependencies**
+  * `golang.org/x/crypto` 0.57.0 → 0.58.0 ([#1068](https://github.com/coupergateway/couper/pull/1068))
+  * `github.com/getkin/kin-openapi` 0.149.0 → 0.152.0 — the [`openapi`](https://docs.couper.io/configuration/block/openapi) block reports `$ref`s to null nodes and null `servers`, `tags` or `components` as errors instead of panicking ([#1070](https://github.com/coupergateway/couper/pull/1070))
 
 ## [1.14.6](https://github.com/coupergateway/couper/releases/tag/v1.14.6)
 
