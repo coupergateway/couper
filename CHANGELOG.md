@@ -1,10 +1,25 @@
 # Couper Changelog
 
-## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.7...main)
+## [Unreleased](https://github.com/coupergateway/couper/compare/v1.14.8...main)
 
 Unreleased changes are available as `coupergateway/couper:edge` container.
 
 ---
+
+## [1.14.8](https://github.com/coupergateway/couper/releases/tag/v1.14.8)
+
+* **Security**
+  * dependency: build with [go 1.26.11](https://go.dev/doc/devel/release#go1.26.11): fixes a server crash in `net/http` when the `MaxBytesReader` limit is exceeded ([GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859), [CVE-2026-97054](https://www.cve.org/CVERecord?id=CVE-2026-97054)) ([#1088](https://github.com/coupergateway/couper/pull/1088))
+  * dependency: `go.opentelemetry.io/otel/sdk` 1.45.0 → 1.47.0 — fixes a bypass of the attribute value length limit ([GHSA-q7gw-24fr-5p69](https://github.com/advisories/GHSA-q7gw-24fr-5p69), [CVE-2026-128085](https://nvd.nist.gov/vuln/detail/CVE-2026-128085)). Couper sets no such limit ([#1077](https://github.com/coupergateway/couper/pull/1077))
+  * dependency: `github.com/russellhaering/gosaml2` 0.11.0 → 0.12.0 — fixes a panic on malformed encrypted assertions ([GHSA-5hj8-q7fv-qrj6](https://github.com/advisories/GHSA-5hj8-q7fv-qrj6), [CVE-2026-128073](https://nvd.nist.gov/vuln/detail/CVE-2026-128073)). Couper configures no SAML decryption key ([#1081](https://github.com/coupergateway/couper/pull/1081))
+  * dependency: `golang.org/x/crypto` 0.58.0 → 0.59.0 — marks `golang.org/x/crypto/openpgp` as unsafe ([GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932)). Couper does not use this package ([#1074](https://github.com/coupergateway/couper/pull/1074))
+
+* **Dependencies**
+  * `go.opentelemetry.io/otel` 1.45.0 → 1.47.0 ([#1077](https://github.com/coupergateway/couper/pull/1077))
+  * `go.opentelemetry.io/otel/metric` 1.45.0 → 1.47.0 ([#1077](https://github.com/coupergateway/couper/pull/1077))
+  * `go.opentelemetry.io/otel/sdk/metric` 1.45.0 → 1.47.0 ([#1077](https://github.com/coupergateway/couper/pull/1077))
+  * `go.opentelemetry.io/otel/trace` 1.45.0 → 1.47.0 ([#1077](https://github.com/coupergateway/couper/pull/1077))
+  * `github.com/russellhaering/goxmldsig` 1.6.0 → 1.6.1 ([#1081](https://github.com/coupergateway/couper/pull/1081))
 
 ## [1.14.7](https://github.com/coupergateway/couper/releases/tag/v1.14.7)
 
