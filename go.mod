@@ -5,7 +5,7 @@ go 1.27.4
 require (
 	github.com/algolia/algoliasearch-client-go/v3 v3.31.4
 	github.com/docker/go-units v0.5.0
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/getkin/kin-openapi v0.152.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
