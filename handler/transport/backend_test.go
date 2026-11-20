@@ -113,17 +113,17 @@ func TestBackend_Compression_Disabled(t *testing.T) {
 func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	helper := test.New(t)
 
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	for i := 1; i < 1000; i++ {
+		w.Write([]byte("<html/>"))
+	}
+	w.Close()
+
 	origin := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if ae := req.Header.Get("Accept-Encoding"); ae != "gzip" {
 			t.Errorf("Unexpected Accept-Encoding header: %s", ae)
 		}
-
-		var b bytes.Buffer
-		w := gzip.NewWriter(&b)
-		for i := 1; i < 1000; i++ {
-			w.Write([]byte("<html/>"))
-		}
-		w.Close()
 
 		rw.Header().Set("Content-Encoding", "gzip")
 		rw.Write(b.Bytes())
@@ -145,7 +145,7 @@ func TestBackend_Compression_ModifyAcceptEncoding(t *testing.T) {
 	res, err := backend.RoundTrip(req)
 	helper.Must(err)
 
-	if res.ContentLength != 60 {
+	if res.ContentLength != int64(b.Len()) {
 		t.Errorf("Unexpected C/L: %d", res.ContentLength)
 	}
 

@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -594,16 +595,17 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 
 	type testCase struct {
 		path   string
-		expLen string
+		expLen int
 		expCE  string
 	}
 
+	// expLen is the uncompressed length; the compressed length depends on the Go version.
 	for _, tc := range []testCase{
-		{"/0", "0", ""},
-		{"/10", "10", ""},
-		{"/59", "59", ""},
-		{"/60", "47", "gzip"},
-		{"/x", "1731", "gzip"},
+		{"/0", 0, ""},
+		{"/10", 10, ""},
+		{"/255", 255, ""},
+		{"/256", 256, "gzip"},
+		{"/x", 4911, "gzip"},
 	} {
 		t.Run(tc.path, func(subT *testing.T) {
 			helper := test.New(subT)
@@ -619,8 +621,24 @@ func TestHTTPServer_NoGzipForSmallContent(t *testing.T) {
 			if val := res.Header.Get("Content-Encoding"); val != tc.expCE {
 				subT.Errorf("%s: Expected Content-Encoding '%s', got: '%s'", tc.path, tc.expCE, val)
 			}
-			if val := res.Header.Get("Content-Length"); val != tc.expLen {
-				subT.Errorf("%s: Expected Content-Length '%s', got: '%s'", tc.path, tc.expLen, val)
+
+			body, err := io.ReadAll(res.Body)
+			helper.Must(err)
+			helper.Must(res.Body.Close())
+
+			if val := res.Header.Get("Content-Length"); val != strconv.Itoa(len(body)) {
+				subT.Errorf("%s: Expected Content-Length '%d', got: '%s'", tc.path, len(body), val)
+			}
+
+			if tc.expCE == "gzip" {
+				gr, err := gzip.NewReader(bytes.NewReader(body))
+				helper.Must(err)
+				body, err = io.ReadAll(gr)
+				helper.Must(err)
+			}
+
+			if len(body) != tc.expLen {
+				subT.Errorf("%s: Expected body length %d, got: %d", tc.path, tc.expLen, len(body))
 			}
 		})
 	}

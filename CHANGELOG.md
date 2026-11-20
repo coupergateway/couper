@@ -9,6 +9,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
   * log the negotiated HTTP protocol version of backend responses (`response.proto` in `couper_backend` logs) ([#979](https://github.com/coupergateway/couper/pull/979))
   * `http2_prior_knowledge` backend attribute: cleartext HTTP/2 (h2c) for trusted `http` origins, e.g. multiplexed `beta_authzen` callouts without TLS ([#979](https://github.com/coupergateway/couper/pull/979))
 
+* **Changed**
+  * Responses are gzip compressed only from 256 bytes instead of 60 bytes. Below that size, gzip makes the response larger or saves only a few bytes ([#1086](https://github.com/coupergateway/couper/pull/1086))
+
 ---
 
 ## [1.14.7](https://github.com/coupergateway/couper/releases/tag/v1.14.7)
