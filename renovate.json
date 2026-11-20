@@ -4,7 +4,7 @@
     "config:recommended",
     ":semanticCommitTypeAll(chore)"
   ],
-  "enabledManagers": ["gomod", "npm", "github-actions"],
+  "enabledManagers": ["gomod", "npm", "github-actions", "dockerfile"],
   "baseBranchPatterns": ["$default", "release.1.14"],
   "osvVulnerabilityAlerts": true,
   "minimumReleaseAge": "14 days",
@@ -30,8 +30,22 @@
       "addLabels": ["github_actions"]
     },
     {
-      "description": "The go directive moves by hand, together with the toolchain and the build images",
+      "description": "go.mod, setup-go and the build image must use the same Go version, so they move in one PR. Go patch releases carry security fixes and need no wait",
+      "matchDepNames": ["go", "golang"],
+      "groupName": "go",
+      "minimumReleaseAge": "0 days"
+    },
+    {
+      "description": "Renovate does not bump the go directive unless told to",
+      "matchManagers": ["gomod"],
       "matchDepNames": ["go"],
+      "matchDepTypes": ["golang"],
+      "rangeStrategy": "bump"
+    },
+    {
+      "description": "Only the Go build image is managed in Dockerfiles",
+      "matchManagers": ["dockerfile"],
+      "matchDepNames": ["!golang"],
       "enabled": false
     },
     {
