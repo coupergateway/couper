@@ -1,11 +1,16 @@
 module github.com/coupergateway/couper
 
-go 1.26.10
+go 1.27.4
 
 require (
+	github.com/algolia/algoliasearch-client-go/v3 v3.31.4
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.18.0
 	github.com/getkin/kin-openapi v0.152.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/google/go-cmp v0.7.0
+	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/hcl/v2 v2.23.0
 	github.com/jimlambrt/go-oauth-pkce-code-verifier v0.0.0-20201220003123-6363600dffda
 	github.com/prometheus/client_golang v1.23.2
@@ -24,18 +29,10 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0
 	go.opentelemetry.io/otel/sdk/metric v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
+	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.62.0
 	google.golang.org/grpc v1.83.2
-)
-
-require (
-	github.com/algolia/algoliasearch-client-go/v3 v3.31.4
-	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/google/go-cmp v0.7.0
-	github.com/google/uuid v1.6.0
-	github.com/gorilla/mux v1.8.1
-	go.uber.org/automaxprocs v1.6.0
 )
 
 require (
