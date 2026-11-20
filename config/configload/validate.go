@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -134,7 +135,9 @@ func validateBody(body *hclsyntax.Body, afterMerge bool) error {
 		} else if outerBlock.Type == "defaults" {
 			// pass
 		} else if outerBlock.Type == "settings" {
-			// pass
+			if err := validateMetricsRequestDurationBuckets(outerBlock); err != nil {
+				return err
+			}
 		} else {
 			r := outerBlock.Range()
 			return newDiagErr(&r, fmt.Sprintf("unknown block type %q", outerBlock.Type))
@@ -355,6 +358,51 @@ func checkReferencedAccessControls(body *hclsyntax.Body, acs, dacs []string, def
 		if _, set := definedACs[ac]; !set {
 			r := body.Attributes["disable_access_control"].Expr.Range()
 			return newDiagErr(&r, fmt.Sprintf("referenced access control %q is not defined", ac))
+		}
+	}
+
+	return nil
+}
+
+// validateMetricsRequestDurationBuckets rejects boundaries the OTel SDK would silently
+// replace with its millisecond defaults. Order is not required, NewMetricsHandler sorts.
+func validateMetricsRequestDurationBuckets(block *hclsyntax.Block) error {
+	const attrName = "beta_metrics_request_duration_buckets"
+
+	attr, set := block.Body.Attributes[attrName]
+	if !set {
+		return nil
+	}
+
+	value, diags := attr.Expr.Value(nil)
+	if diags.HasErrors() {
+		return diags
+	}
+
+	// type errors are the decoder's
+	if !value.CanIterateElements() {
+		return nil
+	}
+
+	var boundaries []float64
+	for _, element := range value.AsValueSlice() {
+		if element.IsNull() || element.Type() != cty.Number {
+			return nil
+		}
+
+		boundary, _ := element.AsBigFloat().Float64()
+		boundaries = append(boundaries, boundary)
+	}
+
+	r := attr.Expr.StartRange()
+	slices.Sort(boundaries)
+
+	for i, boundary := range boundaries {
+		if boundary < 0 {
+			return newDiagErr(&r, fmt.Sprintf("%s must not contain the negative boundary %v", attrName, boundary))
+		}
+		if i > 0 && boundary == boundaries[i-1] {
+			return newDiagErr(&r, fmt.Sprintf("%s must not contain the duplicate boundary %v", attrName, boundary))
 		}
 	}
 
