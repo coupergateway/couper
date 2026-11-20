@@ -49,6 +49,11 @@
       "enabled": false
     },
     {
+      "description": "Without this, Renovate offers only the newest version, and a minor version hides the patch below it",
+      "matchBaseBranches": ["release.1.14"],
+      "separateMinorPatch": true
+    },
+    {
       "matchBaseBranches": ["release.1.14"],
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false
