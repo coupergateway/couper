@@ -3,7 +3,7 @@ module github.com/coupergateway/couper
 go 1.27.4
 
 require (
-	github.com/algolia/algoliasearch-client-go/v3 v3.31.4
+	github.com/algolia/algoliasearch-client-go/v3 v3.32.1
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.18.0
 	github.com/getkin/kin-openapi v0.152.0
