@@ -4,7 +4,17 @@
     "config:recommended",
     ":semanticCommitTypeAll(chore)"
   ],
-  "enabledManagers": ["gomod", "npm", "github-actions", "dockerfile"],
+  "enabledManagers": ["gomod", "npm", "github-actions", "dockerfile", "custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Tool versions in workflows that have a renovate comment above them",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+[\\w-]+: '(?<currentValue>[^']+)'"
+      ]
+    }
+  ],
   "baseBranchPatterns": ["$default", "release.1.14"],
   "osvVulnerabilityAlerts": true,
   "minimumReleaseAge": "14 days",

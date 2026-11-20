@@ -1,0 +1,25 @@
+name: govulncheck
+on:
+  schedule:
+    - cron: '0 3 * * 1-5' # monday to friday
+  workflow_dispatch:
+jobs:
+  scan:
+    name: Scan ${{ matrix.ref }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [main, release.1.14]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.ref }}
+
+      # The release builds use the Go version from go.mod, so the scan checks the standard library of that version.
+      - uses: golang/govulncheck-action@v1.1.0
+        with:
+          repo-checkout: false
+          go-version-input: ''
+          go-version-file: go.mod
+          check-latest: false
