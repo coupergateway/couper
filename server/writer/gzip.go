@@ -17,7 +17,7 @@ const (
 	GzipName              = "gzip"
 	VaryHeader            = "Vary"
 
-	minCompressBodyLength = 60
+	minCompressBodyLength = 256
 )
 
 var (

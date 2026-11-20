@@ -5025,10 +5025,10 @@ func TestCORS_Configuration(t *testing.T) {
 	for _, tc := range []testCase{
 		{"/06_couper.hcl", "a.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
 		{"/spa/", "b.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
-		{"/api/", "c.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers", "Origin,Accept-Encoding", "Origin"},
+		{"/api/", "c.com", true, requestMethod, requestHeaders, "Origin,Access-Control-Request-Method,Access-Control-Request-Headers", "Origin", "Origin"},
 		{"/06_couper.hcl", "no.com", false, "", "", "Origin", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
 		{"/spa/", "", false, "", "", "Origin", "Origin,Accept-Encoding", "Origin,Accept-Encoding"},
-		{"/api/", "no.com", false, "", "", "Origin", "Origin,Accept-Encoding", "Origin"},
+		{"/api/", "no.com", false, "", "", "Origin", "Origin", "Origin"},
 	} {
 		t.Run(tc.path[1:], func(subT *testing.T) {
 			helper := test.New(subT)
