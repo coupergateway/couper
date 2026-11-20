@@ -66,6 +66,7 @@ The following table documents error types that can be handled in `api` blocks:
 | `beta_backend_token_request` (`backend`)           | A token request for the backend has failed.                                                             | Send error template with status `502`.                                                                        |
 | `access_control`                                   | Access control related errors.                                                                          | Send error template with status `403`.                                                                        |
 | `insufficient_permissions` (`access_control`)      | The permission required for the requested operation is not in the permissions granted to the requester. | Send error template with status `403`.                                                                        |
+| `configuration`                                    | Per-request configuration error, e.g. a backend `origin` that evaluates to an empty string.             | Send error template with status `500`.                                                                        |
 
 ### Endpoint error types
 
@@ -84,3 +85,4 @@ The following table documents error types that can be handled in `endpoint` bloc
 | `endpoint`                                         | All catchable `endpoint` related errors.                                                                | Send error template with status `502`.                                                                        |
 | `sequence` (`endpoint`)                            | A `request` or `proxy` block request has been failed while depending on another one.                    | Send error template with status `502`.                                                                        |
 | `unexpected_status` (`endpoint`)                   | A `request` or `proxy` block response status code does not match the to `expected_status` list.         | Send error template with status `502`.                                                                        |
+| `configuration`                                    | Per-request configuration error, e.g. a backend `origin` that evaluates to an empty string.             | Send error template with status `500`.                                                                        |
