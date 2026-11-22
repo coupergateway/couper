@@ -509,11 +509,12 @@ func (b *Backend) evalTransport(httpCtx *hcl.EvalContext, params *hclsyntax.Body
 	} else if origin == "" {
 		// For internal backends (e.g. JWKS, OIDC) where the request URL is the
 		// full absolute URL, derive origin from it. For user-facing proxy/request
-		// backends (relative URL), this is a configuration error.
+		// backends (relative URL), the guard expression decided against this
+		// request, so it is a request-time backend error.
 		if req.URL.IsAbs() && req.URL.Hostname() != "" {
 			originURL = req.URL
 		} else {
-			return nil, errors.Configuration.Label(b.name).
+			return nil, errors.BackendOrigin.Label(b.name).
 				Message("the origin attribute must not be empty")
 		}
 	}

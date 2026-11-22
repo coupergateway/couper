@@ -12,6 +12,9 @@ Unreleased changes are available as `coupergateway/couper:edge` container.
 * **Changed**
   * Responses are gzip compressed only from 256 bytes instead of 60 bytes. Below that size, gzip makes the response larger or saves only a few bytes ([#1086](https://github.com/coupergateway/couper/pull/1086))
 
+* **Fixed**
+  * [`error_handler`](https://docs.couper.io/configuration/block/error_handler) can catch a backend `origin` that evaluates to an empty string: the error is now the `backend_origin` type, catchable by name and through the `backend` and `*` super-types, so the empty-origin guard pattern can be answered with a custom response instead of a generic `500`. A broken configuration (invalid `path_prefix`, missing TLS key, unsupported JWT algorithm) keeps raising the `configuration` error, which stays uncatchable ([#983](https://github.com/coupergateway/couper/issues/983))
+
 ---
 
 ## [1.14.8](https://github.com/coupergateway/couper/releases/tag/v1.14.8)
