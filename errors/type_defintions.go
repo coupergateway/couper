@@ -34,6 +34,9 @@ var Definitions = []*Error{
 	Backend.Kind("backend_openapi_validation").Status(http.StatusBadRequest),
 	Backend.Kind("backend_throttle_exceeded").Status(http.StatusTooManyRequests),
 	Backend.Kind("backend_timeout").Status(http.StatusGatewayTimeout),
+	// A backend origin that evaluates to an empty string is a request-time
+	// decision, so it is a backend error the request can answer for.
+	Backend.Kind("backend_origin").Status(http.StatusInternalServerError),
 	Backend.Kind("beta_backend_token_request"),
 	Backend.Kind("backend_unhealthy"),
 

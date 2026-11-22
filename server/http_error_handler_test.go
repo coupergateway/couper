@@ -206,6 +206,48 @@ func TestErrorHandler_Backend(t *testing.T) {
 	}
 }
 
+func TestErrorHandler_BackendOrigin(t *testing.T) {
+	client := test.NewHTTPClient()
+
+	shutdown, _ := newCouper("testdata/integration/error_handler/10_couper.hcl", test.New(t))
+	defer shutdown()
+
+	type testcase struct {
+		path    string
+		expBody string
+	}
+
+	// A request without the allowed upstream host gets an empty origin from
+	// the guard expression, the #983 pattern.
+	for _, tc := range []testcase{
+		{"/named", `{"handled_by":"backend_origin"}`},
+		{"/backend-super", `{"handled_by":"backend"}`},
+		{"/wildcard", `{"handled_by":"*"}`},
+	} {
+		t.Run(tc.path, func(st *testing.T) {
+			helper := test.New(st)
+
+			req, err := http.NewRequest(http.MethodGet, "http://anyserver:8080"+tc.path, nil)
+			helper.Must(err)
+
+			res, err := client.Do(req)
+			helper.Must(err)
+
+			if res.StatusCode != http.StatusForbidden {
+				st.Fatalf("want: %d, got: %d", http.StatusForbidden, res.StatusCode)
+			}
+
+			resBytes, err := io.ReadAll(res.Body)
+			defer res.Body.Close()
+			helper.Must(err)
+
+			if !bytes.Contains(resBytes, []byte(tc.expBody)) {
+				st.Fatalf("want: %s, got: %s", tc.expBody, resBytes)
+			}
+		})
+	}
+}
+
 func Test_ErroneousBackendResponse(t *testing.T) {
 	client := test.NewHTTPClient()
 
